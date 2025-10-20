@@ -266,7 +266,7 @@ impl ProduceLLZKTop for TemplateData {
             )
             .try_into()?;
 
-        // Visit the body of the template and generate LLZK IR for it w/in the functions.
+        // Visit the body of the template and generate LLZK IR for it within the functions.
         let template_context = TemplateContext {
             struct_def: new_struct,
             constrain_func: constrain_func.into(),
