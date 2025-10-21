@@ -1,0 +1,30 @@
+// REQUIRES: circom
+// RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// XFAIL:.*
+
+pragma circom 2.0.0;
+
+function short_div(n) {
+   if (n > 1) {
+      if (n > 5) {
+         return 2;
+      } else {
+         return 1;
+      }
+   } else {
+       return 0;
+   }
+}
+
+function long_div(){
+    var out[1];
+    out[0] = short_div(8);
+    return out;
+}
+
+template BigModOld() {
+    var longdiv[1] = long_div();
+}
+
+component main = BigModOld();
+//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {

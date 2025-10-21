@@ -1,0 +1,13 @@
+// REQUIRES: circom
+// RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// XFAIL:.*
+
+pragma circom 2.0.0;
+
+template Van276() {
+    var a = 168700;
+    var b = 999999;
+}
+
+component main = Van276();
+//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
