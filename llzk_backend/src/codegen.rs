@@ -206,14 +206,14 @@ struct FunctionContext<'llzk> {
 
 /// A trait to generate LLZK IR for structural elements of the circom AST:
 /// ProgramArchive, TemplateData, and FunctionData.
-trait GenerateLLZKAtRoot {
+trait GenerateLLZKInModule {
     /// Generates LLZK IR from the circom AST element.
     /// 'ast: lifetime of the circom AST element
     /// 'llzk: lifetime of the `LlzkContext` and generated `Module`
     fn gen_llzk<'llzk, 'ast: 'llzk>(&'ast self, codegen: &LlzkCodegen<'ast, 'llzk>) -> Result<()>;
 }
 
-impl GenerateLLZKAtRoot for ProgramArchive {
+impl GenerateLLZKInModule for ProgramArchive {
     fn gen_llzk<'llzk, 'ast: 'llzk>(&'ast self, codegen: &LlzkCodegen<'ast, 'llzk>) -> Result<()> {
         for data in self.functions.values() {
             data.gen_llzk(codegen)?;
@@ -225,7 +225,7 @@ impl GenerateLLZKAtRoot for ProgramArchive {
     }
 }
 
-impl GenerateLLZKAtRoot for FunctionData {
+impl GenerateLLZKInModule for FunctionData {
     fn gen_llzk<'llzk, 'ast: 'llzk>(&'ast self, codegen: &LlzkCodegen<'ast, 'llzk>) -> Result<()> {
         let func_loc = codegen.location(self.get_file_id(), self.get_param_location());
         let felt_type = FeltType::new(codegen.context).into();
@@ -247,7 +247,7 @@ impl GenerateLLZKAtRoot for FunctionData {
     }
 }
 
-impl GenerateLLZKAtRoot for TemplateData {
+impl GenerateLLZKInModule for TemplateData {
     fn gen_llzk<'llzk, 'ast: 'llzk>(&'ast self, codegen: &LlzkCodegen<'ast, 'llzk>) -> Result<()> {
         // Collect declarations first to determine struct fields and function parameters.
         let mut declarations = DeclarationInfo::default();
