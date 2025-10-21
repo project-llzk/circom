@@ -6,9 +6,9 @@ use std::{
     path::Path,
 };
 use ansi_term::Color;
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use program_structure::{
-    ast::{SignalType, Statement, VariableType},
+    ast::{Expression, Meta, SignalType, Statement, VariableType},
     file_definition::{FileID, FileLocation},
     function_data::FunctionData,
     program_archive::ProgramArchive,
@@ -16,17 +16,18 @@ use program_structure::{
 };
 use melior::ir::{
     operation::OperationLike as _, Attribute, BlockLike, Identifier, Location, Module, Operation,
-    Type, ValueLike,
+    RegionLike, Type, Value,
 };
 use llzk::{
     error::Error,
     prelude::{
+        function,
         r#struct::{
             self,
             helpers::{compute_fn, constrain_fn},
         },
-        FeltType, FuncDefOpRef, FuncDefOpRefMut, LlzkContext, PublicAttribute, StructDefOp,
-        StructDefOpLike, StructDefOpRef, StructDefOpRefMut,
+        FeltType, FuncDefOp, FuncDefOpRef, FuncDefOpRefMut, FunctionType, LlzkContext,
+        PublicAttribute, StructDefOp, StructDefOpLike, StructDefOpRef, StructDefOpRefMut,
     },
 };
 
@@ -44,7 +45,7 @@ struct LlzkCodegen<'ast, 'llzk> {
 
 impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
     /// Convert circom location information to MLIR location.
-    pub fn get_location(&self, file_id: FileID, file_location: FileLocation) -> Location<'llzk> {
+    pub fn location(&self, file_id: FileID, file_location: FileLocation) -> Location<'llzk> {
         let files = &self.program_archive.file_library;
         let filename = files.get_filename_or_default(&file_id);
         let line = files.get_line(file_location.start, file_id).unwrap_or(0);
@@ -52,10 +53,25 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
         Location::new(self.context, &filename, line, column)
     }
 
+    /// Convert circom Meta location information to MLIR location.
+    pub fn location_from_meta(&self, meta: &Meta) -> Location<'llzk> {
+        if let Some(file) = meta.file_id {
+            self.location(file, meta.file_location())
+        } else {
+            Location::unknown(self.context)
+        }
+    }
+
     /// Insert the struct into the module and return a reference to it.
     pub fn add_struct(&self, s: StructDefOp<'llzk>) -> Result<StructDefOpRefMut<'llzk, '_>> {
         let s: StructDefOpRef = self.module.body().append_operation(s.into()).try_into()?;
         Ok(s.into())
+    }
+
+    /// Insert the free function into the module and return a reference to it.
+    pub fn add_function(&self, f: FuncDefOp<'llzk>) -> Result<FuncDefOpRefMut<'llzk, '_>> {
+        let f: FuncDefOpRef = self.module.body().append_operation(f.into()).try_into()?;
+        Ok(f.into())
     }
 
     /// Verify the generated `Module`.
@@ -121,11 +137,7 @@ impl<'llzk> DeclarationInfo<'llzk> {
                 // fields, and inputs become arguments to the functions.
                 match xtype {
                     VariableType::Signal(signal_type, ..) => {
-                        let location = if let Some(file) = meta.file_id {
-                            codegen.get_location(file, meta.file_location())
-                        } else {
-                            Location::unknown(codegen.context)
-                        };
+                        let location = codegen.location_from_meta(meta);
                         let decl_type = if dimensions.is_empty() {
                             FeltType::new(codegen.context).into()
                         } else {
@@ -165,7 +177,7 @@ impl<'llzk> DeclarationInfo<'llzk> {
                         todo!("Handle component declaration")
                     }
                     VariableType::AnonymousComponent => {
-                        todo!("Handle anonymous component declaration")
+                        unreachable!("removed by 'syntax_sugar_remover'")
                     }
                 }
             }
@@ -185,47 +197,58 @@ struct TemplateContext<'llzk> {
     compute_func: FuncDefOpRefMut<'llzk, 'llzk>,
 }
 
-/// A trait to produce LLZK IR for structural elements of the circom AST:
-/// ProgramArchive, TemplateData, and FunctionData.
-trait ProduceLLZKTop {
-    /// Produces LLZK IR from the circom AST element.
-    /// 'ast: lifetime of the circom AST element
-    /// 'llzk: lifetime of the `LlzkContext` and generated `Module`
-    fn produce_llzk_ir<'llzk, 'ast: 'llzk>(
-        &'ast self,
-        codegen: &LlzkCodegen<'ast, 'llzk>,
-    ) -> Result<()>;
+/// Stores ref to the current free function (i.e. function outside of a template/struct)
+/// while generating LLZK IR for the function.
+struct FunctionContext<'llzk> {
+    /// The function reference
+    func: FuncDefOpRefMut<'llzk, 'llzk>,
 }
 
-impl ProduceLLZKTop for ProgramArchive {
-    fn produce_llzk_ir<'llzk, 'ast: 'llzk>(
-        &'ast self,
-        codegen: &LlzkCodegen<'ast, 'llzk>,
-    ) -> Result<()> {
+/// A trait to generate LLZK IR for structural elements of the circom AST:
+/// ProgramArchive, TemplateData, and FunctionData.
+trait GenerateLLZKAtRoot {
+    /// Generates LLZK IR from the circom AST element.
+    /// 'ast: lifetime of the circom AST element
+    /// 'llzk: lifetime of the `LlzkContext` and generated `Module`
+    fn gen_llzk<'llzk, 'ast: 'llzk>(&'ast self, codegen: &LlzkCodegen<'ast, 'llzk>) -> Result<()>;
+}
+
+impl GenerateLLZKAtRoot for ProgramArchive {
+    fn gen_llzk<'llzk, 'ast: 'llzk>(&'ast self, codegen: &LlzkCodegen<'ast, 'llzk>) -> Result<()> {
         for data in self.functions.values() {
-            data.produce_llzk_ir(codegen)?;
+            data.gen_llzk(codegen)?;
         }
         for data in self.templates.values() {
-            data.produce_llzk_ir(codegen)?;
+            data.gen_llzk(codegen)?;
         }
         Ok(())
     }
 }
 
-impl ProduceLLZKTop for FunctionData {
-    fn produce_llzk_ir<'llzk, 'ast: 'llzk>(
-        &'ast self,
-        codegen: &LlzkCodegen<'ast, 'llzk>,
-    ) -> Result<()> {
-        todo!("Handle function definition")
+impl GenerateLLZKAtRoot for FunctionData {
+    fn gen_llzk<'llzk, 'ast: 'llzk>(&'ast self, codegen: &LlzkCodegen<'ast, 'llzk>) -> Result<()> {
+        let func_loc = codegen.location(self.get_file_id(), self.get_param_location());
+        let felt_type = FeltType::new(codegen.context).into();
+        let func_type = FunctionType::new(
+            &codegen.context,
+            &vec![felt_type; self.get_num_of_params()],
+            &[felt_type],
+        );
+        let func_def = function::def(func_loc, self.get_name(), func_type, &[], None)?;
+        let new_func = codegen.add_function(func_def)?;
+
+        // Visit the body of the function and generate LLZK IR for it.
+        let func_context = FunctionContext { func: new_func.into() };
+        for s in self.get_body_as_vec() {
+            s.gen_llzk_in_function(codegen, &func_context)?;
+        }
+
+        Ok(())
     }
 }
 
-impl ProduceLLZKTop for TemplateData {
-    fn produce_llzk_ir<'llzk, 'ast: 'llzk>(
-        &'ast self,
-        codegen: &LlzkCodegen<'ast, 'llzk>,
-    ) -> Result<()> {
+impl GenerateLLZKAtRoot for TemplateData {
+    fn gen_llzk<'llzk, 'ast: 'llzk>(&'ast self, codegen: &LlzkCodegen<'ast, 'llzk>) -> Result<()> {
         // Collect declarations first to determine struct fields and function parameters.
         let mut declarations = DeclarationInfo::default();
         for s in self.get_body_as_vec() {
@@ -233,7 +256,7 @@ impl ProduceLLZKTop for TemplateData {
         }
 
         // Generate the struct definition, prepopulated with fields.
-        let struct_loc = codegen.get_location(self.get_file_id(), self.get_param_location());
+        let struct_loc = codegen.location(self.get_file_id(), self.get_param_location());
         let struct_params: Vec<_> = self.get_name_of_params().iter().map(String::as_str).collect();
         let struct_def =
             r#struct::def(struct_loc, self.get_name(), &struct_params, declarations.struct_fields)?;
@@ -273,39 +296,177 @@ impl ProduceLLZKTop for TemplateData {
             compute_func: compute_func.into(),
         };
         for s in self.get_body_as_vec() {
-            s.produce_llzk_ir(codegen, &template_context)?;
+            s.gen_llzk_in_template(codegen, &template_context)?;
         }
 
         Ok(())
     }
 }
 
-/// A trait to produce LLZK IR from the body of a circom template.
-trait ProduceLLZKInTemplate {
-    /// Produces LLZK IR from the [Statements](Statement) in the body of a circom template.
-    /// Statements that produce a value should return it wrapped in Some(..) and statements
-    /// that do not produce a value should return None.
+/// A trait to generate LLZK IR from the body of a circom function.
+trait GenerateLLZKInFunction {
+    /// Generates LLZK IR from [Statement] and [Expression] nodes in the body of a circom
+    /// function. [Expressions](Expression) produce a value should return it wrapped in
+    /// Some(..) whereas [Statements](Statement) do not produce a value should return None.
     ///
-    /// 'ret: lifetime of the returned `ValueLike` object
+    /// 'ret: lifetime of the returned `Value`
     /// 'ast: lifetime of the circom AST element
     /// 'llzk: lifetime of the `LlzkContext` and generated `Module`
-    fn produce_llzk_ir<'ret, 'ast: 'ret, 'llzk: 'ret>(
+    fn gen_llzk_in_function<'ret, 'ast: 'ret, 'llzk: 'ret>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'llzk>,
-        template: &TemplateContext<'llzk>,
-    ) -> Result<Option<Box<dyn ValueLike<'llzk> + 'ret>>>;
+        function: &FunctionContext<'llzk>,
+    ) -> Result<Option<Value<'llzk, 'llzk>>>;
 }
 
-impl ProduceLLZKInTemplate for Statement {
-    fn produce_llzk_ir<'ret, 'ast: 'ret, 'llzk: 'ret>(
+impl GenerateLLZKInFunction for Statement {
+    fn gen_llzk_in_function<'ret, 'ast: 'ret, 'llzk: 'ret>(
+        &'ast self,
+        codegen: &LlzkCodegen<'ast, 'llzk>,
+        function: &FunctionContext<'llzk>,
+    ) -> Result<Option<Value<'llzk, 'llzk>>> {
+        match self {
+            Statement::InitializationBlock { xtype, initializations, .. } => {
+                if let VariableType::Signal(..) = xtype {
+                    // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
+                    unreachable!("Template elements declared inside the function")
+                }
+                for init in initializations {
+                    init.gen_llzk_in_function(codegen, function)?;
+                }
+            }
+            Statement::Declaration { meta, xtype, name, dimensions, .. } => {
+                if let VariableType::Var = xtype {
+                    // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
+                    unreachable!("Template elements declared inside the function")
+                }
+                todo!("Handle declaration in function")
+            }
+            Statement::Block { stmts, .. } => {
+                for s in stmts {
+                    s.gen_llzk_in_function(codegen, function)?;
+                }
+            }
+            Statement::Substitution { meta, var, access, op, rhe } => {
+                if op.is_signal_operator() {
+                    // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
+                    unreachable!("Function uses template operators");
+                }
+                todo!("Handle variable assignment in function")
+            }
+            Statement::UnderscoreSubstitution { meta, op, rhe } => {
+                if op.is_signal_operator() {
+                    // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
+                    unreachable!("Function uses template operators");
+                }
+                todo!("Handle underscore assignment in function")
+            }
+            Statement::MultSubstitution { .. } => {
+                unreachable!("removed by 'syntax_sugar_remover'")
+            }
+            Statement::ConstraintEquality { .. } => {
+                // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
+                unreachable!("Function uses template operators");
+            }
+            Statement::IfThenElse { meta, cond, if_case, else_case } => {
+                todo!("Handle if-then-else statement in function")
+            }
+            Statement::While { meta, cond, stmt } => {
+                todo!("Handle while statement in function")
+            }
+            Statement::Return { meta, value } => {
+                let value = value
+                    .gen_llzk_in_function(codegen, function)?
+                    .ok_or_else(|| anyhow!("expression must produce a value"))?;
+
+                let body_region = function.func.region(0)?;
+                let body_block = body_region
+                    .first_block()
+                    .ok_or_else(|| anyhow!("function body has no entry block"))?;
+                let location = codegen.location_from_meta(meta);
+                body_block.append_operation(function::r#return(location, &[value]));
+            }
+            Statement::LogCall { .. } => {
+                eprintln!("Warning: log calls are not currently supported in LLZK");
+            }
+            Statement::Assert { meta, arg } => {
+                todo!("Handle assert statement in function")
+            }
+        }
+        Ok(None)
+    }
+}
+
+impl GenerateLLZKInFunction for Expression {
+    fn gen_llzk_in_function<'ret, 'ast: 'ret, 'llzk: 'ret>(
+        &'ast self,
+        codegen: &LlzkCodegen<'ast, 'llzk>,
+        function: &FunctionContext<'llzk>,
+    ) -> Result<Option<Value<'llzk, 'llzk>>> {
+        match self {
+            Expression::Number(meta, big_int) => {
+                todo!("Handle Number expression in function")
+            }
+            Expression::Variable { meta, name, access } => {
+                todo!("Handle Variable expression in function")
+            }
+            Expression::InfixOp { meta, lhe, infix_op, rhe } => {
+                todo!("Handle InfixOp expression in function")
+            }
+            Expression::PrefixOp { meta, prefix_op, rhe } => {
+                todo!("Handle PrefixOp expression in function")
+            }
+            Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
+                todo!("Handle InlineSwitchOp expression in function")
+            }
+            Expression::ParallelOp { meta, rhe } => {
+                todo!("Handle ParallelOp expression in function")
+            }
+            Expression::ArrayInLine { meta, values } => {
+                todo!("Handle ArrayInLine expression in function")
+            }
+            Expression::UniformArray { meta, value, dimension } => {
+                todo!("Handle UniformArray expression in function")
+            }
+            Expression::Call { meta, id, args } => {
+                todo!("Handle Call expression in function")
+            }
+            Expression::BusCall { meta, id, args } => {
+                // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
+                unreachable!("Template elements declared inside the function")
+            }
+            Expression::AnonymousComp { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
+            Expression::Tuple { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
+        }
+    }
+}
+
+/// A trait to generate LLZK IR from the body of a circom template.
+trait GenerateLLZKInTemplate {
+    /// Generates LLZK IR from [Statement] and [Expression] nodes in the body of a circom
+    /// template. [Expressions](Expression) produce a value should return it wrapped in
+    /// Some(..) whereas [Statements](Statement) do not produce a value should return None.
+    ///
+    /// 'ret: lifetime of the returned `Value`
+    /// 'ast: lifetime of the circom AST element
+    /// 'llzk: lifetime of the `LlzkContext` and generated `Module`
+    fn gen_llzk_in_template<'ret, 'ast: 'ret, 'llzk: 'ret>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'llzk>,
         template: &TemplateContext<'llzk>,
-    ) -> Result<Option<Box<dyn ValueLike<'llzk> + 'ret>>> {
+    ) -> Result<Option<Value<'llzk, 'llzk>>>;
+}
+
+impl GenerateLLZKInTemplate for Statement {
+    fn gen_llzk_in_template<'ret, 'ast: 'ret, 'llzk: 'ret>(
+        &'ast self,
+        codegen: &LlzkCodegen<'ast, 'llzk>,
+        template: &TemplateContext<'llzk>,
+    ) -> Result<Option<Value<'llzk, 'llzk>>> {
         match self {
             Statement::InitializationBlock { initializations, .. } => {
                 for init in initializations {
-                    init.produce_llzk_ir(codegen, template)?;
+                    init.gen_llzk_in_template(codegen, template)?;
                 }
                 Ok(None)
             }
@@ -315,36 +476,84 @@ impl ProduceLLZKInTemplate for Statement {
                 println!("TODO: anything else to do with declaration? {name} of type {xtype:?}");
                 Ok(None)
             }
-            Statement::Substitution { meta, var, access, op, rhe } => {
-                todo!("Handle variable assignment")
+            Statement::Block { stmts, .. } => {
+                for s in stmts {
+                    s.gen_llzk_in_template(codegen, template)?;
+                }
+                Ok(None)
             }
-            Statement::MultSubstitution { meta, lhe, op, rhe } => {
-                todo!("Handle multiple assignment")
+            Statement::Substitution { meta, var, access, op, rhe } => {
+                todo!("Handle variable assignment in template")
             }
             Statement::UnderscoreSubstitution { meta, op, rhe } => {
-                todo!("Handle underscore assignment")
+                todo!("Handle underscore assignment in template")
+            }
+            Statement::MultSubstitution { .. } => {
+                unreachable!("removed by 'syntax_sugar_remover'")
             }
             Statement::ConstraintEquality { meta, lhe, rhe } => {
-                todo!("Handle constraint equality")
+                todo!("Handle constraint equality in template")
             }
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
-                todo!("Handle if-then-else statement")
+                todo!("Handle if-then-else statement in template")
             }
             Statement::While { meta, cond, stmt } => {
-                todo!("Handle while statement")
+                todo!("Handle while statement in template")
             }
-            Statement::Return { meta, value } => {
-                todo!("Handle return statement")
+            Statement::Return { .. } => {
+                // per `type_analysis/src/analyzers/no_returns_in_template.rs`
+                unreachable!("return statements are not allowed in templates")
             }
-            Statement::LogCall { meta, args } => {
-                todo!("Handle log call")
-            }
-            Statement::Block { meta, stmts } => {
-                todo!("Handle block statement")
+            Statement::LogCall { .. } => {
+                eprintln!("Warning: log calls are not currently supported in LLZK");
+                Ok(None)
             }
             Statement::Assert { meta, arg } => {
-                todo!("Handle assert statement")
+                todo!("Handle assert statement in template")
             }
+        }
+    }
+}
+
+impl GenerateLLZKInTemplate for Expression {
+    fn gen_llzk_in_template<'ret, 'ast: 'ret, 'llzk: 'ret>(
+        &'ast self,
+        codegen: &LlzkCodegen<'ast, 'llzk>,
+        template: &TemplateContext<'llzk>,
+    ) -> Result<Option<Value<'llzk, 'llzk>>> {
+        match self {
+            Expression::Number(meta, big_int) => {
+                todo!("Handle Number expression in template")
+            }
+            Expression::Variable { meta, name, access } => {
+                todo!("Handle Variable expression in template")
+            }
+            Expression::InfixOp { meta, lhe, infix_op, rhe } => {
+                todo!("Handle InfixOp expression in template")
+            }
+            Expression::PrefixOp { meta, prefix_op, rhe } => {
+                todo!("Handle PrefixOp expression in template")
+            }
+            Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
+                todo!("Handle InlineSwitchOp expression in template")
+            }
+            Expression::ParallelOp { meta, rhe } => {
+                todo!("Handle ParallelOp expression in template")
+            }
+            Expression::ArrayInLine { meta, values } => {
+                todo!("Handle ArrayInLine expression in template")
+            }
+            Expression::UniformArray { meta, value, dimension } => {
+                todo!("Handle UniformArray expression in template")
+            }
+            Expression::Call { meta, id, args } => {
+                todo!("Handle Call expression in template")
+            }
+            Expression::BusCall { meta, id, args } => {
+                todo!("Handle BusCall expression in template")
+            }
+            Expression::AnonymousComp { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
+            Expression::Tuple { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
         }
     }
 }
@@ -366,7 +575,7 @@ pub fn generate_llzk(program_archive: &ProgramArchive, filename: &str) -> Result
     let module = new_llzk_module(&ctx, program_archive);
     let codegen = LlzkCodegen { program_archive, context: &ctx, module: &module };
 
-    program_archive.produce_llzk_ir(&codegen).map_err(|err| {
+    program_archive.gen_llzk(&codegen).map_err(|err| {
         eprintln!("Failed to generate LLZK IR: {err}");
     })?;
 
