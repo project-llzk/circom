@@ -1,12 +1,10 @@
 #![allow(dead_code)]
 
-use std::fs::{self, File};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use assert_cmd::Command;
 use assert_fs::{NamedTempFile, prelude::FileWriteStr};
 use lazy_static::lazy_static;
 use regex::Regex;
-use rand::{distr::Alphanumeric, Rng};
 
 const TEST_INPUT: &'static str = "%s";
 const TMP_FILE: &'static str = "%t";
@@ -77,15 +75,6 @@ impl<'a> LitTest<'a> {
         Ok(())
     }
 
-    fn create_tmp_file(&self) -> LitResult<PathBuf> {
-        let temp = Path::new(env!("CARGO_TARGET_TMPDIR"));
-        let postfix: String =
-            rand::rng().sample_iter(&Alphanumeric).take(10).map(char::from).collect();
-        let tmp_file = temp.join(Path::new(format!("{}.{}", self.name, postfix).as_str()));
-        File::create(tmp_file.clone())?;
-        Ok(tmp_file)
-    }
-
     fn prepare_command(&self, run_command: &str, tmp_file: &Path) -> String {
         run_command
             .replace(
@@ -96,37 +85,22 @@ impl<'a> LitTest<'a> {
             .replace(CIRCOM, env!("CARGO_BIN_EXE_circom"))
     }
 
-    fn cleanup_test(&self, tmp_file: &Path) -> LitResult<()> {
-        if tmp_file.exists() {
-            if tmp_file.is_file() {
-                fs::remove_file(tmp_file)?;
-            } else if tmp_file.is_dir() {
-                fs::remove_dir_all(tmp_file)?;
-            }
-        }
-        Ok(())
-    }
-
     pub fn execute(&self) -> LitResult<()> {
-        // Create a single temp file to be shared across all RUN commands
-        let tmp_file = self.create_tmp_file()?;
+        // Create a single temp file/directory to be shared across all RUN commands
+        // that is deleted when it goes out of scope at the end of this function.
+        let tmp_file = NamedTempFile::new(self.name)?;
 
         // Execute all RUN commands in sequence
         for run_command in &self.run_commands {
-            let cmd = self.prepare_command(run_command, &tmp_file);
+            let cmd = self.prepare_command(run_command, tmp_file.path());
             let mut sh = Command::new("sh");
             sh.arg("-c").arg(cmd);
-            let result = if self.expected_failure {
-                self.execute_expecting_failure(&mut sh)
+            if self.expected_failure {
+                self.execute_expecting_failure(&mut sh)?;
             } else {
-                self.execute_expecting_success(&mut sh)
-            };
-            // Don't cleanup yet - continue to next command
-            result?;
+                self.execute_expecting_success(&mut sh)?;
+            }
         }
-
-        // Cleanup the temp file after all commands have executed
-        self.cleanup_test(&tmp_file)?;
         Ok(())
     }
 }
