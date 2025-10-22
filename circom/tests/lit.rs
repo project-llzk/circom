@@ -14,10 +14,10 @@ type LitResult<T> = Result<T, Box<dyn std::error::Error>>;
 
 fn marked_xfail(content: &str) -> bool {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"^//\s*XFAIL:.*$").unwrap();
+        static ref XFAIL: Regex = Regex::new(r"^//\s*XFAIL:.*$").unwrap();
     }
     for line in content.lines() {
-        if RE.is_match(line) {
+        if XFAIL.is_match(line) {
             return true;
         }
     }
@@ -26,11 +26,14 @@ fn marked_xfail(content: &str) -> bool {
 
 fn extract_runs(content: &str) -> Vec<&str> {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"^//\s*RUN:(.*)$").unwrap();
+        static ref RUN: Regex = Regex::new(r"^//\s*RUN:(.*)$").unwrap();
+        static ref END: Regex = Regex::new(r"^//\s*END\.$").unwrap();
     }
     let mut runs = Vec::new();
     for line in content.lines() {
-        if let Some(captures) = RE.captures(line) {
+        if END.is_match(line) {
+            break;
+        } else if let Some(captures) = RUN.captures(line) {
             if let Some(group) = captures.get(1) {
                 runs.push(group.as_str());
             }
