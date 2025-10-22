@@ -26,18 +26,22 @@ fn marked_xfail(content: &str) -> bool {
     return false;
 }
 
-fn extract_run(content: &str) -> &str {
+fn extract_runs(content: &str) -> Vec<String> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"^//\s*RUN:(.*)$").unwrap();
     }
+    let mut runs = Vec::new();
     for line in content.lines() {
         if let Some(captures) = RE.captures(line) {
             if let Some(group) = captures.get(1) {
-                return group.as_str();
+                runs.push(group.as_str().to_string());
             }
         }
     }
-    panic!("Unsupported test encountered. RUN declaration missing!")
+    if runs.is_empty() {
+        panic!("Unsupported test encountered. RUN declaration missing!")
+    }
+    runs
 }
 
 fn write_test(content: &str, name: &str) -> LitResult<NamedTempFile> {
@@ -48,16 +52,16 @@ fn write_test(content: &str, name: &str) -> LitResult<NamedTempFile> {
 
 struct LitTest<'a> {
     expected_failure: bool,
-    run_command: &'a str,
+    run_commands: Vec<String>,
     test_input: NamedTempFile,
     name: &'a str,
 }
 
 impl<'a> LitTest<'a> {
-    pub fn create(content: &'a str, name: &'a str) -> LitResult<Self> {
+    pub fn create(content: &str, name: &'a str) -> LitResult<Self> {
         Ok(LitTest {
             expected_failure: marked_xfail(content),
-            run_command: extract_run(content),
+            run_commands: extract_runs(content),
             test_input: write_test(content, name)?,
             name,
         })
@@ -73,22 +77,23 @@ impl<'a> LitTest<'a> {
         Ok(())
     }
 
-    fn prepare_test(&self) -> LitResult<(String, PathBuf)> {
+    fn create_tmp_file(&self) -> LitResult<PathBuf> {
         let temp = Path::new(env!("CARGO_TARGET_TMPDIR"));
         let postfix: String =
             rand::rng().sample_iter(&Alphanumeric).take(10).map(char::from).collect();
         let tmp_file = temp.join(Path::new(format!("{}.{}", self.name, postfix).as_str()));
         File::create(tmp_file.clone())?;
-        let cmd = self
-            .run_command
+        Ok(tmp_file)
+    }
+
+    fn prepare_command(&self, run_command: &str, tmp_file: &Path) -> String {
+        run_command
             .replace(
                 TEST_INPUT,
                 format!("\"{}\"", self.test_input.path().to_str().unwrap()).as_str(),
             )
             .replace(TMP_FILE, format!("\"{}\"", tmp_file.to_str().unwrap()).as_str())
-            .replace(CIRCOM, env!("CARGO_BIN_EXE_circom"));
-
-        Ok((cmd, tmp_file))
+            .replace(CIRCOM, env!("CARGO_BIN_EXE_circom"))
     }
 
     fn cleanup_test(&self, tmp_file: &Path) -> LitResult<()> {
@@ -103,15 +108,26 @@ impl<'a> LitTest<'a> {
     }
 
     pub fn execute(&self) -> LitResult<()> {
-        let (cmd, tmp_file) = self.prepare_test()?;
-        let mut sh = Command::new("sh");
-        sh.arg("-c").arg(cmd);
-        if self.expected_failure {
-            self.execute_expecting_failure(&mut sh)
-        } else {
-            self.execute_expecting_success(&mut sh)
-        }?;
-        self.cleanup_test(&tmp_file)
+        // Create a single temp file to be shared across all RUN commands
+        let tmp_file = self.create_tmp_file()?;
+
+        // Execute all RUN commands in sequence
+        for run_command in &self.run_commands {
+            let cmd = self.prepare_command(run_command, &tmp_file);
+            let mut sh = Command::new("sh");
+            sh.arg("-c").arg(cmd);
+            let result = if self.expected_failure {
+                self.execute_expecting_failure(&mut sh)
+            } else {
+                self.execute_expecting_success(&mut sh)
+            };
+            // Don't cleanup yet - continue to next command
+            result?;
+        }
+
+        // Cleanup the temp file after all commands have executed
+        self.cleanup_test(&tmp_file)?;
+        Ok(())
     }
 }
 
