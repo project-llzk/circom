@@ -26,7 +26,7 @@ fn marked_xfail(content: &str) -> bool {
     return false;
 }
 
-fn extract_runs(content: &str) -> Vec<String> {
+fn extract_runs(content: &str) -> Vec<&str> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"^//\s*RUN:(.*)$").unwrap();
     }
@@ -34,7 +34,7 @@ fn extract_runs(content: &str) -> Vec<String> {
     for line in content.lines() {
         if let Some(captures) = RE.captures(line) {
             if let Some(group) = captures.get(1) {
-                runs.push(group.as_str().to_string());
+                runs.push(group.as_str());
             }
         }
     }
@@ -52,13 +52,13 @@ fn write_test(content: &str, name: &str) -> LitResult<NamedTempFile> {
 
 struct LitTest<'a> {
     expected_failure: bool,
-    run_commands: Vec<String>,
+    run_commands: Vec<&'a str>,
     test_input: NamedTempFile,
     name: &'a str,
 }
 
 impl<'a> LitTest<'a> {
-    pub fn create(content: &str, name: &'a str) -> LitResult<Self> {
+    pub fn create(content: &'a str, name: &'a str) -> LitResult<Self> {
         Ok(LitTest {
             expected_failure: marked_xfail(content),
             run_commands: extract_runs(content),
