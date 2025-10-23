@@ -45,7 +45,7 @@ struct LlzkCodegen<'ast, 'llzk> {
 
 impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
     /// Convert circom location information to MLIR location.
-    pub fn location(&self, file_id: FileID, file_location: FileLocation) -> Location<'llzk> {
+    fn location(&self, file_id: FileID, file_location: FileLocation) -> Location<'llzk> {
         let files = &self.program_archive.file_library;
         let filename = files.get_filename_or_default(&file_id);
         let line = files.get_line(file_location.start, file_id).unwrap_or(0);
@@ -54,7 +54,7 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
     }
 
     /// Convert circom Meta location information to MLIR location.
-    pub fn location_from_meta(&self, meta: &Meta) -> Location<'llzk> {
+    fn location_from_meta(&self, meta: &Meta) -> Location<'llzk> {
         if let Some(file) = meta.file_id {
             self.location(file, meta.file_location())
         } else {
@@ -63,24 +63,24 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
     }
 
     /// Insert the struct into the module and return a reference to it.
-    pub fn add_struct(&self, s: StructDefOp<'llzk>) -> Result<StructDefOpRefMut<'llzk, '_>> {
+    fn add_struct(&self, s: StructDefOp<'llzk>) -> Result<StructDefOpRefMut<'llzk, '_>> {
         let s: StructDefOpRef = self.module.body().append_operation(s.into()).try_into()?;
         Ok(s.into())
     }
 
     /// Insert the free function into the module and return a reference to it.
-    pub fn add_function(&self, f: FuncDefOp<'llzk>) -> Result<FuncDefOpRefMut<'llzk, '_>> {
+    fn add_function(&self, f: FuncDefOp<'llzk>) -> Result<FuncDefOpRefMut<'llzk, '_>> {
         let f: FuncDefOpRef = self.module.body().append_operation(f.into()).try_into()?;
         Ok(f.into())
     }
 
     /// Verify the generated `Module`.
-    pub fn verify(&self) -> bool {
+    fn verify(&self) -> bool {
         self.module.as_operation().verify()
     }
 
     /// Write the generated `Module` to a file.
-    pub fn write_to_file(self, filename: &str) -> Result<(), ()> {
+    fn write_to_file(self, filename: &str) -> Result<(), ()> {
         let out_path = Path::new(filename);
         // Ensure parent directories exist
         if let Some(parent) = out_path.parent() {
