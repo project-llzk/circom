@@ -1,5 +1,6 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// END.
 // COM: Adapted from `bigint.circom` in https://github.com/yi-sun/circom-pairing
 // XFAIL:.*
 

@@ -1,5 +1,6 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --dump_parse -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --match-full-lines
+// END.
 
 pragma circom 2.0.0;
 
