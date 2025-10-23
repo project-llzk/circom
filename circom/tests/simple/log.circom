@@ -1,7 +1,12 @@
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// COM: Setup and run the test
+// RUN:   rm -rf %t && mkdir %t
+// RUN:   %circom --llzk -o %t %s > %t/stdout.txt 2> %t/stderr.txt
+// COM: Check stderr for the warning that's produced (but ignore the color codes)
+// RUN:   sed 's/\x1b\[[0-9;]*m//g' %t/stderr.txt | FileCheck %s --check-prefix=WARN
+// COM: Check stdout for the generated IR
+// RUN:   sed -n 's/.*Written successfully:.* \(.*\)/\1/p' %t/stdout.txt | xargs cat | FileCheck %s --check-prefix=IR
 // END.
-// XFAIL:.*
 
 pragma circom 2.0.0;
 
@@ -10,4 +15,21 @@ template A() {
 }
 
 component main = A();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+//WARN-LABEL: warning[T2038]: log calls are not currently supported in LLZK
+// WARN-NEXT:    ┌─ "{{.*}}log.circom":14:3
+// WARN-NEXT:    │
+// WARN-NEXT: 14 │   log(1658);
+// WARN-NEXT:    │   ^^^^^^^^^^ here
+
+//IR-LABEL:  module attributes {veridise.lang = "llzk"} {
+// IR-NEXT:    struct.def @A<[]> {
+// IR-NEXT:      function.def @compute() -> !struct.type<@A<[]>> attributes {function.allow_witness} {
+// IR-NEXT:        %self = struct.new : <@A<[]>>
+// IR-NEXT:        function.return %self : !struct.type<@A<[]>>
+// IR-NEXT:      }
+// IR-NEXT:      function.def @constrain(%arg0: !struct.type<@A<[]>>) attributes {function.allow_constraint} {
+// IR-NEXT:        function.return
+// IR-NEXT:      }
+// IR-NEXT:    }
+// IR-NEXT:  }

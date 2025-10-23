@@ -9,6 +9,8 @@ use ansi_term::Color;
 use anyhow::{Result, anyhow};
 use program_structure::{
     ast::{Expression, Meta, SignalType, Statement, VariableType},
+    error_code::ReportCode,
+    error_definition::Report,
     file_definition::{FileID, FileLocation},
     function_data::FunctionData,
     program_archive::ProgramArchive,
@@ -44,6 +46,13 @@ struct LlzkCodegen<'ast, 'llzk> {
 }
 
 impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
+    /// Emit a circom-style warning.
+    fn emit_circom_warning(&self, meta: &Meta, message: &str, code: ReportCode) {
+        let mut report = Report::warning(String::from(message), code);
+        report.add_primary(meta.file_location(), meta.get_file_id(), String::from("here"));
+        Report::print_reports(&[report], &self.program_archive.file_library);
+    }
+
     /// Convert circom location information to MLIR location.
     fn location(&self, file_id: FileID, file_location: FileLocation) -> Location<'llzk> {
         let files = &self.program_archive.file_library;
@@ -386,8 +395,12 @@ impl GenerateLLZKInFunction for Statement {
                 let location = codegen.location_from_meta(meta);
                 body_block.append_operation(function::r#return(location, &[value]));
             }
-            Statement::LogCall { .. } => {
-                eprintln!("Warning: log calls are not currently supported in LLZK");
+            Statement::LogCall { meta, .. } => {
+                codegen.emit_circom_warning(
+                    meta,
+                    "log calls are not currently supported in LLZK",
+                    ReportCode::NotAllowedOperation,
+                );
             }
             Statement::Assert { meta, arg } => {
                 todo!("Handle assert statement in function")
@@ -504,8 +517,12 @@ impl GenerateLLZKInTemplate for Statement {
                 // per `type_analysis/src/analyzers/no_returns_in_template.rs`
                 unreachable!("return statements are not allowed in templates")
             }
-            Statement::LogCall { .. } => {
-                eprintln!("Warning: log calls are not currently supported in LLZK");
+            Statement::LogCall { meta, .. } => {
+                codegen.emit_circom_warning(
+                    meta,
+                    "log calls are not currently supported in LLZK",
+                    ReportCode::NotAllowedOperation,
+                );
                 Ok(None)
             }
             Statement::Assert { meta, arg } => {
