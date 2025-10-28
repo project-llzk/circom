@@ -1,7 +1,9 @@
 use std::{
+    collections::HashMap,
     convert::TryInto as _,
     fs::{self, File},
     io::Write,
+    ops::Deref,
     os::raw::c_void,
     path::Path,
 };
@@ -17,8 +19,8 @@ use program_structure::{
     template_data::TemplateData,
 };
 use melior::ir::{
-    operation::OperationLike as _, Attribute, BlockLike, Identifier, Location, Module, Operation,
-    RegionLike, Type, Value,
+    operation::OperationLike as _, Attribute, Block, BlockLike, Identifier, Location, Module,
+    Operation, RegionLike, Type, Value,
 };
 use llzk::{
     error::Error,
@@ -28,8 +30,9 @@ use llzk::{
             self,
             helpers::{compute_fn, constrain_fn},
         },
-        FeltType, FuncDefOp, FuncDefOpRef, FuncDefOpRefMut, FunctionType, LlzkContext,
-        PublicAttribute, StructDefOp, StructDefOpLike, StructDefOpRef, StructDefOpRefMut,
+        FeltType, FuncDefOp, FuncDefOpLike, FuncDefOpRef, FuncDefOpRefMut, FunctionType,
+        LlzkContext, PublicAttribute, StructDefOp, StructDefOpLike, StructDefOpRef,
+        StructDefOpRefMut,
     },
 };
 
@@ -211,6 +214,8 @@ struct TemplateContext<'llzk> {
 struct FunctionContext<'llzk> {
     /// The function reference
     func: FuncDefOpRefMut<'llzk, 'llzk>,
+    /// The function parameter names mapped to their index in the generated function
+    param_name_to_index: HashMap<String, usize>,
 }
 
 /// A trait to generate LLZK IR for structural elements of the circom AST:
@@ -236,18 +241,32 @@ impl GenerateLLZKInModule for ProgramArchive {
 
 impl GenerateLLZKInModule for FunctionData {
     fn gen_llzk<'llzk, 'ast: 'llzk>(&'ast self, codegen: &LlzkCodegen<'ast, 'llzk>) -> Result<()> {
-        let func_loc = codegen.location(self.get_file_id(), self.get_param_location());
+        let location = codegen.location(self.get_file_id(), self.get_param_location());
         let felt_type = FeltType::new(codegen.context).into();
-        let func_type = FunctionType::new(
-            &codegen.context,
-            &vec![felt_type; self.get_num_of_params()],
-            &[felt_type],
-        );
-        let func_def = function::def(func_loc, self.get_name(), func_type, &[], None)?;
+        // TODO: This just uses `felt.type` for param and return types but those must actually
+        //  be determined based on the caller. This also affects the dimensions of array types
+        //  and which array read/write-like ops must be used when translating the body.
+        let inputs = vec![felt_type; self.get_num_of_params()];
+        let func_type = FunctionType::new(&codegen.context, &inputs, &[felt_type]);
+        let func_def =
+            function::def(location, self.get_name(), func_type, &[], None).and_then(|f| {
+                let arguments: Vec<(Type, Location)> =
+                    inputs.into_iter().map(|t| (t, location)).collect();
+                f.region(0)?.append_block(Block::new(&arguments));
+                Ok(f)
+            })?;
         let new_func = codegen.add_function(func_def)?;
 
         // Visit the body of the function and generate LLZK IR for it.
-        let func_context = FunctionContext { func: new_func.into() };
+        let func_context = FunctionContext {
+            func: new_func.into(),
+            param_name_to_index: self
+                .get_name_of_params()
+                .iter()
+                .enumerate()
+                .map(|(i, name)| (name.clone(), i))
+                .collect(),
+        };
         for s in self.get_body_as_vec() {
             s.gen_llzk_in_function(codegen, &func_context)?;
         }
@@ -421,7 +440,23 @@ impl GenerateLLZKInFunction for Expression {
                 todo!("Handle Number expression in function")
             }
             Expression::Variable { meta, name, access } => {
-                todo!("Handle Variable expression in function")
+                let func_def: &FuncDefOp = function.func.deref();
+                let index = function
+                    .param_name_to_index
+                    .get(name)
+                    .ok_or_else(|| anyhow!("no parameter named {name}"))?;
+                func_def
+                    .argument(*index)
+                    .map_err(|e| anyhow!("failed to get function argument: {e}"))
+                    .map(|v| match access.as_slice() {
+                        [] => Some(Value::from(v)),
+                        a => {
+                            // Note: `Access::ComponentAccess` is not legal in functions per
+                            // `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
+                            // so each must be `Access::ArrayAccess` only.
+                            todo!("Handle accesses in variable expression in function")
+                        }
+                    })
             }
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {
                 todo!("Handle InfixOp expression in function")
