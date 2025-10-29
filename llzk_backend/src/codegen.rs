@@ -364,7 +364,7 @@ impl GenerateLLZKInFunction for Statement {
                 }
             }
             Statement::Declaration { meta, xtype, name, dimensions, .. } => {
-                if let VariableType::Var = xtype {
+                if VariableType::Var != *xtype {
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Template elements declared inside the function")
                 }
