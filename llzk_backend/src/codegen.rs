@@ -1,27 +1,5 @@
-use std::{
-    collections::HashMap,
-    convert::TryInto as _,
-    fs::{self, File},
-    io::Write,
-    ops::Deref,
-    os::raw::c_void,
-    path::Path,
-};
 use ansi_term::Color;
-use anyhow::{Result, anyhow};
-use program_structure::{
-    ast::{Expression, Meta, SignalType, Statement, VariableType},
-    error_code::ReportCode,
-    error_definition::Report,
-    file_definition::{FileID, FileLocation},
-    function_data::FunctionData,
-    program_archive::ProgramArchive,
-    template_data::TemplateData,
-};
-use melior::ir::{
-    operation::OperationLike as _, Attribute, Block, BlockLike, Identifier, Location, Module,
-    Operation, RegionLike, Type, Value,
-};
+use anyhow::{anyhow, Result};
 use llzk::{
     error::Error,
     prelude::{
@@ -34,6 +12,28 @@ use llzk::{
         LlzkContext, PublicAttribute, StructDefOp, StructDefOpLike, StructDefOpRef,
         StructDefOpRefMut,
     },
+};
+use melior::ir::{
+    operation::OperationLike as _, Attribute, Block, BlockLike, Identifier, Location, Module,
+    Operation, RegionLike, Type, Value,
+};
+use program_structure::{
+    ast::{Expression, Meta, SignalType, Statement, VariableType},
+    error_code::ReportCode,
+    error_definition::Report,
+    file_definition::{FileID, FileLocation},
+    function_data::FunctionData,
+    program_archive::ProgramArchive,
+    template_data::TemplateData,
+};
+use std::{
+    collections::HashMap,
+    convert::TryInto as _,
+    fs::{self, File},
+    io::Write,
+    ops::Deref,
+    os::raw::c_void,
+    path::Path,
 };
 
 /// Stores necessary context for generating LLZK IR.
@@ -138,15 +138,17 @@ impl<'llzk> DeclarationInfo<'llzk> {
         match stmt {
             Statement::InitializationBlock { initializations, .. } => {
                 // The InitializationBlock is just a wrapper that contains no additional information
-                // beyond the Declaration that must appear within it so just process the inner statements.
+                // beyond the Declaration that must appear within it so just process the inner
+                // statements.
                 for init in initializations {
                     self.visit(init, codegen);
                 }
             }
             Statement::Declaration { meta, name, xtype, dimensions, .. } => {
-                // The Signal and Bus types use SignalType to indicate if they are input, output, or intermediate.
-                // The others are all intermediate. Intermediates become struct fields, outputs become "pub" struct
-                // fields, and inputs become arguments to the functions.
+                // The Signal and Bus types use SignalType to indicate if they are input, output, or
+                // intermediate. The others are all intermediate. Intermediates become SSA values
+                // (which could later be stored as a struct field if used in a constraint), outputs
+                // become "pub" struct fields, and inputs become arguments to the functions.
                 match xtype {
                     VariableType::Signal(signal_type, ..) => {
                         let location = codegen.location_from_meta(meta);
@@ -179,7 +181,8 @@ impl<'llzk> DeclarationInfo<'llzk> {
                         }
                     }
                     VariableType::Bus(bus_name, signal_type, ..) => {
-                        //TODO: this should be StructType instead of FeltType, but otherwise similar to above
+                        // TODO: this should be StructType instead of FeltType, but otherwise
+                        // similar to above
                         todo!("Handle bus declaration")
                     }
                     VariableType::Var => {
@@ -519,8 +522,9 @@ impl GenerateLLZKInTemplate for Statement {
                 Ok(None)
             }
             Statement::Declaration { meta, xtype, name, dimensions, .. } => {
-                // TODO: we've already handled declarations to create struct fields and function parameters.
-                // Is there any reason to visit them again? If not, then we don't need the InitializationBlock above either.
+                // TODO: we've already handled declarations to create struct fields and function
+                // parameters. Is there any reason to visit them again? If not, then
+                // we don't need the InitializationBlock above either.
                 println!("TODO: anything else to do with declaration? {name} of type {xtype:?}");
                 Ok(None)
             }

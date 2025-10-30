@@ -1,0 +1,8 @@
+# These format settings only apply when calling format from within this module.
+# If called from the top level, the top-level settings will apply.
+fn_args_layout = "Tall"
+use_small_heuristics = "Max"
+max_width = 100
+wrap_comments = true
+normalize_comments = true
+comment_width = 100
