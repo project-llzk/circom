@@ -32,11 +32,11 @@
         "release-helpers": "release-helpers"
       },
       "locked": {
-        "lastModified": 1760637182,
-        "narHash": "sha256-5R+NuWgBMa8PZkTEaWFum51hFVHXvrhKcin0wUnvMRQ=",
+        "lastModified": 1761685657,
+        "narHash": "sha256-eOh2rRi74NBFDfyxOz4/Wol7wCPKKu10WAXpYtwKPgM=",
         "owner": "Veridise",
         "repo": "llzk-lib",
-        "rev": "5c0944dfdd596207a6e00013797126a68253b68a",
+        "rev": "ad094f3aaddc7edc73e36edb997156a9ae287b22",
         "type": "github"
       },
       "original": {
@@ -87,11 +87,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1760738518,
-        "narHash": "sha256-xIKbVVyV02ZNdsUOFfbjwqNzGWGHOgFeHUYzF3L8kz4=",
+        "lastModified": 1761777469,
+        "narHash": "sha256-D6WPnbvHMWN92FAqEH9BRXgtZTdhpshTz2SAVS32Agc=",
         "ref": "refs/heads/main",
-        "rev": "1f13a1400e928ad4db211167b424434cca7d5ee1",
-        "revCount": 264,
+        "rev": "72df4a1749b04f09d75f94dfcc5369aec357e219",
+        "revCount": 273,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/Veridise/llzk-rs"
