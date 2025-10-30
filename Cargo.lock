@@ -787,7 +787,7 @@ checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
 [[package]]
 name = "llzk"
 version = "0.1.0"
-source = "git+https://github.com/Veridise/llzk-rs#1f13a1400e928ad4db211167b424434cca7d5ee1"
+source = "git+https://github.com/Veridise/llzk-rs#72df4a1749b04f09d75f94dfcc5369aec357e219"
 dependencies = [
  "llzk-sys",
  "log",
@@ -800,7 +800,7 @@ dependencies = [
 [[package]]
 name = "llzk-sys"
 version = "0.1.0"
-source = "git+https://github.com/Veridise/llzk-rs#1f13a1400e928ad4db211167b424434cca7d5ee1"
+source = "git+https://github.com/Veridise/llzk-rs#72df4a1749b04f09d75f94dfcc5369aec357e219"
 dependencies = [
  "anyhow",
  "llzk-sys-build-support",
@@ -810,7 +810,7 @@ dependencies = [
 [[package]]
 name = "llzk-sys-build-support"
 version = "0.1.0"
-source = "git+https://github.com/Veridise/llzk-rs#1f13a1400e928ad4db211167b424434cca7d5ee1"
+source = "git+https://github.com/Veridise/llzk-rs#72df4a1749b04f09d75f94dfcc5369aec357e219"
 dependencies = [
  "anyhow",
  "bindgen",
