@@ -3,20 +3,22 @@
 // END.
 // XFAIL:.*
 
-pragma circom 2.1.0;
+pragma circom 2.0.0;
 
-function sum(a) {
-    var b = a;
-    return b;
+function id(x) {
+    return x;
 }
 
-template CallRetTest() {
-    signal input x;
-    signal output y;
-
-    y <-- sum(x);
+function f() {
+  var s = 3;
+  var x[id(s)];
+  return x;
 }
 
-component main = CallRetTest();
+template A() {
+  _ = f();
+}
+
+component main = A();
 //CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
 
