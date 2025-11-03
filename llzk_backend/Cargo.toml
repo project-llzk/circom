@@ -12,3 +12,7 @@ mlir-sys = "0.5.0"
 melior = "0.25.0"
 melior-macro = "0.18.0"
 llzk = { git = "https://github.com/Veridise/llzk-rs", package = "llzk" }
+
+[patch.crates-io]
+# This makes the WalkOrder and WalkResult APIs public.
+melior = { git = "https://github.com/0xddom/melior.git", branch = "main" }
