@@ -787,8 +787,9 @@ checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
 [[package]]
 name = "llzk"
 version = "0.1.0"
-source = "git+https://github.com/Veridise/llzk-rs#72df4a1749b04f09d75f94dfcc5369aec357e219"
+source = "git+https://github.com/Veridise/llzk-rs#283180e5e6af6c96e560f85e8a83d93ab86eae0c"
 dependencies = [
+ "llzk-macro",
  "llzk-sys",
  "log",
  "melior",
@@ -798,9 +799,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "llzk-macro"
+version = "0.1.0"
+source = "git+https://github.com/Veridise/llzk-rs#283180e5e6af6c96e560f85e8a83d93ab86eae0c"
+dependencies = [
+ "convert_case",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+ "thiserror 2.0.17",
+]
+
+[[package]]
 name = "llzk-sys"
 version = "0.1.0"
-source = "git+https://github.com/Veridise/llzk-rs#72df4a1749b04f09d75f94dfcc5369aec357e219"
+source = "git+https://github.com/Veridise/llzk-rs#283180e5e6af6c96e560f85e8a83d93ab86eae0c"
 dependencies = [
  "anyhow",
  "llzk-sys-build-support",
@@ -810,7 +823,7 @@ dependencies = [
 [[package]]
 name = "llzk-sys-build-support"
 version = "0.1.0"
-source = "git+https://github.com/Veridise/llzk-rs#72df4a1749b04f09d75f94dfcc5369aec357e219"
+source = "git+https://github.com/Veridise/llzk-rs#283180e5e6af6c96e560f85e8a83d93ab86eae0c"
 dependencies = [
  "anyhow",
  "bindgen",
