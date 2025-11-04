@@ -560,7 +560,7 @@ impl GenerateLLZKInModule for TemplateData {
             map_name_to_arg_value(constrain_func, &arg_names)?,
         )?;
         // Insert the Operations created from variable Declaration statements and map the circom
-        // variable name to LLVM op result Value (do this in each function).
+        // variable name to LLZK op result Value (do this in each function).
         declarations.var_decls.into_iter().for_each(|(name, op)| {
             // Insert (a clone of) the declaration into the compute function.
             compute_ctx.append_op_named_result(op.clone(), name.clone());
