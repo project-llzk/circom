@@ -170,24 +170,6 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
         println!("{} {}", Color::Green.paint("Written successfully:"), filename);
         Ok(())
     }
-
-    /// Write the generated `Module` to a stderr (for debugging). If there is some verification
-    /// error, it will be printed in MLIR generic format rather than the LLZK IR assembly format.
-    fn write_to_stderr(self) {
-        unsafe extern "C" fn callback(s: mlir_sys::MlirStringRef, _user: *mut c_void) {
-            // SAFETY: MLIR promises s.data points to s.length bytes valid for the call duration.
-            let bytes = slice::from_raw_parts(s.data as *const u8, s.length);
-            let _ = std::io::stderr().lock().write_all(bytes);
-        }
-
-        unsafe {
-            mlir_sys::mlirOperationPrint(
-                self.module.as_operation().to_raw(),
-                Some(callback),
-                std::ptr::null_mut(),
-            );
-        }
-    }
 }
 
 /// Generate a `felt.const` operation from a BigInt. Returns an `Err` result if unsuccessful
@@ -962,7 +944,7 @@ pub fn generate_llzk(program_archive: &ProgramArchive, filename: &str) -> Result
     // Verify the module and write it to file
     if !codegen.verify() {
         eprintln!("{}", Color::Red.paint("Generated LLZK IR is invalid"));
-        codegen.write_to_stderr();
+        eprintln!("{}", codegen.module.as_operation());
         return Err(());
     }
 
