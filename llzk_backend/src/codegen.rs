@@ -45,16 +45,16 @@ use std::{
 /// previous block in the list is the parent of the block after it. When an op containing nested
 /// blocks is encountered, the current block within that op is pushed to the stack so that any code
 /// generated will be placed inside that block and when the nested block is complete, it is popped.
-struct BlockContextStack<'llzk> {
+struct BlockContextStack<'llzk, 'blk: 'llzk> {
     /// The function entry block.
-    initial_block: BlockRef<'llzk, 'llzk>,
+    initial_block: BlockRef<'llzk, 'blk>,
     /// Additional nesting of blocks within the function representing the current insertion point.
-    other_blocks: Vec<BlockRef<'llzk, 'llzk>>,
+    other_blocks: Vec<BlockRef<'llzk, 'blk>>,
 }
 
-impl<'llzk> BlockContextStack<'llzk> {
+impl<'llzk, 'blk> BlockContextStack<'llzk, 'blk> {
     /// Push a new block onto the stack to make it the current block.
-    fn push(&mut self, item: BlockRef<'llzk, 'llzk>) {
+    fn push(&mut self, item: BlockRef<'llzk, 'blk>) {
         self.other_blocks.push(item);
     }
 
@@ -79,7 +79,7 @@ impl<'llzk> BlockContextStack<'llzk> {
     }
 }
 
-impl<'llzk> TryFrom<&FuncDefOp<'llzk>> for BlockContextStack<'llzk> {
+impl<'llzk, 'blk> TryFrom<&FuncDefOp<'llzk>> for BlockContextStack<'llzk, 'blk> {
     type Error = anyhow::Error;
 
     /// Create a BlockContextStack starting with the function entry block.
@@ -421,7 +421,7 @@ struct FunctionContext<'llzk> {
     /// The function reference.
     func: FuncDefOpRefMut<'llzk, 'llzk>,
     /// Nested block context within the function.
-    block_ctx: BlockContextStack<'llzk>,
+    block_ctx: BlockContextStack<'llzk, 'llzk>,
     /// Local name mapped to the SSA Value with that name. Initialized with function
     /// parameters and extended with any variable-to-variable assignments found.
     name_to_value: HashMap<String, Value<'llzk, 'llzk>>,
