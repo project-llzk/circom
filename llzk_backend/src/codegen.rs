@@ -145,25 +145,35 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
         self.module.as_operation().verify()
     }
 
-    /// Write the generated `Module` to a file.
-    fn write_to_file(self, filename: &str) -> Result<()> {
+    /// Create file at the given path, ensuring parent directories exist.
+    fn create_file(filename: &str) -> Result<File> {
         let out_path = Path::new(filename);
         // Ensure parent directories exist
         if let Some(parent) = out_path.parent() {
             fs::create_dir_all(parent).map_err(|e| anyhow!(e))?;
         }
-        let mut file = File::create(out_path).map_err(|e| anyhow!(e))?;
+        File::create(out_path).map_err(|e| anyhow!(e))
+    }
 
+    /// Write the generated `Module` to a file in LLZK IR assembly format.
+    fn write_to_file(self, filename: &str) -> Result<()> {
+        let mut file = Self::create_file(filename)?;
+        write!(file, "{}", self.module.as_operation())?;
+        println!("{} {}", Color::Green.paint("Written successfully:"), filename);
+        Ok(())
+    }
+
+    /// Write the generated `Module` to a file in bytecode format.
+    fn write_bytecode_to_file(self, filename: &str) -> Result<()> {
         unsafe extern "C" fn callback(string_ref: mlir_sys::MlirStringRef, user_data: *mut c_void) {
             let file = &mut *(user_data as *mut File);
             let slice = std::slice::from_raw_parts(string_ref.data as *const u8, string_ref.length);
             file.write_all(slice).unwrap();
         }
 
+        let mut file = Self::create_file(filename)?;
         unsafe {
-            // TODO: may need to switch to bytecode at some point. Or add an option for it.
-            // mlir_sys::mlirOperationWriteBytecode(
-            mlir_sys::mlirOperationPrint(
+            mlir_sys::mlirOperationWriteBytecode(
                 self.module.as_operation().to_raw(),
                 Some(callback),
                 &mut file as *mut File as *mut c_void,
@@ -564,12 +574,12 @@ impl GenerateLLZKInModule for TemplateData {
         )?;
         // Insert the Operations created from variable Declaration statements and map the circom
         // variable name to LLZK op result Value (do this in each function).
-        declarations.var_decls.into_iter().for_each(|(name, op)| {
+        for (name, op) in declarations.var_decls {
             // Insert (a clone of) the declaration into the compute function.
             compute_ctx.append_op_named_result(op.clone(), name.clone());
             // Insert the declaration into the constrain function.
             constrain_ctx.append_op_named_result(op, name);
-        });
+        }
 
         // Visit the body of the template and generate LLZK IR for it within the struct functions.
         let mut template_context = TemplateContext {
