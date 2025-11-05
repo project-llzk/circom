@@ -1,3 +1,4 @@
+#![allow(unused_variables)] // TODO: TEMP
 use ansi_term::Color;
 use anyhow::{anyhow, Result};
 use llzk::{
@@ -38,7 +39,6 @@ use std::{
     ops::{Deref, DerefMut},
     os::raw::c_void,
     path::Path,
-    slice,
 };
 
 /// Stack of blocks where the top block is the current block where code should be appended and the
@@ -53,10 +53,12 @@ struct BlockContextStack<'llzk> {
 }
 
 impl<'llzk> BlockContextStack<'llzk> {
+    /// Push a new block onto the stack to make it the current block.
     fn push(&mut self, item: BlockRef<'llzk, 'llzk>) {
         self.other_blocks.push(item);
     }
 
+    /// Pop the current block off the stack to return to the previous block.
     fn pop(&mut self) {
         self.other_blocks.pop().expect("There is no block to pop!");
     }
@@ -223,11 +225,11 @@ fn map_name_to_arg_value<'c, 'a>(
 /// Information needed to create an LLZK struct function parameter collected from the input signal
 /// Declaration statements within a circom template.
 struct InputSignalInfo<'llzk> {
-    // Name of circom input signal that maps to a function parameter.
+    /// Name of circom input signal that maps to a function parameter.
     name: String,
-    // Type+Location information for the function parameter.
+    /// Type+Location information for the function parameter.
     type_and_loc: (Type<'llzk>, Location<'llzk>),
-    // Named Attributes for the function parameter.
+    /// Named Attributes for the function parameter.
     attrs: Vec<(Identifier<'llzk>, Attribute<'llzk>)>,
 }
 
@@ -314,7 +316,7 @@ impl<'llzk> DeclarationInfo<'llzk> {
         codegen: &LlzkCodegen<'_, 'llzk>,
         meta: &Meta,
         name: &String,
-        dimensions: &Vec<Expression>,
+        dimensions: &[Expression],
         signal_type: &SignalType,
         base_type: Type<'llzk>,
     ) -> Result<()> {
@@ -349,7 +351,7 @@ impl<'llzk> DeclarationInfo<'llzk> {
     fn type_with_dimensions(
         codegen: &LlzkCodegen<'_, 'llzk>,
         base_type: Type<'llzk>,
-        dimensions: &Vec<Expression>,
+        dimensions: &[Expression],
     ) -> Result<Type<'llzk>> {
         if dimensions.is_empty() {
             Ok(base_type)
@@ -416,6 +418,7 @@ struct FunctionContext<'llzk> {
 }
 
 impl<'llzk> FunctionContext<'llzk> {
+    /// Create a new FunctionContext for the given function and name-to-value map.
     fn new(
         func: FuncDefOpRefMut<'llzk, 'llzk>,
         name_to_value: HashMap<String, Value<'llzk, 'llzk>>,
@@ -494,7 +497,7 @@ impl GenerateLLZKInModule for FunctionData {
         //  be determined based on the caller. This also affects the dimensions of array types
         //  and which array read/write-like ops must be used when translating the body.
         let inputs = vec![felt_type; self.get_num_of_params()];
-        let func_type = FunctionType::new(&codegen.context, &inputs, &[felt_type]);
+        let func_type = FunctionType::new(codegen.context, &inputs, &[felt_type]);
         let func_def =
             function::def(location, self.get_name(), func_type, &[], None).and_then(|f| {
                 let arguments: Vec<(Type, Location)> =
@@ -845,9 +848,13 @@ impl<'llzk> GenerateLLZKInTemplate<'llzk> for Statement {
     }
 }
 
+/// For both the compute and constrain function, holds the SSA Value that results from generating
+/// LLZK for a circom Expression within a template.
 #[derive(Debug)]
 struct GenTemplateOutput<'llzk> {
+    /// Result Value for the `@compute` function.
     compute_val: Value<'llzk, 'llzk>,
+    /// Result Value for the `@constrain` function.
     constrain_val: Value<'llzk, 'llzk>,
 }
 
@@ -921,9 +928,9 @@ impl<'llzk> GenerateLLZKInTemplate<'llzk> for Expression {
 }
 
 /// Create a new, empty LLZK `Module` with Location "main" from the `ProgramArchive`.
-fn new_llzk_module<'ast, 'llzk>(
+fn new_llzk_module<'llzk>(
     context: &'llzk LlzkContext,
-    program_archive: &'ast ProgramArchive,
+    program_archive: &ProgramArchive,
 ) -> Module<'llzk> {
     let files = &program_archive.file_library;
     let filename = files.get_filename_or_default(program_archive.get_file_id_main());
@@ -932,6 +939,7 @@ fn new_llzk_module<'ast, 'llzk>(
 }
 
 /// Generate LLZK IR from the given `ProgramArchive` and write it to a file with the given filename.
+#[allow(clippy::result_unit_err)]
 pub fn generate_llzk(program_archive: &ProgramArchive, filename: &str) -> Result<(), ()> {
     let ctx = LlzkContext::new();
     let module = new_llzk_module(&ctx, program_archive);
