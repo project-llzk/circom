@@ -2,6 +2,7 @@
 use ansi_term::Color;
 use anyhow::{anyhow, Result};
 use llzk::{
+    builder::OpBuilder,
     error::Error,
     prelude::{
         felt, function,
@@ -928,7 +929,41 @@ impl<'llzk> GenerateLLZKInTemplate<'llzk> for Expression {
                 todo!("Handle UniformArray expression in template")
             }
             Expression::Call { meta, id, args } => {
-                todo!("Handle Call expression in template")
+                // Visit each argument and collect the resulting LLZK Values for both functions.
+                let mut compute_args = Vec::new();
+                let mut constrain_args = Vec::new();
+                for a in args {
+                    let r = a.gen_llzk_in_template(codegen, template)?;
+                    compute_args.push(r.compute_val);
+                    constrain_args.push(r.constrain_val);
+                }
+                // Create CallOp in each function w/ the respective args.
+                let builder = OpBuilder::new(codegen.context.deref());
+                // TODO: Currently, the LLZK function will always return a `felt.type` but
+                // eventually, this gen function may need an "expected result type"
+                // parameter or use `poly.tvar` with function templates.
+                let return_types = &[FeltType::new(codegen.context)];
+                let compute_val = template.compute.append_op_unnamed_result(
+                    function::call(
+                        &builder,
+                        codegen.location_from_meta(meta),
+                        id,
+                        &compute_args,
+                        return_types,
+                    )?
+                    .into(),
+                )?;
+                let constrain_val = template.constrain.append_op_unnamed_result(
+                    function::call(
+                        &builder,
+                        codegen.location_from_meta(meta),
+                        id,
+                        &constrain_args,
+                        return_types,
+                    )?
+                    .into(),
+                )?;
+                Ok(GenTemplateOutput { compute_val, constrain_val })
             }
             Expression::BusCall { meta, id, args } => {
                 todo!("Handle BusCall expression in template")
