@@ -16,10 +16,13 @@ use llzk::{
         StructType,
     },
 };
-use melior::ir::{
-    operation::{OperationLike as _, OperationRefMut, WalkOrder, WalkResult},
-    Attribute, Block, BlockLike, BlockRef, Identifier, Location, Module, Operation, OperationRef,
-    RegionLike, Type, Value,
+use melior::{
+    ir::{
+        operation::{OperationLike as _, OperationRefMut, WalkOrder, WalkResult},
+        Attribute, Block, BlockLike, BlockRef, Identifier, Location, Module, Operation,
+        OperationRef, RegionLike, Type, Value,
+    },
+    pass, utility,
 };
 use num_bigint_dig::BigInt;
 use num_traits::cast::ToPrimitive;
@@ -100,7 +103,7 @@ struct LlzkCodegen<'ast, 'llzk> {
     /// The LLZK (and MLIR) context.
     context: &'llzk LlzkContext,
     /// The generated LLZK `Module`.
-    module: &'llzk Module<'llzk>,
+    module: Module<'llzk>,
 }
 
 impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
@@ -139,6 +142,19 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
     fn add_function(&self, f: FuncDefOp<'llzk>) -> Result<FuncDefOpRefMut<'llzk, '_>> {
         let f: FuncDefOpRef = self.module.body().append_operation(f.into()).try_into()?;
         Ok(f.into())
+    }
+
+    /// Run cleanup passes on the generated `Module`.
+    fn run_passes(&mut self, pass_pipeline: &str) -> Result<()> {
+        if pass_pipeline.is_empty() {
+            return Ok(());
+        }
+        let manager = pass::PassManager::new(&self.context);
+        manager.enable_verifier(true);
+        utility::register_all_passes();
+        utility::parse_pass_pipeline(manager.as_operation_pass_manager(), pass_pipeline)
+            .map_err(|e| anyhow!(e))?;
+        manager.run(&mut self.module).map_err(|e| anyhow!(e))
     }
 
     /// Verify the generated `Module`.
@@ -987,22 +1003,32 @@ fn new_llzk_module<'llzk>(
 
 /// Generate LLZK IR from the given `ProgramArchive` and write it to a file with the given filename.
 #[allow(clippy::result_unit_err)]
-pub fn generate_llzk(program_archive: &ProgramArchive, filename: &str) -> Result<(), ()> {
+pub fn generate_llzk(
+    program_archive: &ProgramArchive,
+    filename: &str,
+    pass_pipeline: &str,
+) -> Result<(), ()> {
     let ctx = LlzkContext::new();
     let module = new_llzk_module(&ctx, program_archive);
-    let codegen = LlzkCodegen { program_archive, context: &ctx, module: &module };
+    let mut codegen = LlzkCodegen { program_archive, context: &ctx, module };
 
     program_archive.gen_llzk(&codegen).map_err(|err| {
         eprintln!("{} {err}", Color::Red.paint("Failed to generate LLZK IR:"));
     })?;
 
-    // Verify the module and write it to file
+    // Verify the module
     if !codegen.verify() {
         eprintln!("{}", Color::Red.paint("Generated LLZK IR is invalid"));
         eprintln!("{}", codegen.module.as_operation());
         return Err(());
     }
 
+    // Run user-specified MLIR pass pipeline
+    codegen.run_passes(pass_pipeline).map_err(|err| {
+        eprintln!("{} {err}", Color::Red.paint("Failed to run pass pipeline:"));
+    })?;
+
+    // Write module to file
     codegen.write_to_file(filename).map_err(|err| {
         eprintln!("{} {err}", Color::Red.paint("Failed to write LLZK IR:"));
     })

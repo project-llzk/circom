@@ -39,6 +39,7 @@ pub struct Input {
     pub flag_verbose: bool,
     pub flag_no_init: bool,
     pub prime: String,
+    pub llzk_pass_pipeline: String,
     pub link_libraries : Vec<PathBuf>
 }
 
@@ -104,6 +105,7 @@ impl Input {
             wasm_flag: input_processing::get_wasm(&matches),
             c_flag: c_flag,
             llzk_flag: input_processing::get_llzk(&matches),
+            llzk_pass_pipeline: input_processing::get_llzk_pass_pipeline(&matches)?,
             no_asm_flag:input_processing::get_no_asm(&matches),
             r1cs_flag: input_processing::get_r1cs(&matches),
             sym_flag: input_processing::get_sym(&matches),
@@ -255,6 +257,9 @@ impl Input {
     pub fn prime(&self) -> String{
         self.prime.clone()
     }
+    pub fn llzk_pass_pipeline(&self) -> String {
+        self.llzk_pass_pipeline.clone()
+    }
 }
 mod input_processing {
     use ansi_term::Colour;
@@ -398,6 +403,12 @@ mod input_processing {
                }
                
             false => Ok(String::from("bn128")),
+        }
+    }
+    pub fn get_llzk_pass_pipeline(matches: &ArgMatches) -> Result<String, ()> {
+        match matches.is_present("mlir_pass_pipeline") {
+            true => Ok(String::from(matches.value_of("mlir_pass_pipeline").unwrap())),
+            false => Ok(String::from("")),
         }
     }
 
@@ -601,6 +612,14 @@ mod input_processing {
                     .default_value("bn128")
                     .display_order(300)
                     .help("To choose the prime number to use to generate the circuit. Receives the name of the curve (bn128, bls12377, bls12381, goldilocks, grumpkin, pallas, secq256r1, vesta)"),
+            )
+            .arg (
+                Arg::with_name("mlir_pass_pipeline")
+                    .long("llzk_passes")
+                    .takes_value(true)
+                    .default_value("")
+                    .display_order(998)
+                    .help("Specify an MLIR pass pipeline to apply on the LLZK IR output"),
             )
             .get_matches()
     }
