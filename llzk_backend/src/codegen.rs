@@ -663,7 +663,8 @@ impl<'llzk> GenerateLLZKInFunction<'llzk> for Statement {
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Function uses template operators");
                 }
-                todo!("Handle underscore assignment in function")
+                // Just visit and drop the result since the value is unused.
+                let _ = rhe.gen_llzk_in_function(codegen, function)?;
             }
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
                 todo!("Handle if-then-else statement in function")
@@ -825,7 +826,8 @@ impl<'llzk> GenerateLLZKInTemplate<'llzk> for Statement {
                 }
             }
             Statement::UnderscoreSubstitution { meta, op, rhe } => {
-                todo!("Handle underscore assignment in template")
+                // Just visit and drop the result since the value is unused.
+                let _ = rhe.gen_llzk_in_template(codegen, template)?;
             }
             Statement::ConstraintEquality { meta, lhe, rhe } => {
                 todo!("Handle constraint equality in template")
