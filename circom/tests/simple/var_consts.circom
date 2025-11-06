@@ -10,6 +10,7 @@ template Van276() {
 }
 
 component main = Van276();
+
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
 // CHECK-LABEL:   struct.def @Van276<[]> {
 // CHECK-LABEL:     function.def @compute

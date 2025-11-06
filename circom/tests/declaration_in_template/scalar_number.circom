@@ -9,6 +9,7 @@ template A() {
 }
 
 component main = A();
+
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
 // CHECK-LABEL:   struct.def @A<[]> {
 // CHECK-LABEL:     function.def @compute

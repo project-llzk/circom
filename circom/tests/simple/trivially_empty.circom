@@ -7,6 +7,7 @@ pragma circom 2.0.0;
 template EmptyTemplate() {
 }
 component main = EmptyTemplate();
+
 //CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
 //CHECK-NEXT:     struct.def @EmptyTemplate<[]> {
 //CHECK-NEXT:       function.def @compute() -> !struct.type<@EmptyTemplate<[]>> attributes {function.allow_witness} {
