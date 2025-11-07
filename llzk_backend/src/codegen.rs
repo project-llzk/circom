@@ -49,16 +49,25 @@ use std::{
 /// previous block in the list is the parent of the block after it. When an op containing nested
 /// blocks is encountered, the current block within that op is pushed to the stack so that any code
 /// generated will be placed inside that block and when the nested block is complete, it is popped.
-struct BlockContextStack<'llzk, 'blk: 'llzk> {
+///
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+/// 'blk: lifetime of the generated `Block` instances within functions
+struct BlockContextStack<'ctx, 'blk>
+where
+    'ctx: 'blk,
+{
     /// The function entry block.
-    initial_block: BlockRef<'llzk, 'blk>,
+    initial_block: BlockRef<'ctx, 'blk>,
     /// Additional nesting of blocks within the function representing the current insertion point.
-    other_blocks: Vec<BlockRef<'llzk, 'blk>>,
+    other_blocks: Vec<BlockRef<'ctx, 'blk>>,
 }
 
-impl<'llzk, 'blk> BlockContextStack<'llzk, 'blk> {
+impl<'ctx, 'blk> BlockContextStack<'ctx, 'blk>
+where
+    'ctx: 'blk,
+{
     /// Push a new block onto the stack to make it the current block.
-    fn push(&mut self, item: BlockRef<'llzk, 'blk>) {
+    fn push(&mut self, item: BlockRef<'ctx, 'blk>) {
         self.other_blocks.push(item);
     }
 
@@ -68,7 +77,12 @@ impl<'llzk, 'blk> BlockContextStack<'llzk, 'blk> {
     }
 
     /// Append an operation to the current block (i.e. the top of the stack).
-    fn append_current(&mut self, operation: Operation<'llzk>) -> OperationRef<'llzk, 'llzk> {
+    ///
+    /// 'op: lifetime of the `Operation` instance for the reference returned
+    fn append_current<'op>(&mut self, operation: Operation<'ctx>) -> OperationRef<'ctx, 'op>
+    where
+        'blk: 'op,
+    {
         let current = match self.other_blocks.last() {
             Some(block) => block,
             None => &self.initial_block,
@@ -83,11 +97,11 @@ impl<'llzk, 'blk> BlockContextStack<'llzk, 'blk> {
     }
 }
 
-impl<'llzk, 'blk> TryFrom<&FuncDefOp<'llzk>> for BlockContextStack<'llzk, 'blk> {
+impl<'ctx> TryFrom<&FuncDefOp<'ctx>> for BlockContextStack<'ctx, '_> {
     type Error = anyhow::Error;
 
     /// Create a BlockContextStack starting with the function entry block.
-    fn try_from(func: &FuncDefOp<'llzk>) -> Result<Self, Self::Error> {
+    fn try_from(func: &FuncDefOp<'ctx>) -> Result<Self, Self::Error> {
         let initial_block =
             func.region(0)?.first_block().ok_or_else(|| anyhow!("missing function entry block"))?;
         Ok(BlockContextStack { initial_block, other_blocks: Default::default() })
@@ -95,18 +109,19 @@ impl<'llzk, 'blk> TryFrom<&FuncDefOp<'llzk>> for BlockContextStack<'llzk, 'blk> 
 }
 
 /// Stores necessary context for generating LLZK IR.
+///
 /// 'ast: lifetime of the circom AST element
-/// 'llzk: lifetime of the `LlzkContext` and generated `Module`
-struct LlzkCodegen<'ast, 'llzk> {
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+struct LlzkCodegen<'ast, 'ctx> {
     /// The circom program AST.
     program_archive: &'ast ProgramArchive,
     /// The LLZK (and MLIR) context.
-    context: &'llzk LlzkContext,
+    context: &'ctx LlzkContext,
     /// The generated LLZK `Module`.
-    module: Module<'llzk>,
+    module: Module<'ctx>,
 }
 
-impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
+impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
     /// Emit a circom-style warning.
     fn emit_circom_warning(&self, meta: &Meta, message: &str, code: ReportCode) {
         let mut report = Report::warning(String::from(message), code);
@@ -115,7 +130,7 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
     }
 
     /// Convert circom location information to MLIR location.
-    fn location(&self, file_id: FileID, file_location: FileLocation) -> Location<'llzk> {
+    fn location(&self, file_id: FileID, file_location: FileLocation) -> Location<'ctx> {
         let files = &self.program_archive.file_library;
         let filename = files.get_filename_or_default(&file_id);
         let line = files.get_line(file_location.start, file_id).unwrap_or(0);
@@ -124,7 +139,7 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
     }
 
     /// Convert circom Meta location information to MLIR location.
-    fn location_from_meta(&self, meta: &Meta) -> Location<'llzk> {
+    fn location_from_meta(&self, meta: &Meta) -> Location<'ctx> {
         if let Some(file) = meta.file_id {
             self.location(file, meta.file_location())
         } else {
@@ -133,13 +148,13 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
     }
 
     /// Insert the struct into the module and return a reference to it.
-    fn add_struct(&self, s: StructDefOp<'llzk>) -> Result<StructDefOpRefMut<'llzk, '_>> {
+    fn add_struct(&self, s: StructDefOp<'ctx>) -> Result<StructDefOpRefMut<'ctx, '_>> {
         let s: StructDefOpRef = self.module.body().append_operation(s.into()).try_into()?;
         Ok(s.into())
     }
 
     /// Insert the free function into the module and return a reference to it.
-    fn add_function(&self, f: FuncDefOp<'llzk>) -> Result<FuncDefOpRefMut<'llzk, '_>> {
+    fn add_function(&self, f: FuncDefOp<'ctx>) -> Result<FuncDefOpRefMut<'ctx, '_>> {
         let f: FuncDefOpRef = self.module.body().append_operation(f.into()).try_into()?;
         Ok(f.into())
     }
@@ -203,11 +218,13 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
 
 /// Generate a `felt.const` operation from a BigInt. Returns an `Err` result if unsuccessful
 /// or if the number of bits required to represent the BigInt does not fit in 32 bits.
-fn new_felt_const_op<'llzk>(
-    codegen: &LlzkCodegen<'_, 'llzk>,
+///
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+fn new_felt_const_op<'ctx>(
+    codegen: &LlzkCodegen<'_, 'ctx>,
     meta: &Meta,
     from: &BigInt,
-) -> Result<Operation<'llzk>> {
+) -> Result<Operation<'ctx>> {
     // ASSERT: The circom parser always produces non-negative constants. These can be negated via
     // PrefixOp but negative BigInt constants are never created directly.
     assert_ne!(from.sign(), num_bigint_dig::Sign::Minus, "Felt constants must be non-negative");
@@ -222,8 +239,11 @@ fn new_felt_const_op<'llzk>(
 
 /// Extract the single result Value from an OperationRef. Returns an `Err` result if the operation
 /// does not have exactly one result.
+///
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+/// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
 #[inline]
-fn single_result_as_value<'c, 'a>(op: OperationRef<'c, 'a>) -> Result<Value<'c, 'a>> {
+fn single_result_as_value<'ctx, 'val>(op: OperationRef<'ctx, 'val>) -> Result<Value<'ctx, 'val>> {
     if op.result_count() != 1 {
         return Err(anyhow!(
             "Expected operation to have a single result, found {}",
@@ -235,11 +255,14 @@ fn single_result_as_value<'c, 'a>(op: OperationRef<'c, 'a>) -> Result<Value<'c, 
 
 /// Create a map of circom variable names (either function arguments or template input signals) to
 /// LLZK function argument Values.
+///
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+/// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
 #[inline]
-fn map_name_to_arg_value<'c, 'a>(
-    func: FuncDefOpRefMut<'c, 'a>,
+fn map_name_to_arg_value<'ctx, 'val>(
+    func: FuncDefOpRefMut<'ctx, 'val>,
     arg_names: &[String],
-) -> Result<HashMap<String, Value<'c, 'a>>> {
+) -> Result<HashMap<String, Value<'ctx, 'val>>> {
     arg_names
         .iter()
         .enumerate()
@@ -251,32 +274,38 @@ fn map_name_to_arg_value<'c, 'a>(
 
 /// Information needed to create an LLZK struct function parameter collected from the input signal
 /// Declaration statements within a circom template.
-struct InputSignalInfo<'llzk> {
+///
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+struct InputSignalInfo<'ctx> {
     /// Name of circom input signal that maps to a function parameter.
     name: String,
     /// Type+Location information for the function parameter.
-    type_and_loc: (Type<'llzk>, Location<'llzk>),
+    type_and_loc: (Type<'ctx>, Location<'ctx>),
     /// Named Attributes for the function parameter.
-    attrs: Vec<(Identifier<'llzk>, Attribute<'llzk>)>,
+    attrs: Vec<(Identifier<'ctx>, Attribute<'ctx>)>,
 }
 
 /// Information collected from Declaration statements within a template that is used to setup LLZK
 /// struct fields and parameters to the functions with the struct.
+///
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
 #[derive(Default)]
-struct DeclarationInfo<'llzk> {
+struct DeclarationInfo<'ctx> {
     /// Input Signal declarations to use as parameters to the LLZK struct functions.
-    inputs: Vec<InputSignalInfo<'llzk>>,
+    inputs: Vec<InputSignalInfo<'ctx>>,
     /// Output and Intermediate declarations to use as LLZK struct fields.
-    struct_fields: Vec<Result<Operation<'llzk>, Error>>,
+    struct_fields: Vec<Result<Operation<'ctx>, Error>>,
     /// Map `var` name to its LLZK declaration Operation (usually `undef.undef`).
-    var_decls: HashMap<String, Operation<'llzk>>,
+    var_decls: HashMap<String, Operation<'ctx>>,
 }
 
-impl<'llzk> DeclarationInfo<'llzk> {
+impl<'ctx> DeclarationInfo<'ctx> {
     /// Visit a statement and populate this `DeclarationInfo` with any declarations found.
+    ///
+    /// 'ast: lifetime of the circom AST element
     fn visit<'ast>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'llzk>,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
         stmt: &'ast Statement,
     ) -> Result<()> {
         match stmt {
@@ -340,12 +369,12 @@ impl<'llzk> DeclarationInfo<'llzk> {
     /// `visit()` helper for Signal and Bus VariableType.
     fn visit_signal_or_bus(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'llzk>,
+        codegen: &LlzkCodegen<'_, 'ctx>,
         meta: &Meta,
         name: &String,
         dimensions: &[Expression],
         signal_type: &SignalType,
-        base_type: Type<'llzk>,
+        base_type: Type<'ctx>,
     ) -> Result<()> {
         let location = codegen.location_from_meta(meta);
         let decl_type = Self::type_with_dimensions(codegen, base_type, dimensions)?;
@@ -376,10 +405,10 @@ impl<'llzk> DeclarationInfo<'llzk> {
     /// If `dimensions` is empty, return `base_type`. Otherwise, create ArrayType by converting the
     /// dimension circom Expressions to LLZK Attributes.
     fn type_with_dimensions(
-        codegen: &LlzkCodegen<'_, 'llzk>,
-        base_type: Type<'llzk>,
+        codegen: &LlzkCodegen<'_, 'ctx>,
+        base_type: Type<'ctx>,
         dimensions: &[Expression],
-    ) -> Result<Type<'llzk>> {
+    ) -> Result<Type<'ctx>> {
         if dimensions.is_empty() {
             Ok(base_type)
         } else {
@@ -396,10 +425,12 @@ impl<'llzk> DeclarationInfo<'llzk> {
     /// Note: The LLZK ArrayType can only use the following Attribute types for dimensions:
     /// IntegerAttr (`index` or `i1`), SymbolRefAttr, or AffineMapAttr (with single result,
     /// probably an identity map).
+    ///
+    /// 'ast: lifetime of the circom AST element
     fn convert_dim_expr<'ast>(
-        codegen: &LlzkCodegen<'ast, 'llzk>,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
         expr: &Expression,
-    ) -> Result<Attribute<'llzk>> {
+    ) -> Result<Attribute<'ctx>> {
         match expr {
             Expression::Number(meta, big_int) => {
                 let int_attr = IntegerAttribute::new(
@@ -434,34 +465,49 @@ impl<'llzk> DeclarationInfo<'llzk> {
 }
 
 /// Stores ref to the current function while generating LLZK IR for the function.
-struct FunctionContext<'llzk> {
+///
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+/// 'func: lifetime of the generated `FuncDefOp` instances within the struct
+/// 'blk: lifetime of the generated `Block` instances within functions
+/// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
+struct FunctionContext<'ctx, 'func, 'blk, 'val>
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
     /// The function reference.
-    func: FuncDefOpRefMut<'llzk, 'llzk>,
+    func: FuncDefOpRefMut<'ctx, 'func>,
     /// Nested block context within the function.
-    block_ctx: BlockContextStack<'llzk, 'llzk>,
+    block_ctx: BlockContextStack<'ctx, 'blk>,
     /// Local name mapped to the SSA Value with that name. Initialized with function
     /// parameters and extended with any variable-to-variable assignments found.
-    name_to_value: HashMap<String, Value<'llzk, 'llzk>>,
+    name_to_value: HashMap<String, Value<'ctx, 'val>>,
 }
 
-impl<'llzk> FunctionContext<'llzk> {
+impl<'ctx, 'func, 'blk, 'val> FunctionContext<'ctx, 'func, 'blk, 'val>
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
     /// Create a new FunctionContext for the given function and name-to-value map.
     fn new(
-        func: FuncDefOpRefMut<'llzk, 'llzk>,
-        name_to_value: HashMap<String, Value<'llzk, 'llzk>>,
+        func: FuncDefOpRefMut<'ctx, 'func>,
+        name_to_value: HashMap<String, Value<'ctx, 'val>>,
     ) -> Result<Self> {
         Ok(Self { func, block_ctx: func.deref().try_into()?, name_to_value })
     }
 
     /// Append an operation that must produce a single result and is NOT associated with a variable
     /// name in the circom code.
-    fn append_op_unnamed_result(&mut self, op: Operation<'llzk>) -> Result<Value<'llzk, 'llzk>> {
+    fn append_op_unnamed_result(&mut self, op: Operation<'ctx>) -> Result<Value<'ctx, 'val>> {
         single_result_as_value(self.block_ctx.append_current(op))
     }
 
     /// Append an operation that must produce a single result and store the mapping of the circom
     /// variable name to the result Value.
-    fn append_op_named_result(&mut self, op: Operation<'llzk>, name: String) {
+    fn append_op_named_result(&mut self, op: Operation<'ctx>, name: String) {
         let v = self.append_op_unnamed_result(op).expect("Expected op to produce a single result");
         self.name_to_value.insert(name, v);
     }
@@ -470,7 +516,7 @@ impl<'llzk> FunctionContext<'llzk> {
 /// Implement Drop on FunctionContext to remove any remaining `undef.undef` ops from the function.
 /// These were added when visiting the Declaration statements and their uses were replaced with
 /// actual values when visiting Assignment statements.
-impl Drop for FunctionContext<'_> {
+impl Drop for FunctionContext<'_, '_, '_, '_> {
     fn drop(&mut self) {
         self.func.walk(WalkOrder::PreOrder, |op| {
             if llzk::dialect::undef::is_undef_op(op) {
@@ -486,26 +532,40 @@ impl Drop for FunctionContext<'_> {
 
 /// Stores refs to the current struct and its associated functions
 /// while generating LLZK IR for a template.
-struct TemplateContext<'llzk> {
+///
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+/// 'str: lifetime of the generated `StructDefOp`
+/// 'func: lifetime of the generated `FuncDefOp` instances within the struct
+/// 'blk: lifetime of the generated `Block` instances within functions
+/// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
+struct TemplateContext<'ctx, 'str, 'func, 'blk, 'val>
+where
+    'ctx: 'str,
+    'str: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
     /// Current LLZK `StructDefOp`
-    struct_def: StructDefOpRefMut<'llzk, 'llzk>,
+    struct_def: StructDefOpRefMut<'ctx, 'str>,
     /// Codegen refs for the "@compute" function within `struct_def`
-    compute: FunctionContext<'llzk>,
+    compute: FunctionContext<'ctx, 'func, 'blk, 'val>,
     /// Codegen refs for the "@constrain" function within `struct_def`
-    constrain: FunctionContext<'llzk>,
+    constrain: FunctionContext<'ctx, 'func, 'blk, 'val>,
 }
 
 /// A trait to generate LLZK IR for structural elements of the circom AST:
 /// ProgramArchive, TemplateData, and FunctionData.
-trait GenerateLLZKInModule {
+///
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+trait GenerateLLZKInModule<'ctx> {
     /// Generates LLZK IR from the circom AST element.
+    ///
     /// 'ast: lifetime of the circom AST element
-    /// 'llzk: lifetime of the `LlzkContext` and generated `Module`
-    fn gen_llzk<'llzk, 'ast: 'llzk>(&'ast self, codegen: &LlzkCodegen<'ast, 'llzk>) -> Result<()>;
+    fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx>) -> Result<()>;
 }
 
-impl GenerateLLZKInModule for ProgramArchive {
-    fn gen_llzk<'llzk, 'ast: 'llzk>(&'ast self, codegen: &LlzkCodegen<'ast, 'llzk>) -> Result<()> {
+impl<'ctx> GenerateLLZKInModule<'ctx> for ProgramArchive {
+    fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx>) -> Result<()> {
         for data in self.functions.values() {
             data.gen_llzk(codegen)?;
         }
@@ -516,8 +576,8 @@ impl GenerateLLZKInModule for ProgramArchive {
     }
 }
 
-impl GenerateLLZKInModule for FunctionData {
-    fn gen_llzk<'llzk, 'ast: 'llzk>(&'ast self, codegen: &LlzkCodegen<'ast, 'llzk>) -> Result<()> {
+impl<'ctx> GenerateLLZKInModule<'ctx> for FunctionData {
+    fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx>) -> Result<()> {
         let location = codegen.location(self.get_file_id(), self.get_param_location());
         let felt_type = FeltType::new(codegen.context).into();
         // TODO: This just uses `felt.type` for param and return types but those must actually
@@ -549,8 +609,8 @@ impl GenerateLLZKInModule for FunctionData {
     }
 }
 
-impl GenerateLLZKInModule for TemplateData {
-    fn gen_llzk<'llzk, 'ast: 'llzk>(&'ast self, codegen: &LlzkCodegen<'ast, 'llzk>) -> Result<()> {
+impl<'ctx> GenerateLLZKInModule<'ctx> for TemplateData {
+    fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx>) -> Result<()> {
         // Collect declarations first to determine struct fields and function parameters.
         let mut declarations = DeclarationInfo::default();
         for s in self.get_body_as_vec() {
@@ -614,29 +674,42 @@ impl GenerateLLZKInModule for TemplateData {
 
 /// A trait to generate LLZK IR from the body of a circom function.
 ///
-/// 'llzk: lifetime of the `LlzkContext` and generated `Module`
-trait GenerateLLZKInFunction<'llzk> {
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+/// 'func: lifetime of the generated `FuncDefOp` instances within the struct
+/// 'blk: lifetime of the generated `Block` instances within functions
+/// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
+trait GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val>
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
     /// Output type of the generator function. [Statement] nodes do not produce a value so this
     /// should be the unit type whereas [Expression] nodes produce a Value.
-    type Output: 'llzk;
+    type Output;
 
     /// Generates LLZK IR from [Statement] and [Expression] nodes in a circom function.
     ///
     /// 'ast: lifetime of the circom AST element
     fn gen_llzk_in_function<'ast>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'llzk>,
-        function: &mut FunctionContext<'llzk>,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     ) -> Result<Self::Output>;
 }
 
-impl<'llzk> GenerateLLZKInFunction<'llzk> for Statement {
+impl<'ctx, 'func, 'blk, 'val> GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val> for Statement
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
     type Output = ();
 
     fn gen_llzk_in_function<'ast>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'llzk>,
-        function: &mut FunctionContext<'llzk>,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     ) -> Result<Self::Output> {
         match self {
             Statement::InitializationBlock { xtype, initializations, .. } => {
@@ -716,13 +789,18 @@ impl<'llzk> GenerateLLZKInFunction<'llzk> for Statement {
     }
 }
 
-impl<'llzk> GenerateLLZKInFunction<'llzk> for Expression {
-    type Output = Value<'llzk, 'llzk>;
+impl<'ctx, 'func, 'blk, 'val> GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val> for Expression
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    type Output = Value<'ctx, 'val>;
 
     fn gen_llzk_in_function<'ast>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'llzk>,
-        function: &mut FunctionContext<'llzk>,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     ) -> Result<Self::Output> {
         match self {
             Expression::Number(meta, big_int) => {
@@ -780,29 +858,46 @@ impl<'llzk> GenerateLLZKInFunction<'llzk> for Expression {
 
 /// A trait to generate LLZK IR from the body of a circom template.
 ///
-/// 'llzk: lifetime of the `LlzkContext` and generated `Module`
-trait GenerateLLZKInTemplate<'llzk> {
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+/// 'str: lifetime of the generated `StructDefOp`
+/// 'func: lifetime of the generated `FuncDefOp` instances within the struct
+/// 'blk: lifetime of the generated `Block` instances within functions
+/// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
+trait GenerateLLZKInTemplate<'ctx, 'str, 'func, 'blk, 'val>
+where
+    'ctx: 'str,
+    'str: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
     /// Output type of the generator function. [Statement] nodes do not produce a value so this
     /// should be the unit type whereas [Expression] nodes produce a Value.
-    type Output: 'llzk;
+    type Output;
 
     /// Generates LLZK IR from [Statement] and [Expression] nodes in a circom template.
     ///
     /// 'ast: lifetime of the circom AST element
     fn gen_llzk_in_template<'ast>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'llzk>,
-        template: &mut TemplateContext<'llzk>,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        template: &mut TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output>;
 }
 
-impl<'llzk> GenerateLLZKInTemplate<'llzk> for Statement {
+impl<'ctx, 'str, 'func, 'blk, 'val> GenerateLLZKInTemplate<'ctx, 'str, 'func, 'blk, 'val>
+    for Statement
+where
+    'ctx: 'str,
+    'str: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
     type Output = ();
 
     fn gen_llzk_in_template<'ast>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'llzk>,
-        template: &mut TemplateContext<'llzk>,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        template: &mut TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output> {
         match self {
             Statement::InitializationBlock { initializations, .. } => {
@@ -879,21 +974,30 @@ impl<'llzk> GenerateLLZKInTemplate<'llzk> for Statement {
 
 /// For both the compute and constrain function, holds the SSA Value that results from generating
 /// LLZK for a circom Expression within a template.
+///
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+/// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
 #[derive(Debug)]
-struct GenTemplateOutput<'llzk> {
+struct GenTemplateOutput<'ctx, 'val> {
     /// Result Value for the `@compute` function.
-    compute_val: Value<'llzk, 'llzk>,
+    compute_val: Value<'ctx, 'val>,
     /// Result Value for the `@constrain` function.
-    constrain_val: Value<'llzk, 'llzk>,
+    constrain_val: Value<'ctx, 'val>,
 }
-
-impl<'llzk> GenerateLLZKInTemplate<'llzk> for Expression {
-    type Output = GenTemplateOutput<'llzk>;
+impl<'ctx, 'str, 'func, 'blk, 'val> GenerateLLZKInTemplate<'ctx, 'str, 'func, 'blk, 'val>
+    for Expression
+where
+    'ctx: 'str,
+    'str: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    type Output = GenTemplateOutput<'ctx, 'val>;
 
     fn gen_llzk_in_template<'ast>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'llzk>,
-        template: &mut TemplateContext<'llzk>,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        template: &mut TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output> {
         match self {
             Expression::Number(meta, big_int) => {
@@ -991,10 +1095,12 @@ impl<'llzk> GenerateLLZKInTemplate<'llzk> for Expression {
 }
 
 /// Create a new, empty LLZK `Module` with Location "main" from the `ProgramArchive`.
-fn new_llzk_module<'llzk>(
-    context: &'llzk LlzkContext,
+///
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+fn new_llzk_module<'ctx>(
+    context: &'ctx LlzkContext,
     program_archive: &ProgramArchive,
-) -> Module<'llzk> {
+) -> Module<'ctx> {
     let files = &program_archive.file_library;
     let filename = files.get_filename_or_default(program_archive.get_file_id_main());
     let main_file_location = Location::new(context, &filename, 0, 0);
