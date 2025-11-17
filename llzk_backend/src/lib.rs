@@ -6,7 +6,10 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![warn(redundant_imports)]
 
-/// The LLZK code generation module.
 mod codegen;
+mod function;
+mod module;
+mod shared;
+mod template;
 
 pub use codegen::generate_llzk;
