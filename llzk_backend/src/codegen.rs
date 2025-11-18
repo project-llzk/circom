@@ -5,7 +5,7 @@ use std::{
     path::Path,
 };
 use ansi_term::Color;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use program_structure::{
     file_definition::{FileID, FileLibrary, FileLocation},
     program_archive::ProgramArchive,
@@ -50,13 +50,13 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
     }
 
     /// Write the generated `Module` to a file.
-    pub fn write_to_file(&self, filename: &str) -> Result<(), ()> {
+    pub fn write_to_file(&self, filename: &str) -> Result<()> {
         let out_path = Path::new(filename);
         // Ensure parent directories exist
         if let Some(parent) = out_path.parent() {
-            fs::create_dir_all(parent).map_err(|_err| {})?;
+            fs::create_dir_all(parent).map_err(|e| anyhow!(e))?;
         }
-        let mut file = File::create(out_path).map_err(|_err| {})?;
+        let mut file = File::create(out_path).map_err(|e| anyhow!(e))?;
 
         unsafe extern "C" fn callback(string_ref: mlir_sys::MlirStringRef, user_data: *mut c_void) {
             let file = &mut *(user_data as *mut File);
@@ -104,11 +104,19 @@ pub fn generate_llzk(program_archive: &ProgramArchive, filename: &str) -> Result
     let ctx = LlzkContext::new();
     let codegen = LlzkCodegen::new(&ctx, program_archive);
 
-    program_archive.produce_llzk_ir(&codegen).map_err(|err| {eprintln!("Failed to generate LLZK IR: {err}");})?;
+    program_archive.produce_llzk_ir(&codegen).map_err(|err| {
+        eprintln!("{} {err}", Color::Red.paint("Failed to generate LLZK IR:"));
+    })?;
 
-    // Verify the module and write it to file
-    assert!(codegen.verify());
-    codegen.write_to_file(filename).expect("Failed to write LLZK code");
+    // Verify the module
+    if !codegen.verify() {
+        eprintln!("{}", Color::Red.paint("Generated LLZK IR is invalid"));
+        eprintln!("{}", codegen.module.as_operation());
+        return Err(());
+    }
 
-    Ok(())
+    // Write module to file
+    codegen.write_to_file(filename).map_err(|err| {
+        eprintln!("{} {err}", Color::Red.paint("Failed to write LLZK IR:"));
+    })
 }
