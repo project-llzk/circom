@@ -37,4 +37,4 @@ component main = CallRetTest();
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-LABEL: }
+// CHECK-NEXT:  }
