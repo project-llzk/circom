@@ -12,6 +12,7 @@ template HelloWorld() {
 }
 
 component main = HelloWorld();
+
 //CHECK-LABEL: ProgramArchive {
 // CHECK-NEXT:     id_max: 8,
 // CHECK-NEXT:     file_id_main: [[FD:[0-9]+]],

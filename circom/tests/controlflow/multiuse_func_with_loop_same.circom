@@ -23,4 +23,5 @@ template MultiUse() {
 }
 
 component main = MultiUse();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

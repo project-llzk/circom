@@ -13,4 +13,5 @@ template Multiplier2(){
 }
 
 component main {public [in1,in2]} = Multiplier2();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

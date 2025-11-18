@@ -13,4 +13,5 @@ template UnknownIndexStore() {
 }
 
 component main = UnknownIndexStore();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

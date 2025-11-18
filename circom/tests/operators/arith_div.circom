@@ -18,4 +18,5 @@ template MultByInv() {
 }
 
 component main = MultByInv();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

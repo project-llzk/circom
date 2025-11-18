@@ -18,4 +18,5 @@ template B(n){
    (_,out1,_) <== A(n)(in);
 }
 component main = B(3);
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

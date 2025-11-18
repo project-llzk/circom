@@ -12,4 +12,5 @@ template ArithNeg() {
 }
 
 component main = ArithNeg();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

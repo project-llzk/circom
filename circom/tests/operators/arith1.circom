@@ -14,4 +14,5 @@ template Arith1() {
 }
 
 component main = Arith1();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

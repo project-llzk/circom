@@ -28,4 +28,5 @@ template BigModOld() {
 }
 
 component main = BigModOld();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

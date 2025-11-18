@@ -32,4 +32,5 @@ template InnerConditional9(N) {
 }
 
 component main = InnerConditional9(4);
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
