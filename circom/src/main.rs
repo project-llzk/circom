@@ -33,7 +33,11 @@ fn start() -> Result<(), ()> {
     }
     // Generate LLZK IR output if requested
     if user_input.llzk_flag() {
-        return llzk_backend::generate_llzk(&program_archive, user_input.llzk_file());
+        return llzk_backend::generate_llzk(
+            &program_archive,
+            user_input.llzk_file(),
+            &user_input.llzk_pass_pipeline(),
+        );
     }
 
     let config = ExecutionConfig {

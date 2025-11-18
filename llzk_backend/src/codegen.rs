@@ -10,7 +10,10 @@ use program_structure::{
     file_definition::{FileID, FileLibrary, FileLocation},
     program_archive::ProgramArchive,
 };
-use melior::ir::{operation::OperationLike as _, Location, Module, ValueLike};
+use melior::{
+    ir::{Location, Module, ValueLike, operation::OperationLike as _},
+    pass, utility,
+};
 use llzk::prelude::LlzkContext;
 
 /// Stores necessary context for generating LLZK IR along with the generated `Module`.
@@ -42,6 +45,19 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
         let line = self.files.get_line(file_location.start, file_id).unwrap_or(0);
         let column = self.files.get_column(file_location.start, file_id).unwrap_or(0);
         Location::new(self.context, &filename, line, column)
+    }
+
+    /// Run cleanup passes on the generated `Module`.
+    pub fn run_passes(&mut self, pass_pipeline: &str) -> Result<()> {
+        if pass_pipeline.is_empty() {
+            return Ok(());
+        }
+        let manager = pass::PassManager::new(self.context);
+        manager.enable_verifier(true);
+        utility::register_all_passes();
+        utility::parse_pass_pipeline(manager.as_operation_pass_manager(), pass_pipeline)
+            .map_err(|e| anyhow!(e))?;
+        manager.run(&mut self.module).map_err(|e| anyhow!(e))
     }
 
     /// Verify the generated `Module`.
@@ -100,9 +116,13 @@ impl ProduceLLZK for ProgramArchive {
 }
 
 /// Generate LLZK IR from the given `ProgramArchive` and write it to a file with the given filename.
-pub fn generate_llzk(program_archive: &ProgramArchive, filename: &str) -> Result<(), ()> {
+pub fn generate_llzk(
+    program_archive: &ProgramArchive,
+    filename: &str,
+    pass_pipeline: &str,
+) -> Result<(), ()> {
     let ctx = LlzkContext::new();
-    let codegen = LlzkCodegen::new(&ctx, program_archive);
+    let mut codegen = LlzkCodegen::new(&ctx, program_archive);
 
     program_archive.produce_llzk_ir(&codegen).map_err(|err| {
         eprintln!("{} {err}", Color::Red.paint("Failed to generate LLZK IR:"));
@@ -114,6 +134,11 @@ pub fn generate_llzk(program_archive: &ProgramArchive, filename: &str) -> Result
         eprintln!("{}", codegen.module.as_operation());
         return Err(());
     }
+
+    // Run user-specified MLIR pass pipeline
+    codegen.run_passes(pass_pipeline).map_err(|err| {
+        eprintln!("{} {err}", Color::Red.paint("Failed to run pass pipeline:"));
+    })?;
 
     // Write module to file
     codegen.write_to_file(filename).map_err(|err| {
