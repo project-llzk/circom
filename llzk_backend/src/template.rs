@@ -15,7 +15,8 @@ use program_structure::{
 };
 use std::{cell::RefCell, ops::Deref, rc::Rc};
 
-/// TODO: doc
+/// Alias for `Option<T>` to make it clear what the meaning of the option is within the
+/// [TemplateContext] below.
 type ShouldGenerate<T> = Option<T>;
 
 /// Stores refs to the current struct and its associated functions while generating LLZK IR for a
@@ -69,19 +70,6 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
     }
 }
 
-/// TODO: doc
-trait ExprGenResultLike<'ctx, 'str, 'func, 'blk, 'val, 'r> {
-    /// TODO: doc
-    type ResultType;
-
-    /// TODO: doc
-    fn template(&self) -> &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>;
-    /// TODO: doc
-    fn compute_res(&self) -> &ShouldGenerate<Self::ResultType>;
-    /// TODO: doc
-    fn constrain_res(&self) -> &ShouldGenerate<Self::ResultType>;
-}
-
 /// For both the "@compute" and "@constrain" functions, holds the result (SSA Value or list thereof,
 /// per the type aliases below) that comes from generating LLZK for a circom Expression within a
 /// template.
@@ -110,6 +98,24 @@ type ExprGenResultSingle<'ctx, 'str, 'func, 'blk, 'val, 'r> =
 type ExprGenResultMulti<'ctx, 'str, 'func, 'blk, 'val, 'r> =
     ExprGenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, Vec<Value<'ctx, 'val>>>;
 
+/// Provides a common interface for the specializations of [ExprGenResult] (i.e.
+/// [ExprGenResultSingle] and [ExprGenResultMulti]) to avoid duplication in later definitions.
+trait ExprGenResultLike<'ctx, 'str, 'func, 'blk, 'val, 'r> {
+    /// The type of result contained in the [ExprGenResult] for the "@compute"
+    /// and "@constrain" functions.
+    type ResultType;
+
+    /// Get the [TemplateContext] from the [ExprGenResult].
+    fn template(&self) -> &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>;
+
+    /// Get the result for the "@compute" function from the [ExprGenResult].
+    fn compute_res(&self) -> &ShouldGenerate<Self::ResultType>;
+
+    /// Get the result for the "@constrain" function from the [ExprGenResult].
+    fn constrain_res(&self) -> &ShouldGenerate<Self::ResultType>;
+}
+
+/// General implementation of [ExprGenResultLike] covering all specializations of [ExprGenResult].
 impl<'ctx, 'str, 'func, 'blk, 'val, 'r, T> ExprGenResultLike<'ctx, 'str, 'func, 'blk, 'val, 'r>
     for ExprGenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, T>
 {
@@ -128,12 +134,15 @@ impl<'ctx, 'str, 'func, 'blk, 'val, 'r, T> ExprGenResultLike<'ctx, 'str, 'func, 
     }
 }
 
-/// TODO: doc
+/// This trait abstracts over the output type of [Chainable::and_then] to allow a single
+/// implementation of that function to produce different result types depending on the callback
+/// function type provided.
 trait ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r> {
-    /// TODO: doc
+    /// Output type of the generator callback functions.
     type HandlerOutput;
 
-    /// TODO: doc
+    /// Combines results from the "@compute" and "@constrain" generator functions into the final
+    /// result of [Chainable::and_then].
     fn produce(
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
         compute_res: ShouldGenerate<Self::HandlerOutput>,
@@ -141,7 +150,8 @@ trait ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r> {
     ) -> Self;
 }
 
-/// Allow [Chainable::and_then] to produce [ExprGenResultSingle].
+/// Support [Chainable::and_then] producing [ExprGenResultSingle] which allows for chaining another
+/// generator function on this result.
 impl<'ctx, 'str, 'func, 'blk, 'val, 'r> ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>
     for ExprGenResultSingle<'ctx, 'str, 'func, 'blk, 'val, 'r>
 where
@@ -162,7 +172,8 @@ where
     }
 }
 
-/// Allow [Chainable::and_then] to produce `()`.
+/// Support [Chainable::and_then] producing `()` which can be used when nothing further is generated
+/// from the result and there is no [Value] available to return within the generator function.
 impl<'ctx, 'str, 'func, 'blk, 'val, 'r> ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r> for ()
 where
     'ctx: 'str,
@@ -181,7 +192,9 @@ where
     }
 }
 
-/// TODO: doc
+/// This trait provides a clean interface for chaining multiple code generation steps. It abstracts
+/// away most of the complexity (unwrapping, is_some assertions, etc.) that result from
+/// [ExprGenResult] containing optional results for both "@compute" and "@constrain" functions.
 trait Chainable<'ctx, 'str, 'func, 'blk, 'val, 'r>
 where
     'ctx: 'str,
@@ -190,15 +203,16 @@ where
     'blk: 'val,
     'val: 'r,
 {
-    /// TODO: doc
+    /// Input type of the generator callback functions.
     type HandlerInput;
 
-    /// TODO: doc
+    /// Applies the compute and constrain generator functions to the current result, producing
+    /// a new [ChainResult].
     fn and_then<'ast, F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx>,
-        handle_compute: F1,
-        handle_constrain: F2,
+        gen_compute: F1,
+        gen_constrain: F2,
     ) -> Result<CR>
     where
         F1: FnOnce(
@@ -235,17 +249,20 @@ where
     'blk: 'val,
     'val: 'r,
 {
-    /// TODO: doc
+    /// Create an empty [ExprGenResultMulti] (i.e. an [ExprGenResult] where the result
+    /// is a vector of SSA Values).
     #[inline]
     fn new(template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>) -> Self {
         ExprGenResult {
             template,
+            // This construction ensures that the result vectors are only created
+            // if the corresponding template functions "ShouldGenerate".
             compute_res: template.compute.as_ref().map(|_| Vec::new()),
             constrain_res: template.constrain.as_ref().map(|_| Vec::new()),
         }
     }
 
-    /// TODO: doc
+    /// Create an [ExprGenResultMulti] populated by generating LLZK for each [Expression] given.
     #[inline]
     fn gen_exprs<'ast>(
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
@@ -269,7 +286,7 @@ where
     }
 }
 
-/// TODO: doc
+/// Implementation of [Chainable] for any type implementing [ExprGenResultLike] trait.
 impl<'ctx, 'str, 'func, 'blk, 'val, 'r, T> Chainable<'ctx, 'str, 'func, 'blk, 'val, 'r> for T
 where
     'ctx: 'str,
@@ -284,8 +301,8 @@ where
     fn and_then<'ast, F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx>,
-        handle_compute: F1,
-        handle_constrain: F2,
+        gen_compute: F1,
+        gen_constrain: F2,
     ) -> Result<CR>
     where
         F1: FnOnce(
@@ -303,7 +320,7 @@ where
             .map(|v| {
                 // Note: `unwrap()` is safe so long as the contract is followed that
                 // `self.X_res` is None if and only if `self.template.X` is also None.
-                handle_compute(&mut self.template().compute.as_ref().unwrap().borrow_mut(), v)
+                gen_compute(&mut self.template().compute.as_ref().unwrap().borrow_mut(), v)
             })
             .transpose()?;
         let constrain_res: ShouldGenerate<CR::HandlerOutput> = self
@@ -312,14 +329,15 @@ where
             .map(|v| {
                 // Note: `unwrap()` is safe so long as the contract is followed that
                 // `self.X_res` is None if and only if `self.template.X` is also None.
-                handle_constrain(&mut self.template().constrain.as_ref().unwrap().borrow_mut(), v)
+                gen_constrain(&mut self.template().constrain.as_ref().unwrap().borrow_mut(), v)
             })
             .transpose()?;
         Ok(CR::produce(self.template(), compute_res, constrain_res))
     }
 }
 
-/// TODO: doc
+/// Implementation of [Chainable] for a [TemplateContext]. Useful when there is no initial
+/// [ExprGenResult] to chain onto.
 impl<'ctx, 'str, 'func, 'blk, 'val, 'r> Chainable<'ctx, 'str, 'func, 'blk, 'val, 'r>
     for &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>
 where
@@ -334,8 +352,8 @@ where
     fn and_then<'ast, F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx>,
-        handle_compute: F1,
-        handle_constrain: F2,
+        gen_compute: F1,
+        gen_constrain: F2,
     ) -> Result<CR>
     where
         F1: FnOnce(
@@ -347,15 +365,12 @@ where
             &Self::HandlerInput,
         ) -> Result<CR::HandlerOutput>,
     {
-        let compute_res: ShouldGenerate<CR::HandlerOutput> = self
-            .compute
-            .as_ref()
-            .map(|fc| handle_compute(&mut fc.borrow_mut(), &()))
-            .transpose()?;
+        let compute_res: ShouldGenerate<CR::HandlerOutput> =
+            self.compute.as_ref().map(|fc| gen_compute(&mut fc.borrow_mut(), &())).transpose()?;
         let constrain_res: ShouldGenerate<CR::HandlerOutput> = self
             .constrain
             .as_ref()
-            .map(|fc| handle_constrain(&mut fc.borrow_mut(), &()))
+            .map(|fc| gen_constrain(&mut fc.borrow_mut(), &()))
             .transpose()?;
         Ok(CR::produce(self, compute_res, constrain_res))
     }
