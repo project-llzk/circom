@@ -1,20 +1,20 @@
+use ansi_term::Color;
+use anyhow::{anyhow, Result};
+use llzk::prelude::LlzkContext;
+use melior::{
+    ir::{operation::OperationLike as _, Location, Module, ValueLike},
+    pass, utility,
+};
+use program_structure::{
+    file_definition::{FileID, FileLibrary, FileLocation},
+    program_archive::ProgramArchive,
+};
 use std::{
     fs::{self, File},
     io::Write,
     os::raw::c_void,
     path::Path,
 };
-use ansi_term::Color;
-use anyhow::{anyhow, Result};
-use program_structure::{
-    file_definition::{FileID, FileLibrary, FileLocation},
-    program_archive::ProgramArchive,
-};
-use melior::{
-    ir::{Location, Module, ValueLike, operation::OperationLike as _},
-    pass, utility,
-};
-use llzk::prelude::LlzkContext;
 
 /// Stores necessary context for generating LLZK IR along with the generated `Module`.
 /// 'ast: lifetime of the circom AST element
