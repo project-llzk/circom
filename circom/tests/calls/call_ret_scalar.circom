@@ -6,7 +6,8 @@
 pragma circom 2.1.0;
 
 function sum(a) {
-    return a;
+    var b = a;
+    return b;
 }
 
 template CallRetTest() {
