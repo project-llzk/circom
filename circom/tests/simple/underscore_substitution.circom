@@ -14,12 +14,13 @@ component main = A();
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
 // CHECK-LABEL:   struct.def @A<[]> {
 // CHECK-LABEL:     function.def @compute
-// CHECK-SAME:      (%[[VAL_0:.*]]: !felt.type) -> !struct.type<@A<[]>> attributes {function.allow_witness} {
-// CHECK-NEXT:        %[[VAL_1:.*]] = struct.new : <@A<[]>>
+// CHECK-SAME:      (%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@A<[]>> attributes {function.allow_witness} {
+// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@A<[]>>
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@A<[]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
-// CHECK-SAME:      (%[[VAL_2:.*]]: !struct.type<@A<[]>>, %[[VAL_3:.*]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK-SAME:      (%[[VAL_2:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[]>>, %[[VAL_3:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
+// CHECK-NEXT:  }

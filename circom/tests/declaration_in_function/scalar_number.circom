@@ -17,20 +17,21 @@ component main = A();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
 // CHECK-LABEL:   function.def @f() -> !felt.type {
-// CHECK-NEXT:      %[[VAL_1:.*]] = felt.const  0
+// CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      function.return %[[VAL_1]] : !felt.type
 // CHECK-NEXT:    }
 //
 // CHECK-LABEL:   struct.def @A<[]> {
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      () -> !struct.type<@A<[]>> attributes {function.allow_witness} {
-// CHECK-NEXT:        %[[VAL_0:.*]] = struct.new : <@A<[]>>
-// CHECK-NEXT:        %[[VAL_1:.*]] = function.call @f() : () -> !felt.type
+// CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@A<[]>>
+// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = function.call @f() : () -> !felt.type
 // CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@A<[]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
-// CHECK-SAME:      (%[[VAL_2:.*]]: !struct.type<@A<[]>>) attributes {function.allow_constraint} {
-// CHECK-NEXT:        %[[VAL_3:.*]] = function.call @f() : () -> !felt.type
+// CHECK-SAME:      (%[[VAL_2:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[]>>) attributes {function.allow_constraint} {
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = function.call @f() : () -> !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
+// CHECK-NEXT:  }
