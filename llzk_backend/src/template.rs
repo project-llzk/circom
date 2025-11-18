@@ -456,6 +456,10 @@ where
                 }
             }
             Statement::UnderscoreSubstitution { meta, op, rhe } => {
+                // The `<--` operator is witness generation only so this should not
+                // generate any code in the constrain function.
+                let template =
+                    if AssignOp::AssignSignal == *op { &template.compute_only() } else { template };
                 // Just visit and drop the result since the value is unused.
                 // Note: Typed underscore binding ensures we're not dropping a Result.
                 let _: ExprGenResultSingle = rhe.gen_llzk_in_template(codegen, template)?;
