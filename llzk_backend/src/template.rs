@@ -71,10 +71,14 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
 
 /// TODO: doc
 trait ExprGenResultLike<'ctx, 'str, 'func, 'blk, 'val, 'r> {
+    /// TODO: doc
     type ResultType;
 
+    /// TODO: doc
     fn template(&self) -> &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>;
+    /// TODO: doc
     fn compute_res(&self) -> &ShouldGenerate<Self::ResultType>;
+    /// TODO: doc
     fn constrain_res(&self) -> &ShouldGenerate<Self::ResultType>;
 }
 
@@ -126,8 +130,10 @@ impl<'ctx, 'str, 'func, 'blk, 'val, 'r, T> ExprGenResultLike<'ctx, 'str, 'func, 
 
 /// TODO: doc
 trait ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r> {
+    /// TODO: doc
     type HandlerOutput;
 
+    /// TODO: doc
     fn produce(
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
         compute_res: ShouldGenerate<Self::HandlerOutput>,
@@ -172,7 +178,6 @@ where
         _: ShouldGenerate<Self::HandlerOutput>,
         _: ShouldGenerate<Self::HandlerOutput>,
     ) -> Self {
-        ()
     }
 }
 
@@ -185,6 +190,7 @@ where
     'blk: 'val,
     'val: 'r,
 {
+    /// TODO: doc
     type HandlerInput;
 
     /// TODO: doc
@@ -252,8 +258,12 @@ where
             // Note: `unwrap()` is safe so long as the contract is followed that
             // `self.X_res` is None if and only if `self.template.X` is also None
             // since these all use the same template instance.
-            result.compute_res.as_mut().map(|v| v.push(r.compute_res.unwrap()));
-            result.constrain_res.as_mut().map(|v| v.push(r.constrain_res.unwrap()));
+            if let Some(v) = result.compute_res.as_mut() {
+                v.push(r.compute_res.unwrap())
+            }
+            if let Some(v) = result.constrain_res.as_mut() {
+                v.push(r.constrain_res.unwrap())
+            }
         }
         Ok(result)
     }
@@ -530,7 +540,7 @@ where
                 [] => template.and_then_same(codegen, |fc, _| {
                     fc.name_to_value
                         .get(name)
-                        .map(|v| *v)
+                        .copied()
                         .ok_or_else(|| anyhow!("variable {name} not found"))
                 }),
                 a => {

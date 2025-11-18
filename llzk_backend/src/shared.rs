@@ -150,7 +150,7 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         if pass_pipeline.is_empty() {
             return Ok(());
         }
-        let manager = pass::PassManager::new(&self.context);
+        let manager = pass::PassManager::new(self.context);
         manager.enable_verifier(true);
         utility::register_all_passes();
         utility::parse_pass_pipeline(manager.as_operation_pass_manager(), pass_pipeline)
