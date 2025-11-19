@@ -7,8 +7,7 @@ use llzk::prelude::{
 };
 use melior::{
     ir::{
-        operation::OperationLike as _, BlockLike, BlockRef, Location, Module, Operation,
-        OperationRef, RegionLike, Value,
+        operation::OperationLike as _, BlockLike, Location, Module, Operation, OperationRef, Value,
     },
     pass, utility,
 };
@@ -29,70 +28,6 @@ use std::{
     os::raw::c_void,
     path::Path,
 };
-
-/// Stack of blocks where the top block is the current block where code should be appended and the
-/// previous block in the list is the parent of the block after it. When an op containing nested
-/// blocks is encountered, the current block within that op is pushed to the stack so that any code
-/// generated will be placed inside that block and when the nested block is complete, it is popped.
-///
-/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
-/// 'blk: lifetime of the generated `Block` instances within functions
-#[derive(Debug)]
-pub struct BlockContextStack<'ctx, 'blk>
-where
-    'ctx: 'blk,
-{
-    /// The function entry block.
-    initial_block: BlockRef<'ctx, 'blk>,
-    /// Additional nesting of blocks within the function representing the current insertion point.
-    other_blocks: Vec<BlockRef<'ctx, 'blk>>,
-}
-
-impl<'ctx, 'blk> BlockContextStack<'ctx, 'blk>
-where
-    'ctx: 'blk,
-{
-    /// Push a new block onto the stack to make it the current block.
-    pub fn push(&mut self, item: BlockRef<'ctx, 'blk>) {
-        self.other_blocks.push(item);
-    }
-
-    /// Pop the current block off the stack to return to the previous block.
-    pub fn pop(&mut self) {
-        self.other_blocks.pop().expect("There is no block to pop!");
-    }
-
-    /// Append an operation to the current block (i.e. the top of the stack).
-    ///
-    /// 'op: lifetime of the `Operation` instance for the reference returned
-    pub fn append_current<'op>(&mut self, operation: Operation<'ctx>) -> OperationRef<'ctx, 'op>
-    where
-        'blk: 'op,
-    {
-        let current = match self.other_blocks.last() {
-            Some(block) => block,
-            None => &self.initial_block,
-        };
-        // Account for possible terminator in the current block. For example, the `compute_fn()`
-        // and `constrain_fn()` helpers automatically add a return op at the end of the block
-        // so new ops must be inserted before that terminator.
-        match current.terminator() {
-            Some(terminator) => current.insert_operation_before(terminator, operation),
-            None => current.append_operation(operation),
-        }
-    }
-}
-
-impl<'ctx> TryFrom<&FuncDefOp<'ctx>> for BlockContextStack<'ctx, '_> {
-    type Error = anyhow::Error;
-
-    /// Create a BlockContextStack starting with the function entry block.
-    fn try_from(func: &FuncDefOp<'ctx>) -> Result<Self, Self::Error> {
-        let initial_block =
-            func.region(0)?.first_block().ok_or_else(|| anyhow!("missing function entry block"))?;
-        Ok(BlockContextStack { initial_block, other_blocks: Default::default() })
-    }
-}
 
 /// Stores necessary context for generating LLZK IR.
 ///

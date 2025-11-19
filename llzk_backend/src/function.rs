@@ -1,12 +1,10 @@
 #![allow(unused_variables)] // TODO: TEMP
-use crate::shared::{
-    new_felt_const_op, single_result_as_value, BlockContextStack, IsA, LlzkCodegen,
-};
+use crate::shared::{new_felt_const_op, single_result_as_value, IsA, LlzkCodegen};
 use anyhow::{anyhow, Ok, Result};
-use llzk::prelude::{bool, felt, function, FeltType, FuncDefOpRefMut, OperationMutLike};
+use llzk::prelude::{bool, felt, function, FeltType, FuncDefOp, FuncDefOpRefMut, OperationMutLike};
 use melior::ir::{
     operation::{OperationLike as _, OperationRefMut, WalkOrder, WalkResult},
-    Block, BlockRef, Operation, Value, ValueLike as _,
+    BlockLike as _, BlockRef, Operation, OperationRef, RegionLike as _, Value, ValueLike as _,
 };
 use program_structure::{
     ast::{
@@ -16,9 +14,73 @@ use program_structure::{
 };
 use std::{
     collections::HashMap,
-    convert::TryInto as _,
+    convert::{TryFrom, TryInto as _},
     ops::{Deref, DerefMut},
 };
+
+/// Stack of blocks where the top block is the current block where code should be appended and the
+/// previous block in the list is the parent of the block after it. When an op containing nested
+/// blocks is encountered, the current block within that op is pushed to the stack so that any code
+/// generated will be placed inside that block and when the nested block is complete, it is popped.
+///
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+/// 'blk: lifetime of the generated `Block` instances within functions
+#[derive(Debug)]
+pub struct BlockContextStack<'ctx, 'blk>
+where
+    'ctx: 'blk,
+{
+    /// The function entry block.
+    initial_block: BlockRef<'ctx, 'blk>,
+    /// Additional nesting of blocks within the function representing the current insertion point.
+    other_blocks: Vec<BlockRef<'ctx, 'blk>>,
+}
+
+impl<'ctx, 'blk> BlockContextStack<'ctx, 'blk>
+where
+    'ctx: 'blk,
+{
+    /// Push a new block onto the stack to make it the current block.
+    pub fn push(&mut self, item: BlockRef<'ctx, 'blk>) {
+        self.other_blocks.push(item);
+    }
+
+    /// Pop the current block off the stack to return to the previous block.
+    pub fn pop(&mut self) {
+        self.other_blocks.pop().expect("There is no block to pop!");
+    }
+
+    /// Append an operation to the current block (i.e. the top of the stack).
+    ///
+    /// 'op: lifetime of the `Operation` instance for the reference returned
+    pub fn append_current<'op>(&mut self, operation: Operation<'ctx>) -> OperationRef<'ctx, 'op>
+    where
+        'blk: 'op,
+    {
+        let current = match self.other_blocks.last() {
+            Some(block) => block,
+            None => &self.initial_block,
+        };
+        // Account for possible terminator in the current block. For example, the `compute_fn()`
+        // and `constrain_fn()` helpers automatically add a return op at the end of the block
+        // so new ops must be inserted before that terminator.
+        match current.terminator() {
+            Some(terminator) => current.insert_operation_before(terminator, operation),
+            None => current.append_operation(operation),
+        }
+    }
+}
+
+impl<'ctx> TryFrom<&FuncDefOp<'ctx>> for BlockContextStack<'ctx, '_> {
+    type Error = anyhow::Error;
+
+    /// Create a BlockContextStack starting with the function entry block.
+    fn try_from(func: &FuncDefOp<'ctx>) -> Result<Self, Self::Error> {
+        let initial_block =
+            func.region(0)?.first_block().ok_or_else(|| anyhow!("missing function entry block"))?;
+        Ok(BlockContextStack { initial_block, other_blocks: Default::default() })
+    }
+}
 
 /// Stores ref to the current function while generating LLZK IR for the function.
 ///
