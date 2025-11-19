@@ -476,7 +476,7 @@ where
                                         r#struct::writef(
                                             codegen.location_from_meta(meta),
                                             todo!("needs llzkCallOpGetSelfValueFromCompute() Rust wrapper"),
-                                            &var,
+                                            var,
                                             *val,
                                         )?
                                         .into(),
@@ -484,7 +484,7 @@ where
                                 })?;
                         }
                         AssignOp::AssignConstraintSignal => {
-                            let _: () = rhe.gen_llzk_in_template(codegen, &template)?.and_then(
+                            let _: () = rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                 codegen,
                                 |fc, val| {
                                     // Write value to field of "self" struct.
@@ -492,7 +492,7 @@ where
                                         r#struct::writef(
                                             codegen.location_from_meta(meta),
                                             todo!("needs llzkCallOpGetSelfValueFromCompute() Rust wrapper"),
-                                            &var,
+                                            var,
                                             *val,
                                         )?
                                         .into(),
@@ -509,7 +509,7 @@ where
                                             codegen.location_from_meta(meta),
                                             felt_type,
                                             todo!("needs llzkCallOpGetSelfValueFromConstrain() Rust wrapper"),
-                                            &var,
+                                            var,
                                         )?
                                         .into(),
                                     )?;

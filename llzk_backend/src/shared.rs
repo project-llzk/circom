@@ -262,6 +262,7 @@ pub fn map_name_to_arg_value<'ctx, 'val>(
 
 /// Replicates MLIR `isa` functionality for Rust types using `TryFrom`.
 pub trait IsA: Sized {
+    /// Like MLIR `isa`, check if `self` can be converted to type `Out`.
     #[inline]
     fn isa<Out: TryFrom<Self>>(self) -> bool {
         Out::try_from(self).is_ok()
