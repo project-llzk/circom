@@ -259,3 +259,12 @@ pub fn map_name_to_arg_value<'ctx, 'val>(
         })
         .collect::<Result<HashMap<_, _>, _>>()
 }
+
+/// Replicates MLIR `isa` functionality for Rust types using `TryFrom`.
+pub trait IsA: Sized {
+    #[inline]
+    fn isa<Out: TryFrom<Self>>(self) -> bool {
+        Out::try_from(self).is_ok()
+    }
+}
+impl<T> IsA for T {}

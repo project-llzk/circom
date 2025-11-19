@@ -6,7 +6,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use llzk::{
     builder::OpBuilder,
-    prelude::{function, FeltType, StructDefOpRefMut},
+    prelude::{constrain, function, r#struct, FeltType, StructDefOpRefMut},
 };
 use melior::ir::Value;
 use program_structure::{
@@ -264,11 +264,14 @@ where
 
     /// Create an [ExprGenResultMulti] populated by generating LLZK for each [Expression] given.
     #[inline]
-    fn gen_exprs<'ast>(
+    fn gen_exprs<'ast, I>(
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
         codegen: &LlzkCodegen<'ast, 'ctx>,
-        exprs: &[Expression],
-    ) -> Result<Self> {
+        exprs: I,
+    ) -> Result<Self>
+    where
+        I: IntoIterator<Item = &'ast Expression>,
+    {
         let mut result = Self::new(template);
         for e in exprs {
             let r = e.gen_llzk_in_template(codegen, template)?;
@@ -452,7 +455,7 @@ where
                     // which essentially propagates the assignment.
                     match op {
                         AssignOp::AssignVar => {
-                            // Note: Typed underscore binding ensures we're not dropping a Result.
+                            // Note: Typed underscore binding shows we're not dropping a Result.
                             let _: () = rhe
                                 .gen_llzk_in_template(codegen, template)?
                                 .and_then_same(codegen, |fc, val| {
@@ -464,16 +467,62 @@ where
                             // The `<--` operator is witness generation only so this should not
                             // generate any code in the constrain function.
                             let template = template.compute_only();
-                            // Note: Typed underscore binding ensures we're not dropping a Result.
+                            // Note: Typed underscore binding shows we're not dropping a Result.
                             let _: () = rhe
                                 .gen_llzk_in_template(codegen, &template)?
                                 .and_then_same(codegen, |fc, val| {
-                                    fc.name_to_value.insert(var.clone(), *val);
-                                    Ok(())
+                                    // Write value to field of "self" struct.
+                                    fc.append_op_no_result(
+                                        r#struct::writef(
+                                            codegen.location_from_meta(meta),
+                                            todo!("needs llzkCallOpGetSelfValueFromCompute() Rust wrapper"),
+                                            &var,
+                                            *val,
+                                        )?
+                                        .into(),
+                                    )
                                 })?;
                         }
                         AssignOp::AssignConstraintSignal => {
-                            todo!("Handle AssignConstraintSignal in Substitution in template")
+                            let _: () = rhe.gen_llzk_in_template(codegen, &template)?.and_then(
+                                codegen,
+                                |fc, val| {
+                                    // Write value to field of "self" struct.
+                                    fc.append_op_no_result(
+                                        r#struct::writef(
+                                            codegen.location_from_meta(meta),
+                                            todo!("needs llzkCallOpGetSelfValueFromCompute() Rust wrapper"),
+                                            &var,
+                                            *val,
+                                        )?
+                                        .into(),
+                                    )
+                                },
+                                |fc, val| {
+                                    // Read value of field from "self" struct and generate
+                                    // equality constraint with 'val'.
+                                    let builder = OpBuilder::new(codegen.context.deref());
+                                    let felt_type = FeltType::new(codegen.context).into();
+                                    let val_from_read = fc.append_op_unnamed_result(
+                                        r#struct::readf(
+                                            &builder,
+                                            codegen.location_from_meta(meta),
+                                            felt_type,
+                                            todo!("needs llzkCallOpGetSelfValueFromConstrain() Rust wrapper"),
+                                            &var,
+                                        )?
+                                        .into(),
+                                    )?;
+                                    fc.append_op_no_result(
+                                        constrain::eq(
+                                            codegen.location_from_meta(meta),
+                                            val_from_read,
+                                            *val,
+                                        )
+                                        .into(),
+                                    )
+                                },
+                            )?;
                         }
                     }
                 } else {
@@ -486,7 +535,7 @@ where
                 let template =
                     if AssignOp::AssignSignal == *op { &template.compute_only() } else { template };
                 // Just visit and drop the result since the value is unused.
-                // Note: Typed underscore binding ensures we're not dropping a Result.
+                // Note: Typed underscore binding shows we're not dropping a Result.
                 let _: ExprGenResultSingle = rhe.gen_llzk_in_template(codegen, template)?;
             }
             Statement::ConstraintEquality { meta, lhe, rhe } => {
@@ -563,10 +612,16 @@ where
                 }
             },
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                todo!("Handle InfixOp expression in template")
+                // Generate Value for both sides and then generate the infix op.
+                ExprGenResultMulti::gen_exprs(template, codegen, [&**lhe, &**rhe])?
+                    .and_then_same(codegen, |fc, vals| {
+                        fc.gen_infix_op(codegen, meta, infix_op, vals[0], vals[1])
+                    })
             }
             Expression::PrefixOp { meta, prefix_op, rhe } => {
-                todo!("Handle PrefixOp expression in template")
+                // Generate Value for operand and then generate the prefix op.
+                rhe.gen_llzk_in_template(codegen, template)?
+                    .and_then_same(codegen, |fc, v| fc.gen_prefix_op(codegen, meta, prefix_op, *v))
             }
             Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
                 todo!("Handle InlineSwitchOp expression in template")

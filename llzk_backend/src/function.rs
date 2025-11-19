@@ -1,13 +1,17 @@
 #![allow(unused_variables)] // TODO: TEMP
-use crate::shared::{new_felt_const_op, single_result_as_value, BlockContextStack, LlzkCodegen};
+use crate::shared::{
+    new_felt_const_op, single_result_as_value, BlockContextStack, IsA, LlzkCodegen,
+};
 use anyhow::{anyhow, Ok, Result};
-use llzk::prelude::{function, FuncDefOpRefMut, OperationMutLike};
+use llzk::prelude::{bool, felt, function, FeltType, FuncDefOpRefMut, OperationMutLike};
 use melior::ir::{
     operation::{OperationLike as _, OperationRefMut, WalkOrder, WalkResult},
-    Operation, Value,
+    Block, BlockRef, Operation, Value, ValueLike as _,
 };
 use program_structure::{
-    ast::{Expression, Statement, VariableType},
+    ast::{
+        Expression, ExpressionInfixOpcode, ExpressionPrefixOpcode, Meta, Statement, VariableType,
+    },
     error_code::ReportCode,
 };
 use std::{
@@ -52,6 +56,18 @@ where
         Ok(Self { func, block_ctx: func.deref().try_into()?, name_to_value })
     }
 
+    /// Append an operation that must produce no results.
+    pub fn append_op_no_result(&mut self, op: Operation<'ctx>) -> Result<()> {
+        let op_ref = self.block_ctx.append_current(op);
+        if op_ref.result_count() != 0 {
+            return Err(anyhow!(
+                "Expected operation to have no results, found {}",
+                op_ref.result_count()
+            ));
+        }
+        Ok(())
+    }
+
     /// Append an operation that must produce a single result and is NOT associated with a variable
     /// name in the circom code.
     pub fn append_op_unnamed_result(&mut self, op: Operation<'ctx>) -> Result<Value<'ctx, 'val>> {
@@ -63,6 +79,128 @@ where
     pub fn append_op_named_result(&mut self, op: Operation<'ctx>, name: String) {
         let v = self.append_op_unnamed_result(op).expect("Expected op to produce a single result");
         self.name_to_value.insert(name, v);
+    }
+
+    /// Generate LLZK code in the current function for an prefix operation.
+    pub fn gen_prefix_op<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        meta: &Meta,
+        op: &ExpressionPrefixOpcode,
+        rhs: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        match op {
+            ExpressionPrefixOpcode::Sub => {
+                if rhs.r#type().isa::<FeltType>() {
+                    return self.append_op_unnamed_result(felt::neg(
+                        codegen.location_from_meta(meta),
+                        rhs,
+                    )?);
+                }
+                todo!("Handle Sub prefix op with RHS type '{}'", rhs.r#type());
+            }
+            ExpressionPrefixOpcode::BoolNot => {
+                todo!("Handle BoolNot prefix op")
+            }
+            ExpressionPrefixOpcode::Complement => {
+                todo!("Handle Complement prefix op")
+            }
+        }
+    }
+
+    /// Generate LLZK code in the current function for an infix operation.
+    pub fn gen_infix_op<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        meta: &Meta,
+        op: &ExpressionInfixOpcode,
+        lhs: Value<'ctx, 'val>,
+        rhs: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        match op {
+            ExpressionInfixOpcode::Mul => {
+                todo!("Handle Mul infix op")
+            }
+            ExpressionInfixOpcode::Div => {
+                todo!("Handle Div infix op")
+            }
+            ExpressionInfixOpcode::Add => {
+                if lhs.r#type().isa::<FeltType>() && rhs.r#type().isa::<FeltType>() {
+                    return self.append_op_unnamed_result(felt::add(
+                        codegen.location_from_meta(meta),
+                        lhs,
+                        rhs,
+                    )?);
+                }
+                todo!(
+                    "Handle Add infix op with LHS type '{}' and RHS type '{}'",
+                    lhs.r#type(),
+                    rhs.r#type()
+                );
+            }
+            ExpressionInfixOpcode::Sub => {
+                todo!("Handle Sub infix op")
+            }
+            ExpressionInfixOpcode::Pow => {
+                todo!("Handle Pow infix op")
+            }
+            ExpressionInfixOpcode::IntDiv => {
+                todo!("Handle IntDiv infix op")
+            }
+            ExpressionInfixOpcode::Mod => {
+                todo!("Handle Mod infix op")
+            }
+            ExpressionInfixOpcode::ShiftL => {
+                todo!("Handle ShiftL infix op")
+            }
+            ExpressionInfixOpcode::ShiftR => {
+                todo!("Handle ShiftR infix op")
+            }
+            ExpressionInfixOpcode::LesserEq => {
+                todo!("Handle LesserEq infix op")
+            }
+            ExpressionInfixOpcode::GreaterEq => {
+                todo!("Handle GreaterEq infix op")
+            }
+            ExpressionInfixOpcode::Lesser => {
+                if lhs.r#type().isa::<FeltType>() && rhs.r#type().isa::<FeltType>() {
+                    return self.append_op_unnamed_result(bool::lt(
+                        codegen.location_from_meta(meta),
+                        lhs,
+                        rhs,
+                    )?);
+                }
+                todo!(
+                    "Handle Lesser infix op with LHS type '{}' and RHS type '{}'",
+                    lhs.r#type(),
+                    rhs.r#type()
+                );
+            }
+            ExpressionInfixOpcode::Greater => {
+                todo!("Handle Greater infix op")
+            }
+            ExpressionInfixOpcode::Eq => {
+                todo!("Handle Eq infix op")
+            }
+            ExpressionInfixOpcode::NotEq => {
+                todo!("Handle NotEq infix op")
+            }
+            ExpressionInfixOpcode::BoolOr => {
+                todo!("Handle BoolOr infix op")
+            }
+            ExpressionInfixOpcode::BoolAnd => {
+                todo!("Handle BoolAnd infix op")
+            }
+            ExpressionInfixOpcode::BitOr => {
+                todo!("Handle BitOr infix op")
+            }
+            ExpressionInfixOpcode::BitAnd => {
+                todo!("Handle BitAnd infix op")
+            }
+            ExpressionInfixOpcode::BitXor => {
+                todo!("Handle BitXor infix op")
+            }
+        }
     }
 }
 
@@ -150,11 +288,11 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Function uses template operators");
                 }
-                let rhv = rhe.gen_llzk_in_function(codegen, function)?;
+                let rhs = rhe.gen_llzk_in_function(codegen, function)?;
                 if access.is_empty() {
                     // Since there's no simple assignment in LLZK, just update the mapped Value
                     // which essentially propagates the assignment.
-                    function.name_to_value.insert(var.clone(), rhv);
+                    function.name_to_value.insert(var.clone(), rhs);
                 } else {
                     todo!("Generate array write operation in function");
                 }
@@ -168,6 +306,31 @@ where
                 let _ = rhe.gen_llzk_in_function(codegen, function)?;
             }
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
+                let cond = cond.gen_llzk_in_function(codegen, function)?;
+                /*
+                // Generate LLZK for both blocks and then generate an `scf.if`.
+                // TODO: The 'return' ops generated within the blocks need to be converted to
+                // `scf.yield` ops. If both blocks contain a return, then the `scf.if` itself needs
+                // to be followed by a return of the yielded value. If only one block contains a
+                // return, then the `scf.if` needs to yield an additional boolean value `isReturn`
+                // indicating whether a return occurred, and the code following the `scf.if` needs
+                // to be guarded another `scf.if` checking `!isReturn`.
+                //
+                // TODO: Do these blocks need arguments to pass SSA Values from the outer scope?
+                let if_block = Block::new(&[]);
+                function.block_ctx.push(unsafe { BlockRef::from_raw(if_block.to_raw()) });
+                if_case.gen_llzk_in_function(codegen, function)?;
+                function.block_ctx.pop();
+                println!("Generated if block {}", if_block); // TODO:TEMP
+
+                if let Some(else_case) = else_case {
+                    let else_block = Block::new(&[]);
+                    function.block_ctx.push(unsafe { BlockRef::from_raw(else_block.to_raw()) });
+                    else_case.gen_llzk_in_function(codegen, function)?;
+                    function.block_ctx.pop();
+                    println!("Generated else block {}", else_block); // TODO:TEMP
+                }
+                 */
                 todo!("Handle if-then-else statement in function")
             }
             Statement::While { meta, cond, stmt } => {
@@ -237,10 +400,13 @@ where
                 }
             }
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                todo!("Handle InfixOp expression in function")
+                let lhs = lhe.gen_llzk_in_function(codegen, function)?;
+                let rhs = rhe.gen_llzk_in_function(codegen, function)?;
+                function.gen_infix_op(codegen, meta, infix_op, lhs, rhs)
             }
             Expression::PrefixOp { meta, prefix_op, rhe } => {
-                todo!("Handle PrefixOp expression in function")
+                let rhs = rhe.gen_llzk_in_function(codegen, function)?;
+                function.gen_prefix_op(codegen, meta, prefix_op, rhs)
             }
             Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
                 todo!("Handle InlineSwitchOp expression in function")
