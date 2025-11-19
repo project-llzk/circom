@@ -15,4 +15,5 @@ template Simple3() {
 }
 
 component main = Simple3();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

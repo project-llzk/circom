@@ -28,4 +28,5 @@ template Poseidon() {
 }
 
 component main = Poseidon();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

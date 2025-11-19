@@ -8,4 +8,5 @@ pragma circom 2.0.0;
 template EmptyTemplate() {
 }
 component main = EmptyTemplate();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

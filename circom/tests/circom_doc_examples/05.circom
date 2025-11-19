@@ -15,4 +15,5 @@ template UsingExample() {
 }
 
 component main = UsingExample();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

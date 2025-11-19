@@ -35,4 +35,5 @@ template EarlyReturn() {
 }
 
 component main = EarlyReturn();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

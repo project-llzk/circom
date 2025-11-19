@@ -20,4 +20,5 @@ template FnAssign() {
 }
 
 component main = FnAssign();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

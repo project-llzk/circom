@@ -15,4 +15,5 @@ template CmpGE(n) {
 }
 
 component main = CmpGE(5);
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

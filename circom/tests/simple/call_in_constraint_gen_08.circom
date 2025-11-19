@@ -1,0 +1,24 @@
+// REQUIRES: circom
+// RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// END.
+// XFAIL:.*
+
+pragma circom 2.0.0;
+
+function f(i) {
+    return i;
+}
+
+template T() {
+    signal input inp1;
+    signal input inp2;
+    signal output o1;
+
+    o1 <-- 1;
+    var temp = f(inp1);
+    o1 + inp2 === temp;
+}
+
+component main = T();
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

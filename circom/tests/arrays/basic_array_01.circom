@@ -30,4 +30,5 @@ template Array01(n) {
 }
 
 component main = Array01(5);
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

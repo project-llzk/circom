@@ -15,4 +15,5 @@ template Array1(n, S) {
 }
 
 component main = Array1(5, [11,22,33,44,55]);
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

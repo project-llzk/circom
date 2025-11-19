@@ -19,4 +19,5 @@ template InnerLoops(n, m) {
 }
 
 component main = InnerLoops(2, 3);
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

@@ -6,7 +6,8 @@
 pragma circom 2.1.0;
 
 function sum(a) {
-    return a;
+    var b = a;
+    return b;
 }
 
 template CallRetTest() {
@@ -17,4 +18,5 @@ template CallRetTest() {
 }
 
 component main = CallRetTest();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

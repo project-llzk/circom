@@ -24,4 +24,5 @@ template ForUnknownIndex() {
 }
 
 component main = ForUnknownIndex();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

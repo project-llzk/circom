@@ -27,4 +27,5 @@ template UnknownLoopComponent() {
 }
 
 component main = UnknownLoopComponent();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

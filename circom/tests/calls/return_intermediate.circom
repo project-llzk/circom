@@ -18,4 +18,5 @@ template Foo() {
 }
 
 component main = Foo();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
