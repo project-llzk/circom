@@ -13,4 +13,5 @@ template BoolAnd() {
 }
 
 component main = BoolAnd();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

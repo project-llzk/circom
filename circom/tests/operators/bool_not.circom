@@ -13,4 +13,5 @@ template BoolNot() {
 }
 
 component main = BoolNot();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

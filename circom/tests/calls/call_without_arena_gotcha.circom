@@ -21,4 +21,5 @@ template Gotcha() {
 }
 
 component main = Gotcha();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

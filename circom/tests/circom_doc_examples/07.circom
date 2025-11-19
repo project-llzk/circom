@@ -13,4 +13,5 @@ template A(){
 }
 
 component main {public [in1]}= A();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

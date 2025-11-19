@@ -15,4 +15,5 @@ template CmpLE(n) {
 }
 
 component main = CmpLE(5);
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

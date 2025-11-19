@@ -17,4 +17,5 @@ template TestSetAllUnknownWithinUnknownCondition(k) {
 }
 
 component main = TestSetAllUnknownWithinUnknownCondition(1);
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

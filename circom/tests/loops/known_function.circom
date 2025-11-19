@@ -27,4 +27,5 @@ template KnownFunctionArgs() {
 }
 
 component main = KnownFunctionArgs();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

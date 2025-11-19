@@ -25,4 +25,5 @@ template SubCmps0A(n) {
 }
 
 component main = SubCmps0A(2);
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

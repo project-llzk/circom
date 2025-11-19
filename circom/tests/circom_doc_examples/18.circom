@@ -19,4 +19,5 @@ template B(n){
    out <== temp_a.c;
 }
 component main = B(2);
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

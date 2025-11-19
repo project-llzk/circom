@@ -24,4 +24,5 @@ template KnownLoopViaSignal() {
 }
 
 component main = KnownLoopViaSignal();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

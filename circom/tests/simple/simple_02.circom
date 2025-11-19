@@ -19,4 +19,5 @@ template Simple4(a) {
 }
 
 component main = Simple4(10);
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

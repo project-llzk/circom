@@ -33,4 +33,5 @@ template SubCmps3() {
 }
 
 component main = SubCmps3();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

@@ -25,4 +25,5 @@ template Caller(n) {
 }
 
 component main = Caller(64);
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

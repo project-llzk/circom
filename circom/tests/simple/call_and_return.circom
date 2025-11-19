@@ -20,4 +20,5 @@ function negative(n){
 }
 
 component main = C();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {

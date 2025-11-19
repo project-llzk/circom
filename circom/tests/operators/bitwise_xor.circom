@@ -14,4 +14,5 @@ template BitwiseXOR() {
 }
 
 component main = BitwiseXOR();
-//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
