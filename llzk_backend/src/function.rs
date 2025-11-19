@@ -143,7 +143,7 @@ where
         self.name_to_value.insert(name, v);
     }
 
-    /// Generate LLZK code in the current function for an prefix operation.
+    /// Generate LLZK code in the current function for a prefix operation.
     pub fn gen_prefix_op<'ast>(
         &mut self,
         codegen: &LlzkCodegen<'ast, 'ctx>,
