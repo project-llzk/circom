@@ -50,6 +50,13 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         Report::print_reports(&[report], &self.program_archive.file_library);
     }
 
+    /// Emit a circom-style error.
+    pub fn emit_circom_error(&self, meta: &Meta, message: &str, code: ReportCode) {
+        let mut report = Report::error(String::from(message), code);
+        report.add_primary(meta.file_location(), meta.get_file_id(), String::from("here"));
+        Report::print_reports(&[report], &self.program_archive.file_library);
+    }
+
     /// Convert circom location information to MLIR location.
     pub fn location(&self, file_id: FileID, file_location: FileLocation) -> Location<'ctx> {
         let files = &self.program_archive.file_library;

@@ -159,6 +159,8 @@ where
                         rhs,
                     )?);
                 }
+                // TODO: this can also handle MLIR `index` type operand but otherwise should
+                // fall through to the error case.
                 todo!("Handle Sub prefix op with RHS type '{}'", rhs.r#type());
             }
             ExpressionPrefixOpcode::BoolNot => {
@@ -168,6 +170,13 @@ where
                 todo!("Handle Complement prefix op")
             }
         }
+        let err_msg = format!(
+            "Cannot generate LLZK for prefix {:?} with operand type '{}'",
+            self,
+            rhs.r#type()
+        );
+        codegen.emit_circom_error(meta, err_msg.as_str(), ReportCode::PrefixOperatorWithWrongTypes);
+        Err(anyhow!(err_msg))
     }
 
     /// Generate LLZK code in the current function for an infix operation.
@@ -194,6 +203,8 @@ where
                         rhs,
                     )?);
                 }
+                // TODO: this can also handle MLIR `index` type operands but otherwise should
+                // fall through to the error case.
                 todo!(
                     "Handle Add infix op with LHS type '{}' and RHS type '{}'",
                     lhs.r#type(),
@@ -232,6 +243,8 @@ where
                         rhs,
                     )?);
                 }
+                // TODO: this can also handle MLIR `index` type operands but otherwise should
+                // fall through to the error case.
                 todo!(
                     "Handle Lesser infix op with LHS type '{}' and RHS type '{}'",
                     lhs.r#type(),
@@ -263,6 +276,14 @@ where
                 todo!("Handle BitXor infix op")
             }
         }
+        let err_msg = format!(
+            "Cannot generate LLZK for infix {:?} with LHS type '{}' and RHS type '{}'",
+            self,
+            lhs.r#type(),
+            rhs.r#type()
+        );
+        codegen.emit_circom_error(meta, err_msg.as_str(), ReportCode::InfixOperatorWithWrongTypes);
+        Err(anyhow!(err_msg))
     }
 }
 
