@@ -863,6 +863,8 @@ dependencies = [
  "melior",
  "melior-macro",
  "mlir-sys",
+ "num-bigint-dig",
+ "num-traits",
  "program_structure",
 ]
 

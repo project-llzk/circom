@@ -1,7 +1,6 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
-// XFAIL:.*
 
 pragma circom 2.0.0;
 
@@ -13,3 +12,19 @@ template Van276() {
 component main = Van276();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL:   struct.def @Van276<[]> {
+// CHECK-LABEL:     function.def @compute
+// CHECK-SAME:      () -> !struct.type<@Van276<[]>> attributes {function.allow_witness} {
+// CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@Van276<[]>>
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  168700
+// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  999999
+// CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@Van276<[]>>
+// CHECK-NEXT:      }
+// CHECK-LABEL:     function.def @constrain
+// CHECK-SAME:      (%[[VAL_5:[0-9a-zA-Z_\.]+]]: !struct.type<@Van276<[]>>) attributes {function.allow_constraint} {
+// CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  168700
+// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = felt.const  999999
+// CHECK-NEXT:        function.return
+// CHECK-NEXT:      }
+// CHECK-NEXT:    }
+// CHECK-NEXT:  }

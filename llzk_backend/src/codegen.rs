@@ -1,130 +1,36 @@
+#![allow(unused_variables)] // TODO: TEMP
+use crate::{module::GenerateLLZKInModule as _, shared::LlzkCodegen};
 use ansi_term::Color;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use llzk::prelude::LlzkContext;
-use melior::{
-    ir::{operation::OperationLike as _, Location, Module, ValueLike},
-    pass, utility,
-};
-use program_structure::{
-    file_definition::{FileID, FileLibrary, FileLocation},
-    program_archive::ProgramArchive,
-};
-use std::{
-    fs::{self, File},
-    io::Write,
-    os::raw::c_void,
-    path::Path,
-};
+use melior::ir::{Location, Module};
+use program_structure::program_archive::ProgramArchive;
 
-/// Stores necessary context for generating LLZK IR along with the generated `Module`.
-/// 'ast: lifetime of the circom AST element
-/// 'llzk: lifetime of the `LlzkContext` and generated `Module`
-struct LlzkCodegen<'ast, 'llzk> {
-    /// The circom file library for looking up filenames and line/column information.
-    files: &'ast FileLibrary,
-    /// The LLZK (and MLIR) context.
-    context: &'llzk LlzkContext,
-    /// The generated LLZK `Module`.
-    module: Module<'llzk>,
-}
-
-/// Helper for generating LLZK IR from a circom `ProgramArchive`.
-impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
-    /// Creates a new LLZK code generator to generate code for the given `ProgramArchive`.
-    pub fn new(context: &'llzk LlzkContext, program_archive: &'ast ProgramArchive) -> Self {
-        let files = &program_archive.file_library;
-        let filename = files.get_filename_or_default(program_archive.get_file_id_main());
-        let main_file_location = Location::new(context, &filename, 0, 0);
-        let module = llzk::dialect::module::llzk_module(main_file_location);
-        Self { files, context, module }
-    }
-
-    /// Convert circom location information to MLIR location.
-    pub fn get_location(&self, file_id: FileID, file_location: FileLocation) -> Location<'llzk> {
-        let filename = self.files.get_filename_or_default(&file_id);
-        let line = self.files.get_line(file_location.start, file_id).unwrap_or(0);
-        let column = self.files.get_column(file_location.start, file_id).unwrap_or(0);
-        Location::new(self.context, &filename, line, column)
-    }
-
-    /// Run cleanup passes on the generated `Module`.
-    pub fn run_passes(&mut self, pass_pipeline: &str) -> Result<()> {
-        if pass_pipeline.is_empty() {
-            return Ok(());
-        }
-        let manager = pass::PassManager::new(self.context);
-        manager.enable_verifier(true);
-        utility::register_all_passes();
-        utility::parse_pass_pipeline(manager.as_operation_pass_manager(), pass_pipeline)
-            .map_err(|e| anyhow!(e))?;
-        manager.run(&mut self.module).map_err(|e| anyhow!(e))
-    }
-
-    /// Verify the generated `Module`.
-    pub fn verify(&self) -> bool {
-        self.module.as_operation().verify()
-    }
-
-    /// Write the generated `Module` to a file.
-    pub fn write_to_file(&self, filename: &str) -> Result<()> {
-        let out_path = Path::new(filename);
-        // Ensure parent directories exist
-        if let Some(parent) = out_path.parent() {
-            fs::create_dir_all(parent).map_err(|e| anyhow!(e))?;
-        }
-        let mut file = File::create(out_path).map_err(|e| anyhow!(e))?;
-
-        unsafe extern "C" fn callback(string_ref: mlir_sys::MlirStringRef, user_data: *mut c_void) {
-            let file = &mut *(user_data as *mut File);
-            let slice = std::slice::from_raw_parts(string_ref.data as *const u8, string_ref.length);
-            file.write_all(slice).unwrap();
-        }
-
-        unsafe {
-            // TODO: may need to switch to bytecode at some point. Or add an option for it.
-            // mlir_sys::mlirOperationWriteBytecode(
-            mlir_sys::mlirOperationPrint(
-                self.module.as_operation().to_raw(),
-                Some(callback),
-                &mut file as *mut File as *mut c_void,
-            );
-        }
-        println!("{} {}", Color::Green.paint("Written successfully:"), filename);
-        Ok(())
-    }
-}
-
-/// A trait to produce LLZK IR from the `ProgramArchive` nodes.
-trait ProduceLLZK {
-    /// Produces LLZK IR from the circom `ProgramArchive` AST element.
-    /// 'ret: lifetime of the returned `ValueLike` object
-    /// 'ast: lifetime of the circom AST element
-    /// 'llzk: lifetime of the `LlzkContext` and generated `Module`
-    fn produce_llzk_ir<'ret, 'ast: 'ret, 'llzk: 'ret>(
-        &'ast self,
-        codegen: &LlzkCodegen<'ast, 'llzk>,
-    ) -> Result<Box<dyn ValueLike<'llzk> + 'ret>>;
-}
-
-impl ProduceLLZK for ProgramArchive {
-    fn produce_llzk_ir<'ret, 'ast: 'ret, 'llzk: 'ret>(
-        &'ast self,
-        codegen: &LlzkCodegen<'ast, 'llzk>,
-    ) -> Result<Box<dyn ValueLike<'llzk> + 'ret>> {
-        todo!("Not yet implemented")
-    }
+/// Create a new, empty LLZK `Module` with Location "main" from the `ProgramArchive`.
+///
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+fn new_llzk_module<'ctx>(
+    context: &'ctx LlzkContext,
+    program_archive: &ProgramArchive,
+) -> Module<'ctx> {
+    let files = &program_archive.file_library;
+    let filename = files.get_filename_or_default(program_archive.get_file_id_main());
+    let main_file_location = Location::new(context, &filename, 0, 0);
+    llzk::dialect::module::llzk_module(main_file_location)
 }
 
 /// Generate LLZK IR from the given `ProgramArchive` and write it to a file with the given filename.
+#[allow(clippy::result_unit_err)]
 pub fn generate_llzk(
     program_archive: &ProgramArchive,
     filename: &str,
     pass_pipeline: &str,
 ) -> Result<(), ()> {
     let ctx = LlzkContext::new();
-    let mut codegen = LlzkCodegen::new(&ctx, program_archive);
+    let module = new_llzk_module(&ctx, program_archive);
+    let mut codegen = LlzkCodegen { program_archive, context: &ctx, module };
 
-    program_archive.produce_llzk_ir(&codegen).map_err(|err| {
+    program_archive.gen_llzk(&codegen).map_err(|err| {
         eprintln!("{} {err}", Color::Red.paint("Failed to generate LLZK IR:"));
     })?;
 
