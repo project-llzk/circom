@@ -68,6 +68,16 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
             constrain: None,
         }
     }
+
+    /// Creates a new [TemplateContext] that will only generate within the "@constrain" function.
+    #[inline]
+    pub fn constrain_only(&self) -> TemplateContext<'ctx, 'str, 'func, 'blk, 'val> {
+        Self {
+            struct_def: self.struct_def,
+            compute: None,
+            constrain: self.constrain.as_ref().map(Rc::clone),
+        }
+    }
 }
 
 /// For both the "@compute" and "@constrain" functions, holds the result (SSA Value or list thereof,
@@ -539,7 +549,16 @@ where
                 let _: ExprGenResultSingle = rhe.gen_llzk_in_template(codegen, template)?;
             }
             Statement::ConstraintEquality { meta, lhe, rhe } => {
-                todo!("Handle constraint equality in template")
+                // This statement is only relevant to the "@constrain" function.
+                let template = template.constrain_only();
+                // Generate Value for both sides and then generate the constraint op.
+                let _: () = ExprGenResultMulti::gen_exprs(&template, codegen, [lhe, rhe])?
+                    .and_then_same(codegen, |fc, vals| {
+                        fc.append_op_no_result(
+                            constrain::eq(codegen.location_from_meta(meta), vals[0], vals[1])
+                                .into(),
+                        )
+                    })?;
             }
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
                 todo!("Handle if-then-else statement in template")
