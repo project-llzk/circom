@@ -570,7 +570,19 @@ where
                 todo!("Handle while statement in template")
             }
             Statement::Assert { meta, arg } => {
-                todo!("Handle assert statement in template")
+                let _: () = arg.gen_llzk_in_template(codegen, template)?.and_then_same(
+                    codegen,
+                    |fc, val| {
+                        fc.append_op_no_result(
+                            llzk::dialect::bool::assert(
+                                codegen.location_from_meta(meta),
+                                *val,
+                                Some("assertion failed"),
+                            )?
+                            .into(),
+                        )
+                    },
+                )?;
             }
             Statement::LogCall { meta, .. } => {
                 codegen.emit_circom_warning(
