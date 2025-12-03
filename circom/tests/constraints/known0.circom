@@ -1,0 +1,28 @@
+// REQUIRES: circom
+// RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// END.
+
+pragma circom 2.0.0;
+
+template A() {
+    0 === 1;
+}
+
+component main = A();
+
+// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL:   struct.def @A<[]> {
+// CHECK-LABEL:     function.def @compute
+// CHECK-SAME:      () -> !struct.type<@A<[]>> attributes {function.allow_witness} {
+// CHECK-NEXT:        %[[VAL_0:.*]] = struct.new : <@A<[]>>
+// CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@A<[]>>
+// CHECK-NEXT:      }
+// CHECK-LABEL:     function.def @constrain
+// CHECK-SAME:      (%[[VAL_1:.*]]: !struct.type<@A<[]>>) attributes {function.allow_constraint} {
+// CHECK-NEXT:        %[[VAL_2:.*]] = felt.const  0
+// CHECK-NEXT:        %[[VAL_3:.*]] = felt.const  1
+// CHECK-NEXT:        constrain.eq %[[VAL_2]], %[[VAL_3]] : !felt.type, !felt.type
+// CHECK-NEXT:        function.return
+// CHECK-NEXT:      }
+// CHECK-NEXT:    }
+// CHECK-NEXT:  }
