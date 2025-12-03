@@ -183,7 +183,7 @@ where
         Err(anyhow!(err_msg))
     }
 
-    /// If both operands have types that match the respecitive filter predicates, generate the
+    /// If both operands have types that match the respective filter predicates, generate the
     /// operation using the provided generator function and return the result, otherwise None.
     #[inline]
     fn gen_infix_op_if_types_are(
