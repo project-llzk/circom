@@ -5,7 +5,7 @@
 pragma circom 2.0.0;
 
 template Nop(n) {
-    signal input i;
+    signal input i ;
     signal output o;
 }
 

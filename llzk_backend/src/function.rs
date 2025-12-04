@@ -162,7 +162,15 @@ where
     /// # Errors
     /// Fails if this context is not in a constrain function.
     pub fn get_self_from_constrain(&self) -> Result<Value<'ctx, 'val>> {
-        todo!("needs llzkCallOpGetSelfValueFromConstrain() Rust wrapper")
+        // Temporary workaround
+        if !unsafe { llzk_sys::llzkFuncDefOpGetIsStructConstrain(self.func.to_raw()) } {
+            bail!(
+                "Attempted to get self from the constrain function but function is not constrain."
+            );
+        }
+        Ok(unsafe {
+            Value::from_raw(llzk_sys::llzkFuncDefOpGetSelfValueFromConstrain(self.func.to_raw()))
+        })
     }
 
     /// Generate LLZK code in the current function for a prefix operation.

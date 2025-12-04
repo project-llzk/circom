@@ -9,7 +9,7 @@ use llzk::{
     dialect::undef,
     prelude::{constrain, function, r#struct, FeltType, StructDefOpRefMut, StructType},
 };
-use melior::ir::Value;
+use melior::ir::{Value, ValueLike as _};
 use program_structure::{
     ast::{Access, AssignOp, Expression, Meta, Statement, TypeReduction},
     error_code::ReportCode,
@@ -502,27 +502,18 @@ where
                         }
                     }
                     AssignOp::AssignConstraintSignal => {
-                        let receiver = template.and_then(
-                            codegen,
-                            |fc, _| {
-                                let self_value = fc.get_self_from_compute()?;
-                                //todo!("needs llzkCallOpGetSelfValueFromCompute() Rust wrapper");
-                                build_access_chain(codegen, meta, fc, self_value, access)
-                            },
-                            |fc, _| {
-                                let self_value = fc.get_self_from_constrain()?;
-                                build_access_chain(codegen, meta, fc, self_value, access)
-                            },
-                        )?;
-
                         let _: () = rhe.gen_llzk_in_template(codegen, template)?.and_then(
                             codegen,
                             |fc, val| {
+                                let self_value = fc.get_self_from_compute()?;
+                                // TODO
+                                //let receiver =
+                                //    build_access_chain(codegen, meta, fc, self_value, access)?;
                                 // Write value to field of "self" struct.
                                 fc.append_op_no_result(
                                     r#struct::writef(
                                         codegen.location_from_meta(meta),
-                                        receiver,
+                                        self_value,
                                         var,
                                         *val,
                                     )?
@@ -530,20 +521,23 @@ where
                                 )
                             },
                             |fc, val| {
+                                let self_value = fc.get_self_from_constrain()?;
                                 // Read value of field from "self" struct and generate
                                 // equality constraint with 'val'.
                                 let builder = OpBuilder::new(codegen.context.deref());
                                 let felt_type = FeltType::new(codegen.context).into();
-                                let val_from_read = fc.append_op_unnamed_result(
+                                let receiver = fc.append_op_unnamed_result(
                                     r#struct::readf(
                                         &builder,
                                         codegen.location_from_meta(meta),
                                         felt_type,
-                                        receiver,
+                                        self_value,
                                         var,
                                     )?
                                     .into(),
                                 )?;
+                                let val_from_read =
+                                    build_access_chain(codegen, meta, fc, receiver, access)?;
                                 fc.append_op_no_result(
                                     constrain::eq(
                                         codegen.location_from_meta(meta),
@@ -717,16 +711,21 @@ fn build_access_chain<'ctx, 'val, 'func, 'blk>(
 ) -> Result<Value<'ctx, 'val>> {
     let builder = OpBuilder::new(codegen.context);
     chain.iter().try_fold(receiver, |receiver: Value<'_, '_>, access| match access {
-        Access::ComponentAccess(field) => fc.append_op_unnamed_result(
-            r#struct::readf(
-                &builder,
-                codegen.location_from_meta(meta),
-                FeltType::new(codegen.context).into(),
-                receiver,
-                field,
-            )?
-            .into(),
-        ),
+        Access::ComponentAccess(field) => {
+            let receiver_type: StructType = receiver.r#type().try_into()?;
+            //receiver_type.
+            fc.append_op_unnamed_result(
+                r#struct::readf(
+                    &builder,
+                    codegen.location_from_meta(meta),
+                    // TODO: We need to track the types of variables so we know what type to pass here.
+                    FeltType::new(codegen.context).into(),
+                    receiver,
+                    field,
+                )?
+                .into(),
+            )
+        }
         Access::ArrayAccess(expression) => {
             todo!("Generate array write operation in template")
         }
