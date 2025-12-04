@@ -2,18 +2,21 @@
 use ansi_term::Color;
 use anyhow::{anyhow, Ok, Result};
 use llzk::prelude::{
-    felt, FeltConstAttribute, FuncDefOp, FuncDefOpLike, FuncDefOpRef, FuncDefOpRefMut, LlzkContext,
-    StructDefOp, StructDefOpRef, StructDefOpRefMut,
+    felt, FeltConstAttribute, FlatSymbolRefAttribute, FuncDefOp, FuncDefOpLike, FuncDefOpRef,
+    FuncDefOpRefMut, IntegerAttribute, LlzkContext, StructDefOp, StructDefOpRef, StructDefOpRefMut,
+    StructType,
 };
 use melior::{
     ir::{
-        operation::OperationLike as _, BlockLike, Location, Module, Operation, OperationRef, Value,
+        operation::OperationLike as _, Attribute, BlockLike, Location, Module, Operation,
+        OperationRef, Type, Value,
     },
     pass, utility,
 };
 use num_bigint_dig::BigInt;
+use num_traits::ToPrimitive;
 use program_structure::{
-    ast::Meta,
+    ast::{Expression, Meta},
     error_code::ReportCode,
     error_definition::Report,
     file_definition::{FileID, FileLocation},
@@ -141,6 +144,68 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         }
         println!("{} {}", Color::Green.paint("Written successfully:"), filename);
         Ok(())
+    }
+}
+
+/// Convert a circom [`Expression`] used as an array dimension to an LLZK Attribute.
+///
+/// Note: The LLZK ArrayType can only use the following Attribute types for dimensions:
+/// IntegerAttr (`index` or `i1`), SymbolRefAttr, or AffineMapAttr (with single result,
+/// probably an identity map).
+///
+/// 'ast: lifetime of the circom AST element
+pub fn convert_dim_expr<'ast, 'ctx>(
+    codegen: &LlzkCodegen<'ast, 'ctx>,
+    expr: &Expression,
+) -> Result<Attribute<'ctx>> {
+    match expr {
+        Expression::Number(meta, big_int) => {
+            let int_attr = IntegerAttribute::new(
+                Type::index(codegen.context),
+                big_int.to_i64().ok_or_else(|| anyhow!("Array dimension must fit in i64"))?,
+            );
+            Ok(int_attr.into())
+        }
+        Expression::Variable { meta, name, access } => {
+            // TODO: generate AffineMapAttr (with single result) or SymbolRefAttr (from param)
+            todo!("Handle Variable expression in dimension")
+        }
+        Expression::InfixOp { meta, lhe, infix_op, rhe } => {
+            todo!("Handle InfixOp expression in dimension")
+        }
+        Expression::PrefixOp { meta, prefix_op, rhe } => {
+            todo!("Handle PrefixOp expression in dimension")
+        }
+        Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
+            todo!("Handle InlineSwitchOp expression in dimension")
+        }
+        Expression::Call { meta, id, args } => {
+            todo!("Handle Call expression in dimension")
+        }
+        // The remaining cases do not produce a scalar value.
+        // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
+        // Give the same error that the circom type checker gives. The type checker ran
+        // earlier so this should technically be unreachable.
+        _ => Err(anyhow!("Array indexes and lengths must be single arithmetic expressions")),
+    }
+}
+
+/// If `dimensions` is empty, returns a [`StructType`] with just the name. Otherwise,
+/// returns a [`StructType`] with parameters by converting the
+/// dimension circom Expressions to LLZK Attributes.
+pub fn struct_type_with_concrete_dimensions<'ctx>(
+    codegen: &LlzkCodegen<'_, 'ctx>,
+    name: &str,
+    dimensions: &[Expression],
+) -> Result<StructType<'ctx>> {
+    if dimensions.is_empty() {
+        Ok(StructType::from_str(&codegen.context, name))
+    } else {
+        let attrs = dimensions
+            .iter()
+            .map(|e| convert_dim_expr(codegen, e))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(StructType::new(FlatSymbolRefAttribute::new(&codegen.context, name), &attrs))
     }
 }
 

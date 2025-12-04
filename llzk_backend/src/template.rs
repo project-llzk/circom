@@ -1,16 +1,17 @@
 #![allow(unused_variables)] // TODO: TEMP
 use crate::{
     function::FunctionContext,
-    shared::{new_felt_const_op, LlzkCodegen},
+    shared::{new_felt_const_op, struct_type_with_concrete_dimensions, LlzkCodegen},
 };
 use anyhow::{anyhow, Result};
 use llzk::{
     builder::OpBuilder,
-    prelude::{constrain, function, r#struct, FeltType, StructDefOpRefMut},
+    dialect::undef,
+    prelude::{constrain, function, r#struct, FeltType, StructDefOpRefMut, StructType},
 };
 use melior::ir::Value;
 use program_structure::{
-    ast::{AssignOp, Expression, Statement},
+    ast::{AssignOp, Expression, Statement, TypeReduction},
     error_code::ReportCode,
 };
 use std::{cell::RefCell, ops::Deref, rc::Rc};
@@ -654,27 +655,32 @@ where
             Expression::UniformArray { meta, value, dimension } => {
                 todo!("Handle UniformArray expression in template")
             }
-            Expression::Call { meta, id, args } => {
-                let builder = OpBuilder::new(codegen.context.deref());
-                // Visit each argument and collect the resulting LLZK Values for both functions.
-                let res = ExprGenResultMulti::gen_exprs(template, codegen, args)?;
-                // Create the CallOp in each function using the collected args.
-                res.and_then_same(codegen, |fc, vals| {
-                    // TODO: Currently, the LLZK function will always return a `felt.type` but
-                    // eventually, this gen function may need an "expected result type"
-                    // parameter or use `poly.tvar` with function templates.
-                    let return_types = &[FeltType::new(codegen.context)];
-                    fc.append_op_unnamed_result(
-                        function::call(
-                            &builder,
-                            codegen.location_from_meta(meta),
-                            id,
-                            vals,
-                            return_types,
-                        )?
-                        .into(),
-                    )
-                })
+            Expression::Call { meta, id, args, .. } => {
+                let location = codegen.location_from_meta(meta);
+                if meta.get_type_knowledge().is_component() {
+                    template.and_then_same(codegen, |fc, _| {
+                        /// Generate an undef operation that will get converted to calls to
+                        /// `@compute` and `@constrain`
+                        fc.append_op_unnamed_result(undef::undef(
+                            location,
+                            struct_type_with_concrete_dimensions(codegen, id, args)?.into(),
+                        ))
+                    })
+                } else {
+                    let builder = OpBuilder::new(codegen.context);
+                    // Visit each argument and collect the resulting LLZK Values for both functions.
+                    let res = ExprGenResultMulti::gen_exprs(template, codegen, args)?;
+                    // Create the CallOp in each function using the collected args.
+                    res.and_then_same(codegen, |fc, vals| {
+                        // TODO: Currently, the LLZK function will always return a `felt.type` but
+                        // eventually, this gen function may need an "expected result type"
+                        // parameter or use `poly.tvar` with function templates.
+                        let return_types = &[FeltType::new(codegen.context)];
+                        fc.append_op_unnamed_result(
+                            function::call(&builder, location, id, vals, return_types)?.into(),
+                        )
+                    })
+                }
             }
             Expression::BusCall { meta, id, args } => {
                 todo!("Handle BusCall expression in template")

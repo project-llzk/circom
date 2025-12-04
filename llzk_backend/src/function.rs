@@ -292,15 +292,16 @@ where
 /// replaced with actual values when visiting Assignment statements.
 impl Drop for FunctionContext<'_, '_, '_, '_> {
     fn drop(&mut self) {
-        self.func.walk(WalkOrder::PreOrder, |op| {
-            if llzk::dialect::undef::is_undef_op(op) {
-                let mut op_ref_mut = unsafe { OperationRefMut::from_raw(op.to_raw()) };
-                OperationMutLike::remove_from_parent(op_ref_mut.deref_mut());
-                WalkResult::Skip
-            } else {
-                WalkResult::Advance
-            }
-        });
+        // Commented out so I can see the undefs while working
+        //self.func.walk(WalkOrder::PreOrder, |op| {
+        //    if llzk::dialect::undef::is_undef_op(op) {
+        //        let mut op_ref_mut = unsafe { OperationRefMut::from_raw(op.to_raw()) };
+        //        OperationMutLike::remove_from_parent(op_ref_mut.deref_mut());
+        //        WalkResult::Skip
+        //    } else {
+        //        WalkResult::Advance
+        //    }
+        //});
     }
 }
 

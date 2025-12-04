@@ -4,7 +4,7 @@
 
 pragma circom 2.0.0;
 
-template Nop() {
+template Nop(n) {
     signal input i;
     signal output o;
 }
@@ -12,12 +12,12 @@ template Nop() {
 template SubCmp() {
     signal input i;
     signal output o;
-    component n = Nop();
-//    n.i <== i;
-//    o <== n.o;
+    component n = Nop(1);
+    //n.i <== i;
+    //o <== n.o;
 }
 
 component main = SubCmp();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
-// CHECK:     struct.field @n : !struct.type<@Nop<[]>>
+// CHECK:     struct.field @n : !struct.type<@Nop<[1]>>
