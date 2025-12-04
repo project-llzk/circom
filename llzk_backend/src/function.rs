@@ -1,6 +1,6 @@
 #![allow(unused_variables)] // TODO: TEMP
 use crate::shared::{new_felt_const_op, single_result_as_value, IsA, LlzkCodegen};
-use anyhow::{anyhow, Ok, Result};
+use anyhow::{anyhow, bail, Ok, Result};
 use llzk::prelude::{bool, felt, function, FeltType, FuncDefOp, FuncDefOpRefMut, OperationMutLike};
 use melior::ir::{
     operation::{OperationLike as _, OperationRefMut, WalkOrder, WalkResult},
@@ -141,6 +141,28 @@ where
     pub fn append_op_named_result(&mut self, op: Operation<'ctx>, name: String) {
         let v = self.append_op_unnamed_result(op).expect("Expected op to produce a single result");
         self.name_to_value.insert(name, v);
+    }
+
+    /// Returns the self [`Value`] from the compute function.
+    ///
+    /// # Errors
+    /// Fails if this context is not in a compute function.
+    pub fn get_self_from_compute(&self) -> Result<Value<'ctx, 'val>> {
+        // Temporary workaround
+        if !unsafe { llzk_sys::llzkFuncDefOpGetIsStructCompute(self.func.to_raw()) } {
+            bail!("Attempted to get self from the compute function but function is not compute.");
+        }
+        Ok(unsafe {
+            Value::from_raw(llzk_sys::llzkFuncDefOpGetSelfValueFromCompute(self.func.to_raw()))
+        })
+    }
+
+    /// Returns the self [`Value`] from the constrain function.
+    ///
+    /// # Errors
+    /// Fails if this context is not in a constrain function.
+    pub fn get_self_from_constrain(&self) -> Result<Value<'ctx, 'val>> {
+        todo!("needs llzkCallOpGetSelfValueFromConstrain() Rust wrapper")
     }
 
     /// Generate LLZK code in the current function for a prefix operation.

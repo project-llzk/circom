@@ -860,6 +860,7 @@ dependencies = [
  "ansi_term",
  "anyhow",
  "llzk",
+ "llzk-sys",
  "melior",
  "melior-macro",
  "mlir-sys",

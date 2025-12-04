@@ -32,7 +32,10 @@ use program_structure::{
     program_archive::ProgramArchive,
     template_data::TemplateData,
 };
-use std::{collections::HashMap, convert::TryFrom};
+use std::{
+    collections::{HashMap, HashSet},
+    convert::TryFrom,
+};
 
 /// Information needed to create an LLZK struct function parameter collected from the input signal
 /// Declaration statements within a circom template.
@@ -96,6 +99,14 @@ struct SubcmpDeclInfo<'ctx> {
 /// Newtype for implementing Hash in StructType.
 struct ST<'ctx>(StructType<'ctx>);
 
+impl PartialEq for ST<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.to_raw().ptr == other.0.to_raw().ptr
+    }
+}
+
+impl Eq for ST<'_> {}
+
 impl std::hash::Hash for ST<'_> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.0.to_raw().ptr.hash(state);
@@ -124,12 +135,31 @@ impl<'ctx> DeclarationInfo<'ctx> {
     fn complete(&mut self) {
         for (name, info) in &self.subcmp_decls {
             let instances =
-                info.instances.iter().map(|(a, t)| (a.as_slice(), ST(*t))).collect::<Vec<_>>();
+                info.instances.iter().map(|(a, t)| (a.as_slice(), *t)).collect::<Vec<_>>();
             match instances.as_slice() {
-                [([], ST(t))] => self
+                [] => todo!("Handle uninitialized component decl"),
+                [([], t)] => self
                     .struct_fields
                     .push(r#struct::field(info.location, name, *t, false, false).map(Into::into)),
-                _ => todo!("Handle array subcomponents"),
+                instances => {
+                    let types = instances.iter().map(|(_, t)| ST(*t)).collect::<HashSet<_>>();
+                    if types.len() > 1 {
+                        todo!("Handle array subcomponents")
+                    }
+                    self.struct_fields.push(
+                        r#struct::field(
+                            info.location,
+                            name,
+                            ArrayType::new(
+                                types.into_iter().next().unwrap().0.into(),
+                                &info.dimensions,
+                            ),
+                            false,
+                            false,
+                        )
+                        .map(Into::into),
+                    )
+                }
             }
         }
     }
@@ -223,8 +253,8 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 self.subcmp_decls.entry(var.clone()).and_modify(|info| {
                     double_assign = info.instances.insert(access, struct_type).is_some();
                 });
-                /// Only emit the double assignment error if the access path was direct.
-                /// To avoid reporting cases like `a[n]`.
+                // Only emit the double assignment error if the access path was direct.
+                // To avoid reporting cases like `a[n]`.
                 if double_assign && direct_access {
                     let err_msg = format!("Component {var} assigned twice",);
                     codegen.emit_circom_error(

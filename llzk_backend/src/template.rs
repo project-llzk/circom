@@ -11,7 +11,7 @@ use llzk::{
 };
 use melior::ir::Value;
 use program_structure::{
-    ast::{AssignOp, Expression, Statement, TypeReduction},
+    ast::{Access, AssignOp, Expression, Meta, Statement, TypeReduction},
     error_code::ReportCode,
 };
 use std::{cell::RefCell, ops::Deref, rc::Rc};
@@ -461,11 +461,11 @@ where
                 }
             }
             Statement::Substitution { meta, var, access, op, rhe } => {
-                if access.is_empty() {
-                    // Since there's no simple assignment in LLZK, just update the mapped Value
-                    // which essentially propagates the assignment.
-                    match op {
-                        AssignOp::AssignVar => {
+                // Since there's no simple assignment in LLZK, just update the mapped Value
+                // which essentially propagates the assignment.
+                match op {
+                    AssignOp::AssignVar => {
+                        if access.is_empty() {
                             // Note: Typed underscore binding shows we're not dropping a Result.
                             let _: () = rhe
                                 .gen_llzk_in_template(codegen, template)?
@@ -473,8 +473,12 @@ where
                                     fc.name_to_value.insert(var.clone(), *val);
                                     Ok(())
                                 })?;
+                        } else {
+                            todo!("Generate array write operation in template");
                         }
-                        AssignOp::AssignSignal => {
+                    }
+                    AssignOp::AssignSignal => {
+                        if access.is_empty() {
                             // The `<--` operator is witness generation only so this should not
                             // generate any code in the constrain function.
                             let template = template.compute_only();
@@ -486,58 +490,71 @@ where
                                     fc.append_op_no_result(
                                         r#struct::writef(
                                             codegen.location_from_meta(meta),
-                                            todo!("needs llzkCallOpGetSelfValueFromCompute() Rust wrapper"),
+                                            fc.get_self_from_compute()?,
                                             var,
                                             *val,
                                         )?
                                         .into(),
                                     )
                                 })?;
-                        }
-                        AssignOp::AssignConstraintSignal => {
-                            let _: () = rhe.gen_llzk_in_template(codegen, template)?.and_then(
-                                codegen,
-                                |fc, val| {
-                                    // Write value to field of "self" struct.
-                                    fc.append_op_no_result(
-                                        r#struct::writef(
-                                            codegen.location_from_meta(meta),
-                                            todo!("needs llzkCallOpGetSelfValueFromCompute() Rust wrapper"),
-                                            var,
-                                            *val,
-                                        )?
-                                        .into(),
-                                    )
-                                },
-                                |fc, val| {
-                                    // Read value of field from "self" struct and generate
-                                    // equality constraint with 'val'.
-                                    let builder = OpBuilder::new(codegen.context.deref());
-                                    let felt_type = FeltType::new(codegen.context).into();
-                                    let val_from_read = fc.append_op_unnamed_result(
-                                        r#struct::readf(
-                                            &builder,
-                                            codegen.location_from_meta(meta),
-                                            felt_type,
-                                            todo!("needs llzkCallOpGetSelfValueFromConstrain() Rust wrapper"),
-                                            var,
-                                        )?
-                                        .into(),
-                                    )?;
-                                    fc.append_op_no_result(
-                                        constrain::eq(
-                                            codegen.location_from_meta(meta),
-                                            val_from_read,
-                                            *val,
-                                        )
-                                        .into(),
-                                    )
-                                },
-                            )?;
+                        } else {
+                            todo!("Generate array write operation in template");
                         }
                     }
-                } else {
-                    todo!("Generate array write operation in template");
+                    AssignOp::AssignConstraintSignal => {
+                        let receiver = template.and_then(
+                            codegen,
+                            |fc, _| {
+                                let self_value = fc.get_self_from_compute()?;
+                                //todo!("needs llzkCallOpGetSelfValueFromCompute() Rust wrapper");
+                                build_access_chain(codegen, meta, fc, self_value, access)
+                            },
+                            |fc, _| {
+                                let self_value = fc.get_self_from_constrain()?;
+                                build_access_chain(codegen, meta, fc, self_value, access)
+                            },
+                        )?;
+
+                        let _: () = rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                            codegen,
+                            |fc, val| {
+                                // Write value to field of "self" struct.
+                                fc.append_op_no_result(
+                                    r#struct::writef(
+                                        codegen.location_from_meta(meta),
+                                        receiver,
+                                        var,
+                                        *val,
+                                    )?
+                                    .into(),
+                                )
+                            },
+                            |fc, val| {
+                                // Read value of field from "self" struct and generate
+                                // equality constraint with 'val'.
+                                let builder = OpBuilder::new(codegen.context.deref());
+                                let felt_type = FeltType::new(codegen.context).into();
+                                let val_from_read = fc.append_op_unnamed_result(
+                                    r#struct::readf(
+                                        &builder,
+                                        codegen.location_from_meta(meta),
+                                        felt_type,
+                                        receiver,
+                                        var,
+                                    )?
+                                    .into(),
+                                )?;
+                                fc.append_op_no_result(
+                                    constrain::eq(
+                                        codegen.location_from_meta(meta),
+                                        val_from_read,
+                                        *val,
+                                    )
+                                    .into(),
+                                )
+                            },
+                        )?;
+                    }
                 }
             }
             Statement::UnderscoreSubstitution { meta, op, rhe } => {
@@ -689,4 +706,29 @@ where
             Expression::Tuple { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
         }
     }
+}
+
+fn build_access_chain<'ctx, 'val, 'func, 'blk>(
+    codegen: &LlzkCodegen<'_, 'ctx>,
+    meta: &Meta,
+    fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    receiver: Value<'ctx, 'val>,
+    chain: &[Access],
+) -> Result<Value<'ctx, 'val>> {
+    let builder = OpBuilder::new(codegen.context);
+    chain.iter().try_fold(receiver, |receiver: Value<'_, '_>, access| match access {
+        Access::ComponentAccess(field) => fc.append_op_unnamed_result(
+            r#struct::readf(
+                &builder,
+                codegen.location_from_meta(meta),
+                FeltType::new(codegen.context).into(),
+                receiver,
+                field,
+            )?
+            .into(),
+        ),
+        Access::ArrayAccess(expression) => {
+            todo!("Generate array write operation in template")
+        }
+    })
 }
