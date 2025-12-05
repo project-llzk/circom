@@ -6,7 +6,10 @@ use crate::{
 use anyhow::{anyhow, Result};
 use llzk::{
     builder::OpBuilder,
-    prelude::{constrain, function, r#struct, FeltType, FlatSymbolRefAttribute, StructDefOpRefMut},
+    prelude::{
+        constrain, function, r#struct, FeltType, FlatSymbolRefAttribute, FuncDefOpLike as _,
+        StructDefOpRefMut,
+    },
 };
 use melior::ir::Value;
 use program_structure::{
@@ -485,7 +488,7 @@ where
                                     fc.append_op_no_result(
                                         r#struct::writef(
                                             codegen.location_from_meta(meta),
-                                            todo!("needs llzkCallOpGetSelfValueFromCompute() Rust wrapper"),
+                                            fc.func.self_value_of_compute()?,
                                             var,
                                             *val,
                                         )?
@@ -501,7 +504,7 @@ where
                                     fc.append_op_no_result(
                                         r#struct::writef(
                                             codegen.location_from_meta(meta),
-                                            todo!("needs llzkCallOpGetSelfValueFromCompute() Rust wrapper"),
+                                            fc.func.self_value_of_compute()?,
                                             var,
                                             *val,
                                         )?
@@ -518,7 +521,7 @@ where
                                             &builder,
                                             codegen.location_from_meta(meta),
                                             felt_type,
-                                            todo!("needs llzkCallOpGetSelfValueFromConstrain() Rust wrapper"),
+                                            fc.func.self_value_of_constrain()?,
                                             var,
                                         )?
                                         .into(),
