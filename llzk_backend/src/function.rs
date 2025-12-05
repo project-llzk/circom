@@ -1,10 +1,14 @@
 #![allow(unused_variables)] // TODO: TEMP
-use crate::shared::{new_felt_const_op, single_result_as_value, IsA, LlzkCodegen};
+use crate::shared::{self, new_felt_const_op, single_result_as_value, IsA, LlzkCodegen};
 use anyhow::{anyhow, Ok, Result};
 use llzk::prelude::{bool, felt, function, FeltType, FuncDefOp, FuncDefOpRefMut, OperationMutLike};
-use melior::ir::{
-    operation::{OperationLike as _, OperationRefMut, WalkOrder, WalkResult},
-    BlockLike as _, BlockRef, Operation, OperationRef, RegionLike as _, Value, ValueLike as _,
+use melior::{
+    dialect::{arith, index},
+    ir::{
+        operation::{OperationLike as _, OperationRefMut, WalkOrder, WalkResult},
+        BlockLike as _, BlockRef, Operation, OperationRef, RegionLike as _, Type, Value,
+        ValueLike as _,
+    },
 };
 use program_structure::{
     ast::{
@@ -179,6 +183,24 @@ where
         Err(anyhow!(err_msg))
     }
 
+    /// If both operands have types that match the respective filter predicates, generate the
+    /// operation using the provided generator function and return the result, otherwise None.
+    #[inline]
+    fn gen_infix_op_if_types_are(
+        &mut self,
+        lhs_type_filter: impl FnOnce(Type) -> bool,
+        rhs_type_filter: impl FnOnce(Type) -> bool,
+        lhs: Value<'ctx, 'val>,
+        rhs: Value<'ctx, 'val>,
+        op_gen_fn: impl FnOnce() -> Result<Operation<'ctx>>,
+    ) -> Result<Option<Value<'ctx, 'val>>> {
+        if lhs_type_filter(lhs.r#type()) && rhs_type_filter(rhs.r#type()) {
+            self.append_op_unnamed_result(op_gen_fn()?).map(Option::Some)
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Generate LLZK code in the current function for an infix operation.
     pub fn gen_infix_op<'ast>(
         &mut self,
@@ -188,40 +210,89 @@ where
         lhs: Value<'ctx, 'val>,
         rhs: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
+        // Macro to handle the common pattern for felt and index type checks.
+        // For index operations that use felt:: module and simple index operations.
+        macro_rules! try_felt_index_op {
+            ($felt_op:ident, $index_op:ident) => {{
+                if let Some(result) = self.gen_infix_op_if_types_are(
+                    shared::is_felt,
+                    shared::is_felt,
+                    lhs,
+                    rhs,
+                    || {
+                        let loc = codegen.location_from_meta(meta);
+                        felt::$felt_op(loc, lhs, rhs).map_err(Into::into)
+                    },
+                )? {
+                    return Ok(result);
+                }
+                if let Some(result) = self.gen_infix_op_if_types_are(
+                    shared::is_index,
+                    shared::is_index,
+                    lhs,
+                    rhs,
+                    || {
+                        let loc = codegen.location_from_meta(meta);
+                        Ok(index::$index_op(lhs, rhs, loc))
+                    },
+                )? {
+                    return Ok(result);
+                }
+            }};
+        }
+
+        // Macro to handle the common pattern for felt and index type checks.
+        // For comparison operations that use bool:: module and index::cmpi.
+        macro_rules! try_bool_cmp_op {
+            ($bool_op:ident, $cmp:ident) => {{
+                if let Some(result) = self.gen_infix_op_if_types_are(
+                    shared::is_felt,
+                    shared::is_felt,
+                    lhs,
+                    rhs,
+                    || {
+                        let loc = codegen.location_from_meta(meta);
+                        bool::$bool_op(loc, lhs, rhs).map_err(Into::into)
+                    },
+                )? {
+                    return Ok(result);
+                }
+                if let Some(result) = self.gen_infix_op_if_types_are(
+                    shared::is_index,
+                    shared::is_index,
+                    lhs,
+                    rhs,
+                    || {
+                        let loc = codegen.location_from_meta(meta);
+                        Ok(index::cmp(codegen.context, arith::CmpiPredicate::$cmp, lhs, rhs, loc))
+                    },
+                )? {
+                    return Ok(result);
+                }
+            }};
+        }
+
         match op {
+            ExpressionInfixOpcode::Add => {
+                try_felt_index_op!(add, add);
+            }
+            ExpressionInfixOpcode::Sub => {
+                try_felt_index_op!(sub, sub);
+            }
             ExpressionInfixOpcode::Mul => {
-                todo!("Handle Mul infix op")
+                try_felt_index_op!(mul, mul);
             }
             ExpressionInfixOpcode::Div => {
                 todo!("Handle Div infix op")
-            }
-            ExpressionInfixOpcode::Add => {
-                if lhs.r#type().isa::<FeltType>() && rhs.r#type().isa::<FeltType>() {
-                    return self.append_op_unnamed_result(felt::add(
-                        codegen.location_from_meta(meta),
-                        lhs,
-                        rhs,
-                    )?);
-                }
-                // TODO: this can also handle MLIR `index` type operands but otherwise should
-                // fall through to the error case.
-                todo!(
-                    "Handle Add infix op with LHS type '{}' and RHS type '{}'",
-                    lhs.r#type(),
-                    rhs.r#type()
-                );
-            }
-            ExpressionInfixOpcode::Sub => {
-                todo!("Handle Sub infix op")
-            }
-            ExpressionInfixOpcode::Pow => {
-                todo!("Handle Pow infix op")
             }
             ExpressionInfixOpcode::IntDiv => {
                 todo!("Handle IntDiv infix op")
             }
             ExpressionInfixOpcode::Mod => {
-                todo!("Handle Mod infix op")
+                try_felt_index_op!(r#mod, remu);
+            }
+            ExpressionInfixOpcode::Pow => {
+                todo!("Handle Pow infix op")
             }
             ExpressionInfixOpcode::ShiftL => {
                 todo!("Handle ShiftL infix op")
@@ -230,35 +301,22 @@ where
                 todo!("Handle ShiftR infix op")
             }
             ExpressionInfixOpcode::LesserEq => {
-                todo!("Handle LesserEq infix op")
+                try_bool_cmp_op!(le, Ule);
             }
             ExpressionInfixOpcode::GreaterEq => {
-                todo!("Handle GreaterEq infix op")
+                try_bool_cmp_op!(ge, Uge);
             }
             ExpressionInfixOpcode::Lesser => {
-                if lhs.r#type().isa::<FeltType>() && rhs.r#type().isa::<FeltType>() {
-                    return self.append_op_unnamed_result(bool::lt(
-                        codegen.location_from_meta(meta),
-                        lhs,
-                        rhs,
-                    )?);
-                }
-                // TODO: this can also handle MLIR `index` type operands but otherwise should
-                // fall through to the error case.
-                todo!(
-                    "Handle Lesser infix op with LHS type '{}' and RHS type '{}'",
-                    lhs.r#type(),
-                    rhs.r#type()
-                );
+                try_bool_cmp_op!(lt, Ult);
             }
             ExpressionInfixOpcode::Greater => {
-                todo!("Handle Greater infix op")
+                try_bool_cmp_op!(gt, Ugt);
             }
             ExpressionInfixOpcode::Eq => {
-                todo!("Handle Eq infix op")
+                try_bool_cmp_op!(eq, Eq);
             }
             ExpressionInfixOpcode::NotEq => {
-                todo!("Handle NotEq infix op")
+                try_bool_cmp_op!(ne, Ne);
             }
             ExpressionInfixOpcode::BoolOr => {
                 todo!("Handle BoolOr infix op")
@@ -267,13 +325,13 @@ where
                 todo!("Handle BoolAnd infix op")
             }
             ExpressionInfixOpcode::BitOr => {
-                todo!("Handle BitOr infix op")
+                try_felt_index_op!(bit_or, or);
             }
             ExpressionInfixOpcode::BitAnd => {
-                todo!("Handle BitAnd infix op")
+                try_felt_index_op!(bit_and, and);
             }
             ExpressionInfixOpcode::BitXor => {
-                todo!("Handle BitXor infix op")
+                try_felt_index_op!(bit_xor, xor);
             }
         }
         let err_msg = format!(

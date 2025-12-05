@@ -7,7 +7,8 @@ use llzk::prelude::{
 };
 use melior::{
     ir::{
-        operation::OperationLike as _, BlockLike, Location, Module, Operation, OperationRef, Value,
+        operation::OperationLike as _, BlockLike, Location, Module, Operation, OperationRef, Type,
+        TypeLike, Value,
     },
     pass, utility,
 };
@@ -211,3 +212,15 @@ pub trait IsA: Sized {
     }
 }
 impl<T> IsA for T {}
+
+/// Return `true` iff the given Type is an `IndexType`.
+#[inline]
+pub fn is_index(t: Type) -> bool {
+    t.is_index()
+}
+
+/// Return `true` iff the given Type is a `FeltType`.
+#[inline]
+pub fn is_felt(t: Type) -> bool {
+    t.isa::<llzk::prelude::FeltType>()
+}
