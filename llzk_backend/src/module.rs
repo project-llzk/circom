@@ -294,9 +294,17 @@ impl<'ctx> GenerateLLZKInModule<'ctx> for TemplateData {
             r#struct::def(struct_loc, self.get_name(), &struct_params, declarations.struct_fields)?;
         let new_struct = codegen.add_struct(struct_def)?;
 
+        // Consume and separate 'declarations.inputs' (to avoid cloning 'attrs' and 'name').
+        let (inputs, arg_attrs, arg_names) = declarations.inputs.into_iter().fold(
+            (Vec::new(), Vec::new(), Vec::new()),
+            |(mut inputs, mut attrs, mut names), v| {
+                inputs.push(v.type_and_loc);
+                attrs.push(v.attrs);
+                names.push(v.name);
+                (inputs, attrs, names)
+            },
+        );
         // Generate the compute and constrain functions.
-        let inputs: Vec<_> = declarations.inputs.iter().map(|v| v.type_and_loc).collect();
-        let arg_attrs: Vec<_> = declarations.inputs.iter().map(|v| v.attrs.clone()).collect();
         let new_struct_type = new_struct.r#type();
         let struct_body = new_struct.body();
         let compute_func = FuncDefOpRef::try_from(struct_body.append_operation(
@@ -311,9 +319,9 @@ impl<'ctx> GenerateLLZKInModule<'ctx> for TemplateData {
         // Map parameter Values of each LLZK function to the corresponding circom variable names and
         // then create the FunctionContext for each function. Before creating the FunctionContext
         // for constrain, add a dummy name at index 0 since the first parameter is the struct ref.
-        let mut arg_names: Vec<_> = declarations.inputs.iter().map(|i| i.name.clone()).collect();
         let mut compute_ctx =
             FunctionContext::new(compute_func, map_name_to_arg_value(compute_func, &arg_names)?)?;
+        let mut arg_names = arg_names;
         arg_names.insert(0, "**self**".to_string());
         let mut constrain_ctx = FunctionContext::new(
             constrain_func,
