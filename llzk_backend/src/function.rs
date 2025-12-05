@@ -96,7 +96,7 @@ where
     'blk: 'val,
 {
     /// The function reference.
-    func: FuncDefOpRefMut<'ctx, 'func>,
+    pub(crate) func: FuncDefOpRefMut<'ctx, 'func>,
     /// Nested block context within the function.
     block_ctx: BlockContextStack<'ctx, 'blk>,
     /// Local name mapped to the SSA Value with that name. Initialized with function
