@@ -6,7 +6,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use llzk::{
     builder::OpBuilder,
-    prelude::{constrain, function, r#struct, FeltType, StructDefOpRefMut},
+    prelude::{constrain, function, r#struct, FeltType, FlatSymbolRefAttribute, StructDefOpRefMut},
 };
 use melior::ir::Value;
 use program_structure::{
@@ -668,7 +668,7 @@ where
                         function::call(
                             &builder,
                             codegen.location_from_meta(meta),
-                            id,
+                            FlatSymbolRefAttribute::new(codegen.context, id),
                             vals,
                             return_types,
                         )?
