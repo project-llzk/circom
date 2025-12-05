@@ -19,8 +19,8 @@ use llzk::{
     },
 };
 use melior::ir::{
-    operation::OperationLike as _, Attribute, Block, BlockLike as _, Identifier, Location,
-    Operation, RegionLike, Type,
+    operation::OperationLike as _, Attribute, Block, BlockLike as _, Location, Operation,
+    RegionLike, Type,
 };
 use num_traits::cast::ToPrimitive;
 use program_structure::{
@@ -141,7 +141,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
             // self.func_inputs.push((decl_type, location));
             let mut attrs: Vec<NamedAttribute<'_>> = Vec::new();
             if codegen.program_archive.get_public_inputs_main_component().contains(name) {
-                attrs.push(PublicAttribute::named_attr(codegen.context));
+                attrs.push(PublicAttribute::named_attr_pair(codegen.context));
             }
             self.inputs.push(InputSignalInfo {
                 name: name.clone(),
