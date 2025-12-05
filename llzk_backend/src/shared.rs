@@ -97,8 +97,8 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         manager.enable_verifier(true);
         utility::register_all_passes();
         utility::parse_pass_pipeline(manager.as_operation_pass_manager(), pass_pipeline)
-            .map_err(|e| anyhow!(e))?;
-        manager.run(&mut self.module).map_err(|e| anyhow!(e))
+            .map_err(anyhow::Error::from)?;
+        manager.run(&mut self.module).map_err(Into::into)
     }
 
     /// Verify the generated `Module`.
@@ -111,9 +111,9 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         let out_path = Path::new(filename);
         // Ensure parent directories exist
         if let Some(parent) = out_path.parent() {
-            fs::create_dir_all(parent).map_err(|e| anyhow!(e))?;
+            fs::create_dir_all(parent).map_err(anyhow::Error::from)?;
         }
-        File::create(out_path).map_err(|e| anyhow!(e))
+        File::create(out_path).map_err(Into::into)
     }
 
     /// Write the generated `Module` to a file in LLZK IR assembly format.
@@ -163,7 +163,7 @@ pub fn new_felt_const_op<'ctx>(
         u32::try_from(from.bits())? + 1,
         from.to_string().as_str(),
     );
-    felt::constant(codegen.location_from_meta(meta), attr).map_err(|e| anyhow!(e))
+    felt::constant(codegen.location_from_meta(meta), attr).map_err(Into::into)
 }
 
 /// Extract the single result Value from an OperationRef. Returns an `Err` result if the operation
@@ -181,7 +181,7 @@ pub fn single_result_as_value<'ctx, 'val>(
             op.result_count()
         ));
     }
-    op.result(0).map(Value::from).map_err(|e| anyhow!(e))
+    op.result(0).map(Value::from).map_err(Into::into)
 }
 
 /// Create a map of circom variable names (either function arguments or template input signals) to
@@ -198,7 +198,7 @@ pub fn map_name_to_arg_value<'ctx, 'val>(
         .iter()
         .enumerate()
         .map(|(i, name)| {
-            func.deref().argument(i).map(|x| (name.clone(), Value::from(x))).map_err(|e| anyhow!(e))
+            func.deref().argument(i).map(|x| (name.clone(), Value::from(x))).map_err(Into::into)
         })
         .collect::<Result<HashMap<_, _>, _>>()
 }
