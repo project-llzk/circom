@@ -6,6 +6,7 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use llzk::{
+    attributes::NamedAttribute,
     error::Error,
     prelude::{
         function,
@@ -40,7 +41,7 @@ struct InputSignalInfo<'ctx> {
     /// Type+Location information for the function parameter.
     type_and_loc: (Type<'ctx>, Location<'ctx>),
     /// Named Attributes for the function parameter.
-    attrs: Vec<(Identifier<'ctx>, Attribute<'ctx>)>,
+    attrs: Vec<NamedAttribute<'ctx>>,
 }
 
 /// Information collected from Declaration statements within a template that is used to setup LLZK
@@ -138,9 +139,9 @@ impl<'ctx> DeclarationInfo<'ctx> {
         let decl_type = Self::type_with_dimensions(codegen, base_type, dimensions)?;
         if SignalType::Input == *signal_type {
             // self.func_inputs.push((decl_type, location));
-            let mut attrs = Vec::new();
+            let mut attrs: Vec<NamedAttribute<'_>> = Vec::new();
             if codegen.program_archive.get_public_inputs_main_component().contains(name) {
-                attrs.push(PublicAttribute::named_attr_pair(codegen.context));
+                attrs.push(PublicAttribute::named_attr(codegen.context));
             }
             self.inputs.push(InputSignalInfo {
                 name: name.clone(),
@@ -295,7 +296,7 @@ impl<'ctx> GenerateLLZKInModule<'ctx> for TemplateData {
 
         // Generate the compute and constrain functions.
         let inputs: Vec<_> = declarations.inputs.iter().map(|v| v.type_and_loc).collect();
-        let arg_attrs: Vec<_> = declarations.inputs.iter().map(|v| v.attrs.as_slice()).collect();
+        let arg_attrs: Vec<_> = declarations.inputs.iter().map(|v| v.attrs.clone()).collect();
         let new_struct_type = new_struct.r#type();
         let struct_body = new_struct.body();
         let compute_func = FuncDefOpRef::try_from(struct_body.append_operation(
