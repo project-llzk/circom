@@ -141,7 +141,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
             // self.func_inputs.push((decl_type, location));
             let mut attrs: Vec<NamedAttribute<'_>> = Vec::new();
             if codegen.program_archive.get_public_inputs_main_component().contains(name) {
-                attrs.push(PublicAttribute::named_attr_pair(codegen.context));
+                attrs.push(PublicAttribute::new_named_attr(codegen.context));
             }
             self.inputs.push(InputSignalInfo {
                 name: name.clone(),
