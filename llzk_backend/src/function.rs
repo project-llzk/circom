@@ -480,7 +480,8 @@ where
             Statement::Return { meta, value } => {
                 let value = value.gen_llzk_in_function(codegen, function)?;
                 let location = codegen.location_from_meta(meta);
-                function.block_ctx.append_current(function::r#return(location, &[value]));
+                // Note: Typed underscore binding shows we're not dropping a Result.
+                let _: () = function.append_op_no_result(function::r#return(location, &[value]))?;
             }
             Statement::Assert { meta, arg } => {
                 let value = arg.gen_llzk_in_function(codegen, function)?;
