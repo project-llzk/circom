@@ -483,7 +483,14 @@ where
                 function.block_ctx.append_current(function::r#return(location, &[value]));
             }
             Statement::Assert { meta, arg } => {
-                todo!("Handle assert statement in function")
+                let value = arg.gen_llzk_in_function(codegen, function)?;
+                let location = codegen.location_from_meta(meta);
+                // Note: Typed underscore binding shows we're not dropping a Result.
+                let _: () = function.append_op_no_result(llzk::dialect::bool::assert(
+                    location,
+                    value,
+                    Some("assertion failed"),
+                )?)?;
             }
             Statement::LogCall { meta, .. } => {
                 codegen.emit_circom_warning(
