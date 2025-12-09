@@ -425,6 +425,41 @@ where
 }
 
 impl<'ctx, 'str, 'func, 'blk, 'val> GenerateLLZKInTemplate<'ctx, 'str, 'func, 'blk, 'val>
+    for [Statement]
+where
+    'ctx: 'str,
+    'str: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    type Output<'r>
+        = ()
+    where
+        'val: 'r;
+
+    fn gen_llzk_in_template<'ast, 'r>(
+        &'ast self,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+    ) -> Result<Self::Output<'r>>
+    where
+        'val: 'r,
+    {
+        for s in self {
+            s.gen_llzk_in_template(codegen, template)?;
+            // circom allows unreachable code after a return but it is not processed
+            // (e.g. `assert(1 == 0)` after a return does not cause an error as it normally
+            // would) so replicate the same behavior here by stopping processing after a
+            // return (which is also what MLIR expects, no code after a terminator op).
+            if matches!(s, Statement::Return { .. }) {
+                break;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<'ctx, 'str, 'func, 'blk, 'val> GenerateLLZKInTemplate<'ctx, 'str, 'func, 'blk, 'val>
     for Statement
 where
     'ctx: 'str,
@@ -447,9 +482,7 @@ where
     {
         match self {
             Statement::InitializationBlock { initializations, .. } => {
-                for init in initializations {
-                    init.gen_llzk_in_template(codegen, template)?;
-                }
+                let _: () = initializations.gen_llzk_in_template(codegen, template)?;
             }
             Statement::Declaration { meta, xtype, name, dimensions, .. } => {
                 // TODO: we've already handled declarations to create struct fields and function
@@ -458,9 +491,7 @@ where
                 println!("TODO: anything else to do with declaration? {name} of type {xtype:?}");
             }
             Statement::Block { stmts, .. } => {
-                for s in stmts {
-                    s.gen_llzk_in_template(codegen, template)?;
-                }
+                let _: () = stmts.gen_llzk_in_template(codegen, template)?;
             }
             Statement::Substitution { meta, var, access, op, rhe } => {
                 if access.is_empty() {

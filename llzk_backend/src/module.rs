@@ -271,11 +271,7 @@ impl<'ctx> GenerateLLZKInModule<'ctx> for FunctionData {
 
         // Visit the body of the function and generate LLZK IR for it.
         let mut func_context = FunctionContext::new(func, name_to_value)?;
-        for s in self.get_body_as_vec() {
-            s.gen_llzk_in_function(codegen, &mut func_context)?;
-        }
-
-        Ok(())
+        self.get_body_as_vec().gen_llzk_in_function(codegen, &mut func_context)
     }
 }
 
@@ -338,10 +334,6 @@ impl<'ctx> GenerateLLZKInModule<'ctx> for TemplateData {
 
         // Visit the body of the template and generate LLZK IR for it within the struct functions.
         let template_context = TemplateContext::new(new_struct, compute_ctx, constrain_ctx);
-        for s in self.get_body_as_vec() {
-            s.gen_llzk_in_template(codegen, &template_context)?;
-        }
-
-        Ok(())
+        self.get_body_as_vec().gen_llzk_in_template(codegen, &template_context)
     }
 }

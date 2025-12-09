@@ -1,13 +1,15 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
-// XFAIL:.*
 
 pragma circom 2.0.0;
 
 function f(a) {
   return a;
-  // Circom allows this but the second return is unreachable and should be removed (with a warning).
+  // Circom allows code after a return and includes it in the parsed AST but it doesn't
+  // process it further or this statement would cause "error[T3001]: False assert reached."
+  // Thus, any code after the first return in a block should be ignored when generating LLZK.
+  assert(1 == 0);
   return a;
 }
 
@@ -20,3 +22,21 @@ template Foo() {
 component main = Foo();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL:   function.def @f(
+// CHECK-SAME:                    %[[VAL_0:.*]]: !felt.type) -> !felt.type {
+// CHECK-NEXT:      function.return %[[VAL_0]] : !felt.type
+// CHECK-NEXT:    }
+
+// CHECK-LABEL:   struct.def @Foo<[]> {
+// CHECK-LABEL:     function.def @compute
+// CHECK-SAME:      (%[[VAL_0:.*]]: !felt.type) -> !struct.type<@Foo<[]>> attributes {function.allow_witness} {
+// CHECK-NEXT:        %[[VAL_1:.*]] = struct.new : <@Foo<[]>>
+// CHECK-NEXT:        %[[VAL_2:.*]] = function.call @f(%[[VAL_0]]) : (!felt.type) -> !felt.type
+// CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@Foo<[]>>
+// CHECK-NEXT:      }
+// CHECK-LABEL:     function.def @constrain
+// CHECK-SAME:      (%[[VAL_3:.*]]: !struct.type<@Foo<[]>>, %[[VAL_4:.*]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK-NEXT:        function.return
+// CHECK-NEXT:      }
+// CHECK-NEXT:    }
+// CHECK-NEXT:  }
