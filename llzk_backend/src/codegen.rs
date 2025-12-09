@@ -35,8 +35,9 @@ pub fn generate_llzk(
     })?;
 
     // Verify the module
-    if !codegen.verify() {
+    if let Err(err) = codegen.verify() {
         eprintln!("{}", Color::Red.paint("Generated LLZK IR is invalid"));
+        eprintln!("{err}");
         eprintln!("{}", codegen.module.as_operation());
         return Err(());
     }

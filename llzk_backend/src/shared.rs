@@ -2,8 +2,8 @@
 use ansi_term::Color;
 use anyhow::{anyhow, Ok, Result};
 use llzk::prelude::{
-    felt, FeltConstAttribute, FuncDefOp, FuncDefOpLike, FuncDefOpRef, FuncDefOpRefMut, LlzkContext,
-    StructDefOp, StructDefOpRef, StructDefOpRefMut,
+    felt, verify_operation_with_diags, FeltConstAttribute, FuncDefOp, FuncDefOpLike, FuncDefOpRef,
+    FuncDefOpRefMut, LlzkContext, LlzkError, StructDefOp, StructDefOpRef, StructDefOpRefMut,
 };
 use melior::{
     ir::{
@@ -102,8 +102,8 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
     }
 
     /// Verify the generated `Module`.
-    pub fn verify(&self) -> bool {
-        self.module.as_operation().verify()
+    pub fn verify(&self) -> Result<(), LlzkError> {
+        verify_operation_with_diags(&self.module.as_operation())
     }
 
     /// Create file at the given path, ensuring parent directories exist.
