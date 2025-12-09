@@ -482,39 +482,34 @@ where
     {
         match self {
             Statement::InitializationBlock { initializations, .. } => {
-                let _: () = initializations.gen_llzk_in_template(codegen, template)?;
+                initializations.gen_llzk_in_template(codegen, template)
             }
             Statement::Declaration { meta, xtype, name, dimensions, .. } => {
                 // TODO: we've already handled declarations to create struct fields and function
                 // parameters. Is there any reason to visit them again? If not, then
                 // we don't need the InitializationBlock above either.
                 println!("TODO: anything else to do with declaration? {name} of type {xtype:?}");
+                Ok(())
             }
-            Statement::Block { stmts, .. } => {
-                let _: () = stmts.gen_llzk_in_template(codegen, template)?;
-            }
+            Statement::Block { stmts, .. } => stmts.gen_llzk_in_template(codegen, template),
             Statement::Substitution { meta, var, access, op, rhe } => {
                 if access.is_empty() {
                     // Since there's no simple assignment in LLZK, just update the mapped Value
                     // which essentially propagates the assignment.
                     match op {
-                        AssignOp::AssignVar => {
-                            // Note: Typed underscore binding shows we're not dropping a Result.
-                            let _: () = rhe
-                                .gen_llzk_in_template(codegen, template)?
-                                .and_then_same(codegen, |fc, val| {
-                                    fc.name_to_value.insert(var.clone(), *val);
-                                    Ok(())
-                                })?;
-                        }
+                        AssignOp::AssignVar => rhe
+                            .gen_llzk_in_template(codegen, template)?
+                            .and_then_same(codegen, |fc, val| {
+                                fc.name_to_value.insert(var.clone(), *val);
+                                Ok(())
+                            }),
                         AssignOp::AssignSignal => {
                             // The `<--` operator is witness generation only so this should not
                             // generate any code in the constrain function.
                             let template = template.compute_only();
-                            // Note: Typed underscore binding shows we're not dropping a Result.
-                            let _: () = rhe
-                                .gen_llzk_in_template(codegen, &template)?
-                                .and_then_same(codegen, |fc, val| {
+                            rhe.gen_llzk_in_template(codegen, &template)?.and_then_same(
+                                codegen,
+                                |fc, val| {
                                     // Write value to field of "self" struct.
                                     fc.append_op_no_result(
                                         r#struct::writef(
@@ -525,10 +520,11 @@ where
                                         )?
                                         .into(),
                                     )
-                                })?;
+                                },
+                            )
                         }
                         AssignOp::AssignConstraintSignal => {
-                            let _: () = rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                            rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                 codegen,
                                 |fc, val| {
                                     // Write value to field of "self" struct.
@@ -566,7 +562,7 @@ where
                                         .into(),
                                     )
                                 },
-                            )?;
+                            )
                         }
                     }
                 } else {
@@ -578,21 +574,22 @@ where
                 // generate any code in the constrain function.
                 let template =
                     if AssignOp::AssignSignal == *op { &template.compute_only() } else { template };
-                // Just visit and drop the result since the value is unused.
-                // Note: Typed underscore binding shows we're not dropping a Result.
-                let _: ExprGenResultSingle = rhe.gen_llzk_in_template(codegen, template)?;
+                // Just visit and drop the resulting ExprGenResultSingle since the value is unused.
+                rhe.gen_llzk_in_template(codegen, template).map(drop)
             }
             Statement::ConstraintEquality { meta, lhe, rhe } => {
                 // This statement is only relevant to the "@constrain" function.
                 let template = template.constrain_only();
                 // Generate Value for both sides and then generate the constraint op.
-                let _: () = ExprGenResultMulti::gen_exprs(&template, codegen, [lhe, rhe])?
-                    .and_then_same(codegen, |fc, vals| {
+                ExprGenResultMulti::gen_exprs(&template, codegen, [lhe, rhe])?.and_then_same(
+                    codegen,
+                    |fc, vals| {
                         fc.append_op_no_result(
                             constrain::eq(codegen.location_from_meta(meta), vals[0], vals[1])
                                 .into(),
                         )
-                    })?;
+                    },
+                )
             }
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
                 todo!("Handle if-then-else statement in template")
@@ -601,19 +598,16 @@ where
                 todo!("Handle while statement in template")
             }
             Statement::Assert { meta, arg } => {
-                let _: () = arg.gen_llzk_in_template(codegen, template)?.and_then_same(
-                    codegen,
-                    |fc, val| {
-                        fc.append_op_no_result(
-                            llzk::dialect::bool::assert(
-                                codegen.location_from_meta(meta),
-                                *val,
-                                Some("assertion failed"),
-                            )?
-                            .into(),
-                        )
-                    },
-                )?;
+                arg.gen_llzk_in_template(codegen, template)?.and_then_same(codegen, |fc, val| {
+                    fc.append_op_no_result(
+                        llzk::dialect::bool::assert(
+                            codegen.location_from_meta(meta),
+                            *val,
+                            Some("assertion failed"),
+                        )?
+                        .into(),
+                    )
+                })
             }
             Statement::LogCall { meta, .. } => {
                 codegen.emit_circom_warning(
@@ -621,6 +615,7 @@ where
                     "log calls are not currently supported in LLZK",
                     ReportCode::NotAllowedOperation,
                 );
+                Ok(())
             }
             Statement::MultSubstitution { .. } => {
                 unreachable!("removed by 'syntax_sugar_remover'")
@@ -630,7 +625,6 @@ where
                 unreachable!("return statements are not allowed in templates")
             }
         }
-        Ok(())
     }
 }
 
