@@ -388,6 +388,33 @@ where
     ) -> Result<Self::Output>;
 }
 
+impl<'ctx, 'func, 'blk, 'val> GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val> for [Statement]
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    type Output = ();
+
+    fn gen_llzk_in_function<'ast>(
+        &'ast self,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    ) -> Result<Self::Output> {
+        for s in self {
+            s.gen_llzk_in_function(codegen, function)?;
+            // circom allows unreachable code after a return but it is not processed
+            // (e.g. `assert(1 == 0)` after a return does not cause an error as it normally
+            // would) so replicate the same behavior here by stopping processing after a
+            // return (which is also what MLIR expects, no code after a terminator op).
+            if matches!(s, Statement::Return { .. }) {
+                break;
+            }
+        }
+        Ok(())
+    }
+}
+
 impl<'ctx, 'func, 'blk, 'val> GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val> for Statement
 where
     'ctx: 'func,
@@ -407,9 +434,7 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Template elements declared inside the function")
                 }
-                for init in initializations {
-                    init.gen_llzk_in_function(codegen, function)?;
-                }
+                let _: () = initializations.gen_llzk_in_function(codegen, function)?;
             }
             Statement::Declaration { meta, xtype, name, dimensions, .. } => {
                 if VariableType::Var != *xtype {
@@ -420,9 +445,7 @@ where
                 //  need to store some info about the declared dimensions of the var.
             }
             Statement::Block { stmts, .. } => {
-                for s in stmts {
-                    s.gen_llzk_in_function(codegen, function)?;
-                }
+                let _: () = stmts.gen_llzk_in_function(codegen, function)?;
             }
             Statement::Substitution { meta, var, access, op, rhe } => {
                 if op.is_signal_operator() {
