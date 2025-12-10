@@ -18,7 +18,6 @@ use program_structure::{
 };
 use std::{
     collections::HashMap,
-    convert::{TryFrom, TryInto as _},
     ops::{Deref, DerefMut},
 };
 
@@ -29,21 +28,41 @@ use std::{
 ///
 /// 'ctx: lifetime of the `LlzkContext` and generated `Module`
 /// 'blk: lifetime of the generated `Block` instances within functions
+/// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
 #[derive(Debug)]
-pub struct BlockContextStack<'ctx, 'blk>
+pub struct BlockContextStack<'ctx, 'blk, 'val>
 where
     'ctx: 'blk,
+    'blk: 'val,
 {
     /// The function entry block.
-    initial_block: BlockRef<'ctx, 'blk>,
+    root_block: BlockRef<'ctx, 'blk>,
     /// Additional nesting of blocks within the function representing the current insertion point.
     other_blocks: Vec<BlockRef<'ctx, 'blk>>,
+    /// Maps circom var name to the LLZK SSA Value for that named value. Initialized with function
+    /// parameters and extended with any variable-to-variable assignments found.
+    ///
+    /// TODO: extend this to store a map for each level and then search appropriately up the stack
+    /// and merge when popping, etc.
+    name_to_value: HashMap<String, Value<'ctx, 'val>>,
 }
 
-impl<'ctx, 'blk> BlockContextStack<'ctx, 'blk>
+impl<'ctx, 'blk, 'val> BlockContextStack<'ctx, 'blk, 'val>
 where
     'ctx: 'blk,
+    'blk: 'val,
 {
+    /// Create a new [BlockContextStack] for the given function with an initial name-to-value
+    /// mapping containing function parameters.
+    pub fn new(
+        func: &FuncDefOp<'ctx>,
+        name_to_value: HashMap<String, Value<'ctx, 'val>>,
+    ) -> Result<Self> {
+        let root_block =
+            func.region(0)?.first_block().ok_or_else(|| anyhow!("missing function entry block"))?;
+        Ok(BlockContextStack { root_block, other_blocks: Default::default(), name_to_value })
+    }
+
     /// Push a new block onto the stack to make it the current block.
     pub fn push(&mut self, item: BlockRef<'ctx, 'blk>) {
         self.other_blocks.push(item);
@@ -57,13 +76,16 @@ where
     /// Append an operation to the current block (i.e. the top of the stack).
     ///
     /// 'op: lifetime of the `Operation` instance for the reference returned
-    pub fn append_current<'op>(&mut self, operation: Operation<'ctx>) -> OperationRef<'ctx, 'op>
+    pub fn append_current_block<'op>(
+        &mut self,
+        operation: Operation<'ctx>,
+    ) -> OperationRef<'ctx, 'op>
     where
         'blk: 'op,
     {
         let current = match self.other_blocks.last() {
             Some(block) => block,
-            None => &self.initial_block,
+            None => &self.root_block,
         };
         // Account for possible terminator in the current block. For example, the `compute_fn()`
         // and `constrain_fn()` helpers automatically add a return op at the end of the block
@@ -73,16 +95,15 @@ where
             None => current.append_operation(operation),
         }
     }
-}
 
-impl<'ctx> TryFrom<&FuncDefOp<'ctx>> for BlockContextStack<'ctx, '_> {
-    type Error = anyhow::Error;
+    /// TODO: doc
+    pub fn set_named_value(&mut self, name: String, value: Value<'ctx, 'val>) {
+        self.name_to_value.insert(name, value);
+    }
 
-    /// Create a BlockContextStack starting with the function entry block.
-    fn try_from(func: &FuncDefOp<'ctx>) -> Result<Self, Self::Error> {
-        let initial_block =
-            func.region(0)?.first_block().ok_or_else(|| anyhow!("missing function entry block"))?;
-        Ok(BlockContextStack { initial_block, other_blocks: Default::default() })
+    /// TODO: doc
+    pub fn get_named_value(&self, name: &str) -> Option<&Value<'ctx, 'val>> {
+        self.name_to_value.get(name)
     }
 }
 
@@ -102,10 +123,7 @@ where
     /// The function reference.
     pub(crate) func: FuncDefOpRefMut<'ctx, 'func>,
     /// Nested block context within the function.
-    block_ctx: BlockContextStack<'ctx, 'blk>,
-    /// Local name mapped to the SSA Value with that name. Initialized with function
-    /// parameters and extended with any variable-to-variable assignments found.
-    pub(crate) name_to_value: HashMap<String, Value<'ctx, 'val>>,
+    pub(crate) block_ctx: BlockContextStack<'ctx, 'blk, 'val>,
 }
 
 impl<'ctx, 'func, 'blk, 'val> FunctionContext<'ctx, 'func, 'blk, 'val>
@@ -114,17 +132,17 @@ where
     'func: 'blk,
     'blk: 'val,
 {
-    /// Create a new [FunctionContext] for the given function and name-to-value map.
+    /// Create a new [FunctionContext] for the given function with an initial name-to-value mapping.
     pub fn new(
         func: FuncDefOpRefMut<'ctx, 'func>,
         name_to_value: HashMap<String, Value<'ctx, 'val>>,
     ) -> Result<Self> {
-        Ok(Self { func, block_ctx: func.deref().try_into()?, name_to_value })
+        Ok(Self { func, block_ctx: BlockContextStack::new(func.deref(), name_to_value)? })
     }
 
     /// Append an operation that must produce no results.
     pub fn append_op_no_result(&mut self, op: Operation<'ctx>) -> Result<()> {
-        let op_ref = self.block_ctx.append_current(op);
+        let op_ref = self.block_ctx.append_current_block(op);
         if op_ref.result_count() != 0 {
             return Err(anyhow!(
                 "Expected operation to have no results, found {}",
@@ -137,14 +155,27 @@ where
     /// Append an operation that must produce a single result and is NOT associated with a variable
     /// name in the circom code.
     pub fn append_op_unnamed_result(&mut self, op: Operation<'ctx>) -> Result<Value<'ctx, 'val>> {
-        single_result_as_value(self.block_ctx.append_current(op))
+        single_result_as_value(self.block_ctx.append_current_block(op))
     }
 
     /// Append an operation that must produce a single result and store the mapping of the circom
     /// variable name to the result Value.
     pub fn append_op_named_result(&mut self, op: Operation<'ctx>, name: String) {
         let v = self.append_op_unnamed_result(op).expect("Expected op to produce a single result");
-        self.name_to_value.insert(name, v);
+        self.block_ctx.set_named_value(name, v);
+    }
+
+    /// Generate LLZK code in the current function with the given block pushed to the context stack
+    /// before the callback and removed at the end of the callback.
+    pub fn gen_within_augmented_block_context(
+        &mut self,
+        block: BlockRef<'ctx, 'blk>,
+        callback: impl FnOnce(&mut Self, BlockRef<'ctx, 'blk>) -> Result<()>,
+    ) -> Result<()> {
+        self.block_ctx.push(block);
+        let res = callback(self, block);
+        self.block_ctx.pop();
+        res
     }
 
     /// Generate LLZK code in the current function for a prefix operation.
@@ -455,7 +486,7 @@ where
                 if access.is_empty() {
                     // Since there's no simple assignment in LLZK, just update the mapped Value
                     // which essentially propagates the assignment.
-                    function.name_to_value.insert(var.clone(), rhs);
+                    function.block_ctx.set_named_value(var.clone(), rhs);
                     Ok(())
                 } else {
                     todo!("Generate array write operation in function");
@@ -556,8 +587,8 @@ where
                 match access.as_slice() {
                     [] => {
                         let v = function
-                            .name_to_value
-                            .get(name)
+                            .block_ctx
+                            .get_named_value(name)
                             .ok_or_else(|| anyhow!("variable {name} not found"))?;
                         Ok(*v)
                     }

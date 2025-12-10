@@ -500,7 +500,7 @@ where
                         AssignOp::AssignVar => rhe
                             .gen_llzk_in_template(codegen, template)?
                             .and_then_same(codegen, |fc, val| {
-                                fc.name_to_value.insert(var.clone(), *val);
+                                fc.block_ctx.set_named_value(var.clone(), *val);
                                 Ok(())
                             }),
                         AssignOp::AssignSignal => {
@@ -661,8 +661,8 @@ where
             }
             Expression::Variable { meta, name, access } => match access.as_slice() {
                 [] => template.and_then_same(codegen, |fc, _| {
-                    fc.name_to_value
-                        .get(name)
+                    fc.block_ctx
+                        .get_named_value(name)
                         .copied()
                         .ok_or_else(|| anyhow!("variable {name} not found"))
                 }),
