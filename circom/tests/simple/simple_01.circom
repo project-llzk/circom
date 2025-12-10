@@ -20,17 +20,17 @@ component main = Simple3();
 // CHECK-NEXT:      struct.field @b : !felt.type {llzk.pub}
 // CHECK-NEXT:      struct.field @c : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute
-// CHECK-SAME:      (%[[VAL_0:.*]]: !felt.type) -> !struct.type<@Simple3<[]>> attributes {function.allow_witness} {
-// CHECK-NEXT:        %[[VAL_1:.*]] = struct.new : <@Simple3<[]>>
+// CHECK-SAME:      (%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Simple3<[]>> attributes {function.allow_witness} {
+// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Simple3<[]>>
 // CHECK-NEXT:        struct.writef %[[VAL_1]][@b] = %[[VAL_0]] : <@Simple3<[]>>, !felt.type
 // CHECK-NEXT:        struct.writef %[[VAL_1]][@c] = %[[VAL_0]] : <@Simple3<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@Simple3<[]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
-// CHECK-SAME:      (%[[VAL_2:.*]]: !struct.type<@Simple3<[]>>, %[[VAL_3:.*]]: !felt.type) attributes {function.allow_constraint} {
-// CHECK-NEXT:        %[[VAL_4:.*]] = struct.readf %[[VAL_2]][@b] : <@Simple3<[]>>, !felt.type
+// CHECK-SAME:      (%[[VAL_2:[0-9a-zA-Z_\.]+]]: !struct.type<@Simple3<[]>>, %[[VAL_3:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_2]][@b] : <@Simple3<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_4]], %[[VAL_3]] : !felt.type, !felt.type
-// CHECK-NEXT:        %[[VAL_5:.*]] = struct.readf %[[VAL_2]][@c] : <@Simple3<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_2]][@c] : <@Simple3<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_5]], %[[VAL_3]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
