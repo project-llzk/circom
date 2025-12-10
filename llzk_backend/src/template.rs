@@ -111,13 +111,21 @@ where
     }
 
     fn stack_push(&mut self, block: Self::NewBlock) {
-        self.compute.as_ref().map(|rc| rc.borrow_mut().block_ctx.push(block.0.unwrap()));
-        self.constrain.as_ref().map(|rc| rc.borrow_mut().block_ctx.push(block.1.unwrap()));
+        if let Some(rc) = self.compute.as_ref() {
+            rc.borrow_mut().block_ctx.push(block.0.unwrap())
+        }
+        if let Some(rc) = self.constrain.as_ref() {
+            rc.borrow_mut().block_ctx.push(block.1.unwrap())
+        }
     }
 
     fn stack_pop(&mut self) {
-        self.compute.as_ref().map(|rc| rc.borrow_mut().block_ctx.pop());
-        self.constrain.as_ref().map(|rc| rc.borrow_mut().block_ctx.pop());
+        if let Some(rc) = self.compute.as_ref() {
+            rc.borrow_mut().block_ctx.pop()
+        }
+        if let Some(rc) = self.constrain.as_ref() {
+            rc.borrow_mut().block_ctx.pop()
+        }
     }
 }
 
