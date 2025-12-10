@@ -15,6 +15,8 @@ mod codegen;
 /// [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
 /// [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes.
 mod function;
+/// Handles circom var scoping and LLZK blocks stack management.
+mod gen_context;
 /// Handles the top-level constructs (i.e. circom templates and functions), by delegating
 /// to the [function] and [template] modules to generate the code for each.
 mod module;
