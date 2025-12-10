@@ -434,7 +434,7 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Template elements declared inside the function")
                 }
-                let _: () = initializations.gen_llzk_in_function(codegen, function)?;
+                initializations.gen_llzk_in_function(codegen, function)
             }
             Statement::Declaration { meta, xtype, name, dimensions, .. } => {
                 if VariableType::Var != *xtype {
@@ -443,10 +443,9 @@ where
                 }
                 // TODO: I don't think there's actually anything to do here, unless we
                 //  need to store some info about the declared dimensions of the var.
+                Ok(())
             }
-            Statement::Block { stmts, .. } => {
-                let _: () = stmts.gen_llzk_in_function(codegen, function)?;
-            }
+            Statement::Block { stmts, .. } => stmts.gen_llzk_in_function(codegen, function),
             Statement::Substitution { meta, var, access, op, rhe } => {
                 if op.is_signal_operator() {
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
@@ -457,6 +456,7 @@ where
                     // Since there's no simple assignment in LLZK, just update the mapped Value
                     // which essentially propagates the assignment.
                     function.name_to_value.insert(var.clone(), rhs);
+                    Ok(())
                 } else {
                     todo!("Generate array write operation in function");
                 }
@@ -466,8 +466,8 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Function uses template operators");
                 }
-                // Just visit and drop the result since the value is unused.
-                let _ = rhe.gen_llzk_in_function(codegen, function)?;
+                // Just visit and drop the resulting Value since it's unused.
+                rhe.gen_llzk_in_function(codegen, function).map(drop)
             }
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
                 let cond = cond.gen_llzk_in_function(codegen, function)?;
@@ -503,18 +503,16 @@ where
             Statement::Return { meta, value } => {
                 let value = value.gen_llzk_in_function(codegen, function)?;
                 let location = codegen.location_from_meta(meta);
-                // Note: Typed underscore binding shows we're not dropping a Result.
-                let _: () = function.append_op_no_result(function::r#return(location, &[value]))?;
+                function.append_op_no_result(function::r#return(location, &[value]))
             }
             Statement::Assert { meta, arg } => {
                 let value = arg.gen_llzk_in_function(codegen, function)?;
                 let location = codegen.location_from_meta(meta);
-                // Note: Typed underscore binding shows we're not dropping a Result.
-                let _: () = function.append_op_no_result(llzk::dialect::bool::assert(
+                function.append_op_no_result(llzk::dialect::bool::assert(
                     location,
                     value,
                     Some("assertion failed"),
-                )?)?;
+                )?)
             }
             Statement::LogCall { meta, .. } => {
                 codegen.emit_circom_warning(
@@ -522,6 +520,7 @@ where
                     "log calls are not currently supported in LLZK",
                     ReportCode::NotAllowedOperation,
                 );
+                Ok(())
             }
             Statement::MultSubstitution { .. } => {
                 unreachable!("removed by 'syntax_sugar_remover'")
@@ -531,7 +530,6 @@ where
                 unreachable!("Function uses template operators");
             }
         }
-        Ok(())
     }
 }
 
