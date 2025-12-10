@@ -21,6 +21,23 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
+/// Single frame in the [BlockContextStack].
+///
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+/// 'blk: lifetime of the generated `Block` instances within functions
+/// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
+#[derive(Debug)]
+pub struct BlockContext<'ctx, 'blk, 'val>
+where
+    'ctx: 'blk,
+    'blk: 'val,
+{
+    /// Reference to a block in LLZK IR.
+    block: BlockRef<'ctx, 'blk>,
+    /// Maps circom var name to the LLZK SSA Value for that var.
+    name_to_value: HashMap<String, Value<'ctx, 'val>>,
+}
+
 /// Stack of blocks where the top block is the current block where code should be appended and the
 /// previous block in the list is the parent of the block after it. When an op containing nested
 /// blocks is encountered, the current block within that op is pushed to the stack so that any code
@@ -35,16 +52,10 @@ where
     'ctx: 'blk,
     'blk: 'val,
 {
-    /// The function entry block.
-    root_block: BlockRef<'ctx, 'blk>,
-    /// Additional nesting of blocks within the function representing the current insertion point.
-    other_blocks: Vec<BlockRef<'ctx, 'blk>>,
-    /// Maps circom var name to the LLZK SSA Value for that named value. Initialized with function
-    /// parameters and extended with any variable-to-variable assignments found.
-    ///
-    /// TODO: extend this to store a map for each level and then search appropriately up the stack
-    /// and merge when popping, etc.
-    name_to_value: HashMap<String, Value<'ctx, 'val>>,
+    /// Context for the function entry block.
+    root: BlockContext<'ctx, 'blk, 'val>,
+    /// Additional nesting of blocks within the function. Tail is the current insertion point.
+    other_blocks: Vec<BlockContext<'ctx, 'blk, 'val>>,
 }
 
 impl<'ctx, 'blk, 'val> BlockContextStack<'ctx, 'blk, 'val>
@@ -60,33 +71,31 @@ where
     ) -> Result<Self> {
         let root_block =
             func.region(0)?.first_block().ok_or_else(|| anyhow!("missing function entry block"))?;
-        Ok(BlockContextStack { root_block, other_blocks: Default::default(), name_to_value })
+        Ok(BlockContextStack {
+            root: BlockContext { block: root_block, name_to_value },
+            other_blocks: Default::default(),
+        })
     }
 
-    /// Push a new block onto the stack to make it the current block.
-    pub fn push(&mut self, item: BlockRef<'ctx, 'blk>) {
-        self.other_blocks.push(item);
+    /// Get reference to the current block (i.e. the top of the stack).
+    pub fn top_block(&self) -> &BlockRef<'ctx, 'blk> {
+        match self.other_blocks.last() {
+            Some(bc) => &bc.block,
+            None => &self.root.block,
+        }
     }
 
-    /// Pop the current block off the stack to return to the previous block.
-    pub fn pop(&mut self) {
-        self.other_blocks.pop().expect("There is no block to pop!");
+    /// Ref to the current block context (i.e. the top of the stack).
+    fn top_mut(&mut self) -> &mut BlockContext<'ctx, 'blk, 'val> {
+        match self.other_blocks.last_mut() {
+            Some(bc) => bc,
+            None => &mut self.root,
+        }
     }
 
     /// Append an operation to the current block (i.e. the top of the stack).
-    ///
-    /// 'op: lifetime of the `Operation` instance for the reference returned
-    pub fn append_current_block<'op>(
-        &mut self,
-        operation: Operation<'ctx>,
-    ) -> OperationRef<'ctx, 'op>
-    where
-        'blk: 'op,
-    {
-        let current = match self.other_blocks.last() {
-            Some(block) => block,
-            None => &self.root_block,
-        };
+    pub fn append_current_block(&mut self, operation: Operation<'ctx>) -> OperationRef<'ctx, 'val> {
+        let current = &self.top_mut().block;
         // Account for possible terminator in the current block. For example, the `compute_fn()`
         // and `constrain_fn()` helpers automatically add a return op at the end of the block
         // so new ops must be inserted before that terminator.
@@ -96,14 +105,21 @@ where
         }
     }
 
-    /// TODO: doc
+    /// Set the LLZK IR SSA Value for the given circom var name, local to the top block context.
     pub fn set_named_value(&mut self, name: String, value: Value<'ctx, 'val>) {
-        self.name_to_value.insert(name, value);
+        self.top_mut().name_to_value.insert(name, value);
     }
 
-    /// TODO: doc
+    /// Get the LLZK IR SSA Value for the given circom var name, checking the top block context
+    /// and then proceeding down the stack until found (if at all).
     pub fn get_named_value(&self, name: &str) -> Option<&Value<'ctx, 'val>> {
-        self.name_to_value.get(name)
+        for bc in self.other_blocks.iter().rev() {
+            let lookup = bc.name_to_value.get(name);
+            if lookup.is_some() {
+                return lookup;
+            }
+        }
+        self.root.name_to_value.get(name)
     }
 }
 
@@ -165,17 +181,38 @@ where
         self.block_ctx.set_named_value(name, v);
     }
 
-    /// Generate LLZK code in the current function with the given block pushed to the context stack
-    /// before the callback and removed at the end of the callback.
-    pub fn gen_within_augmented_block_context(
+    /// Use the callback to generate code for a new circom Block scope within the given LLZK block.
+    /// Assignments to new circom vars in this context are dropped after the callback because
+    /// they go out of scope but assignments to existing circom vars in this context persist.
+    pub fn gen_in_given_block_with_new_circom_scope(
         &mut self,
         block: BlockRef<'ctx, 'blk>,
         callback: impl FnOnce(&mut Self, BlockRef<'ctx, 'blk>) -> Result<()>,
     ) -> Result<()> {
-        self.block_ctx.push(block);
+        // Push new context with the given block and run the codegen callback.
+        self.block_ctx.other_blocks.push(BlockContext { block, name_to_value: Default::default() });
         let res = callback(self, block);
-        self.block_ctx.pop();
+        // After code generation, pop the context and copy mapping for existing vars down
+        // to the lower context while dropping new vars because they go out of scope.
+        let popped = self.block_ctx.other_blocks.pop().expect("There is no block to pop!");
+        for (name, value) in popped.name_to_value.into_iter() {
+            // If var exists in some lower context, copy to current top context.
+            if self.block_ctx.get_named_value(&name).is_some() {
+                self.block_ctx.top_mut().name_to_value.insert(name, value);
+            }
+        }
         res
+    }
+
+    /// Use the callback to generate code for a new circom Block scope but within the current LLZK
+    /// block. Assignments to new circom vars in this context are dropped after the callback because
+    /// they go out of scope but assignments to existing circom vars in this context persist.
+    #[inline]
+    pub fn gen_in_current_block_with_new_circom_scope(
+        &mut self,
+        callback: impl FnOnce(&mut Self, BlockRef<'ctx, 'blk>) -> Result<()>,
+    ) -> Result<()> {
+        self.gen_in_given_block_with_new_circom_scope(*self.block_ctx.top_block(), callback)
     }
 
     /// Generate LLZK code in the current function for a prefix operation.
@@ -476,7 +513,11 @@ where
                 //  need to store some info about the declared dimensions of the var.
                 Ok(())
             }
-            Statement::Block { stmts, .. } => stmts.gen_llzk_in_function(codegen, function),
+            Statement::Block { stmts, .. } => {
+                function.gen_in_current_block_with_new_circom_scope(|function, _| {
+                    stmts.gen_llzk_in_function(codegen, function)
+                })
+            }
             Statement::Substitution { meta, var, access, op, rhe } => {
                 if op.is_signal_operator() {
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
