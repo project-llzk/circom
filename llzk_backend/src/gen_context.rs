@@ -123,3 +123,53 @@ where
         }
     }
 }
+
+/// Provides common functions for generating code that respects circom variable scoping, abstracting
+/// access to the [BlockContextStack] so that functions and templates can share these functions.
+pub trait GenWithCircomScopeHandling<'ctx, 'blk, 'val>
+where
+    'ctx: 'blk,
+    'blk: 'val,
+{
+    /// LLZK block context type. For functions, this is just [BlockRef], but for templates,
+    /// this type holds a [BlockRef] for both the `compute` and `constrain` functions.
+    type NewBlock: Copy;
+
+    /// Retrieve the top block(s) from the [BlockContextStack].
+    fn stack_top(&self) -> Self::NewBlock;
+
+    /// Push new block(s) onto the [BlockContextStack].
+    fn stack_push(&mut self, block: Self::NewBlock);
+
+    /// Pop the top block(s) from the [BlockContextStack].
+    fn stack_pop(&mut self);
+
+    /// Use the callback to generate code for a new circom scope/block within the given LLZK
+    /// `NewBlock`. Assignments to circom variables that are newly introduced in this context go out
+    /// of scope so they are dropped after the callback but overwriting assignments to circom
+    /// variables that already exist prior to this new scope are preserved and written into the
+    /// existing block context
+    fn gen_in_given_block_with_new_circom_scope(
+        &mut self,
+        block: Self::NewBlock,
+        generator: impl FnOnce(&mut Self, Self::NewBlock) -> Result<()>,
+    ) -> Result<()> {
+        self.stack_push(block);
+        let res = generator(self, block);
+        self.stack_pop();
+        res
+    }
+
+    /// Use the callback to generate code for a new circom scope/block but within the current LLZK
+    /// `NewBlock`. Assignments to circom variables that are newly introduced in this context go out
+    /// of scope so they are dropped after the callback but overwriting assignments to circom
+    /// variables that already exist prior to this new scope are preserved and written into the
+    /// existing block context
+    #[inline]
+    fn gen_in_current_block_with_new_circom_scope(
+        &mut self,
+        generator: impl FnOnce(&mut Self, Self::NewBlock) -> Result<()>,
+    ) -> Result<()> {
+        self.gen_in_given_block_with_new_circom_scope(self.stack_top(), generator)
+    }
+}

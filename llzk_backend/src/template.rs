@@ -1,6 +1,7 @@
 #![allow(unused_variables)] // TODO: TEMP
 use crate::{
     function::FunctionContext,
+    gen_context::GenWithCircomScopeHandling,
     shared::{new_felt_const_op, LlzkCodegen},
 };
 use anyhow::{anyhow, Result};
@@ -11,7 +12,7 @@ use llzk::{
         StructDefOpRefMut,
     },
 };
-use melior::ir::Value;
+use melior::ir::{BlockRef, Value};
 use program_structure::{
     ast::{AssignOp, Expression, Statement},
     error_code::ReportCode,
@@ -80,6 +81,43 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
             compute: None,
             constrain: self.constrain.as_ref().map(Rc::clone),
         }
+    }
+}
+
+/// The [TemplateContext] must deal with the block context stack in both functions for circom
+/// scope handling.
+///
+/// Note: The [GenWithCircomScopeHandling] trait requires mutable references in several places to
+/// support `gen_llzk_in_function()` where the [FunctionContext] is passed as a mutable reference.
+/// However, the [TemplateContext] instead uses internal mutability and is passed as an immutable
+/// reference to the `gen_llzk_in_template()` functions. Thus, this trait cannot be implemented for
+/// `TemplateContext` and is instead implemented for `&TemplateContext` which means its functions
+/// must be called via a `&mut &TemplateContext` reference.
+impl<'ctx, 'str, 'func, 'blk, 'val> GenWithCircomScopeHandling<'ctx, 'blk, 'val>
+    for &TemplateContext<'ctx, 'str, 'func, 'blk, 'val>
+where
+    'ctx: 'str,
+    'str: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    type NewBlock = (ShouldGenerate<BlockRef<'ctx, 'blk>>, ShouldGenerate<BlockRef<'ctx, 'blk>>);
+
+    fn stack_top(&self) -> Self::NewBlock {
+        (
+            self.compute.as_ref().map(|rc| *rc.borrow().block_ctx.top_block()),
+            self.constrain.as_ref().map(|rc| *rc.borrow().block_ctx.top_block()),
+        )
+    }
+
+    fn stack_push(&mut self, block: Self::NewBlock) {
+        self.compute.as_ref().map(|rc| rc.borrow_mut().block_ctx.push(block.0.unwrap()));
+        self.constrain.as_ref().map(|rc| rc.borrow_mut().block_ctx.push(block.1.unwrap()));
+    }
+
+    fn stack_pop(&mut self) {
+        self.compute.as_ref().map(|rc| rc.borrow_mut().block_ctx.pop());
+        self.constrain.as_ref().map(|rc| rc.borrow_mut().block_ctx.pop());
     }
 }
 
@@ -491,7 +529,12 @@ where
                 println!("TODO: anything else to do with declaration? {name} of type {xtype:?}");
                 Ok(())
             }
-            Statement::Block { stmts, .. } => stmts.gen_llzk_in_template(codegen, template),
+            Statement::Block { stmts, .. } => {
+                let mut template = template; // satisfy the &mut in `GenWithCircomScopeHandling`
+                template.gen_in_current_block_with_new_circom_scope(|template, _| {
+                    stmts.gen_llzk_in_template(codegen, template)
+                })
+            }
             Statement::Substitution { meta, var, access, op, rhe } => {
                 if access.is_empty() {
                     // Since there's no simple assignment in LLZK, just update the mapped Value

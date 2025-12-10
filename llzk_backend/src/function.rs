@@ -1,6 +1,6 @@
 #![allow(unused_variables)] // TODO: TEMP
 use crate::{
-    gen_context::BlockContextStack,
+    gen_context::{BlockContextStack, GenWithCircomScopeHandling},
     shared::{self, new_felt_const_op, single_result_as_value, IsA, LlzkCodegen},
 };
 use anyhow::{anyhow, Ok, Result};
@@ -79,31 +79,6 @@ where
     pub fn append_op_named_result(&mut self, op: Operation<'ctx>, name: String) {
         let v = self.append_op_unnamed_result(op).expect("Expected op to produce a single result");
         self.block_ctx.set_named_value(name, v);
-    }
-
-    /// Use the callback to generate code for a new circom Block scope within the given LLZK block.
-    /// Assignments to new circom vars in this context are dropped after the callback because
-    /// they go out of scope but assignments to existing circom vars in this context persist.
-    pub fn gen_in_given_block_with_new_circom_scope(
-        &mut self,
-        block: BlockRef<'ctx, 'blk>,
-        callback: impl FnOnce(&mut Self, BlockRef<'ctx, 'blk>) -> Result<()>,
-    ) -> Result<()> {
-        self.block_ctx.push(block);
-        let res = callback(self, block);
-        self.block_ctx.pop();
-        res
-    }
-
-    /// Use the callback to generate code for a new circom Block scope but within the current LLZK
-    /// block. Assignments to new circom vars in this context are dropped after the callback because
-    /// they go out of scope but assignments to existing circom vars in this context persist.
-    #[inline]
-    pub fn gen_in_current_block_with_new_circom_scope(
-        &mut self,
-        callback: impl FnOnce(&mut Self, BlockRef<'ctx, 'blk>) -> Result<()>,
-    ) -> Result<()> {
-        self.gen_in_given_block_with_new_circom_scope(*self.block_ctx.top_block(), callback)
     }
 
     /// Generate LLZK code in the current function for a prefix operation.
@@ -301,6 +276,29 @@ where
         );
         codegen.emit_circom_error(meta, err_msg.as_str(), ReportCode::InfixOperatorWithWrongTypes);
         Err(anyhow!(err_msg))
+    }
+}
+
+/// The [FunctionContext] directly accesses a single [BlockContextStack] for circom scope handling.
+impl<'ctx, 'func, 'blk, 'val> GenWithCircomScopeHandling<'ctx, 'blk, 'val>
+    for FunctionContext<'ctx, 'func, 'blk, 'val>
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    type NewBlock = BlockRef<'ctx, 'blk>;
+
+    fn stack_top(&self) -> Self::NewBlock {
+        *self.block_ctx.top_block()
+    }
+
+    fn stack_push(&mut self, block: Self::NewBlock) {
+        self.block_ctx.push(block)
+    }
+
+    fn stack_pop(&mut self) {
+        self.block_ctx.pop()
     }
 }
 
