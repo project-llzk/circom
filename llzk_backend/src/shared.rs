@@ -1,19 +1,22 @@
+#![allow(unused_variables)] // TODO: TEMP
 use ansi_term::Color;
 use anyhow::{anyhow, Ok, Result};
 use llzk::prelude::{
-    felt, verify_operation_with_diags, FeltConstAttribute, FuncDefOp, FuncDefOpLike, FuncDefOpRef,
-    FuncDefOpRefMut, LlzkContext, LlzkError, StructDefOp, StructDefOpRef, StructDefOpRefMut,
+    felt, verify_operation_with_diags, ArrayType, FeltConstAttribute, FuncDefOp, FuncDefOpLike,
+    FuncDefOpRef, FuncDefOpRefMut, IntegerAttribute, LlzkContext, LlzkError, StructDefOp,
+    StructDefOpRef, StructDefOpRefMut,
 };
 use melior::{
     ir::{
-        operation::OperationLike as _, BlockLike, Location, Module, Operation, OperationRef, Type,
-        TypeLike, Value,
+        operation::OperationLike as _, Attribute, BlockLike, Location, Module, Operation,
+        OperationRef, Type, TypeLike, Value,
     },
     pass, utility,
 };
 use num_bigint_dig::BigInt;
+use num_traits::cast::ToPrimitive;
 use program_structure::{
-    ast::Meta,
+    ast::{Expression, Meta},
     error_code::ReportCode,
     error_definition::Report,
     file_definition::{FileID, FileLocation},
@@ -85,6 +88,64 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
     pub fn add_function(&self, f: FuncDefOp<'ctx>) -> Result<FuncDefOpRefMut<'ctx, '_>> {
         let f: FuncDefOpRef = self.module.body().append_operation(f.into()).try_into()?;
         Ok(f.into())
+    }
+
+    /// Convert a circom [Expression] used as an array dimension to an LLZK Attribute.
+    ///
+    /// Note: The LLZK ArrayType can only use the following Attribute types for dimensions:
+    /// IntegerAttr (`index` or `i1`), SymbolRefAttr, or AffineMapAttr (with single result,
+    /// probably an identity map).
+    ///
+    /// 'ast: lifetime of the circom AST element
+    pub fn convert_dim_expr(&self, expr: &Expression) -> Result<Attribute<'ctx>> {
+        match expr {
+            Expression::Number(meta, big_int) => {
+                let int_attr = IntegerAttribute::new(
+                    Type::index(self.context),
+                    big_int.to_i64().ok_or_else(|| anyhow!("Array dimension must fit in i64"))?,
+                );
+                Ok(int_attr.into())
+            }
+            Expression::Variable { meta, name, access } => {
+                // TODO: generate AffineMapAttr (with single result) or SymbolRefAttr (from param)
+                todo!("Handle Variable expression in dimension")
+            }
+            Expression::InfixOp { meta, lhe, infix_op, rhe } => {
+                todo!("Handle InfixOp expression in dimension")
+            }
+            Expression::PrefixOp { meta, prefix_op, rhe } => {
+                todo!("Handle PrefixOp expression in dimension")
+            }
+            Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
+                todo!("Handle InlineSwitchOp expression in dimension")
+            }
+            Expression::Call { meta, id, args } => {
+                todo!("Handle Call expression in dimension")
+            }
+            // The remaining cases do not produce a scalar value.
+            // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
+            // Give the same error that the circom type checker gives. The type checker ran
+            // earlier so this should technically be unreachable.
+            _ => Err(anyhow!("Array indexes and lengths must be single arithmetic expressions")),
+        }
+    }
+
+    /// If `dimensions` is empty, return `base_type`. Otherwise, create ArrayType by converting the
+    /// dimension circom [Expressions](Expression) to LLZK Attributes.
+    pub fn type_with_dimensions(
+        &self,
+        base_type: Type<'ctx>,
+        dimensions: &[Expression],
+    ) -> Result<Type<'ctx>> {
+        if dimensions.is_empty() {
+            Ok(base_type)
+        } else {
+            dimensions
+                .iter()
+                .map(|e| self.convert_dim_expr(e))
+                .collect::<Result<Vec<_>, _>>()
+                .map(|dims| ArrayType::new(base_type, &dims).into())
+        }
     }
 
     /// Run cleanup passes on the generated `Module`.
