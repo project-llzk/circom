@@ -51,9 +51,9 @@ where
     /// Create a new [FunctionContext] for the given function with an initial name-to-value mapping.
     pub fn new(
         func: FuncDefOpRefMut<'ctx, 'func>,
-        name_to_value: HashMap<String, Value<'ctx, 'val>>,
+        param_name_to_value: HashMap<String, Value<'ctx, 'val>>,
     ) -> Result<Self> {
-        Ok(Self { func, block_ctx: BlockContextStack::new(func.deref(), name_to_value)? })
+        Ok(Self { func, block_ctx: BlockContextStack::new(func.deref(), param_name_to_value)? })
     }
 
     /// Append an operation that must produce no results.
@@ -76,12 +76,32 @@ where
 
     /// Append an operation that must produce a single result and store the mapping of the circom
     /// variable name to the result Value.
-    pub fn append_op_named_result(&mut self, op: Operation<'ctx>, name: String) {
-        let v = self.append_op_unnamed_result(op).expect("Expected op to produce a single result");
-        self.block_ctx.set_named_value(name, v);
+    pub fn append_op_named_result(
+        &mut self,
+        op: Operation<'ctx>,
+        name: String,
+    ) -> Result<Value<'ctx, 'val>> {
+        let v = self.append_op_unnamed_result(op)?;
+        self.block_ctx.set_named_value(name, v)?;
+        Ok(v)
     }
 
-    /// Generate LLZK code in the current function for a prefix operation.
+    /// If the given name is not already declared in the current scope, declare it with an
+    /// uninitialized value of type `felt` with the given dimensions.
+    #[inline]
+    pub fn declare_name_uninit<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        name: String,
+        meta: &Meta,
+        dimensions: &[Expression],
+    ) -> Result<()> {
+        self.block_ctx.declare_name_if_not_present(name, || {
+            codegen.new_nondet_value_of_dimensions(meta, dimensions)
+        })
+    }
+
+    /// Generate LLZK code in the current function for a circom prefix operation.
     pub fn gen_prefix_op<'ast>(
         &mut self,
         codegen: &LlzkCodegen<'ast, 'ctx>,
@@ -398,9 +418,7 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Template elements declared inside the function")
                 }
-                // TODO: I don't think there's actually anything to do here, unless we
-                //  need to store some info about the declared dimensions of the var.
-                Ok(())
+                function.declare_name_uninit(codegen, name.clone(), meta, dimensions)
             }
             Statement::Block { stmts, .. } => {
                 function.gen_in_current_block_with_new_circom_scope(|function, _| {
@@ -416,8 +434,7 @@ where
                 if access.is_empty() {
                     // Since there's no simple assignment in LLZK, just update the mapped Value
                     // which essentially propagates the assignment.
-                    function.block_ctx.set_named_value(var.clone(), rhs);
-                    Ok(())
+                    function.block_ctx.set_named_value(var.clone(), rhs)
                 } else {
                     todo!("Generate array write operation in function");
                 }

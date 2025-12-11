@@ -1,3 +1,4 @@
+use crate::shared::single_result_as_value;
 use anyhow::{anyhow, Ok, Result};
 use llzk::prelude::{FuncDefOp, OperationLike as _};
 use melior::ir::{BlockLike as _, BlockRef, Operation, OperationRef, RegionLike as _, Value};
@@ -16,8 +17,61 @@ where
 {
     /// Reference to a block in LLZK IR.
     block: BlockRef<'ctx, 'blk>,
-    /// Maps circom var name to the LLZK SSA Value for that var.
-    name_to_value: HashMap<String, Value<'ctx, 'val>>,
+    /// For variables declared in the current scope, maps circom variable name to current LLZK SSA
+    /// Value stored for that variable. These are local to the current block and go out of scope
+    /// when the block is popped.
+    scope_local_name_to_value: HashMap<String, Value<'ctx, 'val>>,
+    /// For variables declared in an outer scope, maps circom variable name to current LLZK SSA
+    /// Value stored for that variable. These are preserved when the block is popped because they
+    /// overwrite the value of existing variables in outer scopes.
+    overwriting_name_to_value: HashMap<String, Value<'ctx, 'val>>,
+}
+
+impl<'ctx, 'blk, 'val> BlockContext<'ctx, 'blk, 'val>
+where
+    'ctx: 'blk,
+    'blk: 'val,
+{
+    /// Create a new empty [BlockContext] for the given block.
+    fn new(block: BlockRef<'ctx, 'blk>) -> Self {
+        BlockContext {
+            block,
+            scope_local_name_to_value: Default::default(),
+            overwriting_name_to_value: Default::default(),
+        }
+    }
+
+    /// Create a new [BlockContext] for the given block, initializing the scope local
+    /// declarations with the mapping of parameter names to values.
+    fn new_with_params(
+        block: BlockRef<'ctx, 'blk>,
+        param_name_to_value: HashMap<String, Value<'ctx, 'val>>,
+    ) -> Self {
+        BlockContext {
+            block,
+            scope_local_name_to_value: param_name_to_value,
+            overwriting_name_to_value: Default::default(),
+        }
+    }
+
+    /// Get the LLZK IR SSA Value for the given circom var name. Check the local scope first since
+    /// the names there may shadow the same name from parent scope(s).
+    fn get(&self, name: &str) -> Option<&Value<'ctx, 'val>> {
+        self.scope_local_name_to_value
+            .get(name)
+            .or_else(|| self.overwriting_name_to_value.get(name))
+    }
+
+    /// Set the LLZK IR SSA Value for the given circom var name. If the name is declared in the
+    /// local scope, assign the new value there since it's shadowing the same name from parent
+    /// scope(s). Otherwise, assign the new value in the overwriting map.
+    fn insert(&mut self, name: String, value: Value<'ctx, 'val>) {
+        if let Some(v) = self.scope_local_name_to_value.get_mut(&name) {
+            *v = value;
+        } else {
+            self.overwriting_name_to_value.insert(name, value);
+        }
+    }
 }
 
 /// Stack of blocks where the top block is the current block where code should be appended and the
@@ -49,12 +103,12 @@ where
     /// mapping containing function parameters.
     pub fn new(
         func: &FuncDefOp<'ctx>,
-        name_to_value: HashMap<String, Value<'ctx, 'val>>,
+        param_name_to_value: HashMap<String, Value<'ctx, 'val>>,
     ) -> Result<Self> {
         let root_block =
             func.region(0)?.first_block().ok_or_else(|| anyhow!("missing function entry block"))?;
         Ok(BlockContextStack {
-            root: BlockContext { block: root_block, name_to_value },
+            root: BlockContext::new_with_params(root_block, param_name_to_value),
             other_blocks: Default::default(),
         })
     }
@@ -87,39 +141,57 @@ where
         }
     }
 
+    /// If the given name is not already declared in the current scope, declare it by creating an
+    /// [Operation] via the callback, inserting that into the current block, and using its result.
+    /// The only scenario where a declaration would already be present is when the same Declaration
+    /// statements are visited that were used to produce the parameters of the current function.
+    /// Otherwise, the checks performed earlier in the circom parser pipeline will produce an error
+    /// if a symbol is declared more than once in the same scope.
+    pub fn declare_name_if_not_present(
+        &mut self,
+        name: String,
+        uninit_value: impl FnOnce() -> Result<Operation<'ctx>>,
+    ) -> Result<()> {
+        if !self.top_mut().scope_local_name_to_value.contains_key(&name) {
+            let op = uninit_value()?;
+            let value = single_result_as_value(self.append_current_block(op))?;
+            self.top_mut().scope_local_name_to_value.insert(name, value);
+        }
+        Ok(())
+    }
+
     /// Set the LLZK IR SSA Value for the given circom var name, local to the top block context.
-    pub fn set_named_value(&mut self, name: String, value: Value<'ctx, 'val>) {
-        self.top_mut().name_to_value.insert(name, value);
+    pub fn set_named_value(&mut self, name: String, value: Value<'ctx, 'val>) -> Result<()> {
+        let bc = self.top_mut();
+        bc.insert(name, value);
+        Ok(())
     }
 
     /// Get the LLZK IR SSA Value for the given circom var name, checking the top block context
     /// and then proceeding down the stack until found (if at all).
     pub fn get_named_value(&self, name: &str) -> Option<&Value<'ctx, 'val>> {
         for bc in self.other_blocks.iter().rev() {
-            let lookup = bc.name_to_value.get(name);
+            let lookup = bc.get(name);
             if lookup.is_some() {
                 return lookup;
             }
         }
-        self.root.name_to_value.get(name)
+        self.root.get(name)
     }
 
     /// Push a new block onto the stack to make it the current block.
     pub fn push(&mut self, block: BlockRef<'ctx, 'blk>) {
-        self.other_blocks.push(BlockContext { block, name_to_value: Default::default() });
+        self.other_blocks.push(BlockContext::new(block));
     }
 
-    /// Pop the current block off the stack to return to the previous block. The vars defined in the
-    /// popped frame are dropped unless they were present in the context prior to the current frame,
-    /// in which case the new values assigned to the vars are updated in the previous frame (i.e.
-    /// the new top frame after popping).
+    /// Pop the current block off the stack to return to the previous block. The vars declared in
+    /// the popped frame are dropped and those which are overwrites are written to the context
+    /// prior to the current frame..
     pub fn pop(&mut self) {
         let popped = self.other_blocks.pop().expect("There is no block to pop!");
-        for (name, value) in popped.name_to_value.into_iter() {
-            // If var exists in some lower context, copy to current top context.
-            if self.get_named_value(&name).is_some() {
-                self.top_mut().name_to_value.insert(name, value);
-            }
+        let new_top = self.top_mut();
+        for (name, value) in popped.overwriting_name_to_value.into_iter() {
+            new_top.insert(name, value);
         }
     }
 }

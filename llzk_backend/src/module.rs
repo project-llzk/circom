@@ -14,12 +14,13 @@ use llzk::{
             self,
             helpers::{compute_fn, constrain_fn},
         },
-        undef, FeltType, FuncDefOpRef, FuncDefOpRefMut, FunctionType, PublicAttribute,
+        FeltType, FuncDefOpRef, FuncDefOpRefMut, FunctionType, PublicAttribute,
         StructDefOpLike as _, StructType,
     },
 };
 use melior::ir::{
     operation::OperationLike as _, Block, BlockLike as _, Location, Operation, RegionLike, Type,
+    Value,
 };
 use program_structure::{
     ast::{Expression, Meta, SignalType, Statement, VariableType},
@@ -104,14 +105,10 @@ impl<'ctx> DeclarationInfo<'ctx> {
                     VariableType::Var => {
                         // Create an `undef` of the appropriate type. When the actual assignment is
                         // processed later, replace the `undef` with the appropriate value.
-                        let op = undef::undef(
-                            codegen.location_from_meta(meta),
-                            codegen.type_with_dimensions(
-                                FeltType::new(codegen.context).into(),
-                                dimensions,
-                            )?,
+                        self.var_decls.insert(
+                            name.clone(),
+                            codegen.new_nondet_value_of_dimensions(meta, dimensions)?,
                         );
-                        self.var_decls.insert(name.clone(), op);
                         Ok(())
                     }
                     VariableType::Component => {
@@ -267,9 +264,9 @@ impl<'ctx> GenerateLLZKInModule<'ctx> for TemplateData {
         // variable name to LLZK op result Value (do this in each function).
         for (name, op) in declarations.var_decls {
             // Insert (a clone of) the declaration into the compute function.
-            compute_ctx.append_op_named_result(op.clone(), name.clone());
+            let _: Value = compute_ctx.append_op_named_result(op.clone(), name.clone())?;
             // Insert the declaration into the constrain function.
-            constrain_ctx.append_op_named_result(op, name);
+            let _: Value = constrain_ctx.append_op_named_result(op, name)?;
         }
 
         // Visit the body of the template and generate LLZK IR for it within the struct functions.

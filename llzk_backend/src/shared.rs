@@ -2,9 +2,9 @@
 use ansi_term::Color;
 use anyhow::{anyhow, Ok, Result};
 use llzk::prelude::{
-    felt, verify_operation_with_diags, ArrayType, FeltConstAttribute, FuncDefOp, FuncDefOpLike,
-    FuncDefOpRef, FuncDefOpRefMut, IntegerAttribute, LlzkContext, LlzkError, StructDefOp,
-    StructDefOpRef, StructDefOpRefMut,
+    felt, undef, verify_operation_with_diags, ArrayType, FeltConstAttribute, FeltType, FuncDefOp,
+    FuncDefOpLike, FuncDefOpRef, FuncDefOpRefMut, IntegerAttribute, LlzkContext, LlzkError,
+    StructDefOp, StructDefOpRef, StructDefOpRefMut,
 };
 use melior::{
     ir::{
@@ -146,6 +146,18 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
                 .collect::<Result<Vec<_>, _>>()
                 .map(|dims| ArrayType::new(base_type, &dims).into())
         }
+    }
+
+    /// Create an LLZK operation that produces a nondeterministic value of the given `dimensions`.
+    pub fn new_nondet_value_of_dimensions(
+        &self,
+        meta: &Meta,
+        dimensions: &[Expression],
+    ) -> Result<Operation<'ctx>> {
+        Ok(undef::undef(
+            self.location_from_meta(meta),
+            self.type_with_dimensions(FeltType::new(self.context).into(), dimensions)?,
+        ))
     }
 
     /// Run cleanup passes on the generated `Module`.

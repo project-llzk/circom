@@ -530,13 +530,10 @@ where
             Statement::InitializationBlock { initializations, .. } => {
                 initializations.gen_llzk_in_template(codegen, template)
             }
-            Statement::Declaration { meta, xtype, name, dimensions, .. } => {
-                // TODO: we've already handled declarations to create struct fields and function
-                // parameters. Is there any reason to visit them again? If not, then
-                // we don't need the InitializationBlock above either.
-                println!("TODO: anything else to do with declaration? {name} of type {xtype:?}");
-                Ok(())
-            }
+            Statement::Declaration { meta, xtype, name, dimensions, .. } => template
+                .and_then_same(codegen, |fc, _| {
+                    fc.declare_name_uninit(codegen, name.clone(), meta, dimensions)
+                }),
             Statement::Block { stmts, .. } => {
                 let mut template = template; // satisfy the &mut in `GenWithCircomScopeHandling`
                 template.gen_in_current_block_with_new_circom_scope(|template, _| {
@@ -551,8 +548,7 @@ where
                         AssignOp::AssignVar => rhe
                             .gen_llzk_in_template(codegen, template)?
                             .and_then_same(codegen, |fc, val| {
-                                fc.block_ctx.set_named_value(var.clone(), *val);
-                                Ok(())
+                                fc.block_ctx.set_named_value(var.clone(), *val)
                             }),
                         AssignOp::AssignSignal => {
                             // The `<--` operator is witness generation only so this should not
