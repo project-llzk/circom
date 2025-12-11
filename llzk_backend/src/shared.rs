@@ -1,4 +1,3 @@
-#![allow(unused_variables)] // TODO: TEMP
 use ansi_term::Color;
 use anyhow::{anyhow, Ok, Result};
 use llzk::prelude::{

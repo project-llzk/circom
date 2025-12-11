@@ -1,4 +1,3 @@
-#![allow(unused_variables)] // TODO: TEMP
 use crate::{module::GenerateLLZKInModule as _, shared::LlzkCodegen};
 use ansi_term::Color;
 use anyhow::Result;
