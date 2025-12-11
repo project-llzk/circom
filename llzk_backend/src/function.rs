@@ -1,4 +1,12 @@
+//! Handles function-level LLZK code generation for both free functions and functions within
+//! structs. The [function::FunctionContext] carries information about the current LLZK function
+//! being generated and some helpers related to generating code within the function. The
+//! [function::GenerateLLZKInFunction] trait provides the visitor to generate LLZK IR for all circom
+//! [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
+//! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes.
+
 #![allow(unused_variables)] // TODO: TEMP
+
 use crate::{
     gen_context::{BlockContextStack, GenWithCircomScopeHandling},
     shared::{self, new_felt_const_op, single_result_as_value, IsA, LlzkCodegen},

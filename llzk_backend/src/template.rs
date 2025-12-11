@@ -1,4 +1,13 @@
+//! Handles template-level LLZK code generation. The [template::TemplateContext] carries information
+//! about the current LLZK struct being generated and some helpers related to generating code within
+//! the struct. The [template::GenerateLLZKInTemplate] trait provides the visitor to generate LLZK
+//! IR for all circom [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
+//! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes. There are also a few
+//! helper traits like `ExprGenResult` and `Chainable` that implement some boilerplate to make the
+//! actual code generation within [template::GenerateLLZKInTemplate] a lot simpler.
+
 #![allow(unused_variables)] // TODO: TEMP
+
 use crate::{
     function::FunctionContext,
     gen_context::GenWithCircomScopeHandling,
