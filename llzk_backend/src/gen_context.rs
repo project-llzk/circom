@@ -180,13 +180,7 @@ where
     /// Get the LLZK IR SSA Value for the given circom var name, checking the top block context
     /// and then proceeding down the stack until found (if at all).
     pub fn get_named_value(&self, name: &str) -> Option<&Value<'ctx, 'val>> {
-        for bc in self.other_blocks.iter().rev() {
-            let lookup = bc.get(name);
-            if lookup.is_some() {
-                return lookup;
-            }
-        }
-        self.root.get(name)
+        self.other_blocks.iter().rev().find_map(|bc| bc.get(name)).or_else(|| self.root.get(name))
     }
 
     /// Push a new block onto the stack to make it the current block.
