@@ -210,34 +210,62 @@ where
         lhs: Value<'ctx, 'val>,
         rhs: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
+        // Macro to handle the common pattern for type checks for op selection.
+        macro_rules! try_callback_for_type {
+            ($type_check:path, $cb:expr) => {{
+                if let Some(result) = self.gen_infix_op_if_types_are(
+                    $type_check,
+                    $type_check,
+                    lhs,
+                    rhs,
+                    $cb,
+                )? {
+                    return Ok(result);
+                }
+            }};
+        }
+
+        macro_rules! try_felt_op {
+            ($op_path:path) => {{
+                try_callback_for_type!(shared::is_felt, || {
+                    let loc = codegen.location_from_meta(meta);
+                    $op_path(loc, lhs, rhs).map_err(Into::into)
+                });
+            }};
+        }
+
+        macro_rules! try_index_op {
+            ($op:ident) => {{
+                try_callback_for_type!(shared::is_index, || {
+                    let loc = codegen.location_from_meta(meta);
+                    Ok(index::$op(lhs, rhs, loc))
+                });
+            }};
+        }
+
+        macro_rules! try_math_op {
+            ($op:ident) => {{
+                try_callback_for_type!(shared::is_index, || {
+                    let loc = codegen.location_from_meta(meta);
+                    Ok(math::$op(lhs, rhs, loc))
+                });
+            }};
+        }
+
+
         // Macro to handle the common pattern for felt and index type checks.
         // For index operations that use felt:: module and simple index operations.
         macro_rules! try_felt_index_op {
             ($felt_op:ident, $index_op:ident) => {{
-                if let Some(result) = self.gen_infix_op_if_types_are(
-                    shared::is_felt,
-                    shared::is_felt,
-                    lhs,
-                    rhs,
-                    || {
-                        let loc = codegen.location_from_meta(meta);
-                        felt::$felt_op(loc, lhs, rhs).map_err(Into::into)
-                    },
-                )? {
-                    return Ok(result);
-                }
-                if let Some(result) = self.gen_infix_op_if_types_are(
-                    shared::is_index,
-                    shared::is_index,
-                    lhs,
-                    rhs,
-                    || {
-                        let loc = codegen.location_from_meta(meta);
-                        Ok(index::$index_op(lhs, rhs, loc))
-                    },
-                )? {
-                    return Ok(result);
-                }
+                try_felt_op!(felt::$felt_op);
+                try_index_op!($index_op);
+            }};
+        }
+
+        macro_rules! try_felt_math_op {
+            ($felt_op:ident, $math_op:ident) => {{
+                try_felt_op!(felt::$felt_op);
+                try_math_op!($math_op);
             }};
         }
 
@@ -245,30 +273,11 @@ where
         // For comparison operations that use bool:: module and index::cmpi.
         macro_rules! try_bool_cmp_op {
             ($bool_op:ident, $cmp:ident) => {{
-                if let Some(result) = self.gen_infix_op_if_types_are(
-                    shared::is_felt,
-                    shared::is_felt,
-                    lhs,
-                    rhs,
-                    || {
-                        let loc = codegen.location_from_meta(meta);
-                        bool::$bool_op(loc, lhs, rhs).map_err(Into::into)
-                    },
-                )? {
-                    return Ok(result);
-                }
-                if let Some(result) = self.gen_infix_op_if_types_are(
-                    shared::is_index,
-                    shared::is_index,
-                    lhs,
-                    rhs,
-                    || {
-                        let loc = codegen.location_from_meta(meta);
-                        Ok(index::cmp(codegen.context, arith::CmpiPredicate::$cmp, lhs, rhs, loc))
-                    },
-                )? {
-                    return Ok(result);
-                }
+                try_felt_op!(bool::$bool_op);
+                try_callback_for_type!(shared::is_index, || {
+                    let loc = codegen.location_from_meta(meta);
+                    Ok(index::cmp(codegen.context, arith::CmpiPredicate::$cmp, lhs, rhs, loc))
+                });
             }};
         }
 
@@ -283,7 +292,7 @@ where
                 try_felt_index_op!(mul, mul);
             }
             ExpressionInfixOpcode::Div => {
-                todo!("Handle Div infix op")
+                try_felt_index_op!(div, divu);
             }
             ExpressionInfixOpcode::IntDiv => {
                 todo!("Handle IntDiv infix op")
@@ -295,10 +304,10 @@ where
                 todo!("Handle Pow infix op")
             }
             ExpressionInfixOpcode::ShiftL => {
-                todo!("Handle ShiftL infix op")
+                try_felt_index_op!(shl, shl);
             }
             ExpressionInfixOpcode::ShiftR => {
-                todo!("Handle ShiftR infix op")
+                try_felt_index_op!(shr, shru);
             }
             ExpressionInfixOpcode::LesserEq => {
                 try_bool_cmp_op!(le, Ule);
