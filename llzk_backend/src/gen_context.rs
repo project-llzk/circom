@@ -194,6 +194,11 @@ where
     pub fn pop(&mut self) {
         let popped = self.other_blocks.pop().expect("There is no block to pop!");
         let new_top = self.top_mut();
+        // TODO: This approach works for circom Block because it's flattened into the current LLZK
+        // Block. However, when generating nested LLZK Blocks for IfThenElse and While ops, this
+        // will need to be revised. Due to the SSA form in LLZK, we will have to an a YieldOp to
+        // return these values from the inner block and then capture them in the outer block and
+        // update the block context there with the captured values.
         for (name, value) in popped.overwriting_name_to_value.into_iter() {
             new_top.insert(name, value);
         }
