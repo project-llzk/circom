@@ -1,13 +1,21 @@
-#![allow(unused_variables)] // TODO: TEMP
-use crate::shared::{self, new_felt_const_op, single_result_as_value, IsA, LlzkCodegen};
+//! Handles function-level LLZK code generation for both free functions and functions within
+//! structs. The [function::FunctionContext] carries information about the current LLZK function
+//! being generated and some helpers related to generating code within the function. The
+//! [function::GenerateLLZKInFunction] trait provides the visitor to generate LLZK IR for all circom
+//! [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
+//! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes.
+
+use crate::{
+    gen_context::{BlockContextStack, GenWithCircomScopeHandling},
+    shared::{self, new_felt_const_op, single_result_as_value, IsA, LlzkCodegen},
+};
 use anyhow::{anyhow, Ok, Result};
-use llzk::prelude::{bool, felt, function, FeltType, FuncDefOp, FuncDefOpRefMut, OperationMutLike};
+use llzk::prelude::{bool, felt, function, FeltType, FuncDefOpRefMut, OperationMutLike};
 use melior::{
     dialect::{arith, index},
     ir::{
         operation::{OperationLike as _, OperationRefMut, WalkOrder, WalkResult},
-        BlockLike as _, BlockRef, Operation, OperationRef, RegionLike as _, Type, Value,
-        ValueLike as _,
+        BlockRef, Operation, Type, Value, ValueLike as _,
     },
 };
 use program_structure::{
@@ -18,73 +26,8 @@ use program_structure::{
 };
 use std::{
     collections::HashMap,
-    convert::{TryFrom, TryInto as _},
     ops::{Deref, DerefMut},
 };
-
-/// Stack of blocks where the top block is the current block where code should be appended and the
-/// previous block in the list is the parent of the block after it. When an op containing nested
-/// blocks is encountered, the current block within that op is pushed to the stack so that any code
-/// generated will be placed inside that block and when the nested block is complete, it is popped.
-///
-/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
-/// 'blk: lifetime of the generated `Block` instances within functions
-#[derive(Debug)]
-pub struct BlockContextStack<'ctx, 'blk>
-where
-    'ctx: 'blk,
-{
-    /// The function entry block.
-    initial_block: BlockRef<'ctx, 'blk>,
-    /// Additional nesting of blocks within the function representing the current insertion point.
-    other_blocks: Vec<BlockRef<'ctx, 'blk>>,
-}
-
-impl<'ctx, 'blk> BlockContextStack<'ctx, 'blk>
-where
-    'ctx: 'blk,
-{
-    /// Push a new block onto the stack to make it the current block.
-    pub fn push(&mut self, item: BlockRef<'ctx, 'blk>) {
-        self.other_blocks.push(item);
-    }
-
-    /// Pop the current block off the stack to return to the previous block.
-    pub fn pop(&mut self) {
-        self.other_blocks.pop().expect("There is no block to pop!");
-    }
-
-    /// Append an operation to the current block (i.e. the top of the stack).
-    ///
-    /// 'op: lifetime of the `Operation` instance for the reference returned
-    pub fn append_current<'op>(&mut self, operation: Operation<'ctx>) -> OperationRef<'ctx, 'op>
-    where
-        'blk: 'op,
-    {
-        let current = match self.other_blocks.last() {
-            Some(block) => block,
-            None => &self.initial_block,
-        };
-        // Account for possible terminator in the current block. For example, the `compute_fn()`
-        // and `constrain_fn()` helpers automatically add a return op at the end of the block
-        // so new ops must be inserted before that terminator.
-        match current.terminator() {
-            Some(terminator) => current.insert_operation_before(terminator, operation),
-            None => current.append_operation(operation),
-        }
-    }
-}
-
-impl<'ctx> TryFrom<&FuncDefOp<'ctx>> for BlockContextStack<'ctx, '_> {
-    type Error = anyhow::Error;
-
-    /// Create a BlockContextStack starting with the function entry block.
-    fn try_from(func: &FuncDefOp<'ctx>) -> Result<Self, Self::Error> {
-        let initial_block =
-            func.region(0)?.first_block().ok_or_else(|| anyhow!("missing function entry block"))?;
-        Ok(BlockContextStack { initial_block, other_blocks: Default::default() })
-    }
-}
 
 /// Stores ref to the current function while generating LLZK IR for the function.
 ///
@@ -102,10 +45,7 @@ where
     /// The function reference.
     pub(crate) func: FuncDefOpRefMut<'ctx, 'func>,
     /// Nested block context within the function.
-    block_ctx: BlockContextStack<'ctx, 'blk>,
-    /// Local name mapped to the SSA Value with that name. Initialized with function
-    /// parameters and extended with any variable-to-variable assignments found.
-    pub(crate) name_to_value: HashMap<String, Value<'ctx, 'val>>,
+    pub(crate) block_ctx: BlockContextStack<'ctx, 'blk, 'val>,
 }
 
 impl<'ctx, 'func, 'blk, 'val> FunctionContext<'ctx, 'func, 'blk, 'val>
@@ -114,17 +54,17 @@ where
     'func: 'blk,
     'blk: 'val,
 {
-    /// Create a new [FunctionContext] for the given function and name-to-value map.
+    /// Create a new [FunctionContext] for the given function with an initial name-to-value mapping.
     pub fn new(
         func: FuncDefOpRefMut<'ctx, 'func>,
-        name_to_value: HashMap<String, Value<'ctx, 'val>>,
+        param_name_to_value: HashMap<String, Value<'ctx, 'val>>,
     ) -> Result<Self> {
-        Ok(Self { func, block_ctx: func.deref().try_into()?, name_to_value })
+        Ok(Self { func, block_ctx: BlockContextStack::new(func.deref(), param_name_to_value)? })
     }
 
     /// Append an operation that must produce no results.
     pub fn append_op_no_result(&mut self, op: Operation<'ctx>) -> Result<()> {
-        let op_ref = self.block_ctx.append_current(op);
+        let op_ref = self.block_ctx.append_current_block(op);
         if op_ref.result_count() != 0 {
             return Err(anyhow!(
                 "Expected operation to have no results, found {}",
@@ -137,17 +77,22 @@ where
     /// Append an operation that must produce a single result and is NOT associated with a variable
     /// name in the circom code.
     pub fn append_op_unnamed_result(&mut self, op: Operation<'ctx>) -> Result<Value<'ctx, 'val>> {
-        single_result_as_value(self.block_ctx.append_current(op))
+        single_result_as_value(self.block_ctx.append_current_block(op))
     }
 
     /// Append an operation that must produce a single result and store the mapping of the circom
     /// variable name to the result Value.
-    pub fn append_op_named_result(&mut self, op: Operation<'ctx>, name: String) {
-        let v = self.append_op_unnamed_result(op).expect("Expected op to produce a single result");
-        self.name_to_value.insert(name, v);
+    pub fn append_op_named_result(
+        &mut self,
+        op: Operation<'ctx>,
+        name: String,
+    ) -> Result<Value<'ctx, 'val>> {
+        let v = self.append_op_unnamed_result(op)?;
+        self.block_ctx.set_named_value(name, v)?;
+        Ok(v)
     }
 
-    /// Generate LLZK code in the current function for a prefix operation.
+    /// Generate LLZK code in the current function for a circom prefix operation.
     pub fn gen_prefix_op<'ast>(
         &mut self,
         codegen: &LlzkCodegen<'ast, 'ctx>,
@@ -345,6 +290,29 @@ where
     }
 }
 
+/// The [FunctionContext] directly accesses a single [BlockContextStack] for circom scope handling.
+impl<'ctx, 'func, 'blk, 'val> GenWithCircomScopeHandling<'ctx, 'blk, 'val>
+    for FunctionContext<'ctx, 'func, 'blk, 'val>
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    type NewBlock = BlockRef<'ctx, 'blk>;
+
+    fn stack_top(&self) -> Self::NewBlock {
+        *self.block_ctx.top_block()
+    }
+
+    fn stack_push(&mut self, block: Self::NewBlock) {
+        self.block_ctx.push(block)
+    }
+
+    fn stack_pop(&mut self) {
+        self.block_ctx.pop()
+    }
+}
+
 /// Implement [Drop] on [FunctionContext] to remove any remaining `undef.undef` ops from the
 /// function. These were added when visiting the Declaration statements and their uses were
 /// replaced with actual values when visiting Assignment statements.
@@ -423,6 +391,7 @@ where
 {
     type Output = ();
 
+    #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_function<'ast>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx>,
@@ -441,11 +410,15 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Template elements declared inside the function")
                 }
-                // TODO: I don't think there's actually anything to do here, unless we
-                //  need to store some info about the declared dimensions of the var.
-                Ok(())
+                function.block_ctx.declare_name_if_not_present(name, || {
+                    codegen.new_nondet_value_of_dimensions(meta, dimensions)
+                })
             }
-            Statement::Block { stmts, .. } => stmts.gen_llzk_in_function(codegen, function),
+            Statement::Block { stmts, .. } => {
+                function.gen_in_current_block_with_new_circom_scope(|function, _| {
+                    stmts.gen_llzk_in_function(codegen, function)
+                })
+            }
             Statement::Substitution { meta, var, access, op, rhe } => {
                 if op.is_signal_operator() {
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
@@ -455,8 +428,7 @@ where
                 if access.is_empty() {
                     // Since there's no simple assignment in LLZK, just update the mapped Value
                     // which essentially propagates the assignment.
-                    function.name_to_value.insert(var.clone(), rhs);
-                    Ok(())
+                    function.block_ctx.set_named_value(var.clone(), rhs)
                 } else {
                     todo!("Generate array write operation in function");
                 }
@@ -541,6 +513,7 @@ where
 {
     type Output = Value<'ctx, 'val>;
 
+    #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_function<'ast>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx>,
@@ -556,8 +529,8 @@ where
                 match access.as_slice() {
                     [] => {
                         let v = function
-                            .name_to_value
-                            .get(name)
+                            .block_ctx
+                            .get_named_value(name)
                             .ok_or_else(|| anyhow!("variable {name} not found"))?;
                         Ok(*v)
                     }
