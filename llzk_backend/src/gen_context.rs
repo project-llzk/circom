@@ -72,6 +72,11 @@ where
             self.overwriting_name_to_value.insert(name, value);
         }
     }
+
+    /// Return true iff the given name is declared in the local scope of this block context.
+    fn declares(&self, name: &str) -> bool {
+        self.scope_local_name_to_value.contains_key(name)
+    }
 }
 
 /// Stack of blocks where the top block is the current block where code should be appended and the
@@ -141,7 +146,7 @@ where
         }
     }
 
-    /// If the given name is not already declared in the current scope, declare it by creating an
+    /// If the given name is not already declared in the current scope, declare it by producing an
     /// [Operation] via the callback, inserting that into the current block, and using its result.
     /// The only scenario where a declaration would already be present is when the same Declaration
     /// statements are visited that were used to produce the parameters of the current function.
@@ -149,21 +154,26 @@ where
     /// if a symbol is declared more than once in the same scope.
     pub fn declare_name_if_not_present(
         &mut self,
-        name: String,
+        name: &str,
         uninit_value: impl FnOnce() -> Result<Operation<'ctx>>,
     ) -> Result<()> {
-        if !self.top_mut().scope_local_name_to_value.contains_key(&name) {
+        if !self.top_mut().scope_local_name_to_value.contains_key(name) {
             let op = uninit_value()?;
             let value = single_result_as_value(self.append_current_block(op))?;
-            self.top_mut().scope_local_name_to_value.insert(name, value);
+            self.top_mut().scope_local_name_to_value.insert(name.to_string(), value);
         }
         Ok(())
     }
 
     /// Set the LLZK IR SSA Value for the given circom var name, local to the top block context.
     pub fn set_named_value(&mut self, name: String, value: Value<'ctx, 'val>) -> Result<()> {
-        let bc = self.top_mut();
-        bc.insert(name, value);
+        // This is mainly a sanity check on proper usage of `declare_name_if_not_present()` and
+        // this function to ensure values end up in the correct map in the BlockContext and are
+        // thus scoped correctly.
+        if !self.root.declares(&name) && !self.other_blocks.iter().any(|bc| bc.declares(&name)) {
+            return Err(anyhow!("Variable '{name}' was not declared in any scope"));
+        }
+        self.top_mut().insert(name, value);
         Ok(())
     }
 

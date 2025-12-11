@@ -530,10 +530,13 @@ where
             Statement::InitializationBlock { initializations, .. } => {
                 initializations.gen_llzk_in_template(codegen, template)
             }
-            Statement::Declaration { meta, xtype, name, dimensions, .. } => template
-                .and_then_same(codegen, |fc, _| {
-                    fc.declare_name_uninit(codegen, name.clone(), meta, dimensions)
-                }),
+            Statement::Declaration { meta, xtype, name, dimensions, .. } => {
+                template.and_then_same(codegen, |fc, _| {
+                    fc.block_ctx.declare_name_if_not_present(name, || {
+                        codegen.new_nondet_value_of_dimensions(meta, dimensions)
+                    })
+                })
+            }
             Statement::Block { stmts, .. } => {
                 let mut template = template; // satisfy the &mut in `GenWithCircomScopeHandling`
                 template.gen_in_current_block_with_new_circom_scope(|template, _| {

@@ -86,21 +86,6 @@ where
         Ok(v)
     }
 
-    /// If the given name is not already declared in the current scope, declare it with an
-    /// uninitialized value of type `felt` with the given dimensions.
-    #[inline]
-    pub fn declare_name_uninit<'ast>(
-        &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
-        name: String,
-        meta: &Meta,
-        dimensions: &[Expression],
-    ) -> Result<()> {
-        self.block_ctx.declare_name_if_not_present(name, || {
-            codegen.new_nondet_value_of_dimensions(meta, dimensions)
-        })
-    }
-
     /// Generate LLZK code in the current function for a circom prefix operation.
     pub fn gen_prefix_op<'ast>(
         &mut self,
@@ -418,7 +403,9 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Template elements declared inside the function")
                 }
-                function.declare_name_uninit(codegen, name.clone(), meta, dimensions)
+                function.block_ctx.declare_name_if_not_present(name, || {
+                    codegen.new_nondet_value_of_dimensions(meta, dimensions)
+                })
             }
             Statement::Block { stmts, .. } => {
                 function.gen_in_current_block_with_new_circom_scope(|function, _| {

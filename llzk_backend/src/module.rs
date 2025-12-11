@@ -20,7 +20,6 @@ use llzk::{
 };
 use melior::ir::{
     operation::OperationLike as _, Block, BlockLike as _, Location, Operation, RegionLike, Type,
-    Value,
 };
 use program_structure::{
     ast::{Expression, Meta, SignalType, Statement, VariableType},
@@ -264,9 +263,9 @@ impl<'ctx> GenerateLLZKInModule<'ctx> for TemplateData {
         // variable name to LLZK op result Value (do this in each function).
         for (name, op) in declarations.var_decls {
             // Insert (a clone of) the declaration into the compute function.
-            let _: Value = compute_ctx.append_op_named_result(op.clone(), name.clone())?;
+            compute_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op.clone()))?;
             // Insert the declaration into the constrain function.
-            let _: Value = constrain_ctx.append_op_named_result(op, name)?;
+            constrain_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op))?;
         }
 
         // Visit the body of the template and generate LLZK IR for it within the struct functions.
