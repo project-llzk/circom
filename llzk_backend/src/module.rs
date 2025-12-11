@@ -1,8 +1,6 @@
 //! Handles the top-level constructs (i.e. circom templates and functions), by delegating
 //! to the [function] and [template] modules to generate the code for each.
 
-#![allow(unused_variables)] // TODO: TEMP
-
 use crate::{
     function::{FunctionContext, GenerateLLZKInFunction as _},
     shared::{map_name_to_arg_value, LlzkCodegen},

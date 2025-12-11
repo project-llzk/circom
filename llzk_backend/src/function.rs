@@ -5,8 +5,6 @@
 //! [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
 //! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes.
 
-#![allow(unused_variables)] // TODO: TEMP
-
 use crate::{
     gen_context::{BlockContextStack, GenWithCircomScopeHandling},
     shared::{self, new_felt_const_op, single_result_as_value, IsA, LlzkCodegen},
@@ -393,6 +391,7 @@ where
 {
     type Output = ();
 
+    #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_function<'ast>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx>,
@@ -514,6 +513,7 @@ where
 {
     type Output = Value<'ctx, 'val>;
 
+    #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_function<'ast>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx>,

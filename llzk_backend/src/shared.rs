@@ -1,7 +1,5 @@
 //! Shared code generation utilities.
 
-#![allow(unused_variables)] // TODO: TEMP
-
 use ansi_term::Color;
 use anyhow::{anyhow, Ok, Result};
 use llzk::prelude::{
@@ -98,6 +96,7 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
     /// Note: The LLZK ArrayType can only use the following Attribute types for dimensions:
     /// IntegerAttr (`index` or `i1`), SymbolRefAttr, or AffineMapAttr (with single result,
     /// probably an identity map).
+    #[allow(unused_variables)] // TODO: TEMP
     pub fn convert_dim_expr(&self, expr: &Expression) -> Result<Attribute<'ctx>> {
         match expr {
             Expression::Number(meta, big_int) => {

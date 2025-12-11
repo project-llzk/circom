@@ -6,8 +6,6 @@
 //! helper traits like `ExprGenResult` and `Chainable` that implement some boilerplate to make the
 //! actual code generation within [template::GenerateLLZKInTemplate] a lot simpler.
 
-#![allow(unused_variables)] // TODO: TEMP
-
 use crate::{
     function::FunctionContext,
     gen_context::GenWithCircomScopeHandling,
@@ -527,6 +525,7 @@ where
     where
         'val: 'r;
 
+    #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_template<'ast, 'r>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx>,
@@ -700,6 +699,7 @@ where
     where
         'val: 'r;
 
+    #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_template<'ast, 'r>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx>,
