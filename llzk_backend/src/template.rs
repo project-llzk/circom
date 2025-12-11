@@ -276,7 +276,6 @@ where
     /// a new [ChainResult].
     fn and_then<'ast, F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
         gen_compute: F1,
         gen_constrain: F2,
     ) -> Result<CR>
@@ -294,7 +293,6 @@ where
     #[inline]
     fn and_then_same<'ast, F, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
         handle: F,
     ) -> Result<CR>
     where
@@ -303,7 +301,7 @@ where
             &Self::HandlerInput,
         ) -> Result<CR::HandlerOutput>,
     {
-        self.and_then::<&F, &F, CR>(codegen, &handle, &handle)
+        self.and_then::<&F, &F, CR>(&handle, &handle)
     }
 }
 
@@ -369,7 +367,6 @@ where
 
     fn and_then<'ast, F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
         gen_compute: F1,
         gen_constrain: F2,
     ) -> Result<CR>
@@ -420,7 +417,6 @@ where
 
     fn and_then<'ast, F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
         gen_compute: F1,
         gen_constrain: F2,
     ) -> Result<CR>
@@ -539,7 +535,7 @@ where
                 initializations.gen_llzk_in_template(codegen, template)
             }
             Statement::Declaration { meta, xtype, name, dimensions, .. } => {
-                template.and_then_same(codegen, |fc, _| {
+                template.and_then_same(|fc, _| {
                     fc.block_ctx.declare_name_if_not_present(name, || {
                         codegen.new_nondet_value_of_dimensions(meta, dimensions)
                     })
@@ -556,17 +552,16 @@ where
                     // Since there's no simple assignment in LLZK, just update the mapped Value
                     // which essentially propagates the assignment.
                     match op {
-                        AssignOp::AssignVar => rhe
-                            .gen_llzk_in_template(codegen, template)?
-                            .and_then_same(codegen, |fc, val| {
+                        AssignOp::AssignVar => {
+                            rhe.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, val| {
                                 fc.block_ctx.set_named_value(var.clone(), *val)
-                            }),
+                            })
+                        }
                         AssignOp::AssignSignal => {
                             // The `<--` operator is witness generation only so this should not
                             // generate any code in the constrain function.
                             let template = template.compute_only();
                             rhe.gen_llzk_in_template(codegen, &template)?.and_then_same(
-                                codegen,
                                 |fc, val| {
                                     // Write value to field of "self" struct.
                                     fc.append_op_no_result(
@@ -583,7 +578,6 @@ where
                         }
                         AssignOp::AssignConstraintSignal => {
                             rhe.gen_llzk_in_template(codegen, template)?.and_then(
-                                codegen,
                                 |fc, val| {
                                     // Write value to field of "self" struct.
                                     fc.append_op_no_result(
@@ -640,7 +634,6 @@ where
                 let template = template.constrain_only();
                 // Generate Value for both sides and then generate the constraint op.
                 ExprGenResultMulti::gen_exprs(&template, codegen, [lhe, rhe])?.and_then_same(
-                    codegen,
                     |fc, vals| {
                         fc.append_op_no_result(
                             constrain::eq(codegen.location_from_meta(meta), vals[0], vals[1])
@@ -656,7 +649,7 @@ where
                 todo!("Handle while statement in template")
             }
             Statement::Assert { meta, arg } => {
-                arg.gen_llzk_in_template(codegen, template)?.and_then_same(codegen, |fc, val| {
+                arg.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, val| {
                     fc.append_op_no_result(
                         llzk::dialect::bool::assert(
                             codegen.location_from_meta(meta),
@@ -710,7 +703,7 @@ where
     {
         match self {
             Expression::Number(meta, big_int) => {
-                template.and_then_same(codegen, |fc, _| {
+                template.and_then_same(|fc, _| {
                     // Convert the BigInt to an LLZK `felt.const` op. The user of the Expression is
                     // responsible for converting this `felt.type` value to another type if needed.
                     // This is done in both functions (if the result is unused in one, dce can
@@ -719,7 +712,7 @@ where
                 })
             }
             Expression::Variable { meta, name, access } => match access.as_slice() {
-                [] => template.and_then_same(codegen, |fc, _| {
+                [] => template.and_then_same(|fc, _| {
                     fc.block_ctx
                         .get_named_value(name)
                         .copied()
@@ -731,15 +724,14 @@ where
             },
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {
                 // Generate Value for both sides and then generate the infix op.
-                ExprGenResultMulti::gen_exprs(template, codegen, [&**lhe, &**rhe])?
-                    .and_then_same(codegen, |fc, vals| {
-                        fc.gen_infix_op(codegen, meta, infix_op, vals[0], vals[1])
-                    })
+                ExprGenResultMulti::gen_exprs(template, codegen, [&**lhe, &**rhe])?.and_then_same(
+                    |fc, vals| fc.gen_infix_op(codegen, meta, infix_op, vals[0], vals[1]),
+                )
             }
             Expression::PrefixOp { meta, prefix_op, rhe } => {
                 // Generate Value for operand and then generate the prefix op.
                 rhe.gen_llzk_in_template(codegen, template)?
-                    .and_then_same(codegen, |fc, v| fc.gen_prefix_op(codegen, meta, prefix_op, *v))
+                    .and_then_same(|fc, v| fc.gen_prefix_op(codegen, meta, prefix_op, *v))
             }
             Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
                 todo!("Handle InlineSwitchOp expression in template")
@@ -758,7 +750,7 @@ where
                 // Visit each argument and collect the resulting LLZK Values for both functions.
                 let res = ExprGenResultMulti::gen_exprs(template, codegen, args)?;
                 // Create the CallOp in each function using the collected args.
-                res.and_then_same(codegen, |fc, vals| {
+                res.and_then_same(|fc, vals| {
                     // TODO: Currently, the LLZK function will always return a `felt.type` but
                     // eventually, this gen function may need an "expected result type"
                     // parameter or use `poly.tvar` with function templates.
