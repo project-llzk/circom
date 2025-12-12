@@ -1,6 +1,6 @@
 //! Handles circom var scoping and LLZK blocks stack management.
 
-use crate::shared::single_result_as_value;
+use crate::{function::FunctionContext, shared::single_result_as_value};
 use anyhow::{anyhow, Ok, Result};
 use llzk::prelude::{FuncDefOp, OperationLike as _};
 use melior::ir::{BlockLike as _, BlockRef, Operation, OperationRef, RegionLike as _, Value};
@@ -167,7 +167,7 @@ where
         Ok(())
     }
 
-    /// Set the LLZK IR SSA Value for the given circom var name, local to the top block context.
+    /// In the top block context, set the LLZK IR SSA Value for the given circom var name.
     pub fn set_named_value(&mut self, name: String, value: Value<'ctx, 'val>) -> Result<()> {
         // This is mainly a sanity check on proper usage of `declare_name_if_not_present()` and
         // this function to ensure values end up in the correct map in the BlockContext and are
@@ -176,6 +176,17 @@ where
             return Err(anyhow!("Variable '{name}' was not declared in any scope"));
         }
         self.top_mut().insert(name, value);
+        Ok(())
+    }
+
+    /// In the top block context, set multiple LLZK IR SSA Values for the given circom var names.
+    pub fn set_named_values(
+        &mut self,
+        insert: impl IntoIterator<Item = (String, Value<'ctx, 'val>)>,
+    ) -> Result<()> {
+        for (name, value) in insert.into_iter() {
+            self.set_named_value(name, value)?;
+        }
         Ok(())
     }
 
@@ -191,27 +202,18 @@ where
     }
 
     /// Pop the current block off the stack to return to the previous block. The vars declared in
-    /// the popped frame are dropped and those which are overwrites are written to the context
-    /// prior to the current frame..
-    pub fn pop(&mut self) {
-        let popped = self.other_blocks.pop().expect("There is no block to pop!");
-        let new_top = self.top_mut();
-        // TODO: This approach works for circom Block because it's flattened into the current LLZK
-        // Block. However, when generating nested LLZK Blocks for IfThenElse and While ops, this
-        // will need to be revised. Due to the SSA form in LLZK, we will have to an a YieldOp to
-        // return these values from the inner block and then capture them in the outer block and
-        // update the block context there with the captured values.
-        for (name, value) in popped.overwriting_name_to_value.into_iter() {
-            new_top.insert(name, value);
-        }
+    /// the popped frame are dropped and those which are overwrites are returned.
+    pub fn pop(&mut self) -> HashMap<String, Value<'ctx, 'val>> {
+        self.other_blocks.pop().expect("There is no block to pop!").overwriting_name_to_value
     }
 }
 
 /// Provides common functions for generating code that respects circom variable scoping, abstracting
 /// access to the [BlockContextStack] so that functions and templates can share these functions.
-pub trait GenWithCircomScopeHandling<'ctx, 'blk, 'val>
+pub trait GenWithCircomScopeHandling<'ctx, 'func, 'blk, 'val>
 where
-    'ctx: 'blk,
+    'ctx: 'func,
+    'func: 'blk,
     'blk: 'val,
 {
     /// LLZK block context type. For functions, this is just [BlockRef], but for templates,
@@ -225,21 +227,48 @@ where
     fn stack_push(&mut self, block: Self::NewBlock);
 
     /// Pop the top block(s) from the [BlockContextStack].
-    fn stack_pop(&mut self);
+    fn stack_pop<H>(&mut self, handle_overwrites: H) -> Result<()>
+    where
+        H: Fn(
+            &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            HashMap<String, Value<'ctx, 'val>>,
+        ) -> Result<()>;
+
+    /// Use the callback to generate code for a new circom scope/block within the given LLZK
+    /// `NewBlock`. Assignments to circom variables that are newly introduced in this context go out
+    /// of scope so they are dropped after the callback but overwriting assignments to circom
+    /// variables that already exist prior to this new scope are passed to the overwrite handler.
+    fn gen_in_given_block_with_new_circom_scope<H>(
+        &mut self,
+        block: Self::NewBlock,
+        generator: impl FnOnce(&mut Self, Self::NewBlock) -> Result<()>,
+        handle_overwrites: H,
+    ) -> Result<()>
+    where
+        H: Fn(
+            &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            HashMap<String, Value<'ctx, 'val>>,
+        ) -> Result<()>,
+    {
+        self.stack_push(block);
+        let res = generator(self, block);
+        self.stack_pop(handle_overwrites)?;
+        res
+    }
 
     /// Use the callback to generate code for a new circom scope/block within the given LLZK
     /// `NewBlock`. Assignments to circom variables that are newly introduced in this context go out
     /// of scope so they are dropped after the callback but overwriting assignments to circom
     /// variables that already exist prior to this new scope are preserved and written into the
-    /// existing block context
-    fn gen_in_given_block_with_new_circom_scope(
+    /// existing block context.
+    fn gen_in_given_block_with_new_circom_scope_and_merge_overwrites(
         &mut self,
         block: Self::NewBlock,
         generator: impl FnOnce(&mut Self, Self::NewBlock) -> Result<()>,
     ) -> Result<()> {
         self.stack_push(block);
         let res = generator(self, block);
-        self.stack_pop();
+        self.stack_pop(|fc, overwrites| fc.block_ctx.set_named_values(overwrites))?;
         res
     }
 
@@ -247,12 +276,15 @@ where
     /// `NewBlock`. Assignments to circom variables that are newly introduced in this context go out
     /// of scope so they are dropped after the callback but overwriting assignments to circom
     /// variables that already exist prior to this new scope are preserved and written into the
-    /// existing block context
+    /// existing block context.
     #[inline]
-    fn gen_in_current_block_with_new_circom_scope(
+    fn gen_in_current_block_with_new_circom_scope_and_merge_overwrites(
         &mut self,
         generator: impl FnOnce(&mut Self, Self::NewBlock) -> Result<()>,
     ) -> Result<()> {
-        self.gen_in_given_block_with_new_circom_scope(self.stack_top(), generator)
+        self.gen_in_given_block_with_new_circom_scope_and_merge_overwrites(
+            self.stack_top(),
+            generator,
+        )
     }
 }

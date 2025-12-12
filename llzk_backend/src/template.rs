@@ -24,7 +24,7 @@ use program_structure::{
     ast::{AssignOp, Expression, Statement},
     error_code::ReportCode,
 };
-use std::{cell::RefCell, ops::Deref, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, ops::Deref, rc::Rc};
 
 /// Alias for `Option<T>` to make it clear what the meaning of the option is within the
 /// [TemplateContext] below.
@@ -100,7 +100,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
 /// reference to the `gen_llzk_in_template()` functions. Thus, this trait cannot be implemented for
 /// `TemplateContext` and is instead implemented for `&TemplateContext` which means its functions
 /// must be called via a `&mut &TemplateContext` reference.
-impl<'ctx, 'str, 'func, 'blk, 'val> GenWithCircomScopeHandling<'ctx, 'blk, 'val>
+impl<'ctx, 'str, 'func, 'blk, 'val> GenWithCircomScopeHandling<'ctx, 'func, 'blk, 'val>
     for &TemplateContext<'ctx, 'str, 'func, 'blk, 'val>
 where
     'ctx: 'str,
@@ -126,13 +126,24 @@ where
         }
     }
 
-    fn stack_pop(&mut self) {
+    fn stack_pop<H>(&mut self, handle_overwrites: H) -> Result<()>
+    where
+        H: Fn(
+            &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            HashMap<String, Value<'ctx, 'val>>,
+        ) -> Result<()>,
+    {
         if let Some(rc) = self.compute.as_ref() {
-            rc.borrow_mut().block_ctx.pop()
+            let mut fc = rc.borrow_mut();
+            let popped = fc.block_ctx.pop();
+            handle_overwrites(&mut *fc, popped)?;
         }
         if let Some(rc) = self.constrain.as_ref() {
-            rc.borrow_mut().block_ctx.pop()
+            let mut fc = rc.borrow_mut();
+            let popped = fc.block_ctx.pop();
+            handle_overwrites(&mut *fc, popped)?;
         }
+        Ok(())
     }
 }
 
@@ -543,9 +554,9 @@ where
             }
             Statement::Block { stmts, .. } => {
                 let mut template = template; // satisfy the &mut in `GenWithCircomScopeHandling`
-                template.gen_in_current_block_with_new_circom_scope(|template, _| {
-                    stmts.gen_llzk_in_template(codegen, template)
-                })
+                template.gen_in_current_block_with_new_circom_scope_and_merge_overwrites(
+                    |template, _| stmts.gen_llzk_in_template(codegen, template),
+                )
             }
             Statement::Substitution { meta, var, access, op, rhe } => {
                 if access.is_empty() {

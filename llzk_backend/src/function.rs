@@ -291,7 +291,7 @@ where
 }
 
 /// The [FunctionContext] directly accesses a single [BlockContextStack] for circom scope handling.
-impl<'ctx, 'func, 'blk, 'val> GenWithCircomScopeHandling<'ctx, 'blk, 'val>
+impl<'ctx, 'func, 'blk, 'val> GenWithCircomScopeHandling<'ctx, 'func, 'blk, 'val>
     for FunctionContext<'ctx, 'func, 'blk, 'val>
 where
     'ctx: 'func,
@@ -308,8 +308,15 @@ where
         self.block_ctx.push(block)
     }
 
-    fn stack_pop(&mut self) {
-        self.block_ctx.pop()
+    fn stack_pop<H>(&mut self, handle_overwrites: H) -> Result<()>
+    where
+        H: Fn(
+            &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            HashMap<String, Value<'ctx, 'val>>,
+        ) -> Result<()>,
+    {
+        let popped = self.block_ctx.pop();
+        handle_overwrites(self, popped)
     }
 }
 
@@ -414,11 +421,10 @@ where
                     codegen.new_nondet_value_of_dimensions(meta, dimensions)
                 })
             }
-            Statement::Block { stmts, .. } => {
-                function.gen_in_current_block_with_new_circom_scope(|function, _| {
+            Statement::Block { stmts, .. } => function
+                .gen_in_current_block_with_new_circom_scope_and_merge_overwrites(|function, _| {
                     stmts.gen_llzk_in_function(codegen, function)
-                })
-            }
+                }),
             Statement::Substitution { meta, var, access, op, rhe } => {
                 if op.is_signal_operator() {
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
