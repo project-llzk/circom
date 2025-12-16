@@ -10,7 +10,6 @@ use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::shared::new_felt_const_op;
 use crate::shared::LlzkCodegen;
-use anyhow::anyhow;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::prelude::constrain;
@@ -744,12 +743,7 @@ where
                 })
             }
             Expression::Variable { meta, name, access } => match access.as_slice() {
-                [] => template.and_then_same(|fc, _| {
-                    fc.block_ctx
-                        .get_named_value(name)
-                        .copied()
-                        .ok_or_else(|| anyhow!("variable {name} not found"))
-                }),
+                [] => template.and_then_same(|fc, _| fc.block_ctx.get_named_value(name).copied()),
                 a => {
                     todo!("Handle accesses in Variable expression in template")
                 }

@@ -551,10 +551,7 @@ where
             Expression::Variable { meta, name, access } => {
                 match access.as_slice() {
                     [] => {
-                        let v = function
-                            .block_ctx
-                            .get_named_value(name)
-                            .ok_or_else(|| anyhow!("variable {name} not found"))?;
+                        let v = function.block_ctx.get_named_value(name)?;
                         Ok(*v)
                     }
                     a => {
