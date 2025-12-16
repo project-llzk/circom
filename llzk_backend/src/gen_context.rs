@@ -3,7 +3,6 @@
 use crate::function::FunctionContext;
 use crate::shared::single_result_as_value;
 use anyhow::anyhow;
-use anyhow::Ok;
 use anyhow::Result;
 use llzk::prelude::FuncDefOp;
 use llzk::prelude::OperationLike as _;
@@ -201,8 +200,13 @@ where
 
     /// Get the LLZK IR SSA Value for the given circom var name, checking the top block context
     /// and then proceeding down the stack until found (if at all).
-    pub fn get_named_value(&self, name: &str) -> Option<&Value<'ctx, 'val>> {
-        self.other_blocks.iter().rev().find_map(|bc| bc.get(name)).or_else(|| self.root.get(name))
+    pub fn get_named_value(&self, name: &str) -> Result<&Value<'ctx, 'val>> {
+        self.other_blocks
+            .iter()
+            .rev()
+            .find_map(|bc| bc.get(name))
+            .or_else(|| self.root.get(name))
+            .ok_or_else(|| anyhow!("variable {name} not found"))
     }
 
     /// Push a new block onto the stack to make it the current block.
