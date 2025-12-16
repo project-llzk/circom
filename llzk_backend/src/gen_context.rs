@@ -229,7 +229,7 @@ where
     /// Pop the top block(s) from the [BlockContextStack].
     fn stack_pop<H>(&mut self, handle_overwrites: H) -> Result<()>
     where
-        H: Fn(
+        H: FnMut(
             &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
             HashMap<String, Value<'ctx, 'val>>,
         ) -> Result<()>;
@@ -245,7 +245,7 @@ where
         handle_overwrites: H,
     ) -> Result<()>
     where
-        H: Fn(
+        H: FnMut(
             &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
             HashMap<String, Value<'ctx, 'val>>,
         ) -> Result<()>,

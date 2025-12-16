@@ -308,9 +308,9 @@ where
         self.block_ctx.push(block)
     }
 
-    fn stack_pop<H>(&mut self, handle_overwrites: H) -> Result<()>
+    fn stack_pop<H>(&mut self, mut handle_overwrites: H) -> Result<()>
     where
-        H: Fn(
+        H: FnMut(
             &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
             HashMap<String, Value<'ctx, 'val>>,
         ) -> Result<()>,
