@@ -8,6 +8,7 @@
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::shared::new_felt_const_op;
+use crate::shared::no_results;
 use crate::shared::single_result_as_value;
 use crate::shared::IsA;
 use crate::shared::LlzkCodegen;
@@ -17,21 +18,26 @@ use anyhow::Result;
 use llzk::prelude::bool;
 use llzk::prelude::felt;
 use llzk::prelude::function;
+use llzk::prelude::Block;
+use llzk::prelude::BlockLike as _;
+use llzk::prelude::BlockRef;
 use llzk::prelude::FeltType;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::Operation;
+use llzk::prelude::OperationLike as _;
 use llzk::prelude::OperationMutLike;
 use llzk::prelude::OperationRef;
+use llzk::prelude::Region;
+use llzk::prelude::RegionLike as _;
+use llzk::prelude::Type;
+use llzk::prelude::Value;
+use llzk::prelude::ValueLike as _;
 use melior::dialect::arith;
 use melior::dialect::index;
-use melior::ir::operation::OperationLike as _;
+use melior::dialect::scf;
 use melior::ir::operation::OperationRefMut;
 use melior::ir::operation::WalkOrder;
 use melior::ir::operation::WalkResult;
-use melior::ir::BlockRef;
-use melior::ir::Type;
-use melior::ir::Value;
-use melior::ir::ValueLike as _;
 use program_structure::ast::Expression;
 use program_structure::ast::ExpressionInfixOpcode;
 use program_structure::ast::ExpressionPrefixOpcode;
@@ -76,22 +82,20 @@ where
         Ok(Self { func, block_ctx: BlockContextStack::new(func.deref(), param_name_to_value)? })
     }
 
+    /// Append an operation.
+    pub fn append_op(&mut self, op: Operation<'ctx>) -> OperationRef<'ctx, 'val> {
+        self.block_ctx.append_current_block(op)
+    }
+
     /// Append an operation that must produce no results.
     pub fn append_op_no_result(&mut self, op: Operation<'ctx>) -> Result<()> {
-        let op_ref = self.block_ctx.append_current_block(op);
-        if op_ref.result_count() != 0 {
-            return Err(anyhow!(
-                "Expected operation to have no results, found {}",
-                op_ref.result_count()
-            ));
-        }
-        Ok(())
+        no_results(self.append_op(op))
     }
 
     /// Append an operation that must produce a single result and is NOT associated with a variable
     /// name in the circom code.
     pub fn append_op_unnamed_result(&mut self, op: Operation<'ctx>) -> Result<Value<'ctx, 'val>> {
-        single_result_as_value(self.block_ctx.append_current_block(op))
+        single_result_as_value(self.append_op(op))
     }
 
     /// Append an operation that must produce a single result and store the mapping of the circom
@@ -465,32 +469,101 @@ where
                 rhe.gen_llzk_in_function(codegen, function).map(drop)
             }
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
-                let cond = cond.gen_llzk_in_function(codegen, function)?;
-                /*
-                // Generate LLZK for both blocks and then generate an `scf.if`.
-                // TODO: The 'return' ops generated within the blocks need to be converted to
-                // `scf.yield` ops. If both blocks contain a return, then the `scf.if` itself needs
-                // to be followed by a return of the yielded value. If only one block contains a
-                // return, then the `scf.if` needs to yield an additional boolean value `isReturn`
-                // indicating whether a return occurred, and the code following the `scf.if` needs
-                // to be guarded another `scf.if` checking `!isReturn`.
-                //
-                // TODO: Do these blocks need arguments to pass SSA Values from the outer scope?
-                let if_block = Block::new(&[]);
-                function.block_ctx.push(unsafe { BlockRef::from_raw(if_block.to_raw()) });
-                if_case.gen_llzk_in_function(codegen, function)?;
-                function.block_ctx.pop();
-                println!("Generated if block {}", if_block); // TODO:TEMP
+                let location = codegen.location_from_meta(meta);
+                let condition = cond.gen_llzk_in_function(codegen, function)?;
 
+                // Initially, generate the blocks for the 'then' and 'else' cases naively.
+                let mut then_block_overwrites = HashMap::<String, Value<'ctx, 'val>>::new();
+                let then_region = Region::new();
+                let then_block = then_region.append_block(Block::new(&[]));
+                function.gen_in_given_block_with_new_circom_scope(
+                    then_block,
+                    |function, _| if_case.gen_llzk_in_function(codegen, function),
+                    |_, overwrites| {
+                        then_block_overwrites.extend(overwrites.into_iter());
+                        Ok(())
+                    },
+                )?;
+                let mut else_block_overwrites = HashMap::<String, Value<'ctx, 'val>>::new();
+                let else_region = Region::new();
+                let else_block = else_region.append_block(Block::new(&[]));
                 if let Some(else_case) = else_case {
-                    let else_block = Block::new(&[]);
-                    function.block_ctx.push(unsafe { BlockRef::from_raw(else_block.to_raw()) });
-                    else_case.gen_llzk_in_function(codegen, function)?;
-                    function.block_ctx.pop();
-                    println!("Generated else block {}", else_block); // TODO:TEMP
+                    function.gen_in_given_block_with_new_circom_scope(
+                        else_block,
+                        |function, _| else_case.gen_llzk_in_function(codegen, function),
+                        |_, overwrites| {
+                            else_block_overwrites.extend(overwrites.into_iter());
+                            Ok(())
+                        },
+                    )?;
                 }
-                 */
-                todo!("Handle if-then-else statement in function")
+
+                // Update `then_block_overwrites` to ensure it has all keys from
+                // `else_block_overwrites`, using current-scope values for missing keys.
+                // This ensures that both blocks will yield the same set of variables.
+                for (name, _) in &else_block_overwrites {
+                    if !then_block_overwrites.contains_key(name) {
+                        then_block_overwrites.insert(
+                            name.clone(),
+                            function.block_ctx.get_named_value(name)?.clone(),
+                        );
+                    }
+                }
+
+                // Split `then_block_overwrites` into ordered lists of names and values. The
+                // ordering of names here defines the ordering of results from the `scf.if` op
+                // and thus the ordering of `scf.yield` operands in both branches.
+                // Sort by circom variable names to ensure a stable order.
+                let mut overwrites_sorted: Vec<_> = then_block_overwrites.into_iter().collect();
+                overwrites_sorted.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
+                let (overwrite_names, then_values): (Vec<_>, Vec<_>) =
+                    overwrites_sorted.into_iter().unzip();
+
+                // Insert `scf.yield` at the end of the `then` block.
+                no_results(then_block.append_operation(scf::r#yield(&then_values, location)))?;
+
+                // Create list of values to yield from the `else` block in the same order
+                // as `overwrite_names`, again using current-scope values for missing keys.
+                let else_values = overwrite_names
+                    .iter()
+                    .map(|name| {
+                        else_block_overwrites.get(name).map_or_else(
+                            || function.block_ctx.get_named_value(name).cloned(),
+                            |v| Ok(v.clone()),
+                        )
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                // Insert `scf.yield` at the end of the `else` block.
+                no_results(else_block.append_operation(scf::r#yield(&else_values, location)))?;
+
+                // Use the `overwrite_names` and the current block context to get the types of the
+                // named values to define the result types of the `scf.if` op. Then generate the
+                // `scf.if` op itself for the circom IfThenElse statement.
+                let result_types = overwrite_names
+                    .iter()
+                    .map(|name| {
+                        function
+                            .block_ctx
+                            .get_named_value(name)
+                            .inspect_err(|e| eprintln!("\nERROR: {:?}", e))
+                            .map(|v| v.r#type())
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                let scf_if_op = function.append_op(scf::r#if(
+                    condition,
+                    &result_types,
+                    then_region,
+                    else_region,
+                    location,
+                ));
+
+                // Finally, update the current block context with results from the `scf.if` op.
+                // (the `res` binding here seems unnecessary but the borrow checker needs it)
+                let res = overwrite_names.into_iter().zip(scf_if_op.results()).try_for_each(
+                    |(name, result)| function.block_ctx.set_named_value(name, result.into()),
+                );
+                res
             }
             Statement::While { meta, cond, stmt } => {
                 todo!("Handle while statement in function")

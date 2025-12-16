@@ -4,14 +4,14 @@ use crate::function::FunctionContext;
 use crate::shared::single_result_as_value;
 use anyhow::anyhow;
 use anyhow::Result;
+use llzk::prelude::BlockLike as _;
+use llzk::prelude::BlockRef;
 use llzk::prelude::FuncDefOp;
+use llzk::prelude::Operation;
 use llzk::prelude::OperationLike as _;
-use melior::ir::BlockLike as _;
-use melior::ir::BlockRef;
-use melior::ir::Operation;
-use melior::ir::OperationRef;
-use melior::ir::RegionLike as _;
-use melior::ir::Value;
+use llzk::prelude::OperationRef;
+use llzk::prelude::RegionLike as _;
+use llzk::prelude::Value;
 use std::collections::HashMap;
 
 /// Single frame in the [BlockContextStack].

@@ -7,6 +7,8 @@ use llzk::prelude::felt;
 use llzk::prelude::undef;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
+use llzk::prelude::Attribute;
+use llzk::prelude::BlockLike as _;
 use llzk::prelude::FeltConstAttribute;
 use llzk::prelude::FeltType;
 use llzk::prelude::FuncDefOp;
@@ -16,22 +18,19 @@ use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::IntegerAttribute;
 use llzk::prelude::LlzkContext;
 use llzk::prelude::LlzkError;
+use llzk::prelude::Location;
+use llzk::prelude::Operation;
+use llzk::prelude::OperationLike;
 use llzk::prelude::StructDefOp;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructDefOpRefMut;
-use llzk::prelude::ValueLike;
+use llzk::prelude::Type;
+use llzk::prelude::TypeLike as _;
+use llzk::prelude::Value;
+use llzk::prelude::ValueLike as _;
 use melior::dialect::arith;
 use melior::ir::attribute::BoolAttribute;
-use melior::ir::operation::OperationLike as _;
-use melior::ir::Attribute;
-use melior::ir::BlockLike;
-use melior::ir::Location;
 use melior::ir::Module;
-use melior::ir::Operation;
-use melior::ir::OperationRef;
-use melior::ir::Type;
-use melior::ir::TypeLike;
-use melior::ir::Value;
 use melior::pass;
 use melior::utility;
 use mlir_sys::mlirOpOperandIsNull;
@@ -292,9 +291,7 @@ pub fn new_felt_const_op<'ctx>(
 /// 'ctx: lifetime of the `LlzkContext` and generated `Module`
 /// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
 #[inline]
-pub fn single_result_as_value<'ctx, 'val>(
-    op: OperationRef<'ctx, 'val>,
-) -> Result<Value<'ctx, 'val>> {
+pub fn single_result_as_value<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> Result<Value<'c, 'a>> {
     if op.result_count() != 1 {
         return Err(anyhow!(
             "Expected operation to have a single result, found {}",
@@ -302,6 +299,18 @@ pub fn single_result_as_value<'ctx, 'val>(
         ));
     }
     op.result(0).map(Value::from).map_err(Into::into)
+}
+
+/// Ensures the given OperationRef has 0 result Values, else returns an `Err` result.
+///
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+/// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
+#[inline]
+pub fn no_results<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> Result<()> {
+    if op.result_count() != 0 {
+        return Err(anyhow!("Expected operation to have no results, found {}", op.result_count()));
+    }
+    Ok(())
 }
 
 /// Create a map of circom variable names (either function arguments or template input signals) to
