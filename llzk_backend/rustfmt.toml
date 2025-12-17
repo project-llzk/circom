@@ -6,3 +6,4 @@ max_width = 100
 wrap_comments = true
 normalize_comments = true
 comment_width = 100
+imports_granularity = "Item"

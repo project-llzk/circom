@@ -1,10 +1,12 @@
 //! Entry point for LLZK code generation.
 
-use crate::{module::GenerateLLZKInModule as _, shared::LlzkCodegen};
+use crate::module::GenerateLLZKInModule as _;
+use crate::shared::LlzkCodegen;
 use ansi_term::Color;
 use anyhow::Result;
 use llzk::prelude::LlzkContext;
-use melior::ir::{Location, Module};
+use melior::ir::Location;
+use melior::ir::Module;
 use program_structure::program_archive::ProgramArchive;
 
 /// Create a new, empty LLZK `Module` with Location "main" from the `ProgramArchive`.

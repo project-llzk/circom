@@ -1,37 +1,55 @@
 //! Shared code generation utilities.
 
 use ansi_term::Color;
-use anyhow::{anyhow, Ok, Result};
-use llzk::prelude::{
-    felt, undef, verify_operation_with_diags, ArrayType, FeltConstAttribute, FeltType, FuncDefOp,
-    FuncDefOpLike, FuncDefOpRef, FuncDefOpRefMut, IntegerAttribute, LlzkContext, LlzkError,
-    StructDefOp, StructDefOpRef, StructDefOpRefMut,
-};
-use melior::{
-    ir::{
-        operation::OperationLike as _, Attribute, BlockLike, Location, Module, Operation,
-        OperationRef, Type, TypeLike, Value,
-    },
-    pass, utility,
-};
+use anyhow::anyhow;
+use anyhow::Ok;
+use anyhow::Result;
+use llzk::prelude::felt;
+use llzk::prelude::undef;
+use llzk::prelude::verify_operation_with_diags;
+use llzk::prelude::ArrayType;
+use llzk::prelude::FeltConstAttribute;
+use llzk::prelude::FeltType;
+use llzk::prelude::FuncDefOp;
+use llzk::prelude::FuncDefOpLike;
+use llzk::prelude::FuncDefOpRef;
+use llzk::prelude::FuncDefOpRefMut;
+use llzk::prelude::IntegerAttribute;
+use llzk::prelude::LlzkContext;
+use llzk::prelude::LlzkError;
+use llzk::prelude::StructDefOp;
+use llzk::prelude::StructDefOpRef;
+use llzk::prelude::StructDefOpRefMut;
+use melior::ir::operation::OperationLike as _;
+use melior::ir::Attribute;
+use melior::ir::BlockLike;
+use melior::ir::Location;
+use melior::ir::Module;
+use melior::ir::Operation;
+use melior::ir::OperationRef;
+use melior::ir::Type;
+use melior::ir::TypeLike;
+use melior::ir::Value;
+use melior::pass;
+use melior::utility;
 use num_bigint_dig::BigInt;
 use num_traits::cast::ToPrimitive;
-use program_structure::{
-    ast::{Expression, Meta},
-    error_code::ReportCode,
-    error_definition::Report,
-    file_definition::{FileID, FileLocation},
-    program_archive::ProgramArchive,
-};
-use std::{
-    collections::HashMap,
-    convert::{TryFrom, TryInto as _},
-    fs::{self, File},
-    io::Write,
-    ops::Deref,
-    os::raw::c_void,
-    path::Path,
-};
+use program_structure::ast::Expression;
+use program_structure::ast::Meta;
+use program_structure::error_code::ReportCode;
+use program_structure::error_definition::Report;
+use program_structure::file_definition::FileID;
+use program_structure::file_definition::FileLocation;
+use program_structure::program_archive::ProgramArchive;
+use std::collections::HashMap;
+use std::convert::TryFrom;
+use std::convert::TryInto as _;
+use std::fs::File;
+use std::fs::{self};
+use std::io::Write;
+use std::ops::Deref;
+use std::os::raw::c_void;
+use std::path::Path;
 
 /// Stores necessary context for generating LLZK IR.
 ///
