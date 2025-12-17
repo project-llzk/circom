@@ -20,6 +20,8 @@ use llzk::prelude::LlzkError;
 use llzk::prelude::StructDefOp;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructDefOpRefMut;
+use melior::dialect::arith;
+use melior::ir::attribute::BoolAttribute;
 use melior::ir::operation::OperationLike as _;
 use melior::ir::Attribute;
 use melior::ir::BlockLike;
@@ -166,16 +168,42 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         }
     }
 
-    /// Create an LLZK operation that produces a nondeterministic value of the given `dimensions`.
-    pub fn new_nondet_value_of_dimensions(
+    /// Create an LLZK operation that produces a boolean constant value.
+    pub fn new_bool_const_op(&self, val: bool, location: Location<'ctx>) -> Operation<'ctx> {
+        arith::constant(self.context, BoolAttribute::new(self.context, val).into(), location)
+    }
+
+    /// Create an LLZK operation that produces a nondeterministic value of the given type.
+    pub fn new_nondet_at_location(
+        &self,
+        location: Location<'ctx>,
+        result_type: Type<'ctx>,
+    ) -> Result<Operation<'ctx>> {
+        Ok(undef::undef(location, result_type))
+    }
+
+    /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
+    /// `dimensions` (non-array scalar if empty).
+    pub fn new_nondet_felt_of_dimensions_at_location(
+        &self,
+        location: Location<'ctx>,
+        dimensions: &[Expression],
+    ) -> Result<Operation<'ctx>> {
+        self.new_nondet_at_location(
+            location,
+            self.type_with_dimensions(FeltType::new(self.context).into(), dimensions)?,
+        )
+    }
+
+    /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
+    /// `dimensions` (non-array scalar if empty).
+    #[inline]
+    pub fn new_nondet_felt_of_dimensions(
         &self,
         meta: &Meta,
         dimensions: &[Expression],
     ) -> Result<Operation<'ctx>> {
-        Ok(undef::undef(
-            self.location_from_meta(meta),
-            self.type_with_dimensions(FeltType::new(self.context).into(), dimensions)?,
-        ))
+        self.new_nondet_felt_of_dimensions_at_location(self.location_from_meta(meta), dimensions)
     }
 
     /// Run cleanup passes on the generated `Module`.

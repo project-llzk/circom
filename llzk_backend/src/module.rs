@@ -116,7 +116,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         // processed later, replace the `undef` with the appropriate value.
                         self.var_decls.insert(
                             name.clone(),
-                            codegen.new_nondet_value_of_dimensions(meta, dimensions)?,
+                            codegen.new_nondet_felt_of_dimensions(meta, dimensions)?,
                         );
                         Ok(())
                     }
