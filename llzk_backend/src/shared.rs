@@ -2,7 +2,6 @@
 
 use ansi_term::Color;
 use anyhow::anyhow;
-use anyhow::Ok;
 use anyhow::Result;
 use llzk::prelude::felt;
 use llzk::prelude::undef;
@@ -20,6 +19,7 @@ use llzk::prelude::LlzkError;
 use llzk::prelude::StructDefOp;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructDefOpRefMut;
+use llzk::prelude::ValueLike;
 use melior::dialect::arith;
 use melior::ir::attribute::BoolAttribute;
 use melior::ir::operation::OperationLike as _;
@@ -34,6 +34,8 @@ use melior::ir::TypeLike;
 use melior::ir::Value;
 use melior::pass;
 use melior::utility;
+use mlir_sys::mlirOpOperandIsNull;
+use mlir_sys::mlirValueGetFirstUse;
 use num_bigint_dig::BigInt;
 use num_traits::cast::ToPrimitive;
 use program_structure::ast::Expression;
@@ -341,4 +343,15 @@ pub fn is_index(t: Type) -> bool {
 #[inline]
 pub fn is_felt(t: Type) -> bool {
     t.isa::<llzk::prelude::FeltType>()
+}
+
+/// Return `true` iff the given Value has any uses.
+///
+/// TODO: `llzk-rs` should provide this directly
+#[inline]
+pub fn has_uses(val: Value) -> bool {
+    unsafe {
+        let first_use = mlirValueGetFirstUse(val.to_raw());
+        !mlirOpOperandIsNull(first_use)
+    }
 }

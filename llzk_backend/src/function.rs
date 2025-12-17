@@ -13,14 +13,15 @@ use crate::shared::IsA;
 use crate::shared::LlzkCodegen;
 use crate::shared::{self};
 use anyhow::anyhow;
-use anyhow::Ok;
 use anyhow::Result;
 use llzk::prelude::bool;
 use llzk::prelude::felt;
 use llzk::prelude::function;
 use llzk::prelude::FeltType;
 use llzk::prelude::FuncDefOpRefMut;
+use llzk::prelude::Operation;
 use llzk::prelude::OperationMutLike;
+use llzk::prelude::OperationRef;
 use melior::dialect::arith;
 use melior::dialect::index;
 use melior::ir::operation::OperationLike as _;
@@ -28,7 +29,6 @@ use melior::ir::operation::OperationRefMut;
 use melior::ir::operation::WalkOrder;
 use melior::ir::operation::WalkResult;
 use melior::ir::BlockRef;
-use melior::ir::Operation;
 use melior::ir::Type;
 use melior::ir::Value;
 use melior::ir::ValueLike as _;
@@ -339,8 +339,11 @@ where
 /// replaced with actual values when visiting Assignment statements.
 impl Drop for FunctionContext<'_, '_, '_, '_> {
     fn drop(&mut self) {
+        fn undef_has_uses(op: OperationRef) -> bool {
+            shared::has_uses(single_result_as_value(op).unwrap())
+        }
         self.func.walk(WalkOrder::PreOrder, |op| {
-            if llzk::dialect::undef::is_undef_op(op) {
+            if llzk::dialect::undef::is_undef_op(op) && !undef_has_uses(op) {
                 let mut op_ref_mut = unsafe { OperationRefMut::from_raw(op.to_raw()) };
                 OperationMutLike::remove_from_parent(op_ref_mut.deref_mut());
                 WalkResult::Skip
