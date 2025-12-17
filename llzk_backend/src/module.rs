@@ -196,9 +196,11 @@ impl<'ctx> GenerateLLZKInModule<'ctx> for FunctionData {
     fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx>) -> Result<()> {
         let location = codegen.location(self.get_file_id(), self.get_param_location());
         let felt_type = FeltType::new(codegen.context).into();
-        // TODO: This just uses `felt.type` for param and return types but those must actually
-        //  be determined based on the caller. This also affects the dimensions of array types
-        //  and which array read/write-like ops must be used when translating the body.
+        // TODO: This just uses `felt.type` for param and return types but those must actually be
+        // determined based on the caller. Circom functions cannot accept or return components or
+        // busses so the only types allowed for params and return are `felt.type` and arrays of
+        // `felt.type`. The actual type used here also affects the dimensions of array types and
+        // which array read/write-like ops must be used when translating the body.
         let inputs = vec![felt_type; self.get_num_of_params()];
         let func_type = FunctionType::new(codegen.context, &inputs, &[felt_type]);
         let func_def =
