@@ -6,25 +6,30 @@
 //! helper traits like `ExprGenResult` and `Chainable` that implement some boilerplate to make the
 //! actual code generation within [template::GenerateLLZKInTemplate] a lot simpler.
 
-use crate::{
-    function::FunctionContext,
-    gen_context::GenWithCircomScopeHandling,
-    shared::{new_felt_const_op, LlzkCodegen},
-};
-use anyhow::{anyhow, Result};
-use llzk::{
-    builder::OpBuilder,
-    prelude::{
-        constrain, function, r#struct, FeltType, FlatSymbolRefAttribute, FuncDefOpLike as _,
-        StructDefOpRefMut,
-    },
-};
-use melior::ir::{BlockRef, Value};
-use program_structure::{
-    ast::{AssignOp, Expression, Statement},
-    error_code::ReportCode,
-};
-use std::{cell::RefCell, collections::HashMap, ops::Deref, rc::Rc};
+use crate::function::FunctionContext;
+use crate::gen_context::GenWithCircomScopeHandling;
+use crate::shared::new_felt_const_op;
+use crate::shared::LlzkCodegen;
+use anyhow::anyhow;
+use anyhow::Result;
+use llzk::builder::OpBuilder;
+use llzk::prelude::constrain;
+use llzk::prelude::function;
+use llzk::prelude::r#struct;
+use llzk::prelude::FeltType;
+use llzk::prelude::FlatSymbolRefAttribute;
+use llzk::prelude::FuncDefOpLike as _;
+use llzk::prelude::StructDefOpRefMut;
+use melior::ir::BlockRef;
+use melior::ir::Value;
+use program_structure::ast::AssignOp;
+use program_structure::ast::Expression;
+use program_structure::ast::Statement;
+use program_structure::error_code::ReportCode;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::ops::Deref;
+use std::rc::Rc;
 
 /// Alias for `Option<T>` to make it clear what the meaning of the option is within the
 /// [TemplateContext] below.

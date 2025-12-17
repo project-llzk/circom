@@ -1,9 +1,18 @@
 //! Handles circom var scoping and LLZK blocks stack management.
 
-use crate::{function::FunctionContext, shared::single_result_as_value};
-use anyhow::{anyhow, Ok, Result};
-use llzk::prelude::{FuncDefOp, OperationLike as _};
-use melior::ir::{BlockLike as _, BlockRef, Operation, OperationRef, RegionLike as _, Value};
+use crate::function::FunctionContext;
+use crate::shared::single_result_as_value;
+use anyhow::anyhow;
+use anyhow::Ok;
+use anyhow::Result;
+use llzk::prelude::FuncDefOp;
+use llzk::prelude::OperationLike as _;
+use melior::ir::BlockLike as _;
+use melior::ir::BlockRef;
+use melior::ir::Operation;
+use melior::ir::OperationRef;
+use melior::ir::RegionLike as _;
+use melior::ir::Value;
 use std::collections::HashMap;
 
 /// Single frame in the [BlockContextStack].

@@ -5,29 +5,43 @@
 //! [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
 //! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes.
 
-use crate::{
-    gen_context::{BlockContextStack, GenWithCircomScopeHandling},
-    shared::{self, new_felt_const_op, single_result_as_value, IsA, LlzkCodegen},
-};
-use anyhow::{anyhow, Ok, Result};
-use llzk::prelude::{bool, felt, function, FeltType, FuncDefOpRefMut, OperationMutLike};
-use melior::{
-    dialect::{arith, index},
-    ir::{
-        operation::{OperationLike as _, OperationRefMut, WalkOrder, WalkResult},
-        BlockRef, Operation, Type, Value, ValueLike as _,
-    },
-};
-use program_structure::{
-    ast::{
-        Expression, ExpressionInfixOpcode, ExpressionPrefixOpcode, Meta, Statement, VariableType,
-    },
-    error_code::ReportCode,
-};
-use std::{
-    collections::HashMap,
-    ops::{Deref, DerefMut},
-};
+use crate::gen_context::BlockContextStack;
+use crate::gen_context::GenWithCircomScopeHandling;
+use crate::shared::new_felt_const_op;
+use crate::shared::single_result_as_value;
+use crate::shared::IsA;
+use crate::shared::LlzkCodegen;
+use crate::shared::{self};
+use anyhow::anyhow;
+use anyhow::Ok;
+use anyhow::Result;
+use llzk::prelude::bool;
+use llzk::prelude::felt;
+use llzk::prelude::function;
+use llzk::prelude::FeltType;
+use llzk::prelude::FuncDefOpRefMut;
+use llzk::prelude::OperationMutLike;
+use melior::dialect::arith;
+use melior::dialect::index;
+use melior::ir::operation::OperationLike as _;
+use melior::ir::operation::OperationRefMut;
+use melior::ir::operation::WalkOrder;
+use melior::ir::operation::WalkResult;
+use melior::ir::BlockRef;
+use melior::ir::Operation;
+use melior::ir::Type;
+use melior::ir::Value;
+use melior::ir::ValueLike as _;
+use program_structure::ast::Expression;
+use program_structure::ast::ExpressionInfixOpcode;
+use program_structure::ast::ExpressionPrefixOpcode;
+use program_structure::ast::Meta;
+use program_structure::ast::Statement;
+use program_structure::ast::VariableType;
+use program_structure::error_code::ReportCode;
+use std::collections::HashMap;
+use std::ops::Deref;
+use std::ops::DerefMut;
 
 /// Stores ref to the current function while generating LLZK IR for the function.
 ///

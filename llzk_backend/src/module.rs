@@ -1,35 +1,43 @@
 //! Handles the top-level constructs (i.e. circom templates and functions), by delegating
 //! to the [function] and [template] modules to generate the code for each.
 
-use crate::{
-    function::{FunctionContext, GenerateLLZKInFunction as _},
-    shared::{map_name_to_arg_value, LlzkCodegen},
-    template::{GenerateLLZKInTemplate as _, TemplateContext},
-};
+use crate::function::FunctionContext;
+use crate::function::GenerateLLZKInFunction as _;
+use crate::shared::map_name_to_arg_value;
+use crate::shared::LlzkCodegen;
+use crate::template::GenerateLLZKInTemplate as _;
+use crate::template::TemplateContext;
 use anyhow::Result;
-use llzk::{
-    attributes::NamedAttribute,
-    error::Error,
-    prelude::{
-        function,
-        r#struct::{
-            self,
-            helpers::{compute_fn, constrain_fn},
-        },
-        FeltType, FuncDefOpRef, FuncDefOpRefMut, FunctionType, PublicAttribute,
-        StructDefOpLike as _, StructType,
-    },
-};
-use melior::ir::{
-    operation::OperationLike as _, Block, BlockLike as _, Location, Operation, RegionLike, Type,
-};
-use program_structure::{
-    ast::{Expression, Meta, SignalType, Statement, VariableType},
-    function_data::FunctionData,
-    program_archive::ProgramArchive,
-    template_data::TemplateData,
-};
-use std::{collections::HashMap, convert::TryFrom};
+use llzk::attributes::NamedAttribute;
+use llzk::error::Error;
+use llzk::prelude::function;
+use llzk::prelude::r#struct::helpers::compute_fn;
+use llzk::prelude::r#struct::helpers::constrain_fn;
+use llzk::prelude::r#struct::{self};
+use llzk::prelude::FeltType;
+use llzk::prelude::FuncDefOpRef;
+use llzk::prelude::FuncDefOpRefMut;
+use llzk::prelude::FunctionType;
+use llzk::prelude::PublicAttribute;
+use llzk::prelude::StructDefOpLike as _;
+use llzk::prelude::StructType;
+use melior::ir::operation::OperationLike as _;
+use melior::ir::Block;
+use melior::ir::BlockLike as _;
+use melior::ir::Location;
+use melior::ir::Operation;
+use melior::ir::RegionLike;
+use melior::ir::Type;
+use program_structure::ast::Expression;
+use program_structure::ast::Meta;
+use program_structure::ast::SignalType;
+use program_structure::ast::Statement;
+use program_structure::ast::VariableType;
+use program_structure::function_data::FunctionData;
+use program_structure::program_archive::ProgramArchive;
+use program_structure::template_data::TemplateData;
+use std::collections::HashMap;
+use std::convert::TryFrom;
 
 /// Information needed to create an LLZK struct function parameter collected from the input signal
 /// Declaration statements within a circom template.
