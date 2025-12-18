@@ -432,7 +432,7 @@ where
                     unreachable!("Template elements declared inside the function")
                 }
                 function.block_ctx.declare_name_if_not_present(name, || {
-                    codegen.new_nondet_value_of_dimensions(meta, dimensions)
+                    codegen.new_nondet_felt_of_dimensions(meta, dimensions)
                 })
             }
             Statement::Block { stmts, .. } => function
