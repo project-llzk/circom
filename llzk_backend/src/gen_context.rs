@@ -4,12 +4,14 @@ use crate::function::FunctionContext;
 use crate::shared::single_result_as_value;
 use anyhow::anyhow;
 use anyhow::Result;
+use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FuncDefOp;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike as _;
 use llzk::prelude::OperationRef;
+use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::Value;
 use std::collections::HashMap;
@@ -226,6 +228,35 @@ where
     }
 }
 
+/// Items pertaining to a region/block created to nest within another LLZK op.
+///
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+/// 'blk: lifetime of the generated `Block` instances within functions
+/// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
+#[derive(Debug)]
+pub struct NestedBlockInfo<'ctx, 'blk, 'val>
+where
+    'ctx: 'blk,
+    'blk: 'val,
+{
+    /// The new [Region] to be nested within another LLZK op.
+    pub(crate) region: Region<'ctx>,
+    /// Reference to the single [Block] in the [Region].
+    pub(crate) block: BlockRef<'ctx, 'blk>,
+    /// Map from circom variable name to LLZK Value for variables that were
+    /// overwritten within by code generated within the new [Block].
+    pub(crate) var_overwrites: HashMap<String, Value<'ctx, 'val>>,
+}
+
+impl Default for NestedBlockInfo<'_, '_, '_> {
+    #[inline]
+    fn default() -> Self {
+        let region = Region::new();
+        let block = region.append_block(Block::new(&[]));
+        NestedBlockInfo { region, block, var_overwrites: Default::default() }
+    }
+}
+
 /// Provides common functions for generating code that respects circom variable scoping, abstracting
 /// access to the [BlockContextStack] so that functions and templates can share these functions.
 pub trait GenWithCircomScopeHandling<'ctx, 'func, 'blk, 'val>
@@ -236,69 +267,105 @@ where
 {
     /// LLZK block context type. For functions, this is just [BlockRef], but for templates,
     /// this type holds a [BlockRef] for both the `compute` and `constrain` functions.
-    type NewBlock: Copy;
+    type BlockType;
 
-    /// Retrieve the top block(s) from the [BlockContextStack].
-    fn stack_top(&self) -> Self::NewBlock;
+    /// Type of the additional data passed to the overwrite handler.
+    type HandlerDataType: Default;
 
-    /// Push new block(s) onto the [BlockContextStack].
-    fn stack_push(&mut self, block: Self::NewBlock);
+    /// Retrieve the top `NewBlock` from the [BlockContextStack].
+    fn stack_top(&self) -> Self::BlockType;
 
-    /// Pop the top block(s) from the [BlockContextStack].
-    fn stack_pop<H>(&mut self, handle_overwrites: H) -> Result<()>
+    /// Push new `NewBlock` onto the [BlockContextStack].
+    fn stack_push(&mut self, block: Self::BlockType);
+
+    /// Pop the top `NewBlock` from the [BlockContextStack].
+    fn stack_pop<H>(
+        &mut self,
+        overwrite_handler: H,
+        overwrite_data: &mut Self::HandlerDataType,
+    ) -> Result<()>
     where
-        H: FnMut(
+        H: Fn(
             &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            &mut NestedBlockInfo<'ctx, 'blk, 'val>,
             HashMap<String, Value<'ctx, 'val>>,
         ) -> Result<()>;
 
     /// Use the callback to generate code for a new circom scope/block within the given LLZK
-    /// `NewBlock`. Assignments to circom variables that are newly introduced in this context go out
-    /// of scope so they are dropped after the callback but overwriting assignments to circom
+    /// `NewBlock`. Assignments to circom variables that are newly introduced in this context go
+    /// out of scope so they are dropped after the callback but overwriting assignments to circom
     /// variables that already exist prior to this new scope are passed to the overwrite handler.
     fn gen_in_given_block_with_new_circom_scope<H>(
         &mut self,
-        block: Self::NewBlock,
-        generator: impl FnOnce(&mut Self, Self::NewBlock) -> Result<()>,
-        handle_overwrites: H,
+        block: Self::BlockType,
+        generator: impl FnOnce(&mut Self) -> Result<()>,
+        overwrite_handler: H,
+        overwrite_data: &mut Self::HandlerDataType,
     ) -> Result<()>
     where
-        H: FnMut(
+        H: Fn(
             &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            &mut NestedBlockInfo<'ctx, 'blk, 'val>,
             HashMap<String, Value<'ctx, 'val>>,
         ) -> Result<()>,
     {
         self.stack_push(block);
-        let res = generator(self, block);
-        self.stack_pop(handle_overwrites)?;
+        let res = generator(self);
+        self.stack_pop(overwrite_handler, overwrite_data)?;
         res
     }
 
     /// Use the callback to generate code for a new circom scope/block within the given LLZK
-    /// `NewBlock`. Assignments to circom variables that are newly introduced in this context go out
-    /// of scope so they are dropped after the callback but overwriting assignments to circom
+    /// `NewBlock`. Assignments to circom variables that are newly introduced in this context go
+    /// out of scope so they are dropped after the callback but overwriting assignments to circom
+    /// variables that already exist prior to this new scope are cached in the `var_overwrites`
+    /// field of the `NestedBlockInfo` struct.
+    #[inline]
+    fn gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        &mut self,
+        block: Self::BlockType,
+        generator: impl FnOnce(&mut Self) -> Result<()>,
+        overwrite_data: &mut Self::HandlerDataType,
+    ) -> Result<()> {
+        self.gen_in_given_block_with_new_circom_scope(
+            block,
+            generator,
+            |_, block_info, overwrites| {
+                block_info.var_overwrites.extend(overwrites);
+                Ok(())
+            },
+            overwrite_data,
+        )
+    }
+
+    /// Use the callback to generate code for a new circom scope/block within the given LLZK
+    /// `NewBlock`. Assignments to circom variables that are newly introduced in this context go
+    /// out of scope so they are dropped after the callback but overwriting assignments to circom
     /// variables that already exist prior to this new scope are preserved and written into the
     /// existing block context.
+    #[inline]
     fn gen_in_given_block_with_new_circom_scope_and_merge_overwrites(
         &mut self,
-        block: Self::NewBlock,
-        generator: impl FnOnce(&mut Self, Self::NewBlock) -> Result<()>,
+        block: Self::BlockType,
+        generator: impl FnOnce(&mut Self) -> Result<()>,
     ) -> Result<()> {
-        self.stack_push(block);
-        let res = generator(self, block);
-        self.stack_pop(|fc, overwrites| fc.block_ctx.set_named_values(overwrites))?;
-        res
+        self.gen_in_given_block_with_new_circom_scope(
+            block,
+            generator,
+            |fc, _, overwrites| fc.block_ctx.set_named_values(overwrites),
+            &mut Self::HandlerDataType::default(), // ignored in the handler ^
+        )
     }
 
     /// Use the callback to generate code for a new circom scope/block but within the current LLZK
-    /// `NewBlock`. Assignments to circom variables that are newly introduced in this context go out
-    /// of scope so they are dropped after the callback but overwriting assignments to circom
+    /// `NewBlock`. Assignments to circom variables that are newly introduced in this context go
+    /// out of scope so they are dropped after the callback but overwriting assignments to circom
     /// variables that already exist prior to this new scope are preserved and written into the
     /// existing block context.
     #[inline]
     fn gen_in_current_block_with_new_circom_scope_and_merge_overwrites(
         &mut self,
-        generator: impl FnOnce(&mut Self, Self::NewBlock) -> Result<()>,
+        generator: impl FnOnce(&mut Self) -> Result<()>,
     ) -> Result<()> {
         self.gen_in_given_block_with_new_circom_scope_and_merge_overwrites(
             self.stack_top(),

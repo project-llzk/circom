@@ -7,6 +7,7 @@
 
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
+use crate::gen_context::NestedBlockInfo;
 use crate::shared::erase_op;
 use crate::shared::get_function_type_attribute;
 use crate::shared::is_scf_yield;
@@ -366,25 +367,31 @@ where
     'func: 'blk,
     'blk: 'val,
 {
-    type NewBlock = BlockRef<'ctx, 'blk>;
+    type BlockType = BlockRef<'ctx, 'blk>;
+    type HandlerDataType = NestedBlockInfo<'ctx, 'blk, 'val>;
 
-    fn stack_top(&self) -> Self::NewBlock {
+    fn stack_top(&self) -> Self::BlockType {
         *self.block_ctx.top_block()
     }
 
-    fn stack_push(&mut self, block: Self::NewBlock) {
+    fn stack_push(&mut self, block: Self::BlockType) {
         self.block_ctx.push(block)
     }
 
-    fn stack_pop<H>(&mut self, mut handle_overwrites: H) -> Result<()>
+    fn stack_pop<H>(
+        &mut self,
+        overwrite_handler: H,
+        overwrite_data: &mut Self::HandlerDataType,
+    ) -> Result<()>
     where
-        H: FnMut(
+        H: Fn(
             &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            &mut NestedBlockInfo<'ctx, 'blk, 'val>,
             HashMap<String, Value<'ctx, 'val>>,
         ) -> Result<()>,
     {
         let popped = self.block_ctx.pop();
-        handle_overwrites(self, popped)
+        overwrite_handler(self, overwrite_data, popped)
     }
 }
 
@@ -601,34 +608,24 @@ where
     'func: 'blk,
     'blk: 'val,
 {
-    let location = codegen.location_from_meta(meta);
-    let condition = cond.gen_llzk_in_function(codegen, function)?;
-
     // Initially, generate the blocks for the 'then' and 'else' cases naively.
-    let mut then_block_overwrites = HashMap::<String, Value<'ctx, 'val>>::new();
-    let then_region = Region::new();
-    let then_block = then_region.append_block(Block::new(&[]));
-    function.gen_in_given_block_with_new_circom_scope(
-        then_block,
-        |function, _| if_case.gen_llzk_in_function(codegen, function),
-        |_, overwrites| {
-            then_block_overwrites.extend(overwrites.into_iter());
-            Ok(())
-        },
+    let mut then_info = NestedBlockInfo::default();
+    function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        then_info.block,
+        |function| if_case.gen_llzk_in_function(codegen, function),
+        &mut then_info,
     )?;
-    let mut else_block_overwrites = HashMap::<String, Value<'ctx, 'val>>::new();
-    let else_region = Region::new();
-    let else_block = else_region.append_block(Block::new(&[]));
+    let mut else_info = NestedBlockInfo::default();
     if let Some(else_case) = else_case {
-        function.gen_in_given_block_with_new_circom_scope(
-            else_block,
-            |function, _| else_case.gen_llzk_in_function(codegen, function),
-            |_, overwrites| {
-                else_block_overwrites.extend(overwrites.into_iter());
-                Ok(())
-            },
+        function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+            else_info.block,
+            |function| else_case.gen_llzk_in_function(codegen, function),
+            &mut else_info,
         )?;
     }
+
+    let location = codegen.location_from_meta(meta);
+    let condition = cond.gen_llzk_in_function(codegen, function)?;
 
     // Check if one or both blocks end with a return in circom. The `scf.if` op used in LLZK cannot
     // have returns nested within other blocks like circom allows. Use of `append_circom_return()`
@@ -636,13 +633,13 @@ where
     // block but the `scf.if` additionally requires that both blocks yield the same number and type
     // of values. Additionally, if one block returns and the other does not (in the circom code),
     // an additional return state must be added to the values to be yielded from both branches.
-    let then_return_opt = get_val_of_circom_return_and_erase(then_block);
-    let else_return_opt = get_val_of_circom_return_and_erase(else_block);
+    let then_return_opt = get_val_of_circom_return_and_erase(then_info.block);
+    let else_return_opt = get_val_of_circom_return_and_erase(else_info.block);
     if let Some(then_return) = then_return_opt {
         if let Some(else_return) = else_return_opt {
             // Both return, just add the return value to both overwrite maps.
-            then_block_overwrites.insert(VAR_NAME_RETURN_VAL.to_string(), then_return);
-            else_block_overwrites.insert(VAR_NAME_RETURN_VAL.to_string(), else_return);
+            then_info.var_overwrites.insert(VAR_NAME_RETURN_VAL.to_string(), then_return);
+            else_info.var_overwrites.insert(VAR_NAME_RETURN_VAL.to_string(), else_return);
         } else {
             // Return in `then` block but not `else` block.
             handle_early_return(
@@ -650,10 +647,10 @@ where
                 function,
                 location,
                 then_return,
-                then_block,
-                &mut then_block_overwrites,
-                else_block,
-                &mut else_block_overwrites,
+                then_info.block,
+                &mut then_info.var_overwrites,
+                else_info.block,
+                &mut else_info.var_overwrites,
             )?;
         }
     } else if let Some(else_return) = else_return_opt {
@@ -663,45 +660,49 @@ where
             function,
             location,
             else_return,
-            else_block,
-            &mut else_block_overwrites,
-            then_block,
-            &mut then_block_overwrites,
+            else_info.block,
+            &mut else_info.var_overwrites,
+            then_info.block,
+            &mut then_info.var_overwrites,
         )?;
     }
 
-    // Update `then_block_overwrites` to ensure it has all keys from `else_block_overwrites`, using
-    // current-scope values for missing keys. This ensures that both blocks will yield the same
-    // set of variables.
-    for name in else_block_overwrites.keys() {
-        if !then_block_overwrites.contains_key(name) {
-            then_block_overwrites.insert(name.clone(), *function.block_ctx.get_named_value(name)?);
+    // Update `then_block_info.var_overwrites` to ensure it has all keys from
+    // `else_block_info.var_overwrites`, using current-scope values for missing keys. This
+    // ensures that both blocks will yield the same set of variables.
+    for name in else_info.var_overwrites.keys() {
+        if !then_info.var_overwrites.contains_key(name) {
+            then_info
+                .var_overwrites
+                .insert(name.clone(), *function.block_ctx.get_named_value(name)?);
         }
     }
 
-    // Split `then_block_overwrites` into ordered lists of names and values. The ordering of names
-    // here defines the ordering of results from the `scf.if` op and thus the ordering of operands
-    // to `scf.yield` ops in both branches. Sort by circom variable names to ensure a stable order.
-    let mut overwrites_sorted: Vec<_> = then_block_overwrites.into_iter().collect();
+    // Split `then_block_info.var_overwrites` into ordered lists of names and values. The ordering
+    // of names here defines the ordering of results from the `scf.if` op and thus the ordering
+    // of operands to `scf.yield` ops in both branches. Sort by circom variable names to ensure
+    // a stable order.
+    let mut overwrites_sorted: Vec<_> = then_info.var_overwrites.into_iter().collect();
     overwrites_sorted.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
     let (overwrite_names, then_values): (Vec<_>, Vec<_>) = overwrites_sorted.into_iter().unzip();
 
     // Insert `scf.yield` at the end of the `then` block.
-    no_results(then_block.append_operation(scf::r#yield(&then_values, location)))?;
+    no_results(then_info.block.append_operation(scf::r#yield(&then_values, location)))?;
 
     // Create list of values to yield from the `else` block in the same order
     // as `overwrite_names`, again using current-scope values for missing keys.
     let else_values = overwrite_names
         .iter()
         .map(|name| {
-            else_block_overwrites
+            else_info
+                .var_overwrites
                 .get(name)
                 .map_or_else(|| function.block_ctx.get_named_value(name).cloned(), |v| Ok(*v))
         })
         .collect::<Result<Vec<_>, _>>()?;
 
     // Insert `scf.yield` at the end of the `else` block.
-    no_results(else_block.append_operation(scf::r#yield(&else_values, location)))?;
+    no_results(else_info.block.append_operation(scf::r#yield(&else_values, location)))?;
 
     // Use the `overwrite_names` and the current block context to get the types of the named values
     // to define the result types of the `scf.if` op. Then generate the `scf.if` op itself for
@@ -716,8 +717,13 @@ where
                 .map(|v| v.r#type())
         })
         .collect::<Result<Vec<_>, _>>()?;
-    let scf_if_op =
-        function.append_op(scf::r#if(condition, &result_types, then_region, else_region, location));
+    let scf_if_op = function.append_op(scf::r#if(
+        condition,
+        &result_types,
+        then_info.region,
+        else_info.region,
+        location,
+    ));
 
     // Update the current block context with results from the `scf.if` op.
     overwrite_names
@@ -769,7 +775,7 @@ where
                 })
             }
             Statement::Block { stmts, .. } => function
-                .gen_in_current_block_with_new_circom_scope_and_merge_overwrites(|function, _| {
+                .gen_in_current_block_with_new_circom_scope_and_merge_overwrites(|function| {
                     stmts.gen_llzk_in_function(codegen, function)
                 }),
             Statement::Substitution { meta, var, access, op, rhe } => {

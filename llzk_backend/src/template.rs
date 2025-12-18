@@ -8,6 +8,7 @@
 
 use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
+use crate::gen_context::NestedBlockInfo;
 use crate::shared::new_felt_const_op;
 use crate::shared::LlzkCodegen;
 use anyhow::Result;
@@ -23,6 +24,7 @@ use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::Value;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
+use program_structure::ast::Meta;
 use program_structure::ast::Statement;
 use program_structure::error_code::ReportCode;
 use std::cell::RefCell;
@@ -33,6 +35,15 @@ use std::rc::Rc;
 /// Alias for `Option<T>` to make it clear what the meaning of the option is within the
 /// [TemplateContext] below.
 type ShouldGenerate<T> = Option<T>;
+
+/// A pair of values, one for the "@compute" function and one for the "@constrain" function.
+#[derive(Debug, Default)]
+pub struct TemplateFuncPair<T> {
+    /// The value for the "@compute" function.
+    compute: ShouldGenerate<T>,
+    /// The value for the "@constrain" function.
+    constrain: ShouldGenerate<T>,
+}
 
 /// Stores refs to the current struct and its associated functions while generating LLZK IR for a
 /// template. Implemented as a lightweight wrapper around several mutable references to allow
@@ -112,40 +123,58 @@ where
     'func: 'blk,
     'blk: 'val,
 {
-    type NewBlock = (ShouldGenerate<BlockRef<'ctx, 'blk>>, ShouldGenerate<BlockRef<'ctx, 'blk>>);
+    type BlockType = TemplateFuncPair<BlockRef<'ctx, 'blk>>;
+    type HandlerDataType = TemplateFuncPair<NestedBlockInfo<'ctx, 'blk, 'val>>;
 
-    fn stack_top(&self) -> Self::NewBlock {
-        (
-            self.compute.as_ref().map(|rc| *rc.borrow().block_ctx.top_block()),
-            self.constrain.as_ref().map(|rc| *rc.borrow().block_ctx.top_block()),
-        )
+    fn stack_top(&self) -> Self::BlockType {
+        TemplateFuncPair {
+            compute: self.compute.as_ref().map(|rc| *rc.borrow().block_ctx.top_block()),
+            constrain: self.constrain.as_ref().map(|rc| *rc.borrow().block_ctx.top_block()),
+        }
     }
 
-    fn stack_push(&mut self, block: Self::NewBlock) {
+    fn stack_push(&mut self, block: Self::BlockType) {
         if let Some(rc) = self.compute.as_ref() {
-            rc.borrow_mut().block_ctx.push(block.0.unwrap())
+            rc.borrow_mut().block_ctx.push(block.compute.unwrap())
         }
         if let Some(rc) = self.constrain.as_ref() {
-            rc.borrow_mut().block_ctx.push(block.1.unwrap())
+            rc.borrow_mut().block_ctx.push(block.constrain.unwrap())
         }
     }
 
-    fn stack_pop<H>(&mut self, mut handle_overwrites: H) -> Result<()>
+    fn stack_pop<H>(
+        &mut self,
+        overwrite_handler: H,
+        overwrite_data: &mut Self::HandlerDataType,
+    ) -> Result<()>
     where
-        H: FnMut(
+        H: Fn(
             &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            &mut NestedBlockInfo<'ctx, 'blk, 'val>,
             HashMap<String, Value<'ctx, 'val>>,
         ) -> Result<()>,
     {
+        // Note: even when `self.X` is Some, `overwrite_data.X` may be None because of
+        // `gen_in_given_block_with_new_circom_scope_and_merge_overwrites()` using
+        // `HandlerDataType::default()`. The overwrite handler in that function ignores the
+        // `NestedBlockInfo` passed to it so just insert a default `NestedBlockInfo`.
         if let Some(rc) = self.compute.as_ref() {
             let mut fc = rc.borrow_mut();
             let popped = fc.block_ctx.pop();
-            handle_overwrites(&mut fc, popped)?;
+            overwrite_handler(
+                &mut fc,
+                overwrite_data.compute.get_or_insert_with(NestedBlockInfo::default),
+                popped,
+            )?;
         }
         if let Some(rc) = self.constrain.as_ref() {
             let mut fc = rc.borrow_mut();
             let popped = fc.block_ctx.pop();
-            handle_overwrites(&mut fc, popped)?;
+            overwrite_handler(
+                &mut fc,
+                overwrite_data.constrain.get_or_insert_with(NestedBlockInfo::default),
+                popped,
+            )?;
         }
         Ok(())
     }
@@ -523,6 +552,26 @@ where
     }
 }
 
+/// Generate LLZK code for a circom [Statement::IfThenElse].
+#[allow(unused_variables)] // TODO: TEMP
+fn gen_if_then_else<'ast, 'ctx, 'str, 'func, 'blk, 'val, 'r>(
+    codegen: &LlzkCodegen<'ast, 'ctx>,
+    template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+    meta: &Meta,
+    cond: &Expression,
+    if_case: &Box<Statement>,
+    else_case: &Option<Box<Statement>>,
+) -> Result<()>
+where
+    'ctx: 'str,
+    'str: 'func,
+    'func: 'blk,
+    'blk: 'val,
+    'val: 'r,
+{
+    todo!("Handle if-then-else statement in template")
+}
+
 impl<'ctx, 'str, 'func, 'blk, 'val> GenerateLLZKInTemplate<'ctx, 'str, 'func, 'blk, 'val>
     for Statement
 where
@@ -559,7 +608,7 @@ where
             Statement::Block { stmts, .. } => {
                 let mut template = template; // satisfy the &mut in `GenWithCircomScopeHandling`
                 template.gen_in_current_block_with_new_circom_scope_and_merge_overwrites(
-                    |template, _| stmts.gen_llzk_in_template(codegen, template),
+                    |template| stmts.gen_llzk_in_template(codegen, template),
                 )
             }
             Statement::Substitution { meta, var, access, op, rhe } => {
@@ -674,7 +723,7 @@ where
                 )
             }
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
-                todo!("Handle if-then-else statement in template")
+                gen_if_then_else(codegen, template, meta, cond, if_case, else_case)
             }
             Statement::While { meta, cond, stmt } => {
                 todo!("Handle while statement in template")
