@@ -7,6 +7,9 @@
 
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
+use crate::shared::erase_op;
+use crate::shared::get_function_type_attribute;
+use crate::shared::is_function_return;
 use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
 use crate::shared::single_result_as_value;
@@ -23,6 +26,8 @@ use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FeltType;
 use llzk::prelude::FuncDefOpRefMut;
+use llzk::prelude::IntegerType;
+use llzk::prelude::Location;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike as _;
 use llzk::prelude::OperationMutLike;
@@ -48,6 +53,9 @@ use program_structure::error_code::ReportCode;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::ops::DerefMut;
+
+pub(crate) const VAR_NAME_RETURN_VAL: &str = "**return_val**";
+pub(crate) const VAR_NAME_NO_RETURN: &str = "**no_return**";
 
 /// Stores ref to the current function while generating LLZK IR for the function.
 ///
@@ -75,11 +83,28 @@ where
     'blk: 'val,
 {
     /// Create a new [FunctionContext] for the given function with an initial name-to-value mapping.
-    pub fn new(
+    pub fn new<'ast, const FREE_FUNC: bool>(
+        codegen: &LlzkCodegen<'ast, 'ctx>,
         func: FuncDefOpRefMut<'ctx, 'func>,
         param_name_to_value: HashMap<String, Value<'ctx, 'val>>,
     ) -> Result<Self> {
-        Ok(Self { func, block_ctx: BlockContextStack::new(func.deref(), param_name_to_value)? })
+        let mut block_ctx = BlockContextStack::new(func.deref(), param_name_to_value)?;
+        if FREE_FUNC {
+            // Ensure the specially-named values are declared in free functions.
+            block_ctx.declare_name_if_not_present(VAR_NAME_RETURN_VAL, || {
+                // Get the result type from the free function. It supports exactly 1.
+                let ty = get_function_type_attribute(func)?;
+                assert_eq!(ty.result_count(), 1);
+                codegen.new_nondet_at_location(Location::unknown(codegen.context), ty.result(0)?)
+            })?;
+            block_ctx.declare_name_if_not_present(VAR_NAME_NO_RETURN, || {
+                codegen.new_nondet_at_location(
+                    Location::unknown(codegen.context),
+                    IntegerType::new(codegen.context, 1).into(),
+                )
+            })?;
+        }
+        Ok(Self { func, block_ctx })
     }
 
     /// Append an operation.
@@ -411,6 +436,53 @@ where
     }
 }
 
+fn handle_early_return<'ast, 'ctx, 'func, 'blk, 'val>(
+    codegen: &LlzkCodegen<'ast, 'ctx>,
+    function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    location: Location<'ctx>,
+    return_val: Value<'ctx, 'val>,
+    returning_block: BlockRef<'ctx, 'blk>,
+    returning_block_overwrites: &mut HashMap<String, Value<'ctx, 'val>>,
+    nonreturning_block: BlockRef<'ctx, 'blk>,
+    nonreturning_block_overwrites: &mut HashMap<String, Value<'ctx, 'val>>,
+) -> Result<()>
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    // Set `VAR_NAME_NO_RETURN` in both maps: `false` in returning block, `true` in other.
+    returning_block_overwrites.insert(
+        VAR_NAME_NO_RETURN.to_string(),
+        single_result_as_value(
+            returning_block.append_operation(codegen.new_bool_const_op(false, location)),
+        )?,
+    );
+    nonreturning_block_overwrites.insert(
+        VAR_NAME_NO_RETURN.to_string(),
+        single_result_as_value(
+            nonreturning_block.append_operation(codegen.new_bool_const_op(true, location)),
+        )?,
+    );
+
+    // Set return value in both maps. In the non-returning block, use the existing value in the
+    // block context, if present, otherwise create a new non-det value.
+    returning_block_overwrites.insert(VAR_NAME_RETURN_VAL.to_string(), return_val);
+    nonreturning_block_overwrites.insert(
+        VAR_NAME_RETURN_VAL.to_string(),
+        function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL).cloned().or_else(|_| {
+            single_result_as_value(nonreturning_block.append_operation(
+                // TODO: just like `gen_llzk()` for `FunctionData`, this must use an array type
+                // if applicable but is currently implemented for scalar `felt.type` only.
+                // In this case, the correct solution (once nondet op is supported for any type)
+                // is to just create the nondet op using `return_val.getType()`
+                codegen.new_nondet_felt_of_dimensions_at_location(location, &[])?,
+            ))
+        })?,
+    );
+    Ok(())
+}
+
 impl<'ctx, 'func, 'blk, 'val> GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val> for Statement
 where
     'ctx: 'func,
@@ -498,6 +570,61 @@ where
                     )?;
                 }
 
+                // Check if one or both blocks end with a return. If so, convert the return logic
+                // because LLZK `ReturnOp` cannot be nested within other ops, only as a direct child
+                // of the `FuncDefOp`.
+                let mut then_return_opt = None;
+                let mut else_return_opt = None;
+                if let Some(mut term) = then_block.terminator_mut() {
+                    if is_function_return(term) {
+                        then_return_opt = Some(term.operand(0).expect("expected returned value"));
+                        term.remove_from_parent();
+                        // Must perform an explicit erase since there's no way to get the
+                        // `Operation` from the Block (to avoid "still has uses" native errors).
+                        erase_op(term);
+                    }
+                }
+                if let Some(mut term) = else_block.terminator_mut() {
+                    if is_function_return(term) {
+                        else_return_opt = Some(term.operand(0).expect("expected returned value"));
+                        term.remove_from_parent();
+                        // Must perform an explicit erase since there's no way to get the
+                        // `Operation` from the Block (to avoid "still has uses" native errors).
+                        erase_op(term);
+                    }
+                }
+                if let Some(then_return) = then_return_opt {
+                    if let Some(else_return) = else_return_opt {
+                        // Both return, just add the return value to both overwrite maps.
+                        then_block_overwrites.insert(VAR_NAME_RETURN_VAL.to_string(), then_return);
+                        else_block_overwrites.insert(VAR_NAME_RETURN_VAL.to_string(), else_return);
+                    } else {
+                        // Return in `then` block but not `else` block.
+                        handle_early_return(
+                            codegen,
+                            function,
+                            location,
+                            then_return,
+                            then_block,
+                            &mut then_block_overwrites,
+                            else_block,
+                            &mut else_block_overwrites,
+                        )?;
+                    }
+                } else if let Some(else_return) = else_return_opt {
+                    // Return in `else` block but not `then` block.
+                    handle_early_return(
+                        codegen,
+                        function,
+                        location,
+                        else_return,
+                        else_block,
+                        &mut else_block_overwrites,
+                        then_block,
+                        &mut then_block_overwrites,
+                    )?;
+                }
+
                 // Update `then_block_overwrites` to ensure it has all keys from
                 // `else_block_overwrites`, using current-scope values for missing keys.
                 // This ensures that both blocks will yield the same set of variables.
@@ -558,12 +685,21 @@ where
                     location,
                 ));
 
-                // Finally, update the current block context with results from the `scf.if` op.
-                // (the `res` binding here seems unnecessary but the borrow checker needs it)
-                let res = overwrite_names.into_iter().zip(scf_if_op.results()).try_for_each(
+                // Update the current block context with results from the `scf.if` op.
+                overwrite_names.into_iter().zip(scf_if_op.results()).try_for_each(
                     |(name, result)| function.block_ctx.set_named_value(name, result.into()),
-                );
-                res
+                )?;
+
+                // Finally, if both blocks ended with a return, then add a new return here. Else, if
+                // only one block returned, the code following the `scf.if` needs to be wrapped in
+                // another `scf.if` checking `VAR_NAME_NO_RETURN` before generating remaining code.
+                if then_return_opt.is_some() && else_return_opt.is_some() {
+                    let ret_val = function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL)?;
+                    function.append_op_no_result(function::r#return(location, &[*ret_val]))?;
+                } else if then_return_opt.is_some() || else_return_opt.is_some() {
+                    todo!()
+                }
+                Ok(())
             }
             Statement::While { meta, cond, stmt } => {
                 todo!("Handle while statement in function")
