@@ -15,6 +15,7 @@ use llzk::prelude::FuncDefOp;
 use llzk::prelude::FuncDefOpLike;
 use llzk::prelude::FuncDefOpRef;
 use llzk::prelude::FuncDefOpRefMut;
+use llzk::prelude::FunctionType;
 use llzk::prelude::IntegerAttribute;
 use llzk::prelude::LlzkContext;
 use llzk::prelude::LlzkError;
@@ -30,6 +31,7 @@ use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use melior::dialect::arith;
 use melior::ir::attribute::BoolAttribute;
+use melior::ir::attribute::TypeAttribute;
 use melior::ir::Module;
 use melior::pass;
 use melior::utility;
@@ -363,4 +365,34 @@ pub fn has_uses(val: Value) -> bool {
         let first_use = mlirValueGetFirstUse(val.to_raw());
         !mlirOpOperandIsNull(first_use)
     }
+}
+
+/// Erase the given operation.
+///
+/// TODO: `llzk-rs` should provide this directly
+#[inline]
+pub fn erase_op<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) {
+    unsafe {
+        mlir_sys::mlirOperationDestroy(op.to_raw());
+    }
+}
+
+/// Return `true` iff the given OperationRef is a `function.return` operation.
+///
+/// TODO: `llzk-rs` should provide this directly
+#[inline]
+pub fn is_function_return<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> bool {
+    op.name().as_string_ref().as_str() == Result::Ok("function.return")
+}
+
+/// Get the [FunctionType] from a [FuncDefOpLike].
+///
+/// TODO: `llzk-rs` should provide this directly
+pub fn get_function_type_attribute<'c: 'a, 'a>(
+    func: impl FuncDefOpLike<'c, 'a>,
+) -> Result<FunctionType<'c>> {
+    let attr = func.attribute("function_type")?;
+    let type_attr: TypeAttribute<'c> = attr.try_into()?;
+    let func_type: FunctionType<'c> = type_attr.value().try_into()?;
+    Ok(func_type)
 }
