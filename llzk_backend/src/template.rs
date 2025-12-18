@@ -140,12 +140,12 @@ where
         if let Some(rc) = self.compute.as_ref() {
             let mut fc = rc.borrow_mut();
             let popped = fc.block_ctx.pop();
-            handle_overwrites(&mut *fc, popped)?;
+            handle_overwrites(&mut fc, popped)?;
         }
         if let Some(rc) = self.constrain.as_ref() {
             let mut fc = rc.borrow_mut();
             let popped = fc.block_ctx.pop();
-            handle_overwrites(&mut *fc, popped)?;
+            handle_overwrites(&mut fc, popped)?;
         }
         Ok(())
     }

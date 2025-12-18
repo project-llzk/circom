@@ -52,12 +52,16 @@ use program_structure::ast::Statement;
 use program_structure::ast::VariableType;
 use program_structure::error_code::ReportCode;
 use std::collections::HashMap;
-use std::convert::TryFrom;
 use std::ops::Deref;
 use std::ops::DerefMut;
 
+/// Special variable name used to reference the return Value throughout the
+/// conversion of circom return locations to LLZK return locations.
 const VAR_NAME_RETURN_VAL: &str = "**return_val**";
+/// Special variable name used to reference the status of whether or not a circom block
+/// had a `return` when translating to an LLZK block that cannot contain a `return`.
 const VAR_NAME_NO_RETURN: &str = "**no_return**";
+/// LLZK attribute used to mark yield/return ops generated from circom return statements.
 const CIRCOM_RETURN_MARKER_ATTR: &str = "from_circom_return";
 
 /// Stores ref to the current function while generating LLZK IR for the function.
@@ -152,7 +156,7 @@ where
         } else {
             scf::r#yield(&[value], location)
         };
-        op.set_attribute(CIRCOM_RETURN_MARKER_ATTR, Attribute::unit(&codegen.context));
+        op.set_attribute(CIRCOM_RETURN_MARKER_ATTR, Attribute::unit(codegen.context));
         self.append_op_no_result(op)
     }
 
@@ -669,10 +673,9 @@ where
     // Update `then_block_overwrites` to ensure it has all keys from `else_block_overwrites`, using
     // current-scope values for missing keys. This ensures that both blocks will yield the same
     // set of variables.
-    for (name, _) in &else_block_overwrites {
+    for name in else_block_overwrites.keys() {
         if !then_block_overwrites.contains_key(name) {
-            then_block_overwrites
-                .insert(name.clone(), function.block_ctx.get_named_value(name)?.clone());
+            then_block_overwrites.insert(name.clone(), *function.block_ctx.get_named_value(name)?);
         }
     }
 
@@ -691,10 +694,9 @@ where
     let else_values = overwrite_names
         .iter()
         .map(|name| {
-            else_block_overwrites.get(name).map_or_else(
-                || function.block_ctx.get_named_value(name).cloned(),
-                |v| Ok(v.clone()),
-            )
+            else_block_overwrites
+                .get(name)
+                .map_or_else(|| function.block_ctx.get_named_value(name).cloned(), |v| Ok(*v))
         })
         .collect::<Result<Vec<_>, _>>()?;
 
