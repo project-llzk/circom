@@ -436,6 +436,8 @@ where
     }
 }
 
+/// Helper for [gen_if_then_else] to mangage the special return-related variables needed
+/// when a circom [Statement::IfThenElse] contains a return statement.
 fn handle_early_return<'ast, 'ctx, 'func, 'blk, 'val>(
     codegen: &LlzkCodegen<'ast, 'ctx>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
@@ -480,6 +482,172 @@ where
             ))
         })?,
     );
+    Ok(())
+}
+
+/// Generate LLZK code for a circom [Statement::IfThenElse].
+fn gen_if_then_else<'ast, 'ctx, 'func, 'blk, 'val>(
+    codegen: &LlzkCodegen<'ast, 'ctx>,
+    function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    meta: &Meta,
+    cond: &Expression,
+    if_case: &Box<Statement>,
+    else_case: &Option<Box<Statement>>,
+) -> Result<()>
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    let location = codegen.location_from_meta(meta);
+    let condition = cond.gen_llzk_in_function(codegen, function)?;
+
+    // Initially, generate the blocks for the 'then' and 'else' cases naively.
+    let mut then_block_overwrites = HashMap::<String, Value<'ctx, 'val>>::new();
+    let then_region = Region::new();
+    let then_block = then_region.append_block(Block::new(&[]));
+    function.gen_in_given_block_with_new_circom_scope(
+        then_block,
+        |function, _| if_case.gen_llzk_in_function(codegen, function),
+        |_, overwrites| {
+            then_block_overwrites.extend(overwrites.into_iter());
+            Ok(())
+        },
+    )?;
+    let mut else_block_overwrites = HashMap::<String, Value<'ctx, 'val>>::new();
+    let else_region = Region::new();
+    let else_block = else_region.append_block(Block::new(&[]));
+    if let Some(else_case) = else_case {
+        function.gen_in_given_block_with_new_circom_scope(
+            else_block,
+            |function, _| else_case.gen_llzk_in_function(codegen, function),
+            |_, overwrites| {
+                else_block_overwrites.extend(overwrites.into_iter());
+                Ok(())
+            },
+        )?;
+    }
+
+    // Check if one or both blocks end with a return. If so, convert the return logic because LLZK
+    // `ReturnOp` cannot be nested within other ops, only as a direct child of the `FuncDefOp`.
+    let mut then_return_opt = None;
+    let mut else_return_opt = None;
+    if let Some(mut term) = then_block.terminator_mut() {
+        if is_function_return(term) {
+            then_return_opt = Some(term.operand(0).expect("expected returned value"));
+            term.remove_from_parent();
+            // Must perform an explicit erase since there's no way to get the
+            // `Operation` from the Block (to avoid "still has uses" native errors).
+            erase_op(term);
+        }
+    }
+    if let Some(mut term) = else_block.terminator_mut() {
+        if is_function_return(term) {
+            else_return_opt = Some(term.operand(0).expect("expected returned value"));
+            term.remove_from_parent();
+            // Must perform an explicit erase since there's no way to get the
+            // `Operation` from the Block (to avoid "still has uses" native errors).
+            erase_op(term);
+        }
+    }
+    if let Some(then_return) = then_return_opt {
+        if let Some(else_return) = else_return_opt {
+            // Both return, just add the return value to both overwrite maps.
+            then_block_overwrites.insert(VAR_NAME_RETURN_VAL.to_string(), then_return);
+            else_block_overwrites.insert(VAR_NAME_RETURN_VAL.to_string(), else_return);
+        } else {
+            // Return in `then` block but not `else` block.
+            handle_early_return(
+                codegen,
+                function,
+                location,
+                then_return,
+                then_block,
+                &mut then_block_overwrites,
+                else_block,
+                &mut else_block_overwrites,
+            )?;
+        }
+    } else if let Some(else_return) = else_return_opt {
+        // Return in `else` block but not `then` block.
+        handle_early_return(
+            codegen,
+            function,
+            location,
+            else_return,
+            else_block,
+            &mut else_block_overwrites,
+            then_block,
+            &mut then_block_overwrites,
+        )?;
+    }
+
+    // Update `then_block_overwrites` to ensure it has all keys from `else_block_overwrites`, using
+    // current-scope values for missing keys. This ensures that both blocks will yield the same
+    // set of variables.
+    for (name, _) in &else_block_overwrites {
+        if !then_block_overwrites.contains_key(name) {
+            then_block_overwrites
+                .insert(name.clone(), function.block_ctx.get_named_value(name)?.clone());
+        }
+    }
+
+    // Split `then_block_overwrites` into ordered lists of names and values. The ordering of names
+    // here defines the ordering of results from the `scf.if` op and thus the ordering of operands
+    // to `scf.yield` ops in both branches. Sort by circom variable names to ensure a stable order.
+    let mut overwrites_sorted: Vec<_> = then_block_overwrites.into_iter().collect();
+    overwrites_sorted.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
+    let (overwrite_names, then_values): (Vec<_>, Vec<_>) = overwrites_sorted.into_iter().unzip();
+
+    // Insert `scf.yield` at the end of the `then` block.
+    no_results(then_block.append_operation(scf::r#yield(&then_values, location)))?;
+
+    // Create list of values to yield from the `else` block in the same order
+    // as `overwrite_names`, again using current-scope values for missing keys.
+    let else_values = overwrite_names
+        .iter()
+        .map(|name| {
+            else_block_overwrites.get(name).map_or_else(
+                || function.block_ctx.get_named_value(name).cloned(),
+                |v| Ok(v.clone()),
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // Insert `scf.yield` at the end of the `else` block.
+    no_results(else_block.append_operation(scf::r#yield(&else_values, location)))?;
+
+    // Use the `overwrite_names` and the current block context to get the types of the named values
+    // to define the result types of the `scf.if` op. Then generate the `scf.if` op itself for
+    // the circom `IfThenElse` statement.
+    let result_types = overwrite_names
+        .iter()
+        .map(|name| {
+            function
+                .block_ctx
+                .get_named_value(name)
+                .inspect_err(|e| eprintln!("\nERROR: {:?}", e))
+                .map(|v| v.r#type())
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let scf_if_op =
+        function.append_op(scf::r#if(condition, &result_types, then_region, else_region, location));
+
+    // Update the current block context with results from the `scf.if` op.
+    overwrite_names
+        .into_iter()
+        .zip(scf_if_op.results())
+        .try_for_each(|(name, result)| function.block_ctx.set_named_value(name, result.into()))?;
+
+    // Finally, if both blocks ended with a return, then add a new return here. Else, if
+    // only one block returned, the code following the `scf.if` needs to be wrapped in
+    // another `scf.if` checking `VAR_NAME_NO_RETURN` before generating remaining code.
+    if then_return_opt.is_some() && else_return_opt.is_some() {
+        let ret_val = function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL)?;
+        function.append_op_no_result(function::r#return(location, &[*ret_val]))?;
+    } else if then_return_opt.is_some() || else_return_opt.is_some() {
+        todo!()
+    }
     Ok(())
 }
 
@@ -541,165 +709,7 @@ where
                 rhe.gen_llzk_in_function(codegen, function).map(drop)
             }
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
-                let location = codegen.location_from_meta(meta);
-                let condition = cond.gen_llzk_in_function(codegen, function)?;
-
-                // Initially, generate the blocks for the 'then' and 'else' cases naively.
-                let mut then_block_overwrites = HashMap::<String, Value<'ctx, 'val>>::new();
-                let then_region = Region::new();
-                let then_block = then_region.append_block(Block::new(&[]));
-                function.gen_in_given_block_with_new_circom_scope(
-                    then_block,
-                    |function, _| if_case.gen_llzk_in_function(codegen, function),
-                    |_, overwrites| {
-                        then_block_overwrites.extend(overwrites.into_iter());
-                        Ok(())
-                    },
-                )?;
-                let mut else_block_overwrites = HashMap::<String, Value<'ctx, 'val>>::new();
-                let else_region = Region::new();
-                let else_block = else_region.append_block(Block::new(&[]));
-                if let Some(else_case) = else_case {
-                    function.gen_in_given_block_with_new_circom_scope(
-                        else_block,
-                        |function, _| else_case.gen_llzk_in_function(codegen, function),
-                        |_, overwrites| {
-                            else_block_overwrites.extend(overwrites.into_iter());
-                            Ok(())
-                        },
-                    )?;
-                }
-
-                // Check if one or both blocks end with a return. If so, convert the return logic
-                // because LLZK `ReturnOp` cannot be nested within other ops, only as a direct child
-                // of the `FuncDefOp`.
-                let mut then_return_opt = None;
-                let mut else_return_opt = None;
-                if let Some(mut term) = then_block.terminator_mut() {
-                    if is_function_return(term) {
-                        then_return_opt = Some(term.operand(0).expect("expected returned value"));
-                        term.remove_from_parent();
-                        // Must perform an explicit erase since there's no way to get the
-                        // `Operation` from the Block (to avoid "still has uses" native errors).
-                        erase_op(term);
-                    }
-                }
-                if let Some(mut term) = else_block.terminator_mut() {
-                    if is_function_return(term) {
-                        else_return_opt = Some(term.operand(0).expect("expected returned value"));
-                        term.remove_from_parent();
-                        // Must perform an explicit erase since there's no way to get the
-                        // `Operation` from the Block (to avoid "still has uses" native errors).
-                        erase_op(term);
-                    }
-                }
-                if let Some(then_return) = then_return_opt {
-                    if let Some(else_return) = else_return_opt {
-                        // Both return, just add the return value to both overwrite maps.
-                        then_block_overwrites.insert(VAR_NAME_RETURN_VAL.to_string(), then_return);
-                        else_block_overwrites.insert(VAR_NAME_RETURN_VAL.to_string(), else_return);
-                    } else {
-                        // Return in `then` block but not `else` block.
-                        handle_early_return(
-                            codegen,
-                            function,
-                            location,
-                            then_return,
-                            then_block,
-                            &mut then_block_overwrites,
-                            else_block,
-                            &mut else_block_overwrites,
-                        )?;
-                    }
-                } else if let Some(else_return) = else_return_opt {
-                    // Return in `else` block but not `then` block.
-                    handle_early_return(
-                        codegen,
-                        function,
-                        location,
-                        else_return,
-                        else_block,
-                        &mut else_block_overwrites,
-                        then_block,
-                        &mut then_block_overwrites,
-                    )?;
-                }
-
-                // Update `then_block_overwrites` to ensure it has all keys from
-                // `else_block_overwrites`, using current-scope values for missing keys.
-                // This ensures that both blocks will yield the same set of variables.
-                for (name, _) in &else_block_overwrites {
-                    if !then_block_overwrites.contains_key(name) {
-                        then_block_overwrites.insert(
-                            name.clone(),
-                            function.block_ctx.get_named_value(name)?.clone(),
-                        );
-                    }
-                }
-
-                // Split `then_block_overwrites` into ordered lists of names and values. The
-                // ordering of names here defines the ordering of results from the `scf.if` op
-                // and thus the ordering of `scf.yield` operands in both branches.
-                // Sort by circom variable names to ensure a stable order.
-                let mut overwrites_sorted: Vec<_> = then_block_overwrites.into_iter().collect();
-                overwrites_sorted.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
-                let (overwrite_names, then_values): (Vec<_>, Vec<_>) =
-                    overwrites_sorted.into_iter().unzip();
-
-                // Insert `scf.yield` at the end of the `then` block.
-                no_results(then_block.append_operation(scf::r#yield(&then_values, location)))?;
-
-                // Create list of values to yield from the `else` block in the same order
-                // as `overwrite_names`, again using current-scope values for missing keys.
-                let else_values = overwrite_names
-                    .iter()
-                    .map(|name| {
-                        else_block_overwrites.get(name).map_or_else(
-                            || function.block_ctx.get_named_value(name).cloned(),
-                            |v| Ok(v.clone()),
-                        )
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
-
-                // Insert `scf.yield` at the end of the `else` block.
-                no_results(else_block.append_operation(scf::r#yield(&else_values, location)))?;
-
-                // Use the `overwrite_names` and the current block context to get the types of the
-                // named values to define the result types of the `scf.if` op. Then generate the
-                // `scf.if` op itself for the circom IfThenElse statement.
-                let result_types = overwrite_names
-                    .iter()
-                    .map(|name| {
-                        function
-                            .block_ctx
-                            .get_named_value(name)
-                            .inspect_err(|e| eprintln!("\nERROR: {:?}", e))
-                            .map(|v| v.r#type())
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
-                let scf_if_op = function.append_op(scf::r#if(
-                    condition,
-                    &result_types,
-                    then_region,
-                    else_region,
-                    location,
-                ));
-
-                // Update the current block context with results from the `scf.if` op.
-                overwrite_names.into_iter().zip(scf_if_op.results()).try_for_each(
-                    |(name, result)| function.block_ctx.set_named_value(name, result.into()),
-                )?;
-
-                // Finally, if both blocks ended with a return, then add a new return here. Else, if
-                // only one block returned, the code following the `scf.if` needs to be wrapped in
-                // another `scf.if` checking `VAR_NAME_NO_RETURN` before generating remaining code.
-                if then_return_opt.is_some() && else_return_opt.is_some() {
-                    let ret_val = function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL)?;
-                    function.append_op_no_result(function::r#return(location, &[*ret_val]))?;
-                } else if then_return_opt.is_some() || else_return_opt.is_some() {
-                    todo!()
-                }
-                Ok(())
+                gen_if_then_else(codegen, function, meta, cond, if_case, else_case)
             }
             Statement::While { meta, cond, stmt } => {
                 todo!("Handle while statement in function")
