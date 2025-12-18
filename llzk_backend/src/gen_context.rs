@@ -128,6 +128,11 @@ where
         })
     }
 
+    /// Return true iff the stack contains only the root block (i.e. stack depth is 1).
+    pub fn is_only_root(&self) -> bool {
+        self.other_blocks.is_empty()
+    }
+
     /// Get reference to the current block (i.e. the top of the stack).
     pub fn top_block(&self) -> &BlockRef<'ctx, 'blk> {
         match self.other_blocks.last() {

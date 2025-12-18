@@ -377,12 +377,12 @@ pub fn erase_op<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) {
     }
 }
 
-/// Return `true` iff the given OperationRef is a `function.return` operation.
+/// Return `true` iff the given OperationRef is `scf.yield`.
 ///
 /// TODO: `llzk-rs` should provide this directly
 #[inline]
-pub fn is_function_return<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> bool {
-    op.name().as_string_ref().as_str() == Result::Ok("function.return")
+pub fn is_scf_yield<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> bool {
+    op.name().as_string_ref().as_str() == Result::Ok("scf.yield")
 }
 
 /// Get the [FunctionType] from a [FuncDefOpLike].
