@@ -28,14 +28,14 @@ component main = T();
 //
 // CHECK-LABEL:   struct.def @T<[]> {
 // CHECK-NEXT:      struct.field @temp : !felt.type
-// CHECK-NEXT:      function.def @compute
+// CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      (%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@T<[]>> attributes {function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = struct.new : <@T<[]>>
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = function.call @f(%[[VAL_0]]) : (!felt.type) -> !felt.type
 // CHECK-NEXT:        struct.writef %[[VAL_3]][@temp] = %[[VAL_4]] : <@T<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_3]] : !struct.type<@T<[]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain
+// CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[VAL_5:[0-9a-zA-Z_\.]+]]: !struct.type<@T<[]>>, %[[VAL_6:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_7:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_8:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
 // CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_5]][@temp] : <@T<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_7]], %[[VAL_8]] : !felt.type, !felt.type
