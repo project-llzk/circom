@@ -574,11 +574,12 @@ where
                             })
                         }
                         AssignOp::AssignSignal => {
-                            // The `<--` operator is witness generation only so this should not
-                            // generate any code in the constrain function.
-                            let template = template.compute_only();
-                            rhe.gen_llzk_in_template(codegen, &template)?.and_then_same(
-                                |fc, val| {
+                            // The `<--` operator is witness generation only so code for the RHS
+                            // expression should only be generated in the compute function.
+                            let compute_only = template.compute_only();
+                            let _: () = rhe
+                                .gen_llzk_in_template(codegen, &compute_only)?
+                                .and_then_same(|fc, val| {
                                     // Write value to field of "self" struct.
                                     fc.append_op_no_result(
                                         r#struct::writef(
@@ -588,9 +589,24 @@ where
                                             *val,
                                         )?
                                         .into(),
-                                    )
-                                },
-                            )
+                                    )?;
+                                    fc.block_ctx.set_named_value(var.clone(), *val)
+                                })?;
+                            // The constrain function just reads that field from "self" struct.
+                            let constrain_only = template.constrain_only();
+                            (&constrain_only).and_then_same(|fc, _| {
+                                let val = fc.append_op_unnamed_result(
+                                    r#struct::readf(
+                                        &OpBuilder::new(codegen.context.deref()),
+                                        codegen.location_from_meta(meta),
+                                        FeltType::new(codegen.context).into(),
+                                        fc.func.self_value_of_constrain()?,
+                                        var,
+                                    )?
+                                    .into(),
+                                )?;
+                                fc.block_ctx.set_named_value(var.clone(), val)
+                            })
                         }
                         AssignOp::AssignConstraintSignal => {
                             rhe.gen_llzk_in_template(codegen, template)?.and_then(
