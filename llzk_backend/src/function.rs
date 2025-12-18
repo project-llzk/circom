@@ -9,7 +9,7 @@ use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::shared::erase_op;
 use crate::shared::get_function_type_attribute;
-use crate::shared::is_function_return;
+use crate::shared::is_scf_yield;
 use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
 use crate::shared::single_result_as_value;
@@ -21,6 +21,7 @@ use anyhow::Result;
 use llzk::prelude::bool;
 use llzk::prelude::felt;
 use llzk::prelude::function;
+use llzk::prelude::Attribute;
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
@@ -51,11 +52,13 @@ use program_structure::ast::Statement;
 use program_structure::ast::VariableType;
 use program_structure::error_code::ReportCode;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::ops::Deref;
 use std::ops::DerefMut;
 
-pub(crate) const VAR_NAME_RETURN_VAL: &str = "**return_val**";
-pub(crate) const VAR_NAME_NO_RETURN: &str = "**no_return**";
+const VAR_NAME_RETURN_VAL: &str = "**return_val**";
+const VAR_NAME_NO_RETURN: &str = "**no_return**";
+const CIRCOM_RETURN_MARKER_ATTR: &str = "from_circom_return";
 
 /// Stores ref to the current function while generating LLZK IR for the function.
 ///
@@ -133,6 +136,24 @@ where
         let v = self.append_op_unnamed_result(op)?;
         self.block_ctx.set_named_value(name, v)?;
         Ok(v)
+    }
+
+    /// Generate and append an op to carry the value from a circom return statement. It will
+    /// generate a return op if the context stack height is 1, otherwise a yield op. In either
+    /// case, it is marked with the [CIRCOM_RETURN_MARKER_ATTR] attribute.
+    pub fn append_circom_return<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        location: Location<'ctx>,
+        value: Value<'ctx, 'val>,
+    ) -> Result<()> {
+        let mut op = if self.block_ctx.is_only_root() {
+            function::r#return(location, &[value])
+        } else {
+            scf::r#yield(&[value], location)
+        };
+        op.set_attribute(CIRCOM_RETURN_MARKER_ATTR, Attribute::unit(&codegen.context));
+        self.append_op_no_result(op)
     }
 
     /// Generate LLZK code in the current function for a circom prefix operation.
@@ -363,20 +384,26 @@ where
     }
 }
 
-/// Implement [Drop] on [FunctionContext] to remove any remaining `undef.undef` ops from the
-/// function. These were added when visiting the Declaration statements and their uses were
-/// replaced with actual values when visiting Assignment statements.
+/// Implement [Drop] on [FunctionContext] to:
+///
+/// 1. Remove any `undef.undef` ops from the function whose result value is unused. These were
+///    added, for example, when visiting [Statement::Declaration] but their uses were later replaced
+///    with actual values when visiting [Statement::Substitution] (and others).
+/// 2. Remove any uses of the [CIRCOM_RETURN_MARKER_ATTR] attribute because it is a temporary marker
+///    used to properly adjust the location of return statements to match LLZK requirements.
 impl Drop for FunctionContext<'_, '_, '_, '_> {
     fn drop(&mut self) {
         fn undef_has_uses(op: OperationRef) -> bool {
             shared::has_uses(single_result_as_value(op).unwrap())
         }
         self.func.walk(WalkOrder::PreOrder, |op| {
+            let mut op_ref_mut = unsafe { OperationRefMut::from_raw(op.to_raw()) };
             if llzk::dialect::undef::is_undef_op(op) && !undef_has_uses(op) {
-                let mut op_ref_mut = unsafe { OperationRefMut::from_raw(op.to_raw()) };
                 OperationMutLike::remove_from_parent(op_ref_mut.deref_mut());
                 WalkResult::Skip
             } else {
+                // Result ignored because we don't care if the attribute was there or not.
+                let _ = op_ref_mut.remove_attribute(CIRCOM_RETURN_MARKER_ATTR);
                 WalkResult::Advance
             }
         });
@@ -436,6 +463,35 @@ where
     }
 }
 
+/// Within a nested (i.e. non-root) block, get the Value wrapped within an `scf.yield` op that was
+/// created from a circom return op.
+fn get_val_of_circom_return_and_erase<'ctx, 'blk, 'val>(
+    block: BlockRef<'ctx, 'blk>,
+) -> Option<Value<'ctx, 'val>>
+where
+    'ctx: 'blk,
+    'blk: 'val,
+{
+    if let Some(mut term) = block.terminator_mut() {
+        // Per `append_circom_return()`, the op generated from a circom return
+        // statement has the special attribute `CIRCOM_RETURN_MARKER_ATTR`.
+        if term.has_attribute(CIRCOM_RETURN_MARKER_ATTR) {
+            // ASSERT: This must be a `yield` not a `return` since it's generated within
+            // the `else` or `then` block of an `if` statement.
+            assert!(is_scf_yield(term));
+            // ASSERT: Per `append_circom_return()` it has exactly one operand.
+            assert_eq!(term.operand_count(), 1);
+            let result = term.operand(0).unwrap();
+            term.remove_from_parent();
+            // To avoid "still has uses" native errors, must perform an explicit erase
+            // since there's no way to get the owned `Operation` out of the block.
+            erase_op(term);
+            return Some(result);
+        }
+    }
+    None
+}
+
 /// Helper for [gen_if_then_else] to mangage the special return-related variables needed
 /// when a circom [Statement::IfThenElse] contains a return statement.
 fn handle_early_return<'ast, 'ctx, 'func, 'blk, 'val>(
@@ -485,6 +541,48 @@ where
     Ok(())
 }
 
+/// Generate LLZK code that follows a circom `if-then-else` statement that has an unbalanced return
+/// (i.e. one branch returns and the other does not). Generates the following LLZK code:
+/// ```llzk
+///  VAR_NAME_RETURN_VAL = scf.if VAR_NAME_NO_RETURN {
+///      /* Leave block context stack in this scope for remaining code */
+///  } else {
+///      scf.yield VAR_NAME_RETURN_VAL
+///  }
+///  function.return VAR_NAME_RETURN_VAL
+/// ```
+fn gen_if_then_else_unbalanced_return_extra<'ast, 'ctx, 'func, 'blk, 'val>(
+    codegen: &LlzkCodegen<'ast, 'ctx>,
+    function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    location: Location<'ctx>,
+) -> Result<()>
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    let condition = function.block_ctx.get_named_value(VAR_NAME_NO_RETURN)?;
+    let ret_val = function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL)?;
+
+    let then_region = Region::new();
+    let then_block = then_region.append_block(Block::new(&[]));
+
+    let else_region = Region::new();
+    let else_block = else_region.append_block(Block::new(&[]));
+    no_results(else_block.append_operation(scf::r#yield(&[*ret_val], location)))?;
+
+    let ret_val = function.append_op_named_result(
+        scf::r#if(*condition, &[ret_val.r#type()], then_region, else_region, location),
+        VAR_NAME_RETURN_VAL.to_string(),
+    )?;
+    function.append_circom_return(codegen, location, ret_val)?;
+
+    // After adding everything above in the current block context, push the `then_block`
+    // so translation of the remaining circom code continues within this block.
+    function.block_ctx.push(then_block);
+    Ok(())
+}
+
 /// Generate LLZK code for a circom [Statement::IfThenElse].
 fn gen_if_then_else<'ast, 'ctx, 'func, 'blk, 'val>(
     codegen: &LlzkCodegen<'ast, 'ctx>,
@@ -528,28 +626,14 @@ where
         )?;
     }
 
-    // Check if one or both blocks end with a return. If so, convert the return logic because LLZK
-    // `ReturnOp` cannot be nested within other ops, only as a direct child of the `FuncDefOp`.
-    let mut then_return_opt = None;
-    let mut else_return_opt = None;
-    if let Some(mut term) = then_block.terminator_mut() {
-        if is_function_return(term) {
-            then_return_opt = Some(term.operand(0).expect("expected returned value"));
-            term.remove_from_parent();
-            // Must perform an explicit erase since there's no way to get the
-            // `Operation` from the Block (to avoid "still has uses" native errors).
-            erase_op(term);
-        }
-    }
-    if let Some(mut term) = else_block.terminator_mut() {
-        if is_function_return(term) {
-            else_return_opt = Some(term.operand(0).expect("expected returned value"));
-            term.remove_from_parent();
-            // Must perform an explicit erase since there's no way to get the
-            // `Operation` from the Block (to avoid "still has uses" native errors).
-            erase_op(term);
-        }
-    }
+    // Check if one or both blocks end with a return in circom. The `scf.if` op used in LLZK cannot
+    // have returns nested within other blocks like circom allows. Use of `append_circom_return()`
+    // already ensures `scf.yield` is used instead of `function.return` when not in the root
+    // block but the `scf.if` additionally requires that both blocks yield the same number and type
+    // of values. Additionally, if one block returns and the other does not (in the circom code),
+    // an additional return state must be added to the values to be yielded from both branches.
+    let then_return_opt = get_val_of_circom_return_and_erase(then_block);
+    let else_return_opt = get_val_of_circom_return_and_erase(else_block);
     if let Some(then_return) = then_return_opt {
         if let Some(else_return) = else_return_opt {
             // Both return, just add the return value to both overwrite maps.
@@ -644,9 +728,9 @@ where
     // another `scf.if` checking `VAR_NAME_NO_RETURN` before generating remaining code.
     if then_return_opt.is_some() && else_return_opt.is_some() {
         let ret_val = function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL)?;
-        function.append_op_no_result(function::r#return(location, &[*ret_val]))?;
+        function.append_circom_return(codegen, location, *ret_val)?;
     } else if then_return_opt.is_some() || else_return_opt.is_some() {
-        todo!()
+        gen_if_then_else_unbalanced_return_extra(codegen, function, location)?;
     }
     Ok(())
 }
@@ -717,7 +801,7 @@ where
             Statement::Return { meta, value } => {
                 let value = value.gen_llzk_in_function(codegen, function)?;
                 let location = codegen.location_from_meta(meta);
-                function.append_op_no_result(function::r#return(location, &[value]))
+                function.append_circom_return(codegen, location, value)
             }
             Statement::Assert { meta, arg } => {
                 let value = arg.gen_llzk_in_function(codegen, function)?;
