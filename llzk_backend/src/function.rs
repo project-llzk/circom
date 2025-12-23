@@ -3,7 +3,7 @@ use crate::shared::{self, new_felt_const_op, single_result_as_value, IsA, LlzkCo
 use anyhow::{anyhow, Ok, Result};
 use llzk::prelude::{bool, felt, function, FeltType, FuncDefOp, FuncDefOpRefMut, OperationMutLike};
 use melior::{
-    dialect::{arith, index},
+    dialect::{arith, index, ods::math},
     ir::{
         operation::{OperationLike as _, OperationRefMut, WalkOrder, WalkResult},
         BlockLike as _, BlockRef, Operation, OperationRef, RegionLike as _, Type, Value,
@@ -225,12 +225,24 @@ where
             }};
         }
 
-        macro_rules! try_felt_op {
+        macro_rules! generic_op_callback {
             ($op_path:path) => {{
-                try_callback_for_type!(shared::is_felt, || {
+                || {
                     let loc = codegen.location_from_meta(meta);
                     $op_path(loc, lhs, rhs).map_err(Into::into)
-                });
+                }
+            }};
+        }
+
+        macro_rules! try_felt_op {
+            ($op_path:path) => {{
+                try_callback_for_type!(shared::is_felt, generic_op_callback!($op_path));
+            }};
+        }
+
+        macro_rules! try_bool_op {
+            ($op_path:path) => {{
+                try_callback_for_type!(shared::is_felt, generic_op_callback!($op_path));
             }};
         }
 
@@ -247,7 +259,7 @@ where
             ($op:ident) => {{
                 try_callback_for_type!(shared::is_index, || {
                     let loc = codegen.location_from_meta(meta);
-                    Ok(math::$op(lhs, rhs, loc))
+                    Ok(Operation::from(math::$op(codegen.context, lhs, rhs, loc)))
                 });
             }};
         }
@@ -301,7 +313,7 @@ where
                 try_felt_index_op!(r#mod, remu);
             }
             ExpressionInfixOpcode::Pow => {
-                todo!("Handle Pow infix op")
+                try_felt_math_op!(pow, ipowi);
             }
             ExpressionInfixOpcode::ShiftL => {
                 try_felt_index_op!(shl, shl);
@@ -329,6 +341,7 @@ where
             }
             ExpressionInfixOpcode::BoolOr => {
                 todo!("Handle BoolOr infix op")
+
             }
             ExpressionInfixOpcode::BoolAnd => {
                 todo!("Handle BoolAnd infix op")

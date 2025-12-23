@@ -2,8 +2,7 @@
 use ansi_term::Color;
 use anyhow::{anyhow, Ok, Result};
 use llzk::prelude::{
-    felt, FeltConstAttribute, FuncDefOp, FuncDefOpLike, FuncDefOpRef, FuncDefOpRefMut, LlzkContext,
-    StructDefOp, StructDefOpRef, StructDefOpRefMut,
+    felt, FeltConstAttribute, FuncDefOp, FuncDefOpLike, FuncDefOpRef, FuncDefOpRefMut, IntegerType, LlzkContext, StructDefOp, StructDefOpRef, StructDefOpRefMut
 };
 use melior::{
     ir::{
@@ -22,7 +21,7 @@ use program_structure::{
 };
 use std::{
     collections::HashMap,
-    convert::{TryFrom, TryInto as _},
+    convert::{TryFrom, TryInto},
     fs::{self, File},
     io::Write,
     ops::Deref,
@@ -217,6 +216,12 @@ impl<T> IsA for T {}
 #[inline]
 pub fn is_index(t: Type) -> bool {
     t.is_index()
+}
+
+/// Return `true` iff the given Type is a boolean type, i.e. `i1`.
+#[inline]
+pub fn is_bool(t: Type) -> bool {
+    t.is_integer() && <Type<'_> as TryInto<IntegerType>>::try_into(t).unwrap().width() == 1
 }
 
 /// Return `true` iff the given Type is a `FeltType`.
