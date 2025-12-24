@@ -1,22 +1,35 @@
-#![allow(unused_variables)] // TODO: TEMP
-use crate::{
-    function::FunctionContext,
-    shared::{is_bool, is_felt, new_felt_const_op, LlzkCodegen},
-};
-use anyhow::{anyhow, Result};
-use llzk::{
-    builder::OpBuilder,
-    prelude::{
-        cast, constrain, function, r#struct, FeltType, FlatSymbolRefAttribute, FuncDefOpLike as _,
-        StructDefOpRefMut,
-    },
-};
-use melior::ir::{Value, ValueLike};
-use program_structure::{
-    ast::{AssignOp, Expression, Statement},
-    error_code::ReportCode,
-};
-use std::{cell::RefCell, ops::Deref, rc::Rc};
+//! Handles template-level LLZK code generation. The [template::TemplateContext] carries information
+//! about the current LLZK struct being generated and some helpers related to generating code within
+//! the struct. The [template::GenerateLLZKInTemplate] trait provides the visitor to generate LLZK
+//! IR for all circom [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
+//! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes. There are also a few
+//! helper traits like `ExprGenResult` and `Chainable` that implement some boilerplate to make the
+//! actual code generation within [template::GenerateLLZKInTemplate] a lot simpler.
+
+use crate::function::FunctionContext;
+use crate::gen_context::GenWithCircomScopeHandling;
+use crate::shared::new_felt_const_op;
+use crate::shared::LlzkCodegen;
+use anyhow::anyhow;
+use anyhow::Result;
+use llzk::builder::OpBuilder;
+use llzk::prelude::constrain;
+use llzk::prelude::function;
+use llzk::prelude::r#struct;
+use llzk::prelude::FeltType;
+use llzk::prelude::FlatSymbolRefAttribute;
+use llzk::prelude::FuncDefOpLike as _;
+use llzk::prelude::StructDefOpRefMut;
+use melior::ir::BlockRef;
+use melior::ir::Value;
+use program_structure::ast::AssignOp;
+use program_structure::ast::Expression;
+use program_structure::ast::Statement;
+use program_structure::error_code::ReportCode;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::ops::Deref;
+use std::rc::Rc;
 
 /// Alias for `Option<T>` to make it clear what the meaning of the option is within the
 /// [TemplateContext] below.
@@ -80,6 +93,62 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
             compute: None,
             constrain: self.constrain.as_ref().map(Rc::clone),
         }
+    }
+}
+
+/// The [TemplateContext] must deal with the block context stack in both functions for circom
+/// scope handling.
+///
+/// Note: The [GenWithCircomScopeHandling] trait requires mutable references in several places to
+/// support `gen_llzk_in_function()` where the [FunctionContext] is passed as a mutable reference.
+/// However, the [TemplateContext] instead uses internal mutability and is passed as an immutable
+/// reference to the `gen_llzk_in_template()` functions. Thus, this trait cannot be implemented for
+/// `TemplateContext` and is instead implemented for `&TemplateContext` which means its functions
+/// must be called via a `&mut &TemplateContext` reference.
+impl<'ctx, 'str, 'func, 'blk, 'val> GenWithCircomScopeHandling<'ctx, 'func, 'blk, 'val>
+    for &TemplateContext<'ctx, 'str, 'func, 'blk, 'val>
+where
+    'ctx: 'str,
+    'str: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    type NewBlock = (ShouldGenerate<BlockRef<'ctx, 'blk>>, ShouldGenerate<BlockRef<'ctx, 'blk>>);
+
+    fn stack_top(&self) -> Self::NewBlock {
+        (
+            self.compute.as_ref().map(|rc| *rc.borrow().block_ctx.top_block()),
+            self.constrain.as_ref().map(|rc| *rc.borrow().block_ctx.top_block()),
+        )
+    }
+
+    fn stack_push(&mut self, block: Self::NewBlock) {
+        if let Some(rc) = self.compute.as_ref() {
+            rc.borrow_mut().block_ctx.push(block.0.unwrap())
+        }
+        if let Some(rc) = self.constrain.as_ref() {
+            rc.borrow_mut().block_ctx.push(block.1.unwrap())
+        }
+    }
+
+    fn stack_pop<H>(&mut self, mut handle_overwrites: H) -> Result<()>
+    where
+        H: FnMut(
+            &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            HashMap<String, Value<'ctx, 'val>>,
+        ) -> Result<()>,
+    {
+        if let Some(rc) = self.compute.as_ref() {
+            let mut fc = rc.borrow_mut();
+            let popped = fc.block_ctx.pop();
+            handle_overwrites(&mut *fc, popped)?;
+        }
+        if let Some(rc) = self.constrain.as_ref() {
+            let mut fc = rc.borrow_mut();
+            let popped = fc.block_ctx.pop();
+            handle_overwrites(&mut *fc, popped)?;
+        }
+        Ok(())
     }
 }
 
@@ -223,7 +292,6 @@ where
     /// a new [ChainResult].
     fn and_then<'ast, F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
         gen_compute: F1,
         gen_constrain: F2,
     ) -> Result<CR>
@@ -241,7 +309,6 @@ where
     #[inline]
     fn and_then_same<'ast, F, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
         handle: F,
     ) -> Result<CR>
     where
@@ -250,7 +317,7 @@ where
             &Self::HandlerInput,
         ) -> Result<CR::HandlerOutput>,
     {
-        self.and_then::<&F, &F, CR>(codegen, &handle, &handle)
+        self.and_then::<&F, &F, CR>(&handle, &handle)
     }
 }
 
@@ -316,7 +383,6 @@ where
 
     fn and_then<'ast, F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
         gen_compute: F1,
         gen_constrain: F2,
     ) -> Result<CR>
@@ -367,7 +433,6 @@ where
 
     fn and_then<'ast, F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
         gen_compute: F1,
         gen_constrain: F2,
     ) -> Result<CR>
@@ -425,7 +490,7 @@ where
 }
 
 impl<'ctx, 'str, 'func, 'blk, 'val> GenerateLLZKInTemplate<'ctx, 'str, 'func, 'blk, 'val>
-    for Statement
+    for [Statement]
 where
     'ctx: 'str,
     'str: 'func,
@@ -445,22 +510,58 @@ where
     where
         'val: 'r,
     {
+        for s in self {
+            s.gen_llzk_in_template(codegen, template)?;
+            // circom allows unreachable code after a return but it is not processed
+            // (e.g. `assert(1 == 0)` after a return does not cause an error as it normally
+            // would) so replicate the same behavior here by stopping processing after a
+            // return (which is also what MLIR expects, no code after a terminator op).
+            if matches!(s, Statement::Return { .. }) {
+                break;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<'ctx, 'str, 'func, 'blk, 'val> GenerateLLZKInTemplate<'ctx, 'str, 'func, 'blk, 'val>
+    for Statement
+where
+    'ctx: 'str,
+    'str: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    type Output<'r>
+        = ()
+    where
+        'val: 'r;
+
+    #[allow(unused_variables)] // TODO: TEMP
+    fn gen_llzk_in_template<'ast, 'r>(
+        &'ast self,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+    ) -> Result<Self::Output<'r>>
+    where
+        'val: 'r,
+    {
         match self {
             Statement::InitializationBlock { initializations, .. } => {
-                for init in initializations {
-                    init.gen_llzk_in_template(codegen, template)?;
-                }
+                initializations.gen_llzk_in_template(codegen, template)
             }
             Statement::Declaration { meta, xtype, name, dimensions, .. } => {
-                // TODO: we've already handled declarations to create struct fields and function
-                // parameters. Is there any reason to visit them again? If not, then
-                // we don't need the InitializationBlock above either.
-                println!("TODO: anything else to do with declaration? {name} of type {xtype:?}");
+                template.and_then_same(|fc, _| {
+                    fc.block_ctx.declare_name_if_not_present(name, || {
+                        codegen.new_nondet_felt_of_dimensions(meta, dimensions)
+                    })
+                })
             }
             Statement::Block { stmts, .. } => {
-                for s in stmts {
-                    s.gen_llzk_in_template(codegen, template)?;
-                }
+                let mut template = template; // satisfy the &mut in `GenWithCircomScopeHandling`
+                template.gen_in_current_block_with_new_circom_scope_and_merge_overwrites(
+                    |template, _| stmts.gen_llzk_in_template(codegen, template),
+                )
             }
             Statement::Substitution { meta, var, access, op, rhe } => {
                 if access.is_empty() {
@@ -468,22 +569,17 @@ where
                     // which essentially propagates the assignment.
                     match op {
                         AssignOp::AssignVar => {
-                            // Note: Typed underscore binding shows we're not dropping a Result.
-                            let _: () = rhe
-                                .gen_llzk_in_template(codegen, template)?
-                                .and_then_same(codegen, |fc, val| {
-                                    fc.name_to_value.insert(var.clone(), *val);
-                                    Ok(())
-                                })?;
+                            rhe.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, val| {
+                                fc.block_ctx.set_named_value(var.clone(), *val)
+                            })
                         }
                         AssignOp::AssignSignal => {
-                            // The `<--` operator is witness generation only so this should not
-                            // generate any code in the constrain function.
-                            let template = template.compute_only();
-                            // Note: Typed underscore binding shows we're not dropping a Result.
+                            // The `<--` operator is witness generation only so code for the RHS
+                            // expression should only be generated in the compute function.
+                            let compute_only = template.compute_only();
                             let _: () = rhe
-                                .gen_llzk_in_template(codegen, &template)?
-                                .and_then_same(codegen, |fc, val| {
+                                .gen_llzk_in_template(codegen, &compute_only)?
+                                .and_then_same(|fc, val| {
                                     // Cast value to field type if needed.
                                     let write_val = if (!is_felt(val.r#type())) {
                                         fc.append_op_unnamed_result(
@@ -506,12 +602,27 @@ where
                                             write_val?,
                                         )?
                                         .into(),
-                                    )
+                                    )?;
+                                    fc.block_ctx.set_named_value(var.clone(), *val)
                                 })?;
+                            // The constrain function just reads that field from "self" struct.
+                            let constrain_only = template.constrain_only();
+                            (&constrain_only).and_then_same(|fc, _| {
+                                let val = fc.append_op_unnamed_result(
+                                    r#struct::readf(
+                                        &OpBuilder::new(codegen.context.deref()),
+                                        codegen.location_from_meta(meta),
+                                        FeltType::new(codegen.context).into(),
+                                        fc.func.self_value_of_constrain()?,
+                                        var,
+                                    )?
+                                    .into(),
+                                )?;
+                                fc.block_ctx.set_named_value(var.clone(), val)
+                            })
                         }
                         AssignOp::AssignConstraintSignal => {
-                            let _: () = rhe.gen_llzk_in_template(codegen, template)?.and_then(
-                                codegen,
+                            rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                 |fc, val| {
                                     // Cast value to field type if needed.
                                     let write_val = if (!is_felt(val.r#type())) {
@@ -561,7 +672,7 @@ where
                                         .into(),
                                     )
                                 },
-                            )?;
+                            )
                         }
                     }
                 } else {
@@ -573,21 +684,21 @@ where
                 // generate any code in the constrain function.
                 let template =
                     if AssignOp::AssignSignal == *op { &template.compute_only() } else { template };
-                // Just visit and drop the result since the value is unused.
-                // Note: Typed underscore binding shows we're not dropping a Result.
-                let _: ExprGenResultSingle = rhe.gen_llzk_in_template(codegen, template)?;
+                // Just visit and drop the resulting ExprGenResultSingle since the value is unused.
+                rhe.gen_llzk_in_template(codegen, template).map(drop)
             }
             Statement::ConstraintEquality { meta, lhe, rhe } => {
                 // This statement is only relevant to the "@constrain" function.
                 let template = template.constrain_only();
                 // Generate Value for both sides and then generate the constraint op.
-                let _: () = ExprGenResultMulti::gen_exprs(&template, codegen, [lhe, rhe])?
-                    .and_then_same(codegen, |fc, vals| {
+                ExprGenResultMulti::gen_exprs(&template, codegen, [lhe, rhe])?.and_then_same(
+                    |fc, vals| {
                         fc.append_op_no_result(
                             constrain::eq(codegen.location_from_meta(meta), vals[0], vals[1])
                                 .into(),
                         )
-                    })?;
+                    },
+                )
             }
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
                 todo!("Handle if-then-else statement in template")
@@ -596,19 +707,16 @@ where
                 todo!("Handle while statement in template")
             }
             Statement::Assert { meta, arg } => {
-                let _: () = arg.gen_llzk_in_template(codegen, template)?.and_then_same(
-                    codegen,
-                    |fc, val| {
-                        fc.append_op_no_result(
-                            llzk::dialect::bool::assert(
-                                codegen.location_from_meta(meta),
-                                *val,
-                                Some("assertion failed"),
-                            )?
-                            .into(),
-                        )
-                    },
-                )?;
+                arg.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, val| {
+                    fc.append_op_no_result(
+                        llzk::dialect::bool::assert(
+                            codegen.location_from_meta(meta),
+                            *val,
+                            Some("assertion failed"),
+                        )?
+                        .into(),
+                    )
+                })
             }
             Statement::LogCall { meta, .. } => {
                 codegen.emit_circom_warning(
@@ -616,6 +724,7 @@ where
                     "log calls are not currently supported in LLZK",
                     ReportCode::NotAllowedOperation,
                 );
+                Ok(())
             }
             Statement::MultSubstitution { .. } => {
                 unreachable!("removed by 'syntax_sugar_remover'")
@@ -625,7 +734,6 @@ where
                 unreachable!("return statements are not allowed in templates")
             }
         }
-        Ok(())
     }
 }
 
@@ -642,6 +750,7 @@ where
     where
         'val: 'r;
 
+    #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_template<'ast, 'r>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx>,
@@ -652,7 +761,7 @@ where
     {
         match self {
             Expression::Number(meta, big_int) => {
-                template.and_then_same(codegen, |fc, _| {
+                template.and_then_same(|fc, _| {
                     // Convert the BigInt to an LLZK `felt.const` op. The user of the Expression is
                     // responsible for converting this `felt.type` value to another type if needed.
                     // This is done in both functions (if the result is unused in one, dce can
@@ -661,9 +770,9 @@ where
                 })
             }
             Expression::Variable { meta, name, access } => match access.as_slice() {
-                [] => template.and_then_same(codegen, |fc, _| {
-                    fc.name_to_value
-                        .get(name)
+                [] => template.and_then_same(|fc, _| {
+                    fc.block_ctx
+                        .get_named_value(name)
                         .copied()
                         .ok_or_else(|| anyhow!("variable {name} not found"))
                 }),
@@ -673,15 +782,14 @@ where
             },
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {
                 // Generate Value for both sides and then generate the infix op.
-                ExprGenResultMulti::gen_exprs(template, codegen, [&**lhe, &**rhe])?
-                    .and_then_same(codegen, |fc, vals| {
-                        fc.gen_infix_op(codegen, meta, infix_op, vals[0], vals[1])
-                    })
+                ExprGenResultMulti::gen_exprs(template, codegen, [&**lhe, &**rhe])?.and_then_same(
+                    |fc, vals| fc.gen_infix_op(codegen, meta, infix_op, vals[0], vals[1]),
+                )
             }
             Expression::PrefixOp { meta, prefix_op, rhe } => {
                 // Generate Value for operand and then generate the prefix op.
                 rhe.gen_llzk_in_template(codegen, template)?
-                    .and_then_same(codegen, |fc, v| fc.gen_prefix_op(codegen, meta, prefix_op, *v))
+                    .and_then_same(|fc, v| fc.gen_prefix_op(codegen, meta, prefix_op, *v))
             }
             Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
                 todo!("Handle InlineSwitchOp expression in template")
@@ -700,7 +808,7 @@ where
                 // Visit each argument and collect the resulting LLZK Values for both functions.
                 let res = ExprGenResultMulti::gen_exprs(template, codegen, args)?;
                 // Create the CallOp in each function using the collected args.
-                res.and_then_same(codegen, |fc, vals| {
+                res.and_then_same(|fc, vals| {
                     // TODO: Currently, the LLZK function will always return a `felt.type` but
                     // eventually, this gen function may need an "expected result type"
                     // parameter or use `poly.tvar` with function templates.

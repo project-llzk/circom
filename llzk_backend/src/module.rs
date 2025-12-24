@@ -1,35 +1,43 @@
-#![allow(unused_variables)] // TODO: TEMP
-use crate::{
-    function::{FunctionContext, GenerateLLZKInFunction as _},
-    shared::{map_name_to_arg_value, LlzkCodegen},
-    template::{GenerateLLZKInTemplate as _, TemplateContext},
-};
-use anyhow::{anyhow, Result};
-use llzk::{
-    attributes::NamedAttribute,
-    error::Error,
-    prelude::{
-        function,
-        r#struct::{
-            self,
-            helpers::{compute_fn, constrain_fn},
-        },
-        undef, ArrayType, FeltType, FuncDefOpRef, FuncDefOpRefMut, FunctionType, IntegerAttribute,
-        PublicAttribute, StructDefOpLike as _, StructType,
-    },
-};
-use melior::ir::{
-    operation::OperationLike as _, Attribute, Block, BlockLike as _, Location, Operation,
-    RegionLike, Type,
-};
-use num_traits::cast::ToPrimitive;
-use program_structure::{
-    ast::{Expression, Meta, SignalType, Statement, VariableType},
-    function_data::FunctionData,
-    program_archive::ProgramArchive,
-    template_data::TemplateData,
-};
-use std::{collections::HashMap, convert::TryFrom};
+//! Handles the top-level constructs (i.e. circom templates and functions), by delegating
+//! to the [function] and [template] modules to generate the code for each.
+
+use crate::function::FunctionContext;
+use crate::function::GenerateLLZKInFunction as _;
+use crate::shared::map_name_to_arg_value;
+use crate::shared::LlzkCodegen;
+use crate::template::GenerateLLZKInTemplate as _;
+use crate::template::TemplateContext;
+use anyhow::Result;
+use llzk::attributes::NamedAttribute;
+use llzk::error::Error;
+use llzk::prelude::function;
+use llzk::prelude::r#struct::helpers::compute_fn;
+use llzk::prelude::r#struct::helpers::constrain_fn;
+use llzk::prelude::r#struct::{self};
+use llzk::prelude::FeltType;
+use llzk::prelude::FuncDefOpRef;
+use llzk::prelude::FuncDefOpRefMut;
+use llzk::prelude::FunctionType;
+use llzk::prelude::PublicAttribute;
+use llzk::prelude::StructDefOpLike as _;
+use llzk::prelude::StructType;
+use melior::ir::operation::OperationLike as _;
+use melior::ir::Block;
+use melior::ir::BlockLike as _;
+use melior::ir::Location;
+use melior::ir::Operation;
+use melior::ir::RegionLike;
+use melior::ir::Type;
+use program_structure::ast::Expression;
+use program_structure::ast::Meta;
+use program_structure::ast::SignalType;
+use program_structure::ast::Statement;
+use program_structure::ast::VariableType;
+use program_structure::function_data::FunctionData;
+use program_structure::program_archive::ProgramArchive;
+use program_structure::template_data::TemplateData;
+use std::collections::HashMap;
+use std::convert::TryFrom;
 
 /// Information needed to create an LLZK struct function parameter collected from the input signal
 /// Declaration statements within a circom template.
@@ -60,6 +68,10 @@ struct DeclarationInfo<'ctx> {
 
 impl<'ctx> DeclarationInfo<'ctx> {
     /// Visit a statement and populate this `DeclarationInfo` with any declarations found.
+    ///
+    /// TODO: This currently visits only top-level statements within the template body. However,
+    /// since circom 2.1.5, signal declarations are allowed inside of blocks and known-condition if
+    /// statements. Those nested declarations are not currently processed here.
     ///
     /// 'ast: lifetime of the circom AST element
     fn visit<'ast>(
@@ -102,15 +114,10 @@ impl<'ctx> DeclarationInfo<'ctx> {
                     VariableType::Var => {
                         // Create an `undef` of the appropriate type. When the actual assignment is
                         // processed later, replace the `undef` with the appropriate value.
-                        let op = undef::undef(
-                            codegen.location_from_meta(meta),
-                            Self::type_with_dimensions(
-                                codegen,
-                                FeltType::new(codegen.context).into(),
-                                dimensions,
-                            )?,
+                        self.var_decls.insert(
+                            name.clone(),
+                            codegen.new_nondet_felt_of_dimensions(meta, dimensions)?,
                         );
-                        self.var_decls.insert(name.clone(), op);
                         Ok(())
                     }
                     VariableType::Component => {
@@ -136,7 +143,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
         base_type: Type<'ctx>,
     ) -> Result<()> {
         let location = codegen.location_from_meta(meta);
-        let decl_type = Self::type_with_dimensions(codegen, base_type, dimensions)?;
+        let decl_type = codegen.type_with_dimensions(base_type, dimensions)?;
         if SignalType::Input == *signal_type {
             // self.func_inputs.push((decl_type, location));
             let mut attrs: Vec<NamedAttribute<'_>> = Vec::new();
@@ -159,67 +166,6 @@ impl<'ctx> DeclarationInfo<'ctx> {
             self.struct_fields.push(new.map(|f| f.into()));
         }
         Ok(())
-    }
-
-    /// If `dimensions` is empty, return `base_type`. Otherwise, create ArrayType by converting the
-    /// dimension circom Expressions to LLZK Attributes.
-    fn type_with_dimensions(
-        codegen: &LlzkCodegen<'_, 'ctx>,
-        base_type: Type<'ctx>,
-        dimensions: &[Expression],
-    ) -> Result<Type<'ctx>> {
-        if dimensions.is_empty() {
-            Ok(base_type)
-        } else {
-            dimensions
-                .iter()
-                .map(|e| Self::convert_dim_expr(codegen, e))
-                .collect::<Result<Vec<_>, _>>()
-                .map(|dims| ArrayType::new(base_type, &dims).into())
-        }
-    }
-
-    /// Convert a circom Expression used as an array dimension to an LLZK Attribute.
-    ///
-    /// Note: The LLZK ArrayType can only use the following Attribute types for dimensions:
-    /// IntegerAttr (`index` or `i1`), SymbolRefAttr, or AffineMapAttr (with single result,
-    /// probably an identity map).
-    ///
-    /// 'ast: lifetime of the circom AST element
-    fn convert_dim_expr<'ast>(
-        codegen: &LlzkCodegen<'ast, 'ctx>,
-        expr: &Expression,
-    ) -> Result<Attribute<'ctx>> {
-        match expr {
-            Expression::Number(meta, big_int) => {
-                let int_attr = IntegerAttribute::new(
-                    Type::index(codegen.context),
-                    big_int.to_i64().ok_or_else(|| anyhow!("Array dimension must fit in i64"))?,
-                );
-                Ok(int_attr.into())
-            }
-            Expression::Variable { meta, name, access } => {
-                // TODO: generate AffineMapAttr (with single result) or SymbolRefAttr (from param)
-                todo!("Handle Variable expression in dimension")
-            }
-            Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                todo!("Handle InfixOp expression in dimension")
-            }
-            Expression::PrefixOp { meta, prefix_op, rhe } => {
-                todo!("Handle PrefixOp expression in dimension")
-            }
-            Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                todo!("Handle InlineSwitchOp expression in dimension")
-            }
-            Expression::Call { meta, id, args } => {
-                todo!("Handle Call expression in dimension")
-            }
-            // The remaining cases do not produce a scalar value.
-            // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
-            // Give the same error that the circom type checker gives. The type checker ran
-            // earlier so this should technically be unreachable.
-            _ => Err(anyhow!("Array indexes and lengths must be single arithmetic expressions")),
-        }
     }
 }
 
@@ -250,9 +196,11 @@ impl<'ctx> GenerateLLZKInModule<'ctx> for FunctionData {
     fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx>) -> Result<()> {
         let location = codegen.location(self.get_file_id(), self.get_param_location());
         let felt_type = FeltType::new(codegen.context).into();
-        // TODO: This just uses `felt.type` for param and return types but those must actually
-        //  be determined based on the caller. This also affects the dimensions of array types
-        //  and which array read/write-like ops must be used when translating the body.
+        // TODO: This just uses `felt.type` for param and return types but those must actually be
+        // determined based on the caller. Circom functions cannot accept or return components or
+        // busses so the only types allowed for params and return are `felt.type` and arrays of
+        // `felt.type`. The actual type used here also affects the dimensions of array types and
+        // which array read/write-like ops must be used when translating the body.
         let inputs = vec![felt_type; self.get_num_of_params()];
         let func_type = FunctionType::new(codegen.context, &inputs, &[felt_type]);
         let func_def =
@@ -271,11 +219,7 @@ impl<'ctx> GenerateLLZKInModule<'ctx> for FunctionData {
 
         // Visit the body of the function and generate LLZK IR for it.
         let mut func_context = FunctionContext::new(func, name_to_value)?;
-        for s in self.get_body_as_vec() {
-            s.gen_llzk_in_function(codegen, &mut func_context)?;
-        }
-
-        Ok(())
+        self.get_body_as_vec().gen_llzk_in_function(codegen, &mut func_context)
     }
 }
 
@@ -331,17 +275,13 @@ impl<'ctx> GenerateLLZKInModule<'ctx> for TemplateData {
         // variable name to LLZK op result Value (do this in each function).
         for (name, op) in declarations.var_decls {
             // Insert (a clone of) the declaration into the compute function.
-            compute_ctx.append_op_named_result(op.clone(), name.clone());
+            compute_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op.clone()))?;
             // Insert the declaration into the constrain function.
-            constrain_ctx.append_op_named_result(op, name);
+            constrain_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op))?;
         }
 
         // Visit the body of the template and generate LLZK IR for it within the struct functions.
         let template_context = TemplateContext::new(new_struct, compute_ctx, constrain_ctx);
-        for s in self.get_body_as_vec() {
-            s.gen_llzk_in_template(codegen, &template_context)?;
-        }
-
-        Ok(())
+        self.get_body_as_vec().gen_llzk_in_template(codegen, &template_context)
     }
 }
