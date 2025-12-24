@@ -8,11 +8,13 @@
 
 use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
+use crate::shared::is_felt;
 use crate::shared::new_felt_const_op;
 use crate::shared::LlzkCodegen;
 use anyhow::anyhow;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
+use llzk::dialect::cast;
 use llzk::prelude::constrain;
 use llzk::prelude::function;
 use llzk::prelude::r#struct;
@@ -22,6 +24,7 @@ use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::StructDefOpRefMut;
 use melior::ir::BlockRef;
 use melior::ir::Value;
+use melior::ir::ValueLike;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Statement;
@@ -581,7 +584,7 @@ where
                                 .gen_llzk_in_template(codegen, &compute_only)?
                                 .and_then_same(|fc, val| {
                                     // Cast value to field type if needed.
-                                    let write_val = if (!is_felt(val.r#type())) {
+                                    let write_val = if !is_felt(val.r#type()) {
                                         fc.append_op_unnamed_result(
                                             cast::tofelt(
                                                 codegen.location_from_meta(meta),
@@ -625,7 +628,7 @@ where
                             rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                 |fc, val| {
                                     // Cast value to field type if needed.
-                                    let write_val = if (!is_felt(val.r#type())) {
+                                    let write_val = if !is_felt(val.r#type()) {
                                         fc.append_op_unnamed_result(
                                             cast::tofelt(
                                                 codegen.location_from_meta(meta),

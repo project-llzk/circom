@@ -28,6 +28,7 @@ component main = BoolOr();
 // CHECK-NEXT:        function.return %[[VAL_2]] : !struct.type<@BoolOr<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_9:.*]]: !struct.type<@BoolOr<[]>>, %[[VAL_10:.*]]: !felt.type, %[[VAL_11:.*]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK-NEXT:        %[[VAL_12:.*]] = struct.readf %[[VAL_9]][@out] : <@BoolOr<[]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

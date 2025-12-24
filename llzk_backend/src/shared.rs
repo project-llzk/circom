@@ -1,34 +1,5 @@
 //! Shared code generation utilities.
-
 use ansi_term::Color;
-use anyhow::{anyhow, Ok, Result};
-use llzk::prelude::{
-    felt, FeltConstAttribute, FuncDefOp, FuncDefOpLike, FuncDefOpRef, FuncDefOpRefMut, IntegerType, LlzkContext, StructDefOp, StructDefOpRef, StructDefOpRefMut
-};
-use melior::{
-    ir::{
-        operation::OperationLike as _, BlockLike, Location, Module, Operation, OperationRef, Type,
-        TypeLike, Value,
-    },
-    pass, utility,
-};
-use num_bigint_dig::BigInt;
-use program_structure::{
-    ast::Meta,
-    error_code::ReportCode,
-    error_definition::Report,
-    file_definition::{FileID, FileLocation},
-    program_archive::ProgramArchive,
-};
-use std::{
-    collections::HashMap,
-    convert::{TryFrom, TryInto},
-    fs::{self, File},
-    io::Write,
-    ops::Deref,
-    os::raw::c_void,
-    path::Path,
-};
 use anyhow::anyhow;
 use anyhow::Result;
 use llzk::prelude::felt;
@@ -42,15 +13,16 @@ use llzk::prelude::FuncDefOpLike;
 use llzk::prelude::FuncDefOpRef;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::IntegerAttribute;
+use llzk::prelude::IntegerType;
 use llzk::prelude::LlzkContext;
 use llzk::prelude::LlzkError;
+use llzk::prelude::OperationLike;
 use llzk::prelude::StructDefOp;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::ValueLike;
 use melior::dialect::arith;
 use melior::ir::attribute::BoolAttribute;
-use melior::ir::operation::OperationLike as _;
 use melior::ir::Attribute;
 use melior::ir::BlockLike;
 use melior::ir::Location;
@@ -75,9 +47,9 @@ use program_structure::file_definition::FileLocation;
 use program_structure::program_archive::ProgramArchive;
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::convert::TryInto as _;
+use std::convert::TryInto;
+use std::fs;
 use std::fs::File;
-use std::fs::{self};
 use std::io::Write;
 use std::ops::Deref;
 use std::os::raw::c_void;

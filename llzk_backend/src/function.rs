@@ -6,29 +6,6 @@
 //! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes.
 
 #![allow(unused_variables)] // TODO: TEMP
-use crate::shared::{self, new_felt_const_op, single_result_as_value, IsA, LlzkCodegen};
-use anyhow::{anyhow, Ok, Result};
-use llzk::prelude::{bool, felt, function, FeltType, FuncDefOp, FuncDefOpRefMut, OperationMutLike};
-use melior::{
-    dialect::{arith, index, ods::math},
-    ir::{
-        operation::{OperationLike as _, OperationRefMut, WalkOrder, WalkResult},
-        BlockLike as _, BlockRef, Operation, OperationRef, RegionLike as _, Type, Value,
-        ValueLike as _,
-    },
-};
-use program_structure::{
-    ast::{
-        Expression, ExpressionInfixOpcode, ExpressionPrefixOpcode, Meta, Statement, VariableType,
-    },
-    error_code::ReportCode,
-};
-use std::{
-    collections::HashMap,
-    convert::{TryFrom, TryInto as _},
-    ops::{Deref, DerefMut},
-};
-
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::shared::new_felt_const_op;
@@ -44,18 +21,19 @@ use llzk::prelude::function;
 use llzk::prelude::FeltType;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::Operation;
+use llzk::prelude::OperationLike as _;
 use llzk::prelude::OperationMutLike;
 use llzk::prelude::OperationRef;
 use melior::dialect::arith;
+use melior::dialect::ods::math;
 use melior::dialect::index;
-use melior::ir::operation::OperationLike as _;
 use melior::ir::operation::OperationRefMut;
 use melior::ir::operation::WalkOrder;
 use melior::ir::operation::WalkResult;
 use melior::ir::BlockRef;
 use melior::ir::Type;
 use melior::ir::Value;
-use melior::ir::ValueLike as _;
+use melior::ir::ValueLike;
 use program_structure::ast::Expression;
 use program_structure::ast::ExpressionInfixOpcode;
 use program_structure::ast::ExpressionPrefixOpcode;

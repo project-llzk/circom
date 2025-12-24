@@ -22,6 +22,7 @@ component main = ArithPower();
 // CHECK-NEXT:       function.return %[[VAL_1]] : !struct.type<@ArithPower<[]>>
 // CHECK-NEXT:     }
 // CHECK-NEXT:     function.def @constrain(%[[VAL_4:.*]]: !struct.type<@ArithPower<[]>>, %[[VAL_5:.*]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK-NEXT:       %[[VAL_6:.*]] = struct.readf %[[VAL_4]][@out] : <@ArithPower<[]>>, !felt.type
 // CHECK-NEXT:       function.return
 // CHECK-NEXT:     }
 // CHECK-NEXT:   }
