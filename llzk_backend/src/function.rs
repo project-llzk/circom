@@ -242,7 +242,7 @@ where
 
         macro_rules! try_bool_op {
             ($op_path:path) => {{
-                try_callback_for_type!(shared::is_felt, generic_op_callback!($op_path));
+                try_callback_for_type!(shared::is_bool, generic_op_callback!($op_path));
             }};
         }
 
@@ -340,11 +340,10 @@ where
                 try_bool_cmp_op!(ne, Ne);
             }
             ExpressionInfixOpcode::BoolOr => {
-                todo!("Handle BoolOr infix op")
-
+                try_bool_op!(bool::or);
             }
             ExpressionInfixOpcode::BoolAnd => {
-                todo!("Handle BoolAnd infix op")
+                try_bool_op!(bool::and);
             }
             ExpressionInfixOpcode::BitOr => {
                 try_felt_index_op!(bit_or, or);

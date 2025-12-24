@@ -1,17 +1,17 @@
 #![allow(unused_variables)] // TODO: TEMP
 use crate::{
     function::FunctionContext,
-    shared::{new_felt_const_op, LlzkCodegen},
+    shared::{is_bool, is_felt, new_felt_const_op, LlzkCodegen},
 };
 use anyhow::{anyhow, Result};
 use llzk::{
     builder::OpBuilder,
     prelude::{
-        constrain, function, r#struct, FeltType, FlatSymbolRefAttribute, FuncDefOpLike as _,
+        cast, constrain, function, r#struct, FeltType, FlatSymbolRefAttribute, FuncDefOpLike as _,
         StructDefOpRefMut,
     },
 };
-use melior::ir::Value;
+use melior::ir::{Value, ValueLike};
 use program_structure::{
     ast::{AssignOp, Expression, Statement},
     error_code::ReportCode,
@@ -484,13 +484,26 @@ where
                             let _: () = rhe
                                 .gen_llzk_in_template(codegen, &template)?
                                 .and_then_same(codegen, |fc, val| {
+                                    // Cast value to field type if needed.
+                                    let write_val = if (!is_felt(val.r#type())) {
+                                        fc.append_op_unnamed_result(
+                                            cast::tofelt(
+                                                codegen.location_from_meta(meta),
+                                                val.r#type(),
+                                                *val,
+                                            )
+                                            .into(),
+                                        )
+                                    } else {
+                                        Ok(*val)
+                                    };
                                     // Write value to field of "self" struct.
                                     fc.append_op_no_result(
                                         r#struct::writef(
                                             codegen.location_from_meta(meta),
                                             fc.func.self_value_of_compute()?,
                                             var,
-                                            *val,
+                                            write_val?,
                                         )?
                                         .into(),
                                     )
@@ -500,13 +513,26 @@ where
                             let _: () = rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                 codegen,
                                 |fc, val| {
+                                    // Cast value to field type if needed.
+                                    let write_val = if (!is_felt(val.r#type())) {
+                                        fc.append_op_unnamed_result(
+                                            cast::tofelt(
+                                                codegen.location_from_meta(meta),
+                                                val.r#type(),
+                                                *val,
+                                            )
+                                            .into(),
+                                        )
+                                    } else {
+                                        Ok(*val)
+                                    };
                                     // Write value to field of "self" struct.
                                     fc.append_op_no_result(
                                         r#struct::writef(
                                             codegen.location_from_meta(meta),
                                             fc.func.self_value_of_compute()?,
                                             var,
-                                            *val,
+                                            write_val?,
                                         )?
                                         .into(),
                                     )
