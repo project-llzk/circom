@@ -588,7 +588,6 @@ where
                                         fc.append_op_unnamed_result(
                                             cast::tofelt(
                                                 codegen.location_from_meta(meta),
-                                                val.r#type(),
                                                 *val,
                                             )
                                             .into(),
@@ -632,7 +631,6 @@ where
                                         fc.append_op_unnamed_result(
                                             cast::tofelt(
                                                 codegen.location_from_meta(meta),
-                                                val.r#type(),
                                                 *val,
                                             )
                                             .into(),

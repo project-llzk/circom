@@ -88,16 +88,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1766546887,
-        "narHash": "sha256-Did/ZQJmM6uK9ugdJRaDVusmOwI4NoTPKN0JfQL2Qqo=",
-        "ref": "refs/heads/main",
-        "rev": "dad9a02be9627071377d9e0d9085713a31b9912e",
-        "revCount": 297,
+        "lastModified": 1766636980,
+        "narHash": "sha256-QuD/BOBupRaGKJ4lgyE3/4TmEiUFFd47lJp6QxJr/48=",
+        "ref": "iangneal/remove-unused-type-param",
+        "rev": "8ad424d280e1465bfb5da7cb11c5d251892f2d44",
+        "revCount": 299,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/Veridise/llzk-rs"
       },
       "original": {
+        "ref": "iangneal/remove-unused-type-param",
         "submodules": true,
         "type": "git",
         "url": "https://github.com/Veridise/llzk-rs"

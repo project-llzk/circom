@@ -14,7 +14,7 @@
     release-helpers.follows = "llzk-lib/release-helpers";
 
     llzk-rs-pkgs = {
-      url = "git+https://github.com/Veridise/llzk-rs?submodules=1";
+      url = "git+https://github.com/Veridise/llzk-rs?submodules=1&ref=iangneal/remove-unused-type-param";
       inputs = {
         nixpkgs.follows = "llzk-pkgs/nixpkgs";
         flake-utils.follows = "llzk-pkgs/flake-utils";
