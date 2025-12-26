@@ -597,6 +597,7 @@ where
                 // TODO: Currently, the LLZK function will always return a `felt.type` but
                 // eventually, this gen function may need an "expected result type"
                 // parameter or use `poly.tvar` with function templates.
+                // See template.rs for Expression::Call generation there.
                 let return_types = &[FeltType::new(codegen.context)];
                 function.append_op_unnamed_result(
                     function::call(
