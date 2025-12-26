@@ -14,10 +14,12 @@ use crate::shared::LlzkCodegen;
 use crate::shared::{self};
 use anyhow::anyhow;
 use anyhow::Result;
+use llzk::builder::OpBuilder;
 use llzk::prelude::bool;
 use llzk::prelude::felt;
 use llzk::prelude::function;
 use llzk::prelude::FeltType;
+use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationMutLike;
@@ -587,7 +589,25 @@ where
                 todo!("Handle UniformArray expression in function")
             }
             Expression::Call { meta, id, args } => {
-                todo!("Handle Call expression in function")
+                let builder = OpBuilder::new(codegen.context.deref());
+                // Visit each argument and collect the resulting LLZK Values for both functions.
+                let call_operands = args.iter().map(|arg| { arg.gen_llzk_in_function(codegen, function) }).collect::<Result<Vec<Value>, anyhow::Error>>()?;
+                // Create the CallOp in each function using the collected args.
+
+                // TODO: Currently, the LLZK function will always return a `felt.type` but
+                // eventually, this gen function may need an "expected result type"
+                // parameter or use `poly.tvar` with function templates.
+                let return_types = &[FeltType::new(codegen.context)];
+                function.append_op_unnamed_result(
+                    function::call(
+                        &builder,
+                        codegen.location_from_meta(meta),
+                        FlatSymbolRefAttribute::new(codegen.context, id),
+                        &call_operands,
+                        return_types,
+                    )?
+                    .into(),
+                )
             }
             Expression::BusCall { meta, id, args } => {
                 // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
