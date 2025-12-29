@@ -1,4 +1,5 @@
 //! Shared code generation utilities.
+
 use ansi_term::Color;
 use anyhow::anyhow;
 use anyhow::Result;
