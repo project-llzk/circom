@@ -619,7 +619,8 @@ where
                                             *val,
                                         )?
                                         .into(),
-                                    )
+                                    )?;
+                                    fc.block_ctx.set_named_value(var.clone(), *val)
                                 },
                                 |fc, val| {
                                     // Read value of field from "self" struct and generate
@@ -643,7 +644,8 @@ where
                                             *val,
                                         )
                                         .into(),
-                                    )
+                                    )?;
+                                    fc.block_ctx.set_named_value(var.clone(), *val)
                                 },
                             )
                         }
