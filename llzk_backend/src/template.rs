@@ -23,8 +23,6 @@ use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::StructDefOpRefMut;
-use melior::ir::BlockRef;
-use melior::ir::Value;
 use melior::ir::ValueLike;
 use llzk::prelude::Value;
 use program_structure::ast::AssignOp;
