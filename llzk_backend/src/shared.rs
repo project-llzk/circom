@@ -8,7 +8,7 @@ use llzk::prelude::undef;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
-use llzk::prelude::BlockLike as _;
+use llzk::prelude::BlockLike;
 use llzk::prelude::FeltConstAttribute;
 use llzk::prelude::FeltType;
 use llzk::prelude::FuncDefOp;
@@ -17,6 +17,7 @@ use llzk::prelude::FuncDefOpRef;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::FunctionType;
 use llzk::prelude::IntegerAttribute;
+use llzk::prelude::IntegerType;
 use llzk::prelude::LlzkContext;
 use llzk::prelude::LlzkError;
 use llzk::prelude::Location;
@@ -49,8 +50,8 @@ use program_structure::program_archive::ProgramArchive;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto as _;
+use std::fs;
 use std::fs::File;
-use std::fs::{self};
 use std::io::Write;
 use std::ops::Deref;
 use std::os::raw::c_void;
@@ -348,6 +349,12 @@ impl<T> IsA for T {}
 #[inline]
 pub fn is_index(t: Type) -> bool {
     t.is_index()
+}
+
+/// Return `true` iff the given Type is a boolean type, i.e. `i1`.
+#[inline]
+pub fn is_bool(t: Type) -> bool {
+    t.is_integer() && IntegerType::try_from(t).is_ok_and(|it| it.width() == 1)
 }
 
 /// Return `true` iff the given Type is a `FeltType`.
