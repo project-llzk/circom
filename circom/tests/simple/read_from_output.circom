@@ -18,19 +18,19 @@ component main = ReadFromOutput();
 // CHECK-NEXT:   struct.def @ReadFromOutput<[]> {
 // CHECK-NEXT:     struct.field @outp : !felt.type {llzk.pub}
 // CHECK-NEXT:     struct.field @intermediate : !felt.type
-// CHECK-NEXT:     function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@ReadFromOutput<[]>> attributes {function.allow_witness} {
+// CHECK-LABEL:    function.def @compute
+// CHECK-SAME:     (%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@ReadFromOutput<[]>> attributes {function.allow_witness} {
 // CHECK-NEXT:       %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@ReadFromOutput<[]>>
-// CHECK-NEXT:       %[[VAL_2:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
 // CHECK-NEXT:       struct.writef %[[VAL_1]][@outp] = %[[VAL_0]] : <@ReadFromOutput<[]>>, !felt.type
-// CHECK-NEXT:       struct.writef %[[VAL_1]][@intermediate] = %[[VAL_2]] : <@ReadFromOutput<[]>>, !felt.type
+// CHECK-NEXT:       struct.writef %[[VAL_1]][@intermediate] = %[[VAL_0]] : <@ReadFromOutput<[]>>, !felt.type
 // CHECK-NEXT:       function.return %[[VAL_1]] : !struct.type<@ReadFromOutput<[]>>
 // CHECK-NEXT:     }
-// CHECK-NEXT:     function.def @constrain(%[[VAL_3:[0-9a-zA-Z_\.]+]]: !struct.type<@ReadFromOutput<[]>>, %[[VAL_4:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
-// CHECK-NEXT:       %[[VAL_5:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
+// CHECK-LABEL:    function.def @constrain
+// CHECK-SAME:     (%[[VAL_3:[0-9a-zA-Z_\.]+]]: !struct.type<@ReadFromOutput<[]>>, %[[VAL_4:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
 // CHECK-NEXT:       %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_3]][@outp] : <@ReadFromOutput<[]>>, !felt.type
 // CHECK-NEXT:       constrain.eq %[[VAL_6]], %[[VAL_4]] : !felt.type, !felt.type
 // CHECK-NEXT:       %[[VAL_7:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_3]][@intermediate] : <@ReadFromOutput<[]>>, !felt.type
-// CHECK-NEXT:       constrain.eq %[[VAL_7]], %[[VAL_5]] : !felt.type, !felt.type
+// CHECK-NEXT:       constrain.eq %[[VAL_7]], %[[VAL_4]] : !felt.type, !felt.type
 // CHECK-NEXT:       function.return
 // CHECK-NEXT:     }
 // CHECK-NEXT:   }
