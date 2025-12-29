@@ -4,18 +4,18 @@
 
 pragma circom 2.0.0;
 
-template C() {
-  signal input in;
-  signal output out;
-  out <-- negative(in);
-}
-
 function negative(n){
   if (n < 0) {
     return 1;
   } else {
     return 0;
   }
+}
+
+template C() {
+  signal input in;
+  signal output out;
+  out <-- negative(in);
 }
 
 component main = C();

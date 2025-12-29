@@ -14,20 +14,20 @@ use llzk::prelude::function;
 use llzk::prelude::r#struct::helpers::compute_fn;
 use llzk::prelude::r#struct::helpers::constrain_fn;
 use llzk::prelude::r#struct::{self};
+use llzk::prelude::Block;
+use llzk::prelude::BlockLike as _;
 use llzk::prelude::FeltType;
 use llzk::prelude::FuncDefOpRef;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::FunctionType;
+use llzk::prelude::Location;
+use llzk::prelude::Operation;
+use llzk::prelude::OperationLike as _;
 use llzk::prelude::PublicAttribute;
+use llzk::prelude::RegionLike;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructType;
-use melior::ir::operation::OperationLike as _;
-use melior::ir::Block;
-use melior::ir::BlockLike as _;
-use melior::ir::Location;
-use melior::ir::Operation;
-use melior::ir::RegionLike;
-use melior::ir::Type;
+use llzk::prelude::Type;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
 use program_structure::ast::SignalType;
@@ -222,7 +222,7 @@ impl<'ctx> GenerateLLZKInModule<'ctx> for FunctionData {
         let name_to_value = map_name_to_arg_value(func, self.get_name_of_params())?;
 
         // Visit the body of the function and generate LLZK IR for it.
-        let mut func_context = FunctionContext::new(func, name_to_value)?;
+        let mut func_context = FunctionContext::new::<true>(codegen, func, name_to_value)?;
         self.get_body_as_vec().gen_llzk_in_function(codegen, &mut func_context)
     }
 }
@@ -267,11 +267,15 @@ impl<'ctx> GenerateLLZKInModule<'ctx> for TemplateData {
         // Map parameter Values of each LLZK function to the corresponding circom variable names and
         // then create the FunctionContext for each function. Before creating the FunctionContext
         // for constrain, add a dummy name at index 0 since the first parameter is the struct ref.
-        let mut compute_ctx =
-            FunctionContext::new(compute_func, map_name_to_arg_value(compute_func, &arg_names)?)?;
+        let mut compute_ctx = FunctionContext::new::<false>(
+            codegen,
+            compute_func,
+            map_name_to_arg_value(compute_func, &arg_names)?,
+        )?;
         let mut arg_names = arg_names;
         arg_names.insert(0, "**self**".to_string());
-        let mut constrain_ctx = FunctionContext::new(
+        let mut constrain_ctx = FunctionContext::new::<false>(
+            codegen,
             constrain_func,
             map_name_to_arg_value(constrain_func, &arg_names)?,
         )?;

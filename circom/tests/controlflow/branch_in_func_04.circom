@@ -4,18 +4,18 @@
 
 pragma circom 2.0.0;
 
+function negative(n){
+  var x; // default initialization to 0
+  if (n < 0) {
+    x = 1;
+  }
+  return x;
+}
+
 template C() {
   signal input in;
   signal output out;
   out <-- negative(in);
-}
-
-function negative(n){
-  if (n < 0) {
-    return 1;
-  } else {
-    return 0;
-  }
 }
 
 component main = C();
@@ -24,15 +24,15 @@ component main = C();
 // CHECK-LABEL:   function.def @negative(
 // CHECK-SAME:                           %[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type {
 // CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_0]], %[[VAL_1]])
-// CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_2]] -> (!felt.type) {
-// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:        scf.yield %[[VAL_4]] : !felt.type
-// CHECK-NEXT:      } else {
-// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_0]], %[[VAL_2]])
+// CHECK-NEXT:      %[[VAL_4:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_3]] -> (!felt.type) {
+// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        scf.yield %[[VAL_5]] : !felt.type
+// CHECK-NEXT:      } else {
+// CHECK-NEXT:        scf.yield %[[VAL_1]] : !felt.type
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.return %[[VAL_3]] : !felt.type
+// CHECK-NEXT:      function.return %[[VAL_4]] : !felt.type
 // CHECK-NEXT:    }
 //
 // CHECK-LABEL:   struct.def @C<[]> {

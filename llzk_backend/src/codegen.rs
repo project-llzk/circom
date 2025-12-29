@@ -5,7 +5,7 @@ use crate::shared::LlzkCodegen;
 use ansi_term::Color;
 use anyhow::Result;
 use llzk::prelude::LlzkContext;
-use melior::ir::Location;
+use llzk::prelude::Location;
 use melior::ir::Module;
 use program_structure::program_archive::ProgramArchive;
 
