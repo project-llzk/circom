@@ -15,14 +15,14 @@ component main = BitwiseShiftLeft();
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
 // CHECK:         struct.def @BitwiseShiftLeft<[]> {
 // CHECK:           struct.field @type : !felt.type {llzk.pub}
-// CHECK:           function.def @compute(%[[VAL_0:.*]]: !felt.type) -> !struct.type<@BitwiseShiftLeft<[]>> attributes {function.allow_witness} {
-// CHECK:             %[[VAL_1:.*]] = struct.new : <@BitwiseShiftLeft<[]>>
-// CHECK:             %[[VAL_2:.*]] = felt.const  5
-// CHECK:             %[[VAL_3:.*]] = felt.shl %[[VAL_0]], %[[VAL_2]] : !felt.type, !felt.type
+// CHECK:           function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@BitwiseShiftLeft<[]>> attributes {function.allow_witness} {
+// CHECK:             %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@BitwiseShiftLeft<[]>>
+// CHECK:             %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  5
+// CHECK:             %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.shl %[[VAL_0]], %[[VAL_2]] : !felt.type, !felt.type
 // CHECK:             struct.writef %[[VAL_1]][@type] = %[[VAL_3]] : <@BitwiseShiftLeft<[]>>, !felt.type
 // CHECK:             function.return %[[VAL_1]] : !struct.type<@BitwiseShiftLeft<[]>>
 // CHECK:           }
-// CHECK:           function.def @constrain(%[[VAL_4:.*]]: !struct.type<@BitwiseShiftLeft<[]>>, %[[VAL_5:.*]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK:           function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@BitwiseShiftLeft<[]>>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
 // CHECK:             function.return
 // CHECK:           }
 // CHECK:         }
