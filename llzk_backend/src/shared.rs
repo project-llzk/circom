@@ -30,7 +30,6 @@ use llzk::prelude::TypeLike as _;
 use llzk::prelude::ValueLike as _;
 use melior::dialect::arith;
 use melior::ir::attribute::BoolAttribute;
-use melior::ir::BlockLike;
 use melior::ir::attribute::TypeAttribute;
 use melior::ir::Module;
 use melior::ir::Value;

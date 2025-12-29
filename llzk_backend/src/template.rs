@@ -8,7 +8,6 @@
 
 use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
-use crate::shared::is_felt;
 use crate::gen_context::NestedBlockInfo;
 use crate::shared::is_felt;
 use crate::shared::new_felt_const_op;
@@ -25,9 +24,8 @@ use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::StructDefOpRefMut;
-use melior::ir::ValueLike;
 use llzk::prelude::Value;
-use llzk::prelude::ValueLike as _;
+use melior::ir::ValueLike;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
