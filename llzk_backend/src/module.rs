@@ -36,6 +36,7 @@ use program_structure::ast::VariableType;
 use program_structure::function_data::FunctionData;
 use program_structure::program_archive::ProgramArchive;
 use program_structure::template_data::TemplateData;
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
@@ -182,10 +183,13 @@ pub trait GenerateLLZKInModule<'ctx> {
 
 impl<'ctx> GenerateLLZKInModule<'ctx> for ProgramArchive {
     fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx>) -> Result<()> {
-        for data in self.functions.values() {
+        // Sort functions and templates by name for deterministic output (this is only needed for
+        // the lit tests since the order in a HashMap is non-deterministic and could be triggered
+        // only based on a debug flag or similar).
+        for (_, data) in self.functions.iter().collect::<BTreeMap<_, _>>() {
             data.gen_llzk(codegen)?;
         }
-        for data in self.templates.values() {
+        for (_, data) in self.templates.iter().collect::<BTreeMap<_, _>>() {
             data.gen_llzk(codegen)?;
         }
         Ok(())
