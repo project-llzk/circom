@@ -591,7 +591,7 @@ where
             Expression::Call { meta, id, args } => {
                 let builder = OpBuilder::new(codegen.context.deref());
                 // Visit each argument and collect the resulting LLZK Values for both functions.
-                let call_operands = args.iter().map(|arg| { arg.gen_llzk_in_function(codegen, function) }).collect::<Result<Vec<Value>, anyhow::Error>>()?;
+                let call_operands = args.iter().map(|arg| { arg.gen_llzk_in_function(codegen, function) }).collect::<Result<Vec<Value>>>()?;
                 // Create the CallOp in each function using the collected args.
 
                 // TODO: Currently, the LLZK function will always return a `felt.type` but
