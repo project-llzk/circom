@@ -586,11 +586,8 @@ where
                                     // Cast value to field type if needed.
                                     let write_val = if !is_felt(val.r#type()) {
                                         fc.append_op_unnamed_result(
-                                            cast::tofelt(
-                                                codegen.location_from_meta(meta),
-                                                *val,
-                                            )
-                                            .into(),
+                                            cast::tofelt(codegen.location_from_meta(meta), *val)
+                                                .into(),
                                         )
                                     } else {
                                         Ok(*val)
@@ -629,11 +626,8 @@ where
                                     // Cast value to field type if needed.
                                     let write_val = if !is_felt(val.r#type()) {
                                         fc.append_op_unnamed_result(
-                                            cast::tofelt(
-                                                codegen.location_from_meta(meta),
-                                                *val,
-                                            )
-                                            .into(),
+                                            cast::tofelt(codegen.location_from_meta(meta), *val)
+                                                .into(),
                                         )
                                     } else {
                                         Ok(*val)

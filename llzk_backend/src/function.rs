@@ -26,8 +26,8 @@ use llzk::prelude::OperationLike as _;
 use llzk::prelude::OperationMutLike;
 use llzk::prelude::OperationRef;
 use melior::dialect::arith;
-use melior::dialect::ods::math;
 use melior::dialect::index;
+use melior::dialect::ods::math;
 use melior::ir::operation::OperationRefMut;
 use melior::ir::operation::WalkOrder;
 use melior::ir::operation::WalkResult;
@@ -119,8 +119,11 @@ where
     ) -> Result<Value<'ctx, 'val>> {
         match op {
             ExpressionPrefixOpcode::Sub => {
-                if shared::is_felt(rhs.r#type()){
-                    return self.append_op_unnamed_result(felt::neg(codegen.location_from_meta(meta),rhs,)?);
+                if shared::is_felt(rhs.r#type()) {
+                    return self.append_op_unnamed_result(felt::neg(
+                        codegen.location_from_meta(meta),
+                        rhs,
+                    )?);
                 }
                 // For index negation, we need to subtract from zero.
                 if shared::is_index(rhs.r#type()) {
@@ -189,13 +192,9 @@ where
         // Macro to handle the common pattern for type checks for op selection.
         macro_rules! try_callback_for_type {
             ($type_check:path, $cb:expr) => {{
-                if let Some(result) = self.gen_infix_op_if_types_are(
-                    $type_check,
-                    $type_check,
-                    lhs,
-                    rhs,
-                    $cb,
-                )? {
+                if let Some(result) =
+                    self.gen_infix_op_if_types_are($type_check, $type_check, lhs, rhs, $cb)?
+                {
                     return Ok(result);
                 }
             }};
@@ -239,7 +238,6 @@ where
                 });
             }};
         }
-
 
         // Macro to handle the common pattern for felt and index type checks.
         // For index operations that use felt:: module and simple index operations.
