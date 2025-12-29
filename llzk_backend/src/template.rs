@@ -8,8 +8,8 @@
 
 use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
-use crate::shared::is_felt;
 use crate::gen_context::NestedBlockInfo;
+use crate::shared::is_felt;
 use crate::shared::new_felt_const_op;
 use crate::shared::LlzkCodegen;
 use anyhow::Result;
@@ -23,8 +23,8 @@ use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::StructDefOpRefMut;
-use melior::ir::ValueLike;
 use llzk::prelude::Value;
+use llzk::prelude::ValueLike as _;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -636,9 +636,9 @@ where
                                         fc.append_op_unnamed_result(
                                             cast::tofelt(codegen.location_from_meta(meta), *val)
                                                 .into(),
-                                        )
+                                        )?
                                     } else {
-                                        Ok(*val)
+                                        *val
                                     };
                                     // Write value to field of "self" struct.
                                     fc.append_op_no_result(
@@ -646,7 +646,7 @@ where
                                             codegen.location_from_meta(meta),
                                             fc.func.self_value_of_compute()?,
                                             var,
-                                            write_val?,
+                                            write_val,
                                         )?
                                         .into(),
                                     )?;
@@ -676,9 +676,9 @@ where
                                         fc.append_op_unnamed_result(
                                             cast::tofelt(codegen.location_from_meta(meta), *val)
                                                 .into(),
-                                        )
+                                        )?
                                     } else {
-                                        Ok(*val)
+                                        *val
                                     };
                                     // Write value to field of "self" struct.
                                     fc.append_op_no_result(
@@ -686,7 +686,7 @@ where
                                             codegen.location_from_meta(meta),
                                             fc.func.self_value_of_compute()?,
                                             var,
-                                            write_val?,
+                                            write_val,
                                         )?
                                         .into(),
                                     )?;

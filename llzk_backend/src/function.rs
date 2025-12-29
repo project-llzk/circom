@@ -5,7 +5,6 @@
 //! [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
 //! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes.
 
-#![allow(unused_variables)] // TODO: TEMP
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
@@ -41,11 +40,10 @@ use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
-use llzk::prelude::ValueLike as _;
 use melior::dialect::arith;
 use melior::dialect::index;
-use melior::dialect::scf;
 use melior::dialect::ods::math;
+use melior::dialect::scf;
 use melior::ir::operation::OperationRefMut;
 use melior::ir::operation::WalkOrder;
 use melior::ir::operation::WalkResult;
@@ -918,7 +916,10 @@ where
             Expression::Call { meta, id, args } => {
                 let builder = OpBuilder::new(codegen.context.deref());
                 // Visit each argument and collect the resulting LLZK Values for both functions.
-                let call_operands = args.iter().map(|arg| { arg.gen_llzk_in_function(codegen, function) }).collect::<Result<Vec<Value>>>()?;
+                let call_operands = args
+                    .iter()
+                    .map(|arg| arg.gen_llzk_in_function(codegen, function))
+                    .collect::<Result<Vec<Value>>>()?;
                 // Create the CallOp in each function using the collected args.
 
                 // TODO: Currently, the LLZK function will always return a `felt.type` but

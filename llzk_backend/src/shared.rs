@@ -1,4 +1,5 @@
 //! Shared code generation utilities.
+
 use ansi_term::Color;
 use anyhow::anyhow;
 use anyhow::Result;
@@ -7,7 +8,6 @@ use llzk::prelude::undef;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
-use llzk::prelude::BlockLike as _;
 use llzk::prelude::FeltConstAttribute;
 use llzk::prelude::FeltType;
 use llzk::prelude::FuncDefOp;
@@ -27,13 +27,13 @@ use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
+use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use melior::dialect::arith;
 use melior::ir::attribute::BoolAttribute;
-use melior::ir::BlockLike;
 use melior::ir::attribute::TypeAttribute;
+use melior::ir::BlockLike;
 use melior::ir::Module;
-use melior::ir::Value;
 use melior::pass;
 use melior::utility;
 use mlir_sys::mlirOpOperandIsNull;
@@ -49,7 +49,7 @@ use program_structure::file_definition::FileLocation;
 use program_structure::program_archive::ProgramArchive;
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::convert::TryInto;
+use std::convert::TryInto as _;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
@@ -354,7 +354,7 @@ pub fn is_index(t: Type) -> bool {
 /// Return `true` iff the given Type is a boolean type, i.e. `i1`.
 #[inline]
 pub fn is_bool(t: Type) -> bool {
-    t.is_integer() && <Type<'_> as TryInto<IntegerType>>::try_into(t).unwrap().width() == 1
+    t.is_integer() && IntegerType::try_from(t).is_ok_and(|it| it.width() == 1)
 }
 
 /// Return `true` iff the given Type is a `FeltType`.
