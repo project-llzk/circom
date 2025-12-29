@@ -22,6 +22,7 @@ use llzk::prelude::BlockRef;
 use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
+use llzk::prelude::Location;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
@@ -575,6 +576,25 @@ where
     todo!("Handle if-then-else statement in template")
 }
 
+/// Insert cast operations as needed to make `lhs` and `rhs` have compatible types for equality
+/// constraints.
+fn unify_constrain_eq_types<'ctx, 'func, 'blk, 'val>(
+    fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    location: Location<'ctx>,
+    lhs: Value<'ctx, 'val>,
+    rhs: Value<'ctx, 'val>,
+) -> Result<(Value<'ctx, 'val>, Value<'ctx, 'val>)> {
+    // May need to cast between scalar types
+    let mut to_felt =
+        |val: Value<'ctx, 'val>| fc.append_op_unnamed_result(cast::tofelt(location, val).into());
+
+    match (lhs.r#type(), rhs.r#type()) {
+        (t0, t1) if is_felt(t0) && !is_felt(t1) => Ok((lhs, to_felt(rhs)?)),
+        (t0, t1) if !is_felt(t0) && is_felt(t1) => Ok((to_felt(lhs)?, rhs)),
+        _ => Ok((lhs, rhs)),
+    }
+}
+
 impl<'ctx, 'str, 'func, 'blk, 'val> GenerateLLZKInTemplate<'ctx, 'str, 'func, 'blk, 'val>
     for Statement
 where
@@ -707,22 +727,12 @@ where
                                         )?
                                         .into(),
                                     )?;
-                                    // May need to cast between scalar types
-                                    let mut to_felt = |val: Value<'ctx, 'val>| {
-                                        fc.append_op_unnamed_result(
-                                            cast::tofelt(codegen.location_from_meta(meta), val)
-                                                .into(),
-                                        )
-                                    };
-                                    let (lhs, rhs) = match (val_from_read.r#type(), val.r#type()) {
-                                        (t0, t1) if is_felt(t0) && !is_felt(t1) => {
-                                            (val_from_read, to_felt(*val)?)
-                                        }
-                                        (t0, t1) if !is_felt(t0) && is_felt(t1) => {
-                                            (to_felt(val_from_read)?, *val)
-                                        }
-                                        _ => (val_from_read, *val),
-                                    };
+                                    let (lhs, rhs) = unify_constrain_eq_types(
+                                        fc,
+                                        codegen.location_from_meta(meta),
+                                        val_from_read,
+                                        *val,
+                                    )?;
                                     fc.append_op_no_result(
                                         constrain::eq(codegen.location_from_meta(meta), lhs, rhs)
                                             .into(),
@@ -750,17 +760,12 @@ where
                 // Generate Value for both sides and then generate the constraint op.
                 ExprGenResultMulti::gen_exprs(&template, codegen, [lhe, rhe])?.and_then_same(
                     |fc, vals| {
-                        // May need to cast between scalar types
-                        let mut to_felt = |val: Value<'ctx, 'val>| {
-                            fc.append_op_unnamed_result(
-                                cast::tofelt(codegen.location_from_meta(meta), val).into(),
-                            )
-                        };
-                        let (lhs, rhs) = match (vals[0].r#type(), vals[1].r#type()) {
-                            (t0, t1) if is_felt(t0) && !is_felt(t1) => (vals[0], to_felt(vals[1])?),
-                            (t0, t1) if !is_felt(t0) && is_felt(t1) => (to_felt(vals[0])?, vals[1]),
-                            _ => (vals[0], vals[1]),
-                        };
+                        let (lhs, rhs) = unify_constrain_eq_types(
+                            fc,
+                            codegen.location_from_meta(meta),
+                            vals[0],
+                            vals[1],
+                        )?;
                         fc.append_op_no_result(
                             constrain::eq(codegen.location_from_meta(meta), lhs, rhs).into(),
                         )
