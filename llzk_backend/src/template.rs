@@ -670,7 +670,7 @@ where
                                         )?
                                         .into(),
                                     )?;
-                                    fc.block_ctx.set_named_value(var.clone(), *val)
+                                    fc.block_ctx.set_named_value(var.clone(), write_val)
                                 })?;
                             // The constrain function just reads that field from "self" struct.
                             let constrain_only = template.constrain_only();
@@ -710,7 +710,7 @@ where
                                         )?
                                         .into(),
                                     )?;
-                                    fc.block_ctx.set_named_value(var.clone(), *val)
+                                    fc.block_ctx.set_named_value(var.clone(), write_val)
                                 },
                                 |fc, val| {
                                     // Read value of field from "self" struct and generate
