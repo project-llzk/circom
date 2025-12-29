@@ -10,6 +10,7 @@ use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::shared::is_felt;
 use crate::gen_context::NestedBlockInfo;
+use crate::shared::is_felt;
 use crate::shared::new_felt_const_op;
 use crate::shared::LlzkCodegen;
 use anyhow::Result;
@@ -22,9 +23,11 @@ use llzk::prelude::BlockRef;
 use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
+use llzk::prelude::Location;
 use llzk::prelude::StructDefOpRefMut;
 use melior::ir::ValueLike;
 use llzk::prelude::Value;
+use llzk::prelude::ValueLike as _;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -575,6 +578,25 @@ where
     todo!("Handle if-then-else statement in template")
 }
 
+/// Insert cast operations as needed to make `lhs` and `rhs` have compatible types for equality
+/// constraints.
+fn unify_constrain_eq_types<'ctx, 'func, 'blk, 'val>(
+    fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    location: Location<'ctx>,
+    lhs: Value<'ctx, 'val>,
+    rhs: Value<'ctx, 'val>,
+) -> Result<(Value<'ctx, 'val>, Value<'ctx, 'val>)> {
+    // May need to cast between scalar types
+    let mut to_felt =
+        |val: Value<'ctx, 'val>| fc.append_op_unnamed_result(cast::tofelt(location, val).into());
+
+    match (lhs.r#type(), rhs.r#type()) {
+        (t0, t1) if is_felt(t0) && !is_felt(t1) => Ok((lhs, to_felt(rhs)?)),
+        (t0, t1) if !is_felt(t0) && is_felt(t1) => Ok((to_felt(lhs)?, rhs)),
+        _ => Ok((lhs, rhs)),
+    }
+}
+
 impl<'ctx, 'str, 'func, 'blk, 'val> GenerateLLZKInTemplate<'ctx, 'str, 'func, 'blk, 'val>
     for Statement
 where
@@ -636,9 +658,9 @@ where
                                         fc.append_op_unnamed_result(
                                             cast::tofelt(codegen.location_from_meta(meta), *val)
                                                 .into(),
-                                        )
+                                        )?
                                     } else {
-                                        Ok(*val)
+                                        *val
                                     };
                                     // Write value to field of "self" struct.
                                     fc.append_op_no_result(
@@ -646,11 +668,11 @@ where
                                             codegen.location_from_meta(meta),
                                             fc.func.self_value_of_compute()?,
                                             var,
-                                            write_val?,
+                                            write_val,
                                         )?
                                         .into(),
                                     )?;
-                                    fc.block_ctx.set_named_value(var.clone(), *val)
+                                    fc.block_ctx.set_named_value(var.clone(), write_val)
                                 })?;
                             // The constrain function just reads that field from "self" struct.
                             let constrain_only = template.constrain_only();
@@ -676,9 +698,9 @@ where
                                         fc.append_op_unnamed_result(
                                             cast::tofelt(codegen.location_from_meta(meta), *val)
                                                 .into(),
-                                        )
+                                        )?
                                     } else {
-                                        Ok(*val)
+                                        *val
                                     };
                                     // Write value to field of "self" struct.
                                     fc.append_op_no_result(
@@ -686,11 +708,11 @@ where
                                             codegen.location_from_meta(meta),
                                             fc.func.self_value_of_compute()?,
                                             var,
-                                            write_val?,
+                                            write_val,
                                         )?
                                         .into(),
                                     )?;
-                                    fc.block_ctx.set_named_value(var.clone(), *val)
+                                    fc.block_ctx.set_named_value(var.clone(), write_val)
                                 },
                                 |fc, val| {
                                     // Read value of field from "self" struct and generate
@@ -707,15 +729,17 @@ where
                                         )?
                                         .into(),
                                     )?;
-                                    fc.append_op_no_result(
-                                        constrain::eq(
-                                            codegen.location_from_meta(meta),
-                                            val_from_read,
-                                            *val,
-                                        )
-                                        .into(),
+                                    let (lhs, rhs) = unify_constrain_eq_types(
+                                        fc,
+                                        codegen.location_from_meta(meta),
+                                        val_from_read,
+                                        *val,
                                     )?;
-                                    fc.block_ctx.set_named_value(var.clone(), *val)
+                                    fc.append_op_no_result(
+                                        constrain::eq(codegen.location_from_meta(meta), lhs, rhs)
+                                            .into(),
+                                    )?;
+                                    fc.block_ctx.set_named_value(var.clone(), rhs)
                                 },
                             )
                         }
@@ -738,9 +762,14 @@ where
                 // Generate Value for both sides and then generate the constraint op.
                 ExprGenResultMulti::gen_exprs(&template, codegen, [lhe, rhe])?.and_then_same(
                     |fc, vals| {
+                        let (lhs, rhs) = unify_constrain_eq_types(
+                            fc,
+                            codegen.location_from_meta(meta),
+                            vals[0],
+                            vals[1],
+                        )?;
                         fc.append_op_no_result(
-                            constrain::eq(codegen.location_from_meta(meta), vals[0], vals[1])
-                                .into(),
+                            constrain::eq(codegen.location_from_meta(meta), lhs, rhs).into(),
                         )
                     },
                 )
