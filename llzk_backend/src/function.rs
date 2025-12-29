@@ -260,35 +260,35 @@ where
         }
 
         macro_rules! try_index_op {
-            ($op:ident) => {{
+            ($op_path:path) => {{
                 try_callback_for_type!(shared::is_index, || {
                     let loc = codegen.location_from_meta(meta);
-                    Ok(index::$op(lhs, rhs, loc))
+                    Ok($op_path(lhs, rhs, loc))
                 });
             }};
         }
 
         macro_rules! try_math_op {
-            ($op:ident) => {{
+            ($op_path:path) => {{
                 try_callback_for_type!(shared::is_index, || {
                     let loc = codegen.location_from_meta(meta);
-                    Ok(Operation::from(math::$op(codegen.context, lhs, rhs, loc)))
+                    Ok(Operation::from($op_path(codegen.context, lhs, rhs, loc)))
                 });
             }};
         }
 
         // Macro to handle the common pattern for felt and index type checks.
         // For index operations that use felt:: module and simple index operations.
-        macro_rules! try_felt_index_op {
-            ($felt_op:ident, $index_op:ident) => {{
-                try_felt_op!(felt::$felt_op);
+        macro_rules! try_felt_or_index_op {
+            ($felt_op:path, $index_op:path) => {{
+                try_felt_op!($felt_op);
                 try_index_op!($index_op);
             }};
         }
 
-        macro_rules! try_felt_math_op {
-            ($felt_op:ident, $math_op:ident) => {{
-                try_felt_op!(felt::$felt_op);
+        macro_rules! try_felt_or_math_op {
+            ($felt_op:path, $math_op:path) => {{
+                try_felt_op!($felt_op);
                 try_math_op!($math_op);
             }};
         }
@@ -296,8 +296,8 @@ where
         // Macro to handle the common pattern for felt and index type checks.
         // For comparison operations that use bool:: module and index::cmpi.
         macro_rules! try_bool_cmp_op {
-            ($bool_op:ident, $cmp:ident) => {{
-                try_felt_op!(bool::$bool_op);
+            ($bool_op:path, $cmp:ident) => {{
+                try_felt_op!($bool_op);
                 try_callback_for_type!(shared::is_index, || {
                     let loc = codegen.location_from_meta(meta);
                     Ok(index::cmp(codegen.context, arith::CmpiPredicate::$cmp, lhs, rhs, loc))
@@ -307,49 +307,49 @@ where
 
         match op {
             ExpressionInfixOpcode::Add => {
-                try_felt_index_op!(add, add);
+                try_felt_or_index_op!(felt::add, index::add);
             }
             ExpressionInfixOpcode::Sub => {
-                try_felt_index_op!(sub, sub);
+                try_felt_or_index_op!(felt::sub, index::sub);
             }
             ExpressionInfixOpcode::Mul => {
-                try_felt_index_op!(mul, mul);
+                try_felt_or_index_op!(felt::mul, index::mul);
             }
             ExpressionInfixOpcode::Div => {
-                try_felt_index_op!(div, divu);
+                try_felt_or_index_op!(felt::div, index::divu);
             }
             ExpressionInfixOpcode::IntDiv => {
                 todo!("Handle IntDiv infix op")
             }
             ExpressionInfixOpcode::Mod => {
-                try_felt_index_op!(r#mod, remu);
+                try_felt_or_index_op!(felt::r#mod, index::remu);
             }
             ExpressionInfixOpcode::Pow => {
-                try_felt_math_op!(pow, ipowi);
+                try_felt_or_math_op!(felt::pow, math::ipowi);
             }
             ExpressionInfixOpcode::ShiftL => {
-                try_felt_index_op!(shl, shl);
+                try_felt_or_index_op!(felt::shl, index::shl);
             }
             ExpressionInfixOpcode::ShiftR => {
-                try_felt_index_op!(shr, shru);
+                try_felt_or_index_op!(felt::shr, index::shru);
             }
             ExpressionInfixOpcode::LesserEq => {
-                try_bool_cmp_op!(le, Ule);
+                try_bool_cmp_op!(bool::le, Ule);
             }
             ExpressionInfixOpcode::GreaterEq => {
-                try_bool_cmp_op!(ge, Uge);
+                try_bool_cmp_op!(bool::ge, Uge);
             }
             ExpressionInfixOpcode::Lesser => {
-                try_bool_cmp_op!(lt, Ult);
+                try_bool_cmp_op!(bool::lt, Ult);
             }
             ExpressionInfixOpcode::Greater => {
-                try_bool_cmp_op!(gt, Ugt);
+                try_bool_cmp_op!(bool::gt, Ugt);
             }
             ExpressionInfixOpcode::Eq => {
-                try_bool_cmp_op!(eq, Eq);
+                try_bool_cmp_op!(bool::eq, Eq);
             }
             ExpressionInfixOpcode::NotEq => {
-                try_bool_cmp_op!(ne, Ne);
+                try_bool_cmp_op!(bool::ne, Ne);
             }
             ExpressionInfixOpcode::BoolOr => {
                 try_bool_op!(bool::or);
@@ -358,13 +358,13 @@ where
                 try_bool_op!(bool::and);
             }
             ExpressionInfixOpcode::BitOr => {
-                try_felt_index_op!(bit_or, or);
+                try_felt_or_index_op!(felt::bit_or, index::or);
             }
             ExpressionInfixOpcode::BitAnd => {
-                try_felt_index_op!(bit_and, and);
+                try_felt_or_index_op!(felt::bit_and, index::and);
             }
             ExpressionInfixOpcode::BitXor => {
-                try_felt_index_op!(bit_xor, xor);
+                try_felt_or_index_op!(felt::bit_xor, index::xor);
             }
         }
         let err_msg = format!(
