@@ -707,13 +707,25 @@ where
                                         )?
                                         .into(),
                                     )?;
-                                    fc.append_op_no_result(
-                                        constrain::eq(
-                                            codegen.location_from_meta(meta),
-                                            val_from_read,
-                                            *val,
+                                    // May need to cast between scalar types
+                                    let mut to_felt = |val: Value<'ctx, 'val>| {
+                                        fc.append_op_unnamed_result(
+                                            cast::tofelt(codegen.location_from_meta(meta), val)
+                                                .into(),
                                         )
-                                        .into(),
+                                    };
+                                    let (lhs, rhs) = match (val_from_read.r#type(), val.r#type()) {
+                                        (t0, t1) if is_felt(t0) && !is_felt(t1) => {
+                                            (val_from_read, to_felt(*val)?)
+                                        }
+                                        (t0, t1) if !is_felt(t0) && is_felt(t1) => {
+                                            (to_felt(val_from_read)?, *val)
+                                        }
+                                        _ => (val_from_read, *val),
+                                    };
+                                    fc.append_op_no_result(
+                                        constrain::eq(codegen.location_from_meta(meta), lhs, rhs)
+                                            .into(),
                                     )?;
                                     fc.block_ctx.set_named_value(var.clone(), *val)
                                 },
@@ -738,9 +750,19 @@ where
                 // Generate Value for both sides and then generate the constraint op.
                 ExprGenResultMulti::gen_exprs(&template, codegen, [lhe, rhe])?.and_then_same(
                     |fc, vals| {
+                        // May need to cast between scalar types
+                        let mut to_felt = |val: Value<'ctx, 'val>| {
+                            fc.append_op_unnamed_result(
+                                cast::tofelt(codegen.location_from_meta(meta), val).into(),
+                            )
+                        };
+                        let (lhs, rhs) = match (vals[0].r#type(), vals[1].r#type()) {
+                            (t0, t1) if is_felt(t0) && !is_felt(t1) => (vals[0], to_felt(vals[1])?),
+                            (t0, t1) if !is_felt(t0) && is_felt(t1) => (to_felt(vals[0])?, vals[1]),
+                            _ => (vals[0], vals[1]),
+                        };
                         fc.append_op_no_result(
-                            constrain::eq(codegen.location_from_meta(meta), vals[0], vals[1])
-                                .into(),
+                            constrain::eq(codegen.location_from_meta(meta), lhs, rhs).into(),
                         )
                     },
                 )
