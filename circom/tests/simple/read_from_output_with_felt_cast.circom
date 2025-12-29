@@ -34,8 +34,7 @@ component main = ReadFromOutputWithFeltCast();
 // CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_8]] : i1
 // CHECK-NEXT:        constrain.eq %[[VAL_9]], %[[VAL_10]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_5]][@intermediate] : <@ReadFromOutputWithFeltCast<[]>>, !felt.type
-// CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_8]] : i1
-// CHECK-NEXT:        constrain.eq %[[VAL_11]], %[[VAL_12]] : !felt.type, !felt.type
+// CHECK-NEXT:        constrain.eq %[[VAL_11]], %[[VAL_10]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

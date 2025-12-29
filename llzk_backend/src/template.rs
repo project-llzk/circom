@@ -737,7 +737,7 @@ where
                                         constrain::eq(codegen.location_from_meta(meta), lhs, rhs)
                                             .into(),
                                     )?;
-                                    fc.block_ctx.set_named_value(var.clone(), *val)
+                                    fc.block_ctx.set_named_value(var.clone(), rhs)
                                 },
                             )
                         }
