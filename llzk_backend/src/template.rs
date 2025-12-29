@@ -25,7 +25,7 @@ use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::Value;
-use melior::ir::ValueLike;
+use llzk::prelude::ValueLike;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
