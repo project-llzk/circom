@@ -28,10 +28,11 @@ pub fn generate_llzk(
     program_archive: &ProgramArchive,
     filename: &str,
     pass_pipeline: &str,
+    prime: &str,
 ) -> Result<(), ()> {
     let ctx = LlzkContext::new();
     let module = new_llzk_module(&ctx, program_archive);
-    let mut codegen = LlzkCodegen { program_archive, context: &ctx, module };
+    let mut codegen = LlzkCodegen { program_archive, context: &ctx, module, prime };
 
     program_archive.gen_llzk(&codegen).map_err(|err| {
         eprintln!("{} {err}", Color::Red.paint("Failed to generate LLZK IR:"));

@@ -37,6 +37,7 @@ fn start() -> Result<(), ()> {
             &program_archive,
             user_input.llzk_file(),
             &user_input.llzk_pass_pipeline(),
+            &user_input.prime()
         );
     }
 
