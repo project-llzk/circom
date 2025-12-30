@@ -635,16 +635,20 @@ where
                 )
             }
             Statement::Substitution { meta, var, access, op, rhe } => {
-                if access.is_empty() {
-                    // Since there's no simple assignment in LLZK, just update the mapped Value
-                    // which essentially propagates the assignment.
-                    match op {
-                        AssignOp::AssignVar => {
+                // Since there's no simple assignment in LLZK, just update the mapped Value
+                // which essentially propagates the assignment.
+                match op {
+                    AssignOp::AssignVar => {
+                        if access.is_empty() {
                             rhe.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, val| {
                                 fc.block_ctx.set_named_value(var.clone(), *val)
                             })
+                        } else {
+                            todo!("Generate array write operation in template");
                         }
-                        AssignOp::AssignSignal => {
+                    }
+                    AssignOp::AssignSignal => {
+                        if access.is_empty() {
                             // The `<--` operator is witness generation only so code for the RHS
                             // expression should only be generated in the compute function.
                             let compute_only = template.compute_only();
@@ -687,8 +691,12 @@ where
                                 )?;
                                 fc.block_ctx.set_named_value(var.clone(), val)
                             })
+                        } else {
+                            todo!("Generate array write operation in template");
                         }
-                        AssignOp::AssignConstraintSignal => {
+                    }
+                    AssignOp::AssignConstraintSignal => {
+                        if access.is_empty() {
                             rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                 |fc, val| {
                                     // Cast value to field type if needed.
@@ -740,10 +748,10 @@ where
                                     fc.block_ctx.set_named_value(var.clone(), rhs)
                                 },
                             )
+                        } else {
+                            todo!("Generate array write operation in template");
                         }
                     }
-                } else {
-                    todo!("Generate array write operation in template");
                 }
             }
             Statement::UnderscoreSubstitution { meta, op, rhe } => {
