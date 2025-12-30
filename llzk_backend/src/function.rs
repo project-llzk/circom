@@ -32,6 +32,7 @@ use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::IntegerAttribute;
+use llzk::prelude::IntegerType;
 use llzk::prelude::Location;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike as _;
@@ -173,6 +174,18 @@ where
         op: &ExpressionPrefixOpcode,
         rhs: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
+        let mut get_negative_idx = || {
+            let zero = self.append_op_unnamed_result(index::constant(
+                codegen.context,
+                IntegerAttribute::new(rhs.r#type(), 0),
+                codegen.location_from_meta(meta),
+            ))?;
+            return self.append_op_unnamed_result(index::sub(
+                zero,
+                rhs,
+                codegen.location_from_meta(meta),
+            ));
+        };
         match op {
             ExpressionPrefixOpcode::Sub => {
                 if shared::is_felt(rhs.r#type()) {
@@ -183,16 +196,7 @@ where
                 }
                 // For index negation, we need to subtract from zero.
                 if shared::is_index(rhs.r#type()) {
-                    let zero = self.append_op_unnamed_result(index::constant(
-                        codegen.context,
-                        IntegerAttribute::new(rhs.r#type(), 0),
-                        codegen.location_from_meta(meta),
-                    ))?;
-                    return self.append_op_unnamed_result(index::sub(
-                        zero,
-                        rhs,
-                        codegen.location_from_meta(meta),
-                    ));
+                    return get_negative_idx();
                 }
             }
             ExpressionPrefixOpcode::BoolNot => {
@@ -204,9 +208,27 @@ where
                 }
             }
             ExpressionPrefixOpcode::Complement => {
-                // This op is defined as:
-                // Complement to the number of bits of the prime number.
-                todo!("Handle complement prefix op")
+                if shared::is_felt(rhs.r#type()) {
+                    return self.append_op_unnamed_result(felt::bit_not(
+                        codegen.location_from_meta(meta),
+                        rhs,
+                    )?);
+                }
+                // For index negation, we need to subtract one from the negative
+                // value (for the identity that `~x == -x - 1`).
+                if shared::is_index(rhs.r#type()) {
+                    let negative_idx = get_negative_idx()?;
+                    let one = self.append_op_unnamed_result(index::constant(
+                        codegen.context,
+                        IntegerAttribute::new(rhs.r#type(), 1),
+                        codegen.location_from_meta(meta),
+                    ))?;
+                    return self.append_op_unnamed_result(index::sub(
+                        negative_idx,
+                        one,
+                        codegen.location_from_meta(meta),
+                    ));
+                }
             }
         }
         let err_msg = format!(
@@ -227,10 +249,11 @@ where
         rhs_type_filter: impl FnOnce(Type) -> bool,
         lhs: Value<'ctx, 'val>,
         rhs: Value<'ctx, 'val>,
-        op_gen_fn: impl FnOnce() -> Result<Operation<'ctx>>,
+        op_gen_fn: impl FnOnce(&mut Self) -> Result<Operation<'ctx>>,
     ) -> Result<Option<Value<'ctx, 'val>>> {
         if lhs_type_filter(lhs.r#type()) && rhs_type_filter(rhs.r#type()) {
-            self.append_op_unnamed_result(op_gen_fn()?).map(Option::Some)
+            let op_res = op_gen_fn(self)?;
+            self.append_op_unnamed_result(op_res).map(Option::Some)
         } else {
             Ok(None)
         }
@@ -258,7 +281,7 @@ where
 
         macro_rules! generic_op_callback {
             ($op_path:path) => {{
-                || {
+                |_| {
                     let loc = codegen.location_from_meta(meta);
                     $op_path(loc, lhs, rhs).map_err(Into::into)
                 }
@@ -279,7 +302,7 @@ where
 
         macro_rules! try_index_op {
             ($op_path:path) => {{
-                try_callback_for_type!(shared::is_index, || {
+                try_callback_for_type!(shared::is_index, |_| {
                     let loc = codegen.location_from_meta(meta);
                     Ok($op_path(lhs, rhs, loc))
                 });
@@ -288,7 +311,7 @@ where
 
         macro_rules! try_math_op {
             ($op_path:path) => {{
-                try_callback_for_type!(shared::is_index, || {
+                try_callback_for_type!(shared::is_index, |_| {
                     let loc = codegen.location_from_meta(meta);
                     Ok(Operation::from($op_path(codegen.context, lhs, rhs, loc)))
                 });
@@ -316,7 +339,7 @@ where
         macro_rules! try_bool_cmp_op {
             ($bool_op:path, $cmp:ident) => {{
                 try_felt_op!($bool_op);
-                try_callback_for_type!(shared::is_index, || {
+                try_callback_for_type!(shared::is_index, |_| {
                     let loc = codegen.location_from_meta(meta);
                     Ok(index::cmp(codegen.context, arith::CmpiPredicate::$cmp, lhs, rhs, loc))
                 });
@@ -337,7 +360,21 @@ where
                 try_felt_or_index_op!(felt::div, index::divu);
             }
             ExpressionInfixOpcode::IntDiv => {
-                todo!("Handle IntDiv infix op")
+                // Need `this` to append required preceding ops. The final
+                // result is appended via the macro.
+                try_callback_for_type!(shared::is_felt, |this| {
+                    // Perform integer division by casting to integer, using
+                    // arith dialect divui, then casting the quotient back to felt.
+                    // Cast to an integer type with sufficient bits to hold the felts without truncation.
+                    let int_ty = IntegerType::new(codegen.context, codegen.prime_field_bits()?);
+                    let loc = codegen.location_from_meta(meta);
+                    let int_lhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, lhs))?;
+                    let int_rhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, rhs))?;
+                    let quotient =
+                        this.append_op_unnamed_result(arith::divui(int_lhs, int_rhs, loc))?;
+                    Ok(Operation::from(cast::tofelt(loc, quotient)))
+                });
+                try_index_op!(index::divu);
             }
             ExpressionInfixOpcode::Mod => {
                 try_felt_or_index_op!(felt::r#mod, index::remu);
