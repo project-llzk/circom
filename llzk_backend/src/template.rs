@@ -40,7 +40,7 @@ use std::rc::Rc;
 /// [TemplateContext] below.
 type ShouldGenerate<T> = Option<T>;
 
-/// A pair of values, one for the "@compute" function and one for the "@constrain" function.
+/// A pair of things, one for the "@compute" function and one for the "@constrain" function.
 #[derive(Debug, Default)]
 pub struct TemplateFuncPair<T> {
     /// The value for the "@compute" function.
@@ -198,9 +198,9 @@ where
 {
     /// Reference to the template context in which the expression was generated.
     template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
-    /// Result Value for the "@compute" function.
+    /// Result for the "@compute" function.
     compute_res: ShouldGenerate<ResultType>,
-    /// Result Value for the "@constrain" function.
+    /// Result for the "@constrain" function.
     constrain_res: ShouldGenerate<ResultType>,
 }
 
