@@ -122,7 +122,12 @@ where
                 )
             })?;
         }
-        Ok(Self { func, block_ctx })
+        Ok(Self {
+            func,
+            block_ctx,
+            name_to_value: Default::default(),
+            subcmp_name_to_value: Default::default(),
+        })
     }
 
     /// Append an operation.

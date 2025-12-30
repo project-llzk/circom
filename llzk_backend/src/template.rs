@@ -11,10 +11,12 @@ use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::shared::is_felt;
 use crate::shared::new_felt_const_op;
+use crate::shared::struct_type_with_concrete_dimensions;
 use crate::shared::LlzkCodegen;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
+use llzk::dialect::undef;
 use llzk::prelude::constrain;
 use llzk::prelude::function;
 use llzk::prelude::r#struct;
@@ -24,8 +26,10 @@ use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::StructDefOpRefMut;
+use llzk::prelude::StructType;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
+use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -33,6 +37,7 @@ use program_structure::ast::Statement;
 use program_structure::error_code::ReportCode;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::convert::TryInto as _;
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -712,41 +717,10 @@ where
                                     )?;
                                     fc.block_ctx.set_named_value(var.clone(), write_val)
                                 })?;
-                           
-                        } else {
-                            todo!("Generate array write operation in template");
-                        }
-                    }
-                    AssignOp::AssignConstraintSignal => {
-                        let _: () = rhe.gen_llzk_in_template(codegen, template)?.and_then(
-                            codegen,
-                            |fc, val| {
-                                let self_value = fc.get_self_from_compute()?;
-                                // TODO: We need to track the if this signal assignment belongs to
-                                // the current component or a subcomponent.
-                                // If the latter we need to locate what signal we are writting and
-                                //  if the value is not an undef op; raise an error for a double write
-                                //  (if it makes sense to do so)
-                                //  if the value is an undef op; replace the undef with the rhs
-                                //  value.
-
-                                fc.append_op_no_result(
-                                    r#struct::writef(
-                                        codegen.location_from_meta(meta),
-                                        self_value,
-                                        var,
-                                        *val,
-                                    )?
-                                    .into(),
-                                )
-                            },
-                            |fc, val| {
-                                let self_value = fc.get_self_from_constrain()?;
-                                // Read value of field from "self" struct and generate
-                                // equality constraint with 'val'.
-                                let builder = OpBuilder::new(codegen.context.deref());
-                                let felt_type = FeltType::new(codegen.context).into();
-                                let receiver = fc.append_op_unnamed_result(
+                            // The constrain function just reads that field from "self" struct.
+                            let constrain_only = template.constrain_only();
+                            (&constrain_only).and_then_same(|fc, _| {
+                                let val = fc.append_op_unnamed_result(
                                     r#struct::readf(
                                         &OpBuilder::new(codegen.context.deref()),
                                         codegen.location_from_meta(meta),
@@ -948,15 +922,15 @@ where
             Expression::Call { meta, id, args, .. } => {
                 let location = codegen.location_from_meta(meta);
                 if meta.get_type_knowledge().is_component() {
-                    template.and_then_same(codegen, |fc, _| {
-                        /// Generate an undef operation that will get converted to calls to
-                        /// `@compute` and `@constrain`
-                        /// TODO: Generate here the call to @compute and @constrain.
-                        /// Passing undefs to the methods. These undefs get associated with the
-                        /// signals of the subcomponent s.t. when we encounter an assignment
-                        /// to one of the signals we replace the undef with the actual value,
-                        /// similar to how we do for variables assignment.
-                        ///
+                    template.and_then_same(|fc, _| {
+                        // Generate an undef operation that will get converted to calls to
+                        // `@compute` and `@constrain`
+                        // TODO: Generate here the call to @compute and @constrain.
+                        // Passing undefs to the methods. These undefs get associated with the
+                        // signals of the subcomponent s.t. when we encounter an assignment
+                        // to one of the signals we replace the undef with the actual value,
+                        // similar to how we do for variables assignment.
+                        //
                         fc.append_op_unnamed_result(undef::undef(
                             location,
                             struct_type_with_concrete_dimensions(codegen, id, args)?.into(),
@@ -964,25 +938,25 @@ where
                     })
                 } else {
                     let builder = OpBuilder::new(codegen.context.deref());
-                // Visit each argument and collect the resulting LLZK Values for both functions.
-                let res = GenResultMultiVal::gen_exprs(template, codegen, args)?;
-                // Create the CallOp in each function using the collected args.
-                res.and_then_same(|fc, vals| {
-                    // TODO: Currently, the LLZK function will always return a `felt.type` but
-                    // eventually, this gen function may need an "expected result type"
-                    // parameter or use `poly.tvar` with function templates.
-                    let return_types = &[FeltType::new(codegen.context)];
-                    fc.append_op_unnamed_result(
-                        function::call(
-                            &builder,
-                            codegen.location_from_meta(meta),
-                            FlatSymbolRefAttribute::new(codegen.context, id),
-                            &vals,
-                            return_types,
-                        )?
-                        .into(),
-                    )
-                })
+                    // Visit each argument and collect the resulting LLZK Values for both functions.
+                    let res = GenResultMultiVal::gen_exprs(template, codegen, args)?;
+                    // Create the CallOp in each function using the collected args.
+                    res.and_then_same(|fc, vals| {
+                        // TODO: Currently, the LLZK function will always return a `felt.type` but
+                        // eventually, this gen function may need an "expected result type"
+                        // parameter or use `poly.tvar` with function templates.
+                        let return_types = &[FeltType::new(codegen.context)];
+                        fc.append_op_unnamed_result(
+                            function::call(
+                                &builder,
+                                codegen.location_from_meta(meta),
+                                FlatSymbolRefAttribute::new(codegen.context, id),
+                                &vals,
+                                return_types,
+                            )?
+                            .into(),
+                        )
+                    })
                 }
             }
             Expression::BusCall { meta, id, args } => {
