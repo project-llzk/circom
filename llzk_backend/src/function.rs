@@ -14,7 +14,6 @@ use crate::shared::is_scf_yield;
 use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
 use crate::shared::single_result_as_value;
-use crate::shared::IsA;
 use crate::shared::LlzkCodegen;
 use crate::shared::{self};
 use anyhow::anyhow;
@@ -30,6 +29,7 @@ use llzk::prelude::BlockRef;
 use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpRefMut;
+use llzk::prelude::IntegerAttribute;
 use llzk::prelude::IntegerType;
 use llzk::prelude::Location;
 use llzk::prelude::Operation;
@@ -174,21 +174,38 @@ where
     ) -> Result<Value<'ctx, 'val>> {
         match op {
             ExpressionPrefixOpcode::Sub => {
-                if rhs.r#type().isa::<FeltType>() {
+                if shared::is_felt(rhs.r#type()) {
                     return self.append_op_unnamed_result(felt::neg(
                         codegen.location_from_meta(meta),
                         rhs,
                     )?);
                 }
-                // TODO: this can also handle MLIR `index` type operand but otherwise should
-                // fall through to the error case.
-                todo!("Handle Sub prefix op with RHS type '{}'", rhs.r#type());
+                // For index negation, we need to subtract from zero.
+                if shared::is_index(rhs.r#type()) {
+                    let zero = self.append_op_unnamed_result(index::constant(
+                        codegen.context,
+                        IntegerAttribute::new(rhs.r#type(), 0),
+                        codegen.location_from_meta(meta),
+                    ))?;
+                    return self.append_op_unnamed_result(index::sub(
+                        zero,
+                        rhs,
+                        codegen.location_from_meta(meta),
+                    ));
+                }
             }
             ExpressionPrefixOpcode::BoolNot => {
-                todo!("Handle BoolNot prefix op")
+                if shared::is_bool(rhs.r#type()) {
+                    return self.append_op_unnamed_result(bool::not(
+                        codegen.location_from_meta(meta),
+                        rhs,
+                    )?);
+                }
             }
             ExpressionPrefixOpcode::Complement => {
-                todo!("Handle Complement prefix op")
+                // This op is defined as:
+                // Complement to the number of bits of the prime number.
+                todo!("Handle complement prefix op")
             }
         }
         let err_msg = format!(
