@@ -666,6 +666,15 @@ where
                 // which essentially propagates the assignment.
                 match op {
                     AssignOp::AssignVar => {
+                        // TODO: If the assignment is on a variable pointing to a subcomponent (xtype
+                        // == Component) we need to do:
+                        // for compute:
+                        //  - take the compute_fn value (which is the call to @compute) and write
+                        //  it where it corresponds.
+                        // for constrain:
+                        //  - read the variable starting from self
+                        //  - take the contrain_fn value (which is the call to @constrain) and
+                        //  replace the first argument with the value read above.
                         if access.is_empty() {
                             rhe.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, val| {
                                 fc.block_ctx.set_named_value(var.clone(), val)
@@ -703,10 +712,41 @@ where
                                     )?;
                                     fc.block_ctx.set_named_value(var.clone(), write_val)
                                 })?;
-                            // The constrain function just reads that field from "self" struct.
-                            let constrain_only = template.constrain_only();
-                            (&constrain_only).and_then_same(|fc, _| {
-                                let val = fc.append_op_unnamed_result(
+                           
+                        } else {
+                            todo!("Generate array write operation in template");
+                        }
+                    }
+                    AssignOp::AssignConstraintSignal => {
+                        let _: () = rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                            codegen,
+                            |fc, val| {
+                                let self_value = fc.get_self_from_compute()?;
+                                // TODO: We need to track the if this signal assignment belongs to
+                                // the current component or a subcomponent.
+                                // If the latter we need to locate what signal we are writting and
+                                //  if the value is not an undef op; raise an error for a double write
+                                //  (if it makes sense to do so)
+                                //  if the value is an undef op; replace the undef with the rhs
+                                //  value.
+
+                                fc.append_op_no_result(
+                                    r#struct::writef(
+                                        codegen.location_from_meta(meta),
+                                        self_value,
+                                        var,
+                                        *val,
+                                    )?
+                                    .into(),
+                                )
+                            },
+                            |fc, val| {
+                                let self_value = fc.get_self_from_constrain()?;
+                                // Read value of field from "self" struct and generate
+                                // equality constraint with 'val'.
+                                let builder = OpBuilder::new(codegen.context.deref());
+                                let felt_type = FeltType::new(codegen.context).into();
+                                let receiver = fc.append_op_unnamed_result(
                                     r#struct::readf(
                                         &OpBuilder::new(codegen.context.deref()),
                                         codegen.location_from_meta(meta),
@@ -911,6 +951,12 @@ where
                     template.and_then_same(codegen, |fc, _| {
                         /// Generate an undef operation that will get converted to calls to
                         /// `@compute` and `@constrain`
+                        /// TODO: Generate here the call to @compute and @constrain.
+                        /// Passing undefs to the methods. These undefs get associated with the
+                        /// signals of the subcomponent s.t. when we encounter an assignment
+                        /// to one of the signals we replace the undef with the actual value,
+                        /// similar to how we do for variables assignment.
+                        ///
                         fc.append_op_unnamed_result(undef::undef(
                             location,
                             struct_type_with_concrete_dimensions(codegen, id, args)?.into(),
@@ -959,12 +1005,14 @@ fn build_access_chain<'ctx, 'val, 'func, 'blk>(
     chain.iter().try_fold(receiver, |receiver: Value<'_, '_>, access| match access {
         Access::ComponentAccess(field) => {
             let receiver_type: StructType = receiver.r#type().try_into()?;
-            //receiver_type.
+
             fc.append_op_unnamed_result(
                 r#struct::readf(
                     &builder,
                     codegen.location_from_meta(meta),
                     // TODO: We need to track the types of variables so we know what type to pass here.
+                    // The type that we need to use is stored in a field in the defining op of
+                    // `receiver_type`
                     FeltType::new(codegen.context).into(),
                     receiver,
                     field,

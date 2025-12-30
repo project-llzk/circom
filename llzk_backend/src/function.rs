@@ -87,6 +87,11 @@ where
     pub(crate) func: FuncDefOpRefMut<'ctx, 'func>,
     /// Nested block context within the function.
     pub(crate) block_ctx: BlockContextStack<'ctx, 'blk, 'val>,
+    /// Local name mapped to the SSA Value with that name. Initialized with function
+    /// parameters and extended with any variable-to-variable assignments found.
+    pub(crate) name_to_value: HashMap<String, Value<'ctx, 'val>>,
+    /// Tracks the initialization of the subcomponents' signals.
+    pub(crate) subcmp_name_to_value: HashMap<(String, String), Value<'ctx, 'val>>,
 }
 
 impl<'ctx, 'func, 'blk, 'val> FunctionContext<'ctx, 'func, 'blk, 'val>
@@ -563,6 +568,13 @@ impl Drop for FunctionContext<'_, '_, '_, '_> {
                 WalkResult::Advance
             }
         });
+        // XXX: We may have to move this logic to a failable function since
+        // this is the point where we know if we have undefs left that may be due to an user error.
+        // For example, if a subcomponent's signal was not assigned then we need to raise a user error
+        // since that's what the compiler normally does.
+        //
+        // If we can raise issues here without having to return a `Result` then it's fine to do
+        // here. Tho I feel it may be overstretching what Drop is meant to do.
     }
 }
 
