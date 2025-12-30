@@ -1,7 +1,7 @@
 //! Handles function-level LLZK code generation for both free functions and functions within
-//! structs. The [function::FunctionContext] carries information about the current LLZK function
+//! structs. The [FunctionContext] carries information about the current LLZK function
 //! being generated and some helpers related to generating code within the function. The
-//! [function::GenerateLLZKInFunction] trait provides the visitor to generate LLZK IR for all circom
+//! [GenerateLLZKInFunction] trait provides the visitor to generate LLZK IR for all circom
 //! [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
 //! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes.
 
@@ -10,6 +10,7 @@ use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::shared::erase_op;
 use crate::shared::get_function_type_attribute;
+use crate::shared::is_bool;
 use crate::shared::is_scf_yield;
 use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
@@ -19,6 +20,7 @@ use crate::shared::{self};
 use anyhow::anyhow;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
+use llzk::dialect::cast;
 use llzk::prelude::bool;
 use llzk::prelude::felt;
 use llzk::prelude::function;
@@ -30,7 +32,6 @@ use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::IntegerAttribute;
-use llzk::prelude::IntegerType;
 use llzk::prelude::Location;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike as _;
@@ -111,7 +112,7 @@ where
             block_ctx.declare_name_if_not_present(VAR_NAME_NO_RETURN, || {
                 codegen.new_nondet_at_location(
                     Location::unknown(codegen.context),
-                    IntegerType::new(codegen.context, 1).into(),
+                    codegen.bool_type().into(),
                 )
             })?;
         }
@@ -396,8 +397,9 @@ where
 
     /// Generate an `scf.if` op based on the given [NestedBlockInfo] for each branch and update the
     /// block context with the results of the `scf.if` op mapped to the given names.
-    pub fn gen_scf_if(
+    pub fn gen_scf_if<'ast>(
         &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         mut then_info: NestedBlockInfo<'ctx, 'blk, 'val>,
@@ -443,6 +445,14 @@ where
             })
             .collect::<Result<Vec<_>, _>>()?;
 
+        // Cast condition value to bool type if needed.
+        let condition = if !is_bool(condition.r#type()) {
+            self.append_op_unnamed_result(
+                cast::toint(location, codegen.bool_type(), condition).into(),
+            )?
+        } else {
+            condition
+        };
         // Generate the `scf.if` op for the circom `IfThenElse` statement.
         let scf_if_op = self.append_op(scf::r#if(
             condition,
@@ -769,7 +779,7 @@ where
         )?;
     }
 
-    function.gen_scf_if(location, condition, then_info, else_info)?;
+    function.gen_scf_if(codegen, location, condition, then_info, else_info)?;
 
     // Finally, if both blocks ended with a return, then add a new return here. Else, if
     // only one block returned, the code following the `scf.if` needs to be wrapped in
