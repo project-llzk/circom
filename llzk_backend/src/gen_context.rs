@@ -257,6 +257,28 @@ impl Default for NestedBlockInfo<'_, '_, '_> {
     }
 }
 
+impl<'ctx, 'func, 'blk, 'val> NestedBlockInfo<'ctx, 'blk, 'val>
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    /// Update `self.var_overwrites` to ensure it has all keys from `other.var_overwrites`, using
+    /// values from the current scope in the [FunctionContext] for missing keys.
+    pub fn add_missing_values(
+        &mut self,
+        other: &NestedBlockInfo<'ctx, 'blk, 'val>,
+        fc: &FunctionContext<'ctx, 'func, 'blk, 'val>,
+    ) -> Result<()> {
+        for name in other.var_overwrites.keys() {
+            if !self.var_overwrites.contains_key(name) {
+                self.var_overwrites.insert(name.clone(), *fc.block_ctx.get_named_value(name)?);
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Provides common functions for generating code that respects circom variable scoping, abstracting
 /// access to the [BlockContextStack] so that functions and templates can share these functions.
 pub trait GenWithCircomScopeHandling<'ctx, 'func, 'blk, 'val>

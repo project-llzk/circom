@@ -1,10 +1,10 @@
-//! Handles template-level LLZK code generation. The [template::TemplateContext] carries information
-//! about the current LLZK struct being generated and some helpers related to generating code within
-//! the struct. The [template::GenerateLLZKInTemplate] trait provides the visitor to generate LLZK
-//! IR for all circom [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
+//! Handles template-level LLZK code generation. The [TemplateContext] carries information about the
+//! current LLZK struct being generated and some helpers related to generating code within the
+//! struct. The [GenerateLLZKInTemplate] trait provides the visitor to generate LLZK IR for all
+//! circom [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
 //! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes. There are also a few
-//! helper traits like `ExprGenResult` and `Chainable` that implement some boilerplate to make the
-//! actual code generation within [template::GenerateLLZKInTemplate] a lot simpler.
+//! helper traits like [GenResult] and [Chainable] that implement some boilerplate to make the
+//! actual code generation within [GenerateLLZKInTemplate] a lot simpler.
 
 use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
@@ -40,13 +40,36 @@ use std::rc::Rc;
 /// [TemplateContext] below.
 type ShouldGenerate<T> = Option<T>;
 
-/// A pair of values, one for the "@compute" function and one for the "@constrain" function.
+/// A pair of things, one for the "@compute" function and one for the "@constrain" function.
 #[derive(Debug, Default)]
 pub struct TemplateFuncPair<T> {
     /// The value for the "@compute" function.
     compute: ShouldGenerate<T>,
     /// The value for the "@constrain" function.
     constrain: ShouldGenerate<T>,
+}
+
+impl<'ctx, 'blk, 'val> TemplateFuncPair<NestedBlockInfo<'ctx, 'blk, 'val>>
+where
+    'ctx: 'blk,
+    'blk: 'val,
+{
+    /// Returns a [TemplateFuncPair] with a default [NestedBlockInfo] for `compute`/`constrain`
+    /// according to the respective [ShouldGenerate] value in the given [TemplateContext].
+    pub fn new(template: &TemplateContext<'_, '_, '_, '_, '_>) -> Self {
+        Self {
+            compute: template.compute.is_some().then(NestedBlockInfo::default),
+            constrain: template.constrain.is_some().then(NestedBlockInfo::default),
+        }
+    }
+
+    /// Returns a [TemplateFuncPair] containing just the `block` fields of `self`.
+    pub fn block(&self) -> TemplateFuncPair<BlockRef<'ctx, 'blk>> {
+        TemplateFuncPair {
+            compute: self.compute.as_ref().map(|i| i.block),
+            constrain: self.constrain.as_ref().map(|i| i.block),
+        }
+    }
 }
 
 /// Stores refs to the current struct and its associated functions while generating LLZK IR for a
@@ -188,7 +211,7 @@ where
 /// per the type aliases below) that comes from generating LLZK for a circom Expression within a
 /// template.
 #[derive(Debug)]
-pub struct ExprGenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType>
+pub struct GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType>
 where
     'ctx: 'str,
     'str: 'func,
@@ -198,55 +221,19 @@ where
 {
     /// Reference to the template context in which the expression was generated.
     template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
-    /// Result Value for the "@compute" function.
+    /// Result for the "@compute" function.
     compute_res: ShouldGenerate<ResultType>,
-    /// Result Value for the "@constrain" function.
+    /// Result for the "@constrain" function.
     constrain_res: ShouldGenerate<ResultType>,
 }
 
-/// Alias for [ExprGenResult] containing a single SSA Value result.
-type ExprGenResultSingle<'ctx, 'str, 'func, 'blk, 'val, 'r> =
-    ExprGenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, Value<'ctx, 'val>>;
+/// Alias for [GenResult] containing a single SSA Value result.
+type GenResultSingleVal<'ctx, 'str, 'func, 'blk, 'val, 'r> =
+    GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, Value<'ctx, 'val>>;
 
-/// Alias for [ExprGenResult] containing a list of SSA Value results.
-type ExprGenResultMulti<'ctx, 'str, 'func, 'blk, 'val, 'r> =
-    ExprGenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, Vec<Value<'ctx, 'val>>>;
-
-/// Provides a common interface for the specializations of [ExprGenResult] (i.e.
-/// [ExprGenResultSingle] and [ExprGenResultMulti]) to avoid duplication in later definitions.
-trait ExprGenResultLike<'ctx, 'str, 'func, 'blk, 'val, 'r> {
-    /// The type of result contained in the [ExprGenResult] for the "@compute"
-    /// and "@constrain" functions.
-    type ResultType;
-
-    /// Get the [TemplateContext] from the [ExprGenResult].
-    fn template(&self) -> &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>;
-
-    /// Get the result for the "@compute" function from the [ExprGenResult].
-    fn compute_res(&self) -> &ShouldGenerate<Self::ResultType>;
-
-    /// Get the result for the "@constrain" function from the [ExprGenResult].
-    fn constrain_res(&self) -> &ShouldGenerate<Self::ResultType>;
-}
-
-/// General implementation of [ExprGenResultLike] covering all specializations of [ExprGenResult].
-impl<'ctx, 'str, 'func, 'blk, 'val, 'r, T> ExprGenResultLike<'ctx, 'str, 'func, 'blk, 'val, 'r>
-    for ExprGenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, T>
-{
-    type ResultType = T;
-
-    fn template(&self) -> &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val> {
-        self.template
-    }
-
-    fn compute_res(&self) -> &ShouldGenerate<Self::ResultType> {
-        &self.compute_res
-    }
-
-    fn constrain_res(&self) -> &ShouldGenerate<Self::ResultType> {
-        &self.constrain_res
-    }
-}
+/// Alias for [GenResult] containing a list of SSA Value results.
+type GenResultMultiVal<'ctx, 'str, 'func, 'blk, 'val, 'r> =
+    GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, Vec<Value<'ctx, 'val>>>;
 
 /// This trait abstracts over the output type of [Chainable::and_then] to allow a single
 /// implementation of that function to produce different result types depending on the callback
@@ -264,10 +251,10 @@ trait ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r> {
     ) -> Self;
 }
 
-/// Support [Chainable::and_then] producing [ExprGenResultSingle] which allows for chaining another
+/// Support [Chainable::and_then] producing [GenResultSingleVal] which allows for chaining another
 /// generator function on this result.
 impl<'ctx, 'str, 'func, 'blk, 'val, 'r> ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>
-    for ExprGenResultSingle<'ctx, 'str, 'func, 'blk, 'val, 'r>
+    for GenResultSingleVal<'ctx, 'str, 'func, 'blk, 'val, 'r>
 where
     'ctx: 'str,
     'str: 'func,
@@ -282,7 +269,7 @@ where
         compute_res: ShouldGenerate<Self::HandlerOutput>,
         constrain_res: ShouldGenerate<Self::HandlerOutput>,
     ) -> Self {
-        ExprGenResultSingle { template, compute_res, constrain_res }
+        GenResultSingleVal { template, compute_res, constrain_res }
     }
 }
 
@@ -308,7 +295,7 @@ where
 
 /// This trait provides a clean interface for chaining multiple code generation steps. It abstracts
 /// away most of the complexity (unwrapping, is_some assertions, etc.) that result from
-/// [ExprGenResult] containing optional results for both "@compute" and "@constrain" functions.
+/// [GenResult] containing optional results for both "@compute" and "@constrain" functions.
 trait Chainable<'ctx, 'str, 'func, 'blk, 'val, 'r>
 where
     'ctx: 'str,
@@ -323,37 +310,38 @@ where
     /// Applies the compute and constrain generator functions to the current result, producing
     /// a new [ChainResult].
     fn and_then<'ast, F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
-        &self,
+        self,
         gen_compute: F1,
         gen_constrain: F2,
     ) -> Result<CR>
     where
         F1: FnOnce(
             &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
-            &Self::HandlerInput,
+            Self::HandlerInput,
         ) -> Result<CR::HandlerOutput>,
         F2: FnOnce(
             &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
-            &Self::HandlerInput,
+            Self::HandlerInput,
         ) -> Result<CR::HandlerOutput>;
 
     /// Delegates to [Self::and_then] with the same handler for both compute and constrain.
     #[inline]
     fn and_then_same<'ast, F, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
-        &self,
+        self,
         handle: F,
     ) -> Result<CR>
     where
+        Self: Sized,
         F: Fn(
             &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
-            &Self::HandlerInput,
+            Self::HandlerInput,
         ) -> Result<CR::HandlerOutput>,
     {
         self.and_then::<&F, &F, CR>(&handle, &handle)
     }
 }
 
-impl<'ctx, 'str, 'func, 'blk, 'val, 'r> ExprGenResultMulti<'ctx, 'str, 'func, 'blk, 'val, 'r>
+impl<'ctx, 'str, 'func, 'blk, 'val, 'r> GenResultMultiVal<'ctx, 'str, 'func, 'blk, 'val, 'r>
 where
     'ctx: 'str,
     'str: 'func,
@@ -361,11 +349,11 @@ where
     'blk: 'val,
     'val: 'r,
 {
-    /// Create an empty [ExprGenResultMulti] (i.e. an [ExprGenResult] where the result
+    /// Create an empty [GenResultMultiVal] (i.e. an [GenResult] where the result
     /// is a vector of SSA Values).
     #[inline]
     fn new(template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>) -> Self {
-        ExprGenResult {
+        GenResult {
             template,
             // This construction ensures that the result vectors are only created
             // if the corresponding template functions "ShouldGenerate".
@@ -374,7 +362,7 @@ where
         }
     }
 
-    /// Create an [ExprGenResultMulti] populated by generating LLZK for each [Expression] given.
+    /// Create an [GenResultMultiVal] populated by generating LLZK for each [Expression] given.
     #[inline]
     fn gen_exprs<'ast, I>(
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
@@ -401,57 +389,56 @@ where
     }
 }
 
-/// Implementation of [Chainable] for any type implementing [ExprGenResultLike] trait.
-impl<'ctx, 'str, 'func, 'blk, 'val, 'r, T> Chainable<'ctx, 'str, 'func, 'blk, 'val, 'r> for T
+/// Implementation of [Chainable] for any [GenResult].
+impl<'ctx, 'str, 'func, 'blk, 'val, 'r, T> Chainable<'ctx, 'str, 'func, 'blk, 'val, 'r>
+    for GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, T>
 where
     'ctx: 'str,
     'str: 'func,
     'func: 'blk,
     'blk: 'val,
     'val: 'r,
-    T: ExprGenResultLike<'ctx, 'str, 'func, 'blk, 'val, 'r>,
 {
-    type HandlerInput = T::ResultType;
+    type HandlerInput = T;
 
     fn and_then<'ast, F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
-        &self,
+        self,
         gen_compute: F1,
         gen_constrain: F2,
     ) -> Result<CR>
     where
         F1: FnOnce(
             &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
-            &Self::HandlerInput,
+            Self::HandlerInput,
         ) -> Result<CR::HandlerOutput>,
         F2: FnOnce(
             &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
-            &Self::HandlerInput,
+            Self::HandlerInput,
         ) -> Result<CR::HandlerOutput>,
     {
+        let template = self.template;
         let compute_res: ShouldGenerate<CR::HandlerOutput> = self
-            .compute_res()
-            .as_ref()
+            .compute_res
             .map(|v| {
                 // Note: `unwrap()` is safe so long as the contract is followed that
                 // `self.X_res` is None if and only if `self.template.X` is also None.
-                gen_compute(&mut self.template().compute.as_ref().unwrap().borrow_mut(), v)
+                gen_compute(&mut template.compute.as_ref().unwrap().borrow_mut(), v)
             })
             .transpose()?;
         let constrain_res: ShouldGenerate<CR::HandlerOutput> = self
-            .constrain_res()
-            .as_ref()
+            .constrain_res
             .map(|v| {
                 // Note: `unwrap()` is safe so long as the contract is followed that
                 // `self.X_res` is None if and only if `self.template.X` is also None.
-                gen_constrain(&mut self.template().constrain.as_ref().unwrap().borrow_mut(), v)
+                gen_constrain(&mut template.constrain.as_ref().unwrap().borrow_mut(), v)
             })
             .transpose()?;
-        Ok(CR::produce(self.template(), compute_res, constrain_res))
+        Ok(CR::produce(template, compute_res, constrain_res))
     }
 }
 
 /// Implementation of [Chainable] for a [TemplateContext]. Useful when there is no initial
-/// [ExprGenResult] to chain onto.
+/// [GenResult] to chain onto.
 impl<'ctx, 'str, 'func, 'blk, 'val, 'r> Chainable<'ctx, 'str, 'func, 'blk, 'val, 'r>
     for &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>
 where
@@ -464,26 +451,26 @@ where
     type HandlerInput = ();
 
     fn and_then<'ast, F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
-        &self,
+        self,
         gen_compute: F1,
         gen_constrain: F2,
     ) -> Result<CR>
     where
         F1: FnOnce(
             &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
-            &Self::HandlerInput,
+            Self::HandlerInput,
         ) -> Result<CR::HandlerOutput>,
         F2: FnOnce(
             &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
-            &Self::HandlerInput,
+            Self::HandlerInput,
         ) -> Result<CR::HandlerOutput>,
     {
         let compute_res: ShouldGenerate<CR::HandlerOutput> =
-            self.compute.as_ref().map(|fc| gen_compute(&mut fc.borrow_mut(), &())).transpose()?;
+            self.compute.as_ref().map(|fc| gen_compute(&mut fc.borrow_mut(), ())).transpose()?;
         let constrain_res: ShouldGenerate<CR::HandlerOutput> = self
             .constrain
             .as_ref()
-            .map(|fc| gen_constrain(&mut fc.borrow_mut(), &()))
+            .map(|fc| gen_constrain(&mut fc.borrow_mut(), ()))
             .transpose()?;
         Ok(CR::produce(self, compute_res, constrain_res))
     }
@@ -557,7 +544,6 @@ where
 }
 
 /// Generate LLZK code for a circom [Statement::IfThenElse].
-#[allow(unused_variables)] // TODO: TEMP
 fn gen_if_then_else<'ast, 'ctx, 'str, 'func, 'blk, 'val, 'r>(
     codegen: &LlzkCodegen<'ast, 'ctx>,
     template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
@@ -573,7 +559,48 @@ where
     'blk: 'val,
     'val: 'r,
 {
-    todo!("Handle if-then-else statement in template")
+    let mut template = template; // satisfy the &mut in `GenWithCircomScopeHandling`
+
+    // Initially, generate the blocks for the 'then' and 'else' cases naively.
+    let mut then_info = TemplateFuncPair::new(template);
+    template.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        then_info.block(),
+        |template| if_case.gen_llzk_in_template(codegen, template),
+        &mut then_info,
+    )?;
+    let mut else_info = TemplateFuncPair::new(template);
+    if let Some(else_case) = else_case {
+        template.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+            else_info.block(),
+            |template| else_case.gen_llzk_in_template(codegen, template),
+            &mut else_info,
+        )?;
+    }
+
+    // Generate LLZK for the condition and create a GenResult that encapsulates the condition's
+    // `GenResultSingleVal` along with the `NestedBlockInfo` for both blocks.
+    let blocks_and_cond = {
+        let cond_result = cond.gen_llzk_in_template(codegen, template)?;
+        let t_compute = then_info.compute;
+        let t_constrain = then_info.constrain;
+        let e_compute = else_info.compute;
+        let e_constrain = else_info.constrain;
+        // The unwraps are safe since `then_info` and `else_info` were created from
+        // the same `TemplateContext` used for `map()` below.
+        GenResult {
+            template,
+            compute_res: template.compute.as_ref().map(|_| {
+                (t_compute.unwrap(), e_compute.unwrap(), cond_result.compute_res.unwrap())
+            }),
+            constrain_res: template.constrain.as_ref().map(|_| {
+                (t_constrain.unwrap(), e_constrain.unwrap(), cond_result.constrain_res.unwrap())
+            }),
+        }
+    };
+    // Generate the actual LLZK `scf.if` operations in both functions.
+    blocks_and_cond.and_then_same(|fc, (then_info, else_info, condition)| {
+        fc.gen_scf_if(codegen, codegen.location_from_meta(meta), condition, then_info, else_info)
+    })
 }
 
 /// Insert cast operations as needed to make `lhs` and `rhs` have compatible types for equality
@@ -635,16 +662,20 @@ where
                 )
             }
             Statement::Substitution { meta, var, access, op, rhe } => {
-                if access.is_empty() {
-                    // Since there's no simple assignment in LLZK, just update the mapped Value
-                    // which essentially propagates the assignment.
-                    match op {
-                        AssignOp::AssignVar => {
+                // Since there's no simple assignment in LLZK, just update the mapped Value
+                // which essentially propagates the assignment.
+                match op {
+                    AssignOp::AssignVar => {
+                        if access.is_empty() {
                             rhe.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, val| {
-                                fc.block_ctx.set_named_value(var.clone(), *val)
+                                fc.block_ctx.set_named_value(var.clone(), val)
                             })
+                        } else {
+                            todo!("Generate array write operation in template");
                         }
-                        AssignOp::AssignSignal => {
+                    }
+                    AssignOp::AssignSignal => {
+                        if access.is_empty() {
                             // The `<--` operator is witness generation only so code for the RHS
                             // expression should only be generated in the compute function.
                             let compute_only = template.compute_only();
@@ -654,11 +685,11 @@ where
                                     // Cast value to field type if needed.
                                     let write_val = if !is_felt(val.r#type()) {
                                         fc.append_op_unnamed_result(
-                                            cast::tofelt(codegen.location_from_meta(meta), *val)
+                                            cast::tofelt(codegen.location_from_meta(meta), val)
                                                 .into(),
                                         )?
                                     } else {
-                                        *val
+                                        val
                                     };
                                     // Write value to field of "self" struct.
                                     fc.append_op_no_result(
@@ -687,18 +718,22 @@ where
                                 )?;
                                 fc.block_ctx.set_named_value(var.clone(), val)
                             })
+                        } else {
+                            todo!("Generate array write operation in template");
                         }
-                        AssignOp::AssignConstraintSignal => {
+                    }
+                    AssignOp::AssignConstraintSignal => {
+                        if access.is_empty() {
                             rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                 |fc, val| {
                                     // Cast value to field type if needed.
                                     let write_val = if !is_felt(val.r#type()) {
                                         fc.append_op_unnamed_result(
-                                            cast::tofelt(codegen.location_from_meta(meta), *val)
+                                            cast::tofelt(codegen.location_from_meta(meta), val)
                                                 .into(),
                                         )?
                                     } else {
-                                        *val
+                                        val
                                     };
                                     // Write value to field of "self" struct.
                                     fc.append_op_no_result(
@@ -731,7 +766,7 @@ where
                                         fc,
                                         codegen.location_from_meta(meta),
                                         val_from_read,
-                                        *val,
+                                        val,
                                     )?;
                                     fc.append_op_no_result(
                                         constrain::eq(codegen.location_from_meta(meta), lhs, rhs)
@@ -740,10 +775,10 @@ where
                                     fc.block_ctx.set_named_value(var.clone(), rhs)
                                 },
                             )
+                        } else {
+                            todo!("Generate array write operation in template");
                         }
                     }
-                } else {
-                    todo!("Generate array write operation in template");
                 }
             }
             Statement::UnderscoreSubstitution { meta, op, rhe } => {
@@ -751,14 +786,14 @@ where
                 // generate any code in the constrain function.
                 let template =
                     if AssignOp::AssignSignal == *op { &template.compute_only() } else { template };
-                // Just visit and drop the resulting ExprGenResultSingle since the value is unused.
+                // Just visit and drop the resulting GenResultSingleVal since the value is unused.
                 rhe.gen_llzk_in_template(codegen, template).map(drop)
             }
             Statement::ConstraintEquality { meta, lhe, rhe } => {
                 // This statement is only relevant to the "@constrain" function.
                 let template = template.constrain_only();
                 // Generate Value for both sides and then generate the constraint op.
-                ExprGenResultMulti::gen_exprs(&template, codegen, [lhe, rhe])?.and_then_same(
+                GenResultMultiVal::gen_exprs(&template, codegen, [lhe, rhe])?.and_then_same(
                     |fc, vals| {
                         let (lhs, rhs) = unify_constrain_eq_types(
                             fc,
@@ -783,7 +818,7 @@ where
                     fc.append_op_no_result(
                         llzk::dialect::bool::assert(
                             codegen.location_from_meta(meta),
-                            *val,
+                            val,
                             Some("assertion failed"),
                         )?
                         .into(),
@@ -818,7 +853,7 @@ where
     'blk: 'val,
 {
     type Output<'r>
-        = ExprGenResultSingle<'ctx, 'str, 'func, 'blk, 'val, 'r>
+        = GenResultSingleVal<'ctx, 'str, 'func, 'blk, 'val, 'r>
     where
         'val: 'r;
 
@@ -849,14 +884,14 @@ where
             },
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {
                 // Generate Value for both sides and then generate the infix op.
-                ExprGenResultMulti::gen_exprs(template, codegen, [&**lhe, &**rhe])?.and_then_same(
+                GenResultMultiVal::gen_exprs(template, codegen, [&**lhe, &**rhe])?.and_then_same(
                     |fc, vals| fc.gen_infix_op(codegen, meta, infix_op, vals[0], vals[1]),
                 )
             }
             Expression::PrefixOp { meta, prefix_op, rhe } => {
                 // Generate Value for operand and then generate the prefix op.
                 rhe.gen_llzk_in_template(codegen, template)?
-                    .and_then_same(|fc, v| fc.gen_prefix_op(codegen, meta, prefix_op, *v))
+                    .and_then_same(|fc, v| fc.gen_prefix_op(codegen, meta, prefix_op, v))
             }
             Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
                 todo!("Handle InlineSwitchOp expression in template")
@@ -873,7 +908,7 @@ where
             Expression::Call { meta, id, args } => {
                 let builder = OpBuilder::new(codegen.context.deref());
                 // Visit each argument and collect the resulting LLZK Values for both functions.
-                let res = ExprGenResultMulti::gen_exprs(template, codegen, args)?;
+                let res = GenResultMultiVal::gen_exprs(template, codegen, args)?;
                 // Create the CallOp in each function using the collected args.
                 res.and_then_same(|fc, vals| {
                     // TODO: Currently, the LLZK function will always return a `felt.type` but
@@ -885,7 +920,7 @@ where
                             &builder,
                             codegen.location_from_meta(meta),
                             FlatSymbolRefAttribute::new(codegen.context, id),
-                            vals,
+                            &vals,
                             return_types,
                         )?
                         .into(),
