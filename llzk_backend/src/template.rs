@@ -1,10 +1,10 @@
-//! Handles template-level LLZK code generation. The [template::TemplateContext] carries information
-//! about the current LLZK struct being generated and some helpers related to generating code within
-//! the struct. The [template::GenerateLLZKInTemplate] trait provides the visitor to generate LLZK
-//! IR for all circom [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
+//! Handles template-level LLZK code generation. The [TemplateContext] carries information about the
+//! current LLZK struct being generated and some helpers related to generating code within the
+//! struct. The [GenerateLLZKInTemplate] trait provides the visitor to generate LLZK IR for all
+//! circom [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
 //! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes. There are also a few
-//! helper traits like `ExprGenResult` and `Chainable` that implement some boilerplate to make the
-//! actual code generation within [template::GenerateLLZKInTemplate] a lot simpler.
+//! helper traits like [GenResult] and [Chainable] that implement some boilerplate to make the
+//! actual code generation within [GenerateLLZKInTemplate] a lot simpler.
 
 use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
@@ -40,7 +40,7 @@ use std::rc::Rc;
 /// [TemplateContext] below.
 type ShouldGenerate<T> = Option<T>;
 
-/// A pair of values, one for the "@compute" function and one for the "@constrain" function.
+/// A pair of things, one for the "@compute" function and one for the "@constrain" function.
 #[derive(Debug, Default)]
 pub struct TemplateFuncPair<T> {
     /// The value for the "@compute" function.
@@ -188,7 +188,7 @@ where
 /// per the type aliases below) that comes from generating LLZK for a circom Expression within a
 /// template.
 #[derive(Debug)]
-pub struct ExprGenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType>
+pub struct GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType>
 where
     'ctx: 'str,
     'str: 'func,
@@ -198,40 +198,40 @@ where
 {
     /// Reference to the template context in which the expression was generated.
     template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
-    /// Result Value for the "@compute" function.
+    /// Result for the "@compute" function.
     compute_res: ShouldGenerate<ResultType>,
-    /// Result Value for the "@constrain" function.
+    /// Result for the "@constrain" function.
     constrain_res: ShouldGenerate<ResultType>,
 }
 
-/// Alias for [ExprGenResult] containing a single SSA Value result.
-type ExprGenResultSingle<'ctx, 'str, 'func, 'blk, 'val, 'r> =
-    ExprGenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, Value<'ctx, 'val>>;
+/// Alias for [GenResult] containing a single SSA Value result.
+type GenResultSingleVal<'ctx, 'str, 'func, 'blk, 'val, 'r> =
+    GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, Value<'ctx, 'val>>;
 
-/// Alias for [ExprGenResult] containing a list of SSA Value results.
-type ExprGenResultMulti<'ctx, 'str, 'func, 'blk, 'val, 'r> =
-    ExprGenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, Vec<Value<'ctx, 'val>>>;
+/// Alias for [GenResult] containing a list of SSA Value results.
+type GenResultMultiVal<'ctx, 'str, 'func, 'blk, 'val, 'r> =
+    GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, Vec<Value<'ctx, 'val>>>;
 
-/// Provides a common interface for the specializations of [ExprGenResult] (i.e.
-/// [ExprGenResultSingle] and [ExprGenResultMulti]) to avoid duplication in later definitions.
-trait ExprGenResultLike<'ctx, 'str, 'func, 'blk, 'val, 'r> {
-    /// The type of result contained in the [ExprGenResult] for the "@compute"
+/// Provides a common interface for the specializations of [GenResult] (i.e.
+/// [GenResultSingleVal] and [GenResultMultiVal]) to avoid duplication in later definitions.
+trait GenResultLike<'ctx, 'str, 'func, 'blk, 'val, 'r> {
+    /// The type of result contained in the [GenResult] for the "@compute"
     /// and "@constrain" functions.
     type ResultType;
 
-    /// Get the [TemplateContext] from the [ExprGenResult].
+    /// Get the [TemplateContext] from the [GenResult].
     fn template(&self) -> &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>;
 
-    /// Get the result for the "@compute" function from the [ExprGenResult].
+    /// Get the result for the "@compute" function from the [GenResult].
     fn compute_res(&self) -> &ShouldGenerate<Self::ResultType>;
 
-    /// Get the result for the "@constrain" function from the [ExprGenResult].
+    /// Get the result for the "@constrain" function from the [GenResult].
     fn constrain_res(&self) -> &ShouldGenerate<Self::ResultType>;
 }
 
-/// General implementation of [ExprGenResultLike] covering all specializations of [ExprGenResult].
-impl<'ctx, 'str, 'func, 'blk, 'val, 'r, T> ExprGenResultLike<'ctx, 'str, 'func, 'blk, 'val, 'r>
-    for ExprGenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, T>
+/// General implementation of [GenResultLike] covering all specializations of [GenResult].
+impl<'ctx, 'str, 'func, 'blk, 'val, 'r, T> GenResultLike<'ctx, 'str, 'func, 'blk, 'val, 'r>
+    for GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, T>
 {
     type ResultType = T;
 
@@ -264,10 +264,10 @@ trait ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r> {
     ) -> Self;
 }
 
-/// Support [Chainable::and_then] producing [ExprGenResultSingle] which allows for chaining another
+/// Support [Chainable::and_then] producing [GenResultSingleVal] which allows for chaining another
 /// generator function on this result.
 impl<'ctx, 'str, 'func, 'blk, 'val, 'r> ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>
-    for ExprGenResultSingle<'ctx, 'str, 'func, 'blk, 'val, 'r>
+    for GenResultSingleVal<'ctx, 'str, 'func, 'blk, 'val, 'r>
 where
     'ctx: 'str,
     'str: 'func,
@@ -282,7 +282,7 @@ where
         compute_res: ShouldGenerate<Self::HandlerOutput>,
         constrain_res: ShouldGenerate<Self::HandlerOutput>,
     ) -> Self {
-        ExprGenResultSingle { template, compute_res, constrain_res }
+        GenResultSingleVal { template, compute_res, constrain_res }
     }
 }
 
@@ -308,7 +308,7 @@ where
 
 /// This trait provides a clean interface for chaining multiple code generation steps. It abstracts
 /// away most of the complexity (unwrapping, is_some assertions, etc.) that result from
-/// [ExprGenResult] containing optional results for both "@compute" and "@constrain" functions.
+/// [GenResult] containing optional results for both "@compute" and "@constrain" functions.
 trait Chainable<'ctx, 'str, 'func, 'blk, 'val, 'r>
 where
     'ctx: 'str,
@@ -353,7 +353,7 @@ where
     }
 }
 
-impl<'ctx, 'str, 'func, 'blk, 'val, 'r> ExprGenResultMulti<'ctx, 'str, 'func, 'blk, 'val, 'r>
+impl<'ctx, 'str, 'func, 'blk, 'val, 'r> GenResultMultiVal<'ctx, 'str, 'func, 'blk, 'val, 'r>
 where
     'ctx: 'str,
     'str: 'func,
@@ -361,11 +361,11 @@ where
     'blk: 'val,
     'val: 'r,
 {
-    /// Create an empty [ExprGenResultMulti] (i.e. an [ExprGenResult] where the result
+    /// Create an empty [GenResultMultiVal] (i.e. an [GenResult] where the result
     /// is a vector of SSA Values).
     #[inline]
     fn new(template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>) -> Self {
-        ExprGenResult {
+        GenResult {
             template,
             // This construction ensures that the result vectors are only created
             // if the corresponding template functions "ShouldGenerate".
@@ -374,7 +374,7 @@ where
         }
     }
 
-    /// Create an [ExprGenResultMulti] populated by generating LLZK for each [Expression] given.
+    /// Create an [GenResultMultiVal] populated by generating LLZK for each [Expression] given.
     #[inline]
     fn gen_exprs<'ast, I>(
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
@@ -401,7 +401,7 @@ where
     }
 }
 
-/// Implementation of [Chainable] for any type implementing [ExprGenResultLike] trait.
+/// Implementation of [Chainable] for any type implementing [GenResultLike] trait.
 impl<'ctx, 'str, 'func, 'blk, 'val, 'r, T> Chainable<'ctx, 'str, 'func, 'blk, 'val, 'r> for T
 where
     'ctx: 'str,
@@ -409,7 +409,7 @@ where
     'func: 'blk,
     'blk: 'val,
     'val: 'r,
-    T: ExprGenResultLike<'ctx, 'str, 'func, 'blk, 'val, 'r>,
+    T: GenResultLike<'ctx, 'str, 'func, 'blk, 'val, 'r>,
 {
     type HandlerInput = T::ResultType;
 
@@ -451,7 +451,7 @@ where
 }
 
 /// Implementation of [Chainable] for a [TemplateContext]. Useful when there is no initial
-/// [ExprGenResult] to chain onto.
+/// [GenResult] to chain onto.
 impl<'ctx, 'str, 'func, 'blk, 'val, 'r> Chainable<'ctx, 'str, 'func, 'blk, 'val, 'r>
     for &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>
 where
@@ -751,14 +751,14 @@ where
                 // generate any code in the constrain function.
                 let template =
                     if AssignOp::AssignSignal == *op { &template.compute_only() } else { template };
-                // Just visit and drop the resulting ExprGenResultSingle since the value is unused.
+                // Just visit and drop the resulting GenResultSingleVal since the value is unused.
                 rhe.gen_llzk_in_template(codegen, template).map(drop)
             }
             Statement::ConstraintEquality { meta, lhe, rhe } => {
                 // This statement is only relevant to the "@constrain" function.
                 let template = template.constrain_only();
                 // Generate Value for both sides and then generate the constraint op.
-                ExprGenResultMulti::gen_exprs(&template, codegen, [lhe, rhe])?.and_then_same(
+                GenResultMultiVal::gen_exprs(&template, codegen, [lhe, rhe])?.and_then_same(
                     |fc, vals| {
                         let (lhs, rhs) = unify_constrain_eq_types(
                             fc,
@@ -818,7 +818,7 @@ where
     'blk: 'val,
 {
     type Output<'r>
-        = ExprGenResultSingle<'ctx, 'str, 'func, 'blk, 'val, 'r>
+        = GenResultSingleVal<'ctx, 'str, 'func, 'blk, 'val, 'r>
     where
         'val: 'r;
 
@@ -849,7 +849,7 @@ where
             },
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {
                 // Generate Value for both sides and then generate the infix op.
-                ExprGenResultMulti::gen_exprs(template, codegen, [&**lhe, &**rhe])?.and_then_same(
+                GenResultMultiVal::gen_exprs(template, codegen, [&**lhe, &**rhe])?.and_then_same(
                     |fc, vals| fc.gen_infix_op(codegen, meta, infix_op, vals[0], vals[1]),
                 )
             }
@@ -873,7 +873,7 @@ where
             Expression::Call { meta, id, args } => {
                 let builder = OpBuilder::new(codegen.context.deref());
                 // Visit each argument and collect the resulting LLZK Values for both functions.
-                let res = ExprGenResultMulti::gen_exprs(template, codegen, args)?;
+                let res = GenResultMultiVal::gen_exprs(template, codegen, args)?;
                 // Create the CallOp in each function using the collected args.
                 res.and_then_same(|fc, vals| {
                     // TODO: Currently, the LLZK function will always return a `felt.type` but
