@@ -210,6 +210,12 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         self.new_nondet_felt_of_dimensions_at_location(self.location_from_meta(meta), dimensions)
     }
 
+    /// Get the boolean type (`i1`).
+    #[inline]
+    pub fn bool_type(&self) -> IntegerType<'ctx> {
+        IntegerType::new(self.context, 1)
+    }
+
     /// Run cleanup passes on the generated `Module`.
     pub fn run_passes(&mut self, pass_pipeline: &str) -> Result<()> {
         if pass_pipeline.is_empty() {

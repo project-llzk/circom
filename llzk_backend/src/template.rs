@@ -49,6 +49,29 @@ pub struct TemplateFuncPair<T> {
     constrain: ShouldGenerate<T>,
 }
 
+impl<'ctx, 'blk, 'val> TemplateFuncPair<NestedBlockInfo<'ctx, 'blk, 'val>>
+where
+    'ctx: 'blk,
+    'blk: 'val,
+{
+    /// Returns a [TemplateFuncPair] with a default [NestedBlockInfo] for `compute`/`constrain`
+    /// according to the respective [ShouldGenerate] value in the given [TemplateContext].
+    pub fn new(template: &TemplateContext<'_, '_, '_, '_, '_>) -> Self {
+        Self {
+            compute: template.compute.is_some().then(NestedBlockInfo::default),
+            constrain: template.constrain.is_some().then(NestedBlockInfo::default),
+        }
+    }
+
+    /// Returns a [TemplateFuncPair] containing just the `block` fields of `self`.
+    pub fn block(&self) -> TemplateFuncPair<BlockRef<'ctx, 'blk>> {
+        TemplateFuncPair {
+            compute: self.compute.as_ref().map(|i| i.block),
+            constrain: self.constrain.as_ref().map(|i| i.block),
+        }
+    }
+}
+
 /// Stores refs to the current struct and its associated functions while generating LLZK IR for a
 /// template. Implemented as a lightweight wrapper around several mutable references to allow
 /// derived versions for witness-only or constraint-only to be created cheaply.
@@ -521,7 +544,6 @@ where
 }
 
 /// Generate LLZK code for a circom [Statement::IfThenElse].
-#[allow(unused_variables)] // TODO: TEMP
 fn gen_if_then_else<'ast, 'ctx, 'str, 'func, 'blk, 'val, 'r>(
     codegen: &LlzkCodegen<'ast, 'ctx>,
     template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
@@ -537,7 +559,48 @@ where
     'blk: 'val,
     'val: 'r,
 {
-    todo!("Handle if-then-else statement in template")
+    let mut template = template; // satisfy the &mut in `GenWithCircomScopeHandling`
+
+    // Initially, generate the blocks for the 'then' and 'else' cases naively.
+    let mut then_info = TemplateFuncPair::new(template);
+    template.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        then_info.block(),
+        |template| if_case.gen_llzk_in_template(codegen, template),
+        &mut then_info,
+    )?;
+    let mut else_info = TemplateFuncPair::new(template);
+    if let Some(else_case) = else_case {
+        template.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+            else_info.block(),
+            |template| else_case.gen_llzk_in_template(codegen, template),
+            &mut else_info,
+        )?;
+    }
+
+    // Generate LLZK for the condition and create a GenResult that encapsulates the condition's
+    // `GenResultSingleVal` along with the `NestedBlockInfo` for both blocks.
+    let blocks_and_cond = {
+        let cond_result = cond.gen_llzk_in_template(codegen, template)?;
+        let t_compute = then_info.compute;
+        let t_constrain = then_info.constrain;
+        let e_compute = else_info.compute;
+        let e_constrain = else_info.constrain;
+        // The unwraps are safe since `then_info` and `else_info` were created from
+        // the same `TemplateContext` used for `map()` below.
+        GenResult {
+            template,
+            compute_res: template.compute.as_ref().map(|_| {
+                (t_compute.unwrap(), e_compute.unwrap(), cond_result.compute_res.unwrap())
+            }),
+            constrain_res: template.constrain.as_ref().map(|_| {
+                (t_constrain.unwrap(), e_constrain.unwrap(), cond_result.constrain_res.unwrap())
+            }),
+        }
+    };
+    // Generate the actual LLZK `scf.if` operations in both functions.
+    blocks_and_cond.and_then_same(|fc, (then_info, else_info, condition)| {
+        fc.gen_scf_if(codegen, codegen.location_from_meta(meta), condition, then_info, else_info)
+    })
 }
 
 /// Insert cast operations as needed to make `lhs` and `rhs` have compatible types for equality
