@@ -5,7 +5,6 @@
 //! [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
 //! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes.
 
-#![allow(unused_variables)] // TODO: TEMP
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
@@ -41,7 +40,7 @@ use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
-use llzk::prelude::ValueLike;
+use llzk::prelude::ValueLike as _;
 use melior::dialect::arith;
 use melior::dialect::index;
 use melior::dialect::ods::math;
