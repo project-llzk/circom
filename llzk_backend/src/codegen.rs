@@ -1,9 +1,12 @@
-#![allow(unused_variables)] // TODO: TEMP
-use crate::{module::GenerateLLZKInModule as _, shared::LlzkCodegen};
+//! Entry point for LLZK code generation.
+
+use crate::module::GenerateLLZKInModule as _;
+use crate::shared::LlzkCodegen;
 use ansi_term::Color;
 use anyhow::Result;
 use llzk::prelude::LlzkContext;
-use melior::ir::{Location, Module};
+use llzk::prelude::Location;
+use melior::ir::Module;
 use program_structure::program_archive::ProgramArchive;
 
 /// Create a new, empty LLZK `Module` with Location "main" from the `ProgramArchive`.
@@ -35,8 +38,9 @@ pub fn generate_llzk(
     })?;
 
     // Verify the module
-    if !codegen.verify() {
+    if let Err(err) = codegen.verify() {
         eprintln!("{}", Color::Red.paint("Generated LLZK IR is invalid"));
+        eprintln!("{err}");
         eprintln!("{}", codegen.module.as_operation());
         return Err(());
     }

@@ -1,7 +1,6 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
-// XFAIL:.*
 
 pragma circom 2.0.0;
 
@@ -9,9 +8,25 @@ template BoolNot() {
     signal input a, b;
     signal output out;
 
-    out <-- !(a < b) ? 1 : 0;
+    out <-- !(a < b);
 }
 
 component main = BoolNot();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-NEXT:   struct.def @BoolNot<[]> {
+// CHECK-NEXT:     struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:     function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@BoolNot<[]>> attributes {function.allow_witness} {
+// CHECK-NEXT:       %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@BoolNot<[]>>
+// CHECK-NEXT:       %[[VAL_3:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_0]], %[[VAL_1]])
+// CHECK-NEXT:       %[[VAL_4:[0-9a-zA-Z_\.]+]] = bool.not %[[VAL_3]] : i1
+// CHECK-NEXT:       %[[VAL_5:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_4]] : i1
+// CHECK-NEXT:       struct.writef %[[VAL_2]][@out] = %[[VAL_5]] : <@BoolNot<[]>>, !felt.type
+// CHECK-NEXT:       function.return %[[VAL_2]] : !struct.type<@BoolNot<[]>>
+// CHECK-NEXT:     }
+// CHECK-NEXT:     function.def @constrain(%[[VAL_6:[0-9a-zA-Z_\.]+]]: !struct.type<@BoolNot<[]>>, %[[VAL_7:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_8:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK-NEXT:       %[[VAL_9:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_6]][@out] : <@BoolNot<[]>>, !felt.type
+// CHECK-NEXT:       function.return
+// CHECK-NEXT:     }
+// CHECK-NEXT:   }
+// CHECK-NEXT: }

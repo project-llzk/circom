@@ -1,36 +1,61 @@
-#![allow(unused_variables)] // TODO: TEMP
+//! Shared code generation utilities.
+
 use ansi_term::Color;
-use anyhow::{anyhow, Ok, Result};
-use llzk::prelude::{
-    felt, FeltConstAttribute, FlatSymbolRefAttribute, FuncDefOp, FuncDefOpLike, FuncDefOpRef,
-    FuncDefOpRefMut, IntegerAttribute, LlzkContext, StructDefOp, StructDefOpRef, StructDefOpRefMut,
-    StructType,
-};
-use melior::{
-    ir::{
-        operation::OperationLike as _, Attribute, BlockLike, Location, Module, Operation,
-        OperationRef, Type, Value,
-    },
-    pass, utility,
-};
+use anyhow::anyhow;
+use anyhow::Result;
+use llzk::prelude::felt;
+use llzk::prelude::undef;
+use llzk::prelude::verify_operation_with_diags;
+use llzk::prelude::ArrayType;
+use llzk::prelude::Attribute;
+use llzk::prelude::BlockLike;
+use llzk::prelude::FeltConstAttribute;
+use llzk::prelude::FeltType;
+use llzk::prelude::FuncDefOp;
+use llzk::prelude::FuncDefOpLike;
+use llzk::prelude::FuncDefOpRef;
+use llzk::prelude::FuncDefOpRefMut;
+use llzk::prelude::FunctionType;
+use llzk::prelude::IntegerAttribute;
+use llzk::prelude::IntegerType;
+use llzk::prelude::LlzkContext;
+use llzk::prelude::LlzkError;
+use llzk::prelude::Location;
+use llzk::prelude::Operation;
+use llzk::prelude::OperationLike;
+use llzk::prelude::StructDefOp;
+use llzk::prelude::StructDefOpRef;
+use llzk::prelude::StructDefOpRefMut;
+use llzk::prelude::Type;
+use llzk::prelude::TypeLike as _;
+use llzk::prelude::Value;
+use llzk::prelude::ValueLike as _;
+use melior::dialect::arith;
+use melior::ir::attribute::BoolAttribute;
+use melior::ir::attribute::TypeAttribute;
+use melior::ir::Module;
+use melior::pass;
+use melior::utility;
+use mlir_sys::mlirOpOperandIsNull;
+use mlir_sys::mlirValueGetFirstUse;
 use num_bigint_dig::BigInt;
-use num_traits::ToPrimitive;
-use program_structure::{
-    ast::{Expression, Meta},
-    error_code::ReportCode,
-    error_definition::Report,
-    file_definition::{FileID, FileLocation},
-    program_archive::ProgramArchive,
-};
-use std::{
-    collections::HashMap,
-    convert::{TryFrom, TryInto as _},
-    fs::{self, File},
-    io::Write,
-    ops::Deref,
-    os::raw::c_void,
-    path::Path,
-};
+use num_traits::cast::ToPrimitive;
+use program_structure::ast::Expression;
+use program_structure::ast::Meta;
+use program_structure::error_code::ReportCode;
+use program_structure::error_definition::Report;
+use program_structure::file_definition::FileID;
+use program_structure::file_definition::FileLocation;
+use program_structure::program_archive::ProgramArchive;
+use std::collections::HashMap;
+use std::convert::TryFrom;
+use std::convert::TryInto as _;
+use std::fs;
+use std::fs::File;
+use std::io::Write;
+use std::ops::Deref;
+use std::os::raw::c_void;
+use std::path::Path;
 
 /// Stores necessary context for generating LLZK IR.
 ///
@@ -90,6 +115,101 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         Ok(f.into())
     }
 
+    /// Convert a circom [Expression] used as an array dimension to an LLZK Attribute.
+    ///
+    /// Note: The LLZK ArrayType can only use the following Attribute types for dimensions:
+    /// IntegerAttr (`index` or `i1`), SymbolRefAttr, or AffineMapAttr (with single result,
+    /// probably an identity map).
+    #[allow(unused_variables)] // TODO: TEMP
+    pub fn convert_dim_expr(&self, expr: &Expression) -> Result<Attribute<'ctx>> {
+        match expr {
+            Expression::Number(meta, big_int) => {
+                let int_attr = IntegerAttribute::new(
+                    Type::index(self.context),
+                    big_int.to_i64().ok_or_else(|| anyhow!("Array dimension must fit in i64"))?,
+                );
+                Ok(int_attr.into())
+            }
+            Expression::Variable { meta, name, access } => {
+                // TODO: generate AffineMapAttr (with single result) or SymbolRefAttr (from param)
+                todo!("Handle Variable expression in dimension")
+            }
+            Expression::InfixOp { meta, lhe, infix_op, rhe } => {
+                todo!("Handle InfixOp expression in dimension")
+            }
+            Expression::PrefixOp { meta, prefix_op, rhe } => {
+                todo!("Handle PrefixOp expression in dimension")
+            }
+            Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
+                todo!("Handle InlineSwitchOp expression in dimension")
+            }
+            Expression::Call { meta, id, args } => {
+                todo!("Handle Call expression in dimension")
+            }
+            // The remaining cases do not produce a scalar value.
+            // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
+            // Give the same error that the circom type checker gives. The type checker ran
+            // earlier so this should technically be unreachable.
+            _ => Err(anyhow!("Array indexes and lengths must be single arithmetic expressions")),
+        }
+    }
+
+    /// If `dimensions` is empty, return `base_type`. Otherwise, create ArrayType by converting the
+    /// dimension circom [Expressions](Expression) to LLZK Attributes.
+    pub fn type_with_dimensions(
+        &self,
+        base_type: Type<'ctx>,
+        dimensions: &[Expression],
+    ) -> Result<Type<'ctx>> {
+        if dimensions.is_empty() {
+            Ok(base_type)
+        } else {
+            dimensions
+                .iter()
+                .map(|e| self.convert_dim_expr(e))
+                .collect::<Result<Vec<_>, _>>()
+                .map(|dims| ArrayType::new(base_type, &dims).into())
+        }
+    }
+
+    /// Create an LLZK operation that produces a boolean constant value.
+    pub fn new_bool_const_op(&self, val: bool, location: Location<'ctx>) -> Operation<'ctx> {
+        arith::constant(self.context, BoolAttribute::new(self.context, val).into(), location)
+    }
+
+    /// Create an LLZK operation that produces a nondeterministic value of the given type.
+    pub fn new_nondet_at_location(
+        &self,
+        location: Location<'ctx>,
+        result_type: Type<'ctx>,
+    ) -> Result<Operation<'ctx>> {
+        Ok(undef::undef(location, result_type))
+    }
+
+    /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
+    /// `dimensions` (non-array scalar if empty).
+    pub fn new_nondet_felt_of_dimensions_at_location(
+        &self,
+        location: Location<'ctx>,
+        dimensions: &[Expression],
+    ) -> Result<Operation<'ctx>> {
+        self.new_nondet_at_location(
+            location,
+            self.type_with_dimensions(FeltType::new(self.context).into(), dimensions)?,
+        )
+    }
+
+    /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
+    /// `dimensions` (non-array scalar if empty).
+    #[inline]
+    pub fn new_nondet_felt_of_dimensions(
+        &self,
+        meta: &Meta,
+        dimensions: &[Expression],
+    ) -> Result<Operation<'ctx>> {
+        self.new_nondet_felt_of_dimensions_at_location(self.location_from_meta(meta), dimensions)
+    }
+
     /// Run cleanup passes on the generated `Module`.
     pub fn run_passes(&mut self, pass_pipeline: &str) -> Result<()> {
         if pass_pipeline.is_empty() {
@@ -104,8 +224,8 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
     }
 
     /// Verify the generated `Module`.
-    pub fn verify(&self) -> bool {
-        self.module.as_operation().verify()
+    pub fn verify(&self) -> Result<(), LlzkError> {
+        verify_operation_with_diags(&self.module.as_operation())
     }
 
     /// Create file at the given path, ensuring parent directories exist.
@@ -236,9 +356,7 @@ pub fn new_felt_const_op<'ctx>(
 /// 'ctx: lifetime of the `LlzkContext` and generated `Module`
 /// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
 #[inline]
-pub fn single_result_as_value<'ctx, 'val>(
-    op: OperationRef<'ctx, 'val>,
-) -> Result<Value<'ctx, 'val>> {
+pub fn single_result_as_value<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> Result<Value<'c, 'a>> {
     if op.result_count() != 1 {
         return Err(anyhow!(
             "Expected operation to have a single result, found {}",
@@ -246,6 +364,18 @@ pub fn single_result_as_value<'ctx, 'val>(
         ));
     }
     op.result(0).map(Value::from).map_err(Into::into)
+}
+
+/// Ensures the given OperationRef has 0 result Values, else returns an `Err` result.
+///
+/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+/// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
+#[inline]
+pub fn no_results<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> Result<()> {
+    if op.result_count() != 0 {
+        return Err(anyhow!("Expected operation to have no results, found {}", op.result_count()));
+    }
+    Ok(())
 }
 
 /// Create a map of circom variable names (either function arguments or template input signals) to
@@ -276,3 +406,62 @@ pub trait IsA: Sized {
     }
 }
 impl<T> IsA for T {}
+
+/// Return `true` iff the given Type is an `IndexType`.
+#[inline]
+pub fn is_index(t: Type) -> bool {
+    t.is_index()
+}
+
+/// Return `true` iff the given Type is a boolean type, i.e. `i1`.
+#[inline]
+pub fn is_bool(t: Type) -> bool {
+    t.is_integer() && IntegerType::try_from(t).is_ok_and(|it| it.width() == 1)
+}
+
+/// Return `true` iff the given Type is a `FeltType`.
+#[inline]
+pub fn is_felt(t: Type) -> bool {
+    t.isa::<llzk::prelude::FeltType>()
+}
+
+/// Return `true` iff the given Value has any uses.
+///
+/// TODO: `llzk-rs` should provide this directly
+#[inline]
+pub fn has_uses(val: Value) -> bool {
+    unsafe {
+        let first_use = mlirValueGetFirstUse(val.to_raw());
+        !mlirOpOperandIsNull(first_use)
+    }
+}
+
+/// Erase the given operation.
+///
+/// TODO: `llzk-rs` should provide this directly
+#[inline]
+pub fn erase_op<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) {
+    unsafe {
+        mlir_sys::mlirOperationDestroy(op.to_raw());
+    }
+}
+
+/// Return `true` iff the given OperationRef is `scf.yield`.
+///
+/// TODO: `llzk-rs` should provide this directly
+#[inline]
+pub fn is_scf_yield<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> bool {
+    op.name().as_string_ref().as_str() == Result::Ok("scf.yield")
+}
+
+/// Get the [FunctionType] from a [FuncDefOpLike].
+///
+/// TODO: `llzk-rs` should provide this directly
+pub fn get_function_type_attribute<'c: 'a, 'a>(
+    func: impl FuncDefOpLike<'c, 'a>,
+) -> Result<FunctionType<'c>> {
+    let attr = func.attribute("function_type")?;
+    let type_attr: TypeAttribute<'c> = attr.try_into()?;
+    let func_type: FunctionType<'c> = type_attr.value().try_into()?;
+    Ok(func_type)
+}
