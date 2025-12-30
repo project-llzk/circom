@@ -393,6 +393,72 @@ where
         codegen.emit_circom_error(meta, err_msg.as_str(), ReportCode::InfixOperatorWithWrongTypes);
         Err(anyhow!(err_msg))
     }
+
+    /// Generate an `scf.if` op based on the given [NestedBlockInfo] for each branch and update the
+    /// block context with the results of the `scf.if` op mapped to the given names.
+    pub fn gen_scf_if(
+        &mut self,
+        location: Location<'ctx>,
+        condition: Value<'ctx, 'val>,
+        mut then_info: NestedBlockInfo<'ctx, 'blk, 'val>,
+        else_info: NestedBlockInfo<'ctx, 'blk, 'val>,
+    ) -> Result<()> {
+        // Ensure both blocks will yield the same set of variables.
+        then_info.add_missing_values(&else_info, self)?;
+
+        // Split `then_block_info.var_overwrites` into ordered lists of names and values. The
+        // ordering of names here defines the ordering of results from the `scf.if` op and
+        // thus the ordering of operands to `scf.yield` ops in both branches. Sort by circom
+        // variable names to ensure a stable order.
+        let mut overwrites_sorted: Vec<_> = then_info.var_overwrites.into_iter().collect();
+        overwrites_sorted.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
+        let (overwrite_names, then_values): (Vec<_>, Vec<_>) =
+            overwrites_sorted.into_iter().unzip();
+
+        // Create list of values to yield from the `else` block in the same order
+        // as `overwrite_names`, again using current-scope values for missing keys.
+        let else_values = overwrite_names
+            .iter()
+            .map(|name| {
+                else_info
+                    .var_overwrites
+                    .get(name)
+                    .map_or_else(|| self.block_ctx.get_named_value(name).cloned(), |v| Ok(*v))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Insert `scf.yield` at the end of each block.
+        no_results(then_info.block.append_operation(scf::r#yield(&then_values, location)))?;
+        no_results(else_info.block.append_operation(scf::r#yield(&else_values, location)))?;
+
+        // Use `overwrite_names` and the current block context to get the types of
+        // the named values to define the result types of the `scf.if` op.
+        let result_types = overwrite_names
+            .iter()
+            .map(|name| {
+                self.block_ctx
+                    .get_named_value(name)
+                    .inspect_err(|e| eprintln!("\nERROR: {:?}", e))
+                    .map(|v| v.r#type())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Generate the `scf.if` op for the circom `IfThenElse` statement.
+        let scf_if_op = self.append_op(scf::r#if(
+            condition,
+            &result_types,
+            then_info.region,
+            else_info.region,
+            location,
+        ));
+
+        // Update the current block context with results from the `scf.if` op.
+        overwrite_names
+            .into_iter()
+            .zip(scf_if_op.results())
+            .try_for_each(|(name, result)| self.block_ctx.set_named_value(name, result.into()))?;
+        Ok(())
+    }
 }
 
 /// The [FunctionContext] directly accesses a single [BlockContextStack] for circom scope handling.
@@ -703,69 +769,7 @@ where
         )?;
     }
 
-    // Update `then_block_info.var_overwrites` to ensure it has all keys from
-    // `else_block_info.var_overwrites`, using current-scope values for missing keys. This
-    // ensures that both blocks will yield the same set of variables.
-    for name in else_info.var_overwrites.keys() {
-        if !then_info.var_overwrites.contains_key(name) {
-            then_info
-                .var_overwrites
-                .insert(name.clone(), *function.block_ctx.get_named_value(name)?);
-        }
-    }
-
-    // Split `then_block_info.var_overwrites` into ordered lists of names and values. The ordering
-    // of names here defines the ordering of results from the `scf.if` op and thus the ordering
-    // of operands to `scf.yield` ops in both branches. Sort by circom variable names to ensure
-    // a stable order.
-    let mut overwrites_sorted: Vec<_> = then_info.var_overwrites.into_iter().collect();
-    overwrites_sorted.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
-    let (overwrite_names, then_values): (Vec<_>, Vec<_>) = overwrites_sorted.into_iter().unzip();
-
-    // Insert `scf.yield` at the end of the `then` block.
-    no_results(then_info.block.append_operation(scf::r#yield(&then_values, location)))?;
-
-    // Create list of values to yield from the `else` block in the same order
-    // as `overwrite_names`, again using current-scope values for missing keys.
-    let else_values = overwrite_names
-        .iter()
-        .map(|name| {
-            else_info
-                .var_overwrites
-                .get(name)
-                .map_or_else(|| function.block_ctx.get_named_value(name).cloned(), |v| Ok(*v))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    // Insert `scf.yield` at the end of the `else` block.
-    no_results(else_info.block.append_operation(scf::r#yield(&else_values, location)))?;
-
-    // Use the `overwrite_names` and the current block context to get the types of the named values
-    // to define the result types of the `scf.if` op. Then generate the `scf.if` op itself for
-    // the circom `IfThenElse` statement.
-    let result_types = overwrite_names
-        .iter()
-        .map(|name| {
-            function
-                .block_ctx
-                .get_named_value(name)
-                .inspect_err(|e| eprintln!("\nERROR: {:?}", e))
-                .map(|v| v.r#type())
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    let scf_if_op = function.append_op(scf::r#if(
-        condition,
-        &result_types,
-        then_info.region,
-        else_info.region,
-        location,
-    ));
-
-    // Update the current block context with results from the `scf.if` op.
-    overwrite_names
-        .into_iter()
-        .zip(scf_if_op.results())
-        .try_for_each(|(name, result)| function.block_ctx.set_named_value(name, result.into()))?;
+    function.gen_scf_if(location, condition, then_info, else_info)?;
 
     // Finally, if both blocks ended with a return, then add a new return here. Else, if
     // only one block returned, the code following the `scf.if` needs to be wrapped in
