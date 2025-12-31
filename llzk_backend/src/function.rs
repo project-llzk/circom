@@ -363,9 +363,9 @@ where
                 // Need `this` to append required preceding ops. The final
                 // result is appended via the macro.
                 try_callback_for_type!(shared::is_felt, |this| {
-                    // Perform integer division by casting to integer, using
-                    // arith dialect divui, then casting the quotient back to felt.
-                    // Cast to an integer type with sufficient bits to hold the felts without truncation.
+                    // Perform integer division by casting to integer, using arith dialect
+                    // divui, then casting the quotient back to felt. Cast to an integer type
+                    // with sufficient bits to hold the felts without truncation.
                     let int_ty = IntegerType::new(codegen.context, codegen.prime_field_bits()?);
                     let loc = codegen.location_from_meta(meta);
                     let int_lhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, lhs))?;
