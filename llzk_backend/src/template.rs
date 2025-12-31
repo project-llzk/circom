@@ -549,7 +549,7 @@ fn gen_if_then_else<'ast, 'ctx, 'str, 'func, 'blk, 'val, 'r>(
     template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
-    if_case: &Box<Statement>,
+    if_case: &Statement,
     else_case: &Option<Box<Statement>>,
 ) -> Result<()>
 where
