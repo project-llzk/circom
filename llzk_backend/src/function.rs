@@ -9,8 +9,10 @@ use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::shared::erase_op;
+use crate::shared::generate_scf_if;
 use crate::shared::get_function_type_attribute;
 use crate::shared::is_bool;
+use crate::shared::is_felt;
 use crate::shared::is_scf_yield;
 use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
@@ -970,7 +972,24 @@ where
                 function.gen_prefix_op(codegen, meta, prefix_op, rhs)
             }
             Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                todo!("Handle InlineSwitchOp expression in function")
+                let location = codegen.location_from_meta(meta);
+                // Ensure the condition is a bool type.
+                let cond_val = match cond.gen_llzk_in_function(codegen, function)? {
+                    v if is_bool(v.r#type()) => v,
+                    v => {
+                        function.append_op_unnamed_result(
+                            cast::toint(location, codegen.bool_type(), v).into(),
+                        )?
+                    }
+                };
+                let scf_if_op =
+                    generate_scf_if(codegen, function, meta, cond_val, |fc| {
+                        Ok(vec![if_true.gen_llzk_in_function(codegen, fc)?])
+                    }, |fc |{
+                        Ok(vec![if_false.gen_llzk_in_function(codegen, fc)?])
+                    })?;
+
+                single_result_as_value(function.append_op(scf_if_op))
             }
             Expression::ParallelOp { meta, rhe } => {
                 todo!("Handle ParallelOp expression in function")
@@ -983,10 +1002,20 @@ where
             }
             Expression::Call { meta, id, args } => {
                 let builder = OpBuilder::new(codegen.context.deref());
+                let location = codegen.location_from_meta(meta);
                 // Visit each argument and collect the resulting LLZK Values for both functions.
                 let call_operands = args
                     .iter()
-                    .map(|arg| arg.gen_llzk_in_function(codegen, function))
+                    .map(|arg| {
+                        // TODO: Non-felt integers need to be converted to felt here,
+                        // as functions currently only accept felt.type arguments.
+                        let operand_val = arg.gen_llzk_in_function(codegen, function)?;
+                        if !is_felt(operand_val.r#type()) {
+                            function.append_op_unnamed_result(cast::tofelt(location, operand_val))
+                        } else {
+                            Ok(operand_val)
+                        }
+                    })
                     .collect::<Result<Vec<Value>>>()?;
                 // Create the CallOp in each function using the collected args.
 
@@ -998,7 +1027,7 @@ where
                 function.append_op_unnamed_result(
                     function::call(
                         &builder,
-                        codegen.location_from_meta(meta),
+                        location,
                         FlatSymbolRefAttribute::new(codegen.context, id),
                         &call_operands,
                         return_types,

@@ -7,10 +7,14 @@
 //! actual code generation within [GenerateLLZKInTemplate] a lot simpler.
 
 use crate::function::FunctionContext;
+use crate::function::GenerateLLZKInFunction;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
+use crate::shared::generate_scf_if;
+use crate::shared::is_bool;
 use crate::shared::is_felt;
 use crate::shared::new_felt_const_op;
+use crate::shared::single_result_as_value;
 use crate::shared::LlzkCodegen;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
@@ -894,7 +898,27 @@ where
                     .and_then_same(|fc, v| fc.gen_prefix_op(codegen, meta, prefix_op, v))
             }
             Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                todo!("Handle InlineSwitchOp expression in template")
+                let location = codegen.location_from_meta(meta);
+
+                // Ensure the condition is a bool type.
+                cond.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, v| {
+                    let cond_val = if !is_bool(v.r#type()) {
+                        fc.append_op_unnamed_result(
+                            cast::toint(location, codegen.bool_type(), v).into(),
+                        )?
+                    } else {
+                        v
+                    };
+
+                    let scf_if_op =
+                        generate_scf_if(codegen, fc, meta, cond_val, |fc| {
+                            Ok(vec![if_true.gen_llzk_in_function(codegen, fc)?])
+                        }, |fc| {
+                            Ok(vec![if_false.gen_llzk_in_function(codegen, fc)?])
+                        })?;
+
+                    single_result_as_value(fc.append_op(scf_if_op))
+                })
             }
             Expression::ParallelOp { meta, rhe } => {
                 todo!("Handle ParallelOp expression in template")
@@ -911,6 +935,18 @@ where
                 let res = GenResultMultiVal::gen_exprs(template, codegen, args)?;
                 // Create the CallOp in each function using the collected args.
                 res.and_then_same(|fc, vals| {
+                    let call_operands = vals
+                    .iter()
+                    .map(|arg| {
+                        // TODO: Non-felt integers need to be converted to felt here,
+                        // as functions currently only accept felt.type arguments.
+                        if !is_felt(arg.r#type()) {
+                            fc.append_op_unnamed_result(cast::tofelt(codegen.location_from_meta(meta), *arg))
+                        } else {
+                            Ok(*arg)
+                        }
+                    })
+                    .collect::<Result<Vec<Value>>>()?;
                     // TODO: Currently, the LLZK function will always return a `felt.type` but
                     // eventually, this gen function may need an "expected result type"
                     // parameter or use `poly.tvar` with function templates.
@@ -920,7 +956,7 @@ where
                             &builder,
                             codegen.location_from_meta(meta),
                             FlatSymbolRefAttribute::new(codegen.context, id),
-                            &vals,
+                            &call_operands,
                             return_types,
                         )?
                         .into(),

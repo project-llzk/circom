@@ -8,6 +8,7 @@ use llzk::prelude::undef;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
+use llzk::prelude::Block;
 use llzk::prelude::BlockLike;
 use llzk::prelude::FeltConstAttribute;
 use llzk::prelude::FeltType;
@@ -23,6 +24,8 @@ use llzk::prelude::LlzkError;
 use llzk::prelude::Location;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike;
+use llzk::prelude::Region;
+use llzk::prelude::RegionLike;
 use llzk::prelude::StructDefOp;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructDefOpRefMut;
@@ -31,6 +34,7 @@ use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use melior::dialect::arith;
+use melior::dialect::scf;
 use melior::ir::attribute::BoolAttribute;
 use melior::ir::attribute::TypeAttribute;
 use melior::ir::Module;
@@ -56,6 +60,8 @@ use std::io::Write;
 use std::ops::Deref;
 use std::os::raw::c_void;
 use std::path::Path;
+
+use crate::function::FunctionContext;
 
 /// Stores necessary context for generating LLZK IR.
 ///
@@ -427,4 +433,65 @@ pub fn get_function_type_attribute<'c: 'a, 'a>(
     let type_attr: TypeAttribute<'c> = attr.try_into()?;
     let func_type: FunctionType<'c> = type_attr.value().try_into()?;
     Ok(func_type)
+}
+
+/// Generate one region for either the then-arm or else-arm of an scf.if operation.
+fn generate_scf_if_arm<'ast, 'ctx, 'func, 'blk, 'val, F>(
+    fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    location: Location<'ctx>,
+    value_gen: F,
+) -> Result<(Region<'ctx>, Vec<Value<'ctx, 'val>>)>
+where
+    F: FnOnce(&mut FunctionContext<'ctx, 'func, 'blk, 'val>) -> Result<Vec<Value<'ctx, 'val>>>,
+{
+    let region = Region::new();
+    let block = region.append_block(Block::new(&[]));
+    fc.block_ctx.push(block);
+    let arm_vals = value_gen(fc)?;
+    fc.block_ctx.pop();
+    block.append_operation(scf::r#yield(&arm_vals, location));
+    Ok((region, arm_vals))
+}
+
+/// Generate a simple scf.if operation that yields the given `then_values` or `else_values`
+/// depending on the `condition` value.
+pub fn generate_scf_if<'ast, 'ctx, 'func, 'blk, 'val, F1, F2>(
+    codegen: &LlzkCodegen<'ast, 'ctx>,
+    fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    meta: &Meta,
+    condition: Value<'ctx, 'val>,
+    then_value_gen: F1,
+    else_value_gen: F2,
+) -> Result<Operation<'ctx>>
+where
+    F1: FnOnce(&mut FunctionContext<'ctx, 'func, 'blk, 'val>) -> Result<Vec<Value<'ctx, 'val>>>,
+    F2: FnOnce(&mut FunctionContext<'ctx, 'func, 'blk, 'val> ) -> Result<Vec<Value<'ctx, 'val>>>, {
+    let location = codegen.location_from_meta(meta);
+
+    let (then_region, then_values) = generate_scf_if_arm(fc, location, then_value_gen)?;
+    let (else_region, else_values) = generate_scf_if_arm(fc, location, else_value_gen)?;
+
+    // Ensure then_values and else_values have the same types
+    assert_eq!(
+        then_values.len(), else_values.len(),
+        "then and else branches of scf.if must have the same number of values"
+    );
+    for (then_val, else_val) in then_values.iter().zip(else_values.iter()) {
+        assert_eq!(
+            then_val.r#type(),  else_val.r#type(),
+            "then and else branches of scf.if must have matching value types"
+        );
+    }
+    let result_types = then_values
+        .iter()
+        .map(|val| val.r#type())
+        .collect::<Vec<Type<'_>>>();
+
+    Ok(scf::r#if(
+        condition,
+        &result_types,
+        then_region,
+        else_region,
+        location,
+    ))
 }
