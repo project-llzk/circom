@@ -317,13 +317,13 @@ where
     /// `NewBlock`. Assignments to circom variables that are newly introduced in this context go
     /// out of scope so they are dropped after the callback but overwriting assignments to circom
     /// variables that already exist prior to this new scope are passed to the overwrite handler.
-    fn gen_in_given_block_with_new_circom_scope<H>(
+    fn gen_in_given_block_with_new_circom_scope<H, R>(
         &mut self,
         block: Self::BlockType,
-        generator: impl FnOnce(&mut Self) -> Result<()>,
+        generator: impl FnOnce(&mut Self) -> Result<R>,
         overwrite_handler: H,
         overwrite_data: &mut Self::HandlerDataType,
-    ) -> Result<()>
+    ) -> Result<R>
     where
         H: Fn(
             &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
@@ -343,12 +343,12 @@ where
     /// variables that already exist prior to this new scope are cached in the `var_overwrites`
     /// field of the `NestedBlockInfo` struct.
     #[inline]
-    fn gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+    fn gen_in_given_block_with_new_circom_scope_and_cache_overwrites<R>(
         &mut self,
         block: Self::BlockType,
-        generator: impl FnOnce(&mut Self) -> Result<()>,
+        generator: impl FnOnce(&mut Self) -> Result<R>,
         overwrite_data: &mut Self::HandlerDataType,
-    ) -> Result<()> {
+    ) -> Result<R> {
         self.gen_in_given_block_with_new_circom_scope(
             block,
             generator,
@@ -366,11 +366,11 @@ where
     /// variables that already exist prior to this new scope are preserved and written into the
     /// existing block context.
     #[inline]
-    fn gen_in_given_block_with_new_circom_scope_and_merge_overwrites(
+    fn gen_in_given_block_with_new_circom_scope_and_merge_overwrites<R>(
         &mut self,
         block: Self::BlockType,
-        generator: impl FnOnce(&mut Self) -> Result<()>,
-    ) -> Result<()> {
+        generator: impl FnOnce(&mut Self) -> Result<R>,
+    ) -> Result<R> {
         self.gen_in_given_block_with_new_circom_scope(
             block,
             generator,
@@ -385,10 +385,10 @@ where
     /// variables that already exist prior to this new scope are preserved and written into the
     /// existing block context.
     #[inline]
-    fn gen_in_current_block_with_new_circom_scope_and_merge_overwrites(
+    fn gen_in_current_block_with_new_circom_scope_and_merge_overwrites<R>(
         &mut self,
-        generator: impl FnOnce(&mut Self) -> Result<()>,
-    ) -> Result<()> {
+        generator: impl FnOnce(&mut Self) -> Result<R>,
+    ) -> Result<R> {
         self.gen_in_given_block_with_new_circom_scope_and_merge_overwrites(
             self.stack_top(),
             generator,
