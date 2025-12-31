@@ -180,11 +180,7 @@ where
                 IntegerAttribute::new(rhs.r#type(), 0),
                 codegen.location_from_meta(meta),
             ))?;
-            return self.append_op_unnamed_result(index::sub(
-                zero,
-                rhs,
-                codegen.location_from_meta(meta),
-            ));
+            self.append_op_unnamed_result(index::sub(zero, rhs, codegen.location_from_meta(meta)))
         };
         match op {
             ExpressionPrefixOpcode::Sub => {
@@ -372,7 +368,7 @@ where
                     let int_rhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, rhs))?;
                     let quotient =
                         this.append_op_unnamed_result(arith::divui(int_lhs, int_rhs, loc))?;
-                    Ok(Operation::from(cast::tofelt(loc, quotient)))
+                    Ok(cast::tofelt(loc, quotient).into())
                 });
                 try_index_op!(index::divu);
             }
@@ -654,6 +650,7 @@ where
 
 /// Helper for [gen_if_then_else] to mangage the special return-related variables needed
 /// when a circom [Statement::IfThenElse] contains a return statement.
+#[allow(clippy::too_many_arguments)]
 fn handle_early_return<'ast, 'ctx, 'func, 'blk, 'val>(
     codegen: &LlzkCodegen<'ast, 'ctx>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
@@ -749,7 +746,7 @@ fn gen_if_then_else<'ast, 'ctx, 'func, 'blk, 'val>(
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
-    if_case: &Box<Statement>,
+    if_case: &Statement,
     else_case: &Option<Box<Statement>>,
 ) -> Result<()>
 where
