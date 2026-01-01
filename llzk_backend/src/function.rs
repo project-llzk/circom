@@ -943,20 +943,15 @@ where
                 // responsible for converting this `felt.type` value to another type if needed.
                 function.append_op_unnamed_result(new_felt_const_op(codegen, meta, big_int)?)
             }
-            Expression::Variable { meta, name, access } => {
-                match access.as_slice() {
-                    [] => {
-                        let v = function.block_ctx.get_named_value(name)?;
-                        Ok(*v)
-                    }
-                    a => {
-                        // Note: `Access::ComponentAccess` is not legal in functions per
-                        // `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
-                        // so each must be `Access::ArrayAccess` only.
-                        todo!("Handle accesses in variable expression in function")
-                    }
+            Expression::Variable { meta, name, access } => match access.as_slice() {
+                [] => {
+                    let v = function.block_ctx.get_named_value(name)?;
+                    Ok(*v)
                 }
-            }
+                a => {
+                    todo!("Handle accesses in variable expression")
+                }
+            },
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {
                 let lhs = lhe.gen_llzk_in_function(codegen, function)?;
                 let rhs = rhe.gen_llzk_in_function(codegen, function)?;
@@ -967,16 +962,16 @@ where
                 function.gen_prefix_op(codegen, meta, prefix_op, rhs)
             }
             Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                todo!("Handle InlineSwitchOp expression in function")
+                todo!("Handle InlineSwitchOp expression")
             }
             Expression::ParallelOp { meta, rhe } => {
-                todo!("Handle ParallelOp expression in function")
+                todo!("Handle ParallelOp expression")
             }
             Expression::ArrayInLine { meta, values } => {
-                todo!("Handle ArrayInLine expression in function")
+                todo!("Handle ArrayInLine expression")
             }
             Expression::UniformArray { meta, value, dimension } => {
-                todo!("Handle UniformArray expression in function")
+                todo!("Handle UniformArray expression")
             }
             Expression::Call { meta, id, args } => {
                 let builder = OpBuilder::new(codegen.context.deref());
@@ -1004,8 +999,7 @@ where
                 )
             }
             Expression::BusCall { meta, id, args } => {
-                // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
-                unreachable!("Template elements declared inside the function")
+                todo!("Handle BusCall expression")
             }
             Expression::AnonymousComp { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
             Expression::Tuple { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
