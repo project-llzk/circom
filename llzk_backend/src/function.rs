@@ -21,9 +21,11 @@ use anyhow::anyhow;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
+use llzk::prelude::array;
 use llzk::prelude::bool;
 use llzk::prelude::felt;
 use llzk::prelude::function;
+use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
@@ -50,6 +52,7 @@ use melior::dialect::scf;
 use melior::ir::operation::OperationRefMut;
 use melior::ir::operation::WalkOrder;
 use melior::ir::operation::WalkResult;
+use program_structure::ast::Access;
 use program_structure::ast::Expression;
 use program_structure::ast::ExpressionInfixOpcode;
 use program_structure::ast::ExpressionPrefixOpcode;
@@ -58,6 +61,7 @@ use program_structure::ast::Statement;
 use program_structure::ast::VariableType;
 use program_structure::error_code::ReportCode;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::ops::Deref;
 use std::ops::DerefMut;
 
@@ -953,7 +957,26 @@ where
                         // Note: `Access::ComponentAccess` is not legal in functions per
                         // `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                         // so each must be `Access::ArrayAccess` only.
-                        todo!("Handle accesses in variable expression in function")
+                        let indices = a.iter().map(|access| {
+                            match access {
+                                Access::ArrayAccess(index_expr) => {
+                                    index_expr.gen_llzk_in_function(codegen, function)
+                                }
+                                Access::ComponentAccess { .. } => {
+                                    // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
+                                    unreachable!("Component access in function")
+                                }
+                            }
+                        }).collect::<Result<Vec<Value<'_, '_>>>>()?;
+                        let v = function.block_ctx.get_named_value(name)?;
+                        let arr_ty = ArrayType::try_from(v.r#type())?;
+                        let array_get_op = array::read(
+                            codegen.location_from_meta(meta),
+                            arr_ty.element_type(),
+                            *v,
+                            &indices,
+                        );
+                        function.append_op_unnamed_result(array_get_op)
                     }
                 }
             }
