@@ -989,7 +989,7 @@ where
                         Ok(vec![if_false.gen_llzk_in_function(codegen, fc)?])
                     })?;
 
-                single_result_as_value(function.append_op(scf_if_op))
+                function.append_op_unnamed_result(scf_if_op)
             }
             Expression::ParallelOp { meta, rhe } => {
                 todo!("Handle ParallelOp expression in function")
