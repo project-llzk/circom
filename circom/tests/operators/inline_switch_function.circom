@@ -31,11 +31,11 @@ component main = CallInlineSwitch();
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.new : <@CallInlineSwitch<[]>>
 // CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = bool.cmp ne(%[[VAL_5]], %[[VAL_7]])
-// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.div %[[VAL_9]], %[[VAL_5]] : !felt.type, !felt.type
-// CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_8]] : i1
-// CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = function.call @InlineSwitch(%[[VAL_12]], %[[VAL_10]], %[[VAL_11]]) : (!felt.type, !felt.type, !felt.type) -> !felt.type
+// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_8]] : i1
+// CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.div %[[VAL_10]], %[[VAL_5]] : !felt.type, !felt.type
+// CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = function.call @InlineSwitch(%[[VAL_9]], %[[VAL_11]], %[[VAL_12]]) : (!felt.type, !felt.type, !felt.type) -> !felt.type
 // CHECK-NEXT:        struct.writef %[[VAL_6]][@out] = %[[VAL_13]] : <@CallInlineSwitch<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_6]] : !struct.type<@CallInlineSwitch<[]>>
 // CHECK-NEXT:      }

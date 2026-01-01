@@ -7,17 +7,9 @@
 //! actual code generation within [GenerateLLZKInTemplate] a lot simpler.
 
 use crate::function::FunctionContext;
-use crate::function::GenerateLLZKInFunction;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
-use crate::shared::generate_scf_if;
-use crate::shared::is_bool;
 use crate::shared::is_felt;
-<<<<<<< HEAD
-use crate::shared::new_felt_const_op;
-use crate::shared::single_result_as_value;
-=======
->>>>>>> origin/th/simplify_expression_translation
 use crate::shared::LlzkCodegen;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
