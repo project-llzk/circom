@@ -492,3 +492,11 @@ pub fn get_function_type_attribute<'c: 'a, 'a>(
     let func_type: FunctionType<'c> = type_attr.value().try_into()?;
     Ok(func_type)
 }
+
+/// Replaces all uses of the first value with the second.
+///
+/// Uses `mlir-sys` directly since that function doesn't seem to be
+/// implemented in melior.
+pub fn replace_all_uses<'ctx>(of: Value<'ctx, '_>, with: Value<'ctx, '_>) {
+    unsafe { mlir_sys::mlirValueReplaceAllUsesOfWith(of.to_raw(), with.to_raw()) }
+}

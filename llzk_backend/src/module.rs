@@ -15,6 +15,7 @@ use crate::template::TemplateContext;
 use anyhow::bail;
 use anyhow::Result;
 use llzk::attributes::NamedAttribute;
+use llzk::builder::OpBuilder;
 use llzk::error::Error;
 use llzk::prelude::r#struct::helpers::compute_fn;
 use llzk::prelude::r#struct::helpers::constrain_fn;
@@ -67,34 +68,31 @@ impl<'ctx> DeclarationInfo<'ctx> {
     /// Completes the declaration information from the information collected from the
     /// subcomponents.
     ///
+    /// Returns a vector with an associative list of names to the type of the declaration.
+    ///
     /// Currently handles declaration of scalar subcomponents and array subcomponents of the same
     /// type.
-    fn complete(&mut self) {
+    fn complete(&mut self) -> Vec<(String, Type<'ctx>)> {
+        let mut ops = vec![];
         for (name, info) in &self.subcmp_decls {
             let instances = info.instances();
-            match instances.as_slice() {
+            let field_type: Type<'_> = match instances.as_slice() {
                 [] => todo!("Handle uninitialized component decl"),
-                [([], t)] => self
-                    .struct_fields
-                    .push(r#struct::field(info.location(), name, *t, false, false).map(Into::into)),
+                [([], t)] => (*t).into(),
                 instances => {
                     let types = unique_instance_types(instances);
                     if types.len() > 1 {
                         todo!("Handle array subcomponents")
                     }
-                    self.struct_fields.push(
-                        r#struct::field(
-                            info.location(),
-                            name,
-                            ArrayType::new(types[0].into(), info.dimensions()),
-                            false,
-                            false,
-                        )
-                        .map(Into::into),
-                    )
+                    ArrayType::new(types[0].into(), info.dimensions()).into()
                 }
-            }
+            };
+            self.struct_fields.push(
+                r#struct::field(info.location(), name, field_type, false, false).map(Into::into),
+            );
+            ops.push((name.clone(), field_type));
         }
+        ops
     }
 
     /// Visit a statement and populate this `DeclarationInfo` with any declarations found.
@@ -366,7 +364,7 @@ impl<'ctx> GenerateLLZKInModule<'ctx> for TemplateData {
         for s in self.get_body_as_vec() {
             declarations.visit(codegen, s)?;
         }
-        declarations.complete();
+        let subcmps = declarations.complete();
 
         // Generate the struct definition, prepopulated with fields.
         let struct_loc = codegen.location(self.get_file_id(), self.get_param_location());
@@ -420,9 +418,32 @@ impl<'ctx> GenerateLLZKInModule<'ctx> for TemplateData {
             // Insert the declaration into the constrain function.
             constrain_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op))?;
         }
+        let op_builder = OpBuilder::new(codegen.context);
+        let subcmp_decls = declarations.subcmp_decls;
+        // Insert the Operations created from subcomponent Declaration statements and map the
+        // circom variable name to a LLZK op result Value.
+        for (name, subcmp_type) in subcmps {
+            compute_ctx.block_ctx.declare_name_if_not_present(&name, || {
+                Ok(undef::undef(Location::unknown(codegen.context), subcmp_type))
+            })?;
 
+            let self_ref = *constrain_ctx.block_ctx.get_named_value("**self**")?;
+            constrain_ctx.block_ctx.declare_name_if_not_present(&name, || {
+                Ok(r#struct::readf(
+                    &op_builder,
+                    subcmp_decls[&name].location(),
+                    subcmp_type,
+                    self_ref,
+                    &name,
+                )?)
+            })?;
+        }
+
+        let subcmp_names = subcmp_decls.iter().map(|t| t.0.clone()).collect();
         // Visit the body of the template and generate LLZK IR for it within the struct functions.
-        let template_context = TemplateContext::new(new_struct, compute_ctx, constrain_ctx);
-        self.get_body_as_vec().gen_llzk_in_template(codegen, &template_context)
+        let template_context =
+            TemplateContext::new(new_struct, compute_ctx, constrain_ctx, &subcmp_names);
+        self.get_body_as_vec().gen_llzk_in_template(codegen, &template_context)?;
+        template_context.finalize(codegen)
     }
 }

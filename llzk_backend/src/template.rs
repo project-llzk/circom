@@ -11,6 +11,7 @@ use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::shared::is_felt;
 use crate::shared::new_felt_const_op;
+use crate::shared::replace_all_uses;
 use crate::shared::struct_type_with_concrete_dimensions;
 use crate::shared::LlzkCodegen;
 use anyhow::Result;
@@ -30,16 +31,21 @@ use llzk::prelude::StructType;
 use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
+use melior::ir::operation::OperationLike as _;
+use melior::ir::operation::OperationResult;
 use melior::ir::Type;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
 use program_structure::ast::Statement;
+use program_structure::ast::VariableType;
 use program_structure::error_code::ReportCode;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::convert::TryInto as _;
+use std::iter::FromIterator as _;
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -102,6 +108,8 @@ where
     compute: ShouldGenerate<Rc<RefCell<FunctionContext<'ctx, 'func, 'blk, 'val>>>>,
     /// Codegen refs for the "@constrain" function within `struct_def`
     constrain: ShouldGenerate<Rc<RefCell<FunctionContext<'ctx, 'func, 'blk, 'val>>>>,
+    /// Set of subcomponent names.
+    subcmps: &'str HashSet<String>,
 }
 
 impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'val> {
@@ -111,11 +119,13 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
         struct_def: StructDefOpRefMut<'ctx, 'str>,
         compute: FunctionContext<'ctx, 'func, 'blk, 'val>,
         constrain: FunctionContext<'ctx, 'func, 'blk, 'val>,
+        subcmps: &'str HashSet<String>,
     ) -> TemplateContext<'ctx, 'str, 'func, 'blk, 'val> {
         Self {
             struct_def,
             compute: Some(Rc::new(RefCell::new(compute))),
             constrain: Some(Rc::new(RefCell::new(constrain))),
+            subcmps,
         }
     }
 
@@ -126,6 +136,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
             struct_def: self.struct_def,
             compute: self.compute.as_ref().map(Rc::clone),
             constrain: None,
+            subcmps: self.subcmps,
         }
     }
 
@@ -136,7 +147,30 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
             struct_def: self.struct_def,
             compute: None,
             constrain: self.constrain.as_ref().map(Rc::clone),
+            subcmps: self.subcmps,
         }
+    }
+
+    /// Finalizes the context, running checks and adding last minute operations.
+    pub fn finalize(self, codegen: &LlzkCodegen<'_, 'ctx>) -> Result<()> {
+        let subcmps = self.subcmps;
+        self.and_then(
+            |fc, _| {
+                // Write the subcomponent declarations to self.
+                let self_value = fc.func.self_value_of_compute()?;
+                for name in subcmps {
+                    let val = fc.block_ctx.get_named_value(&name)?;
+                    fc.append_op_no_result(r#struct::writef(
+                        Location::unknown(codegen.context),
+                        self_value,
+                        &name,
+                        *val,
+                    )?)?;
+                }
+                Ok(())
+            },
+            |_fc, _| Ok(()),
+        )
     }
 }
 
@@ -655,7 +689,7 @@ where
             Statement::InitializationBlock { initializations, .. } => {
                 initializations.gen_llzk_in_template(codegen, template)
             }
-            Statement::Declaration { meta, xtype, name, dimensions, .. } => {
+            Statement::Declaration { meta, name, dimensions, .. } => {
                 template.and_then_same(|fc, _| {
                     fc.block_ctx.declare_name_if_not_present(name, || {
                         codegen.new_nondet_felt_of_dimensions(meta, dimensions)
@@ -683,9 +717,44 @@ where
                         //  - take the contrain_fn value (which is the call to @constrain) and
                         //  replace the first argument with the value read above.
                         if access.is_empty() {
-                            rhe.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, val| {
-                                fc.block_ctx.set_named_value(var.clone(), val)
-                            })
+                            if template.subcmps.contains(var) {
+                                rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                                    |fc, rhe| {
+                                        if let Some(current) =
+                                            fc.block_ctx.get_named_value(var).ok()
+                                        {
+                                            replace_all_uses(*current, rhe);
+                                        }
+
+                                        fc.block_ctx.set_named_value(var.clone(), rhe)
+                                    },
+                                    |fc, rhe| {
+                                        // Replace value. Ensure that the value comes from a
+                                        // `struct.readf`
+                                        let field_read = fc.block_ctx.get_named_value(var)?;
+                                        assert!(field_read.is_operation_result());
+                                        // This conversion is not implemented by melior.
+                                        let field_read_op = unsafe {
+                                            OperationResult::from_raw(field_read.to_raw())
+                                        };
+                                        // Temporary workaround
+                                        assert_eq!(
+                                            field_read_op
+                                                .owner()
+                                                .name()
+                                                .as_string_ref()
+                                                .as_str()?,
+                                            "struct.readf"
+                                        );
+                                        replace_all_uses(rhe, *field_read);
+                                        Ok(())
+                                    },
+                                )
+                            } else {
+                                rhe.gen_llzk_in_template(codegen, template)?.and_then_same(
+                                    |fc, val| fc.block_ctx.set_named_value(var.clone(), val),
+                                )
+                            }
                         } else {
                             todo!("Generate array write operation in template");
                         }
