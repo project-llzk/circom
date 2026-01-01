@@ -12,7 +12,6 @@ use crate::gen_context::NestedBlockInfo;
 use crate::shared::is_felt;
 use crate::shared::new_felt_const_op;
 use crate::shared::replace_all_uses;
-use crate::shared::struct_type_with_concrete_dimensions;
 use crate::shared::LlzkCodegen;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
@@ -39,14 +38,12 @@ use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
 use program_structure::ast::Statement;
-use program_structure::ast::VariableType;
 use program_structure::error_code::ReportCode;
 use program_structure::wire_data::WireType;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryInto as _;
-use std::iter::FromIterator as _;
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -708,15 +705,6 @@ where
                 // which essentially propagates the assignment.
                 match op {
                     AssignOp::AssignVar => {
-                        // TODO: If the assignment is on a variable pointing to a subcomponent (xtype
-                        // == Component) we need to do:
-                        // for compute:
-                        //  - take the compute_fn value (which is the call to @compute) and write
-                        //  it where it corresponds.
-                        // for constrain:
-                        //  - read the variable starting from self
-                        //  - take the contrain_fn value (which is the call to @constrain) and
-                        //  replace the first argument with the value read above.
                         if access.is_empty() {
                             if template.subcmps.contains(var) {
                                 rhe.gen_llzk_in_template(codegen, template)?.and_then(
@@ -994,7 +982,7 @@ where
             Expression::Call { meta, id, args, .. } => {
                 let location = codegen.location_from_meta(meta);
                 if meta.get_type_knowledge().is_component() {
-                    let subcmp_type = struct_type_with_concrete_dimensions(codegen, id, args)?;
+                    let subcmp_type = codegen.struct_type_with_concrete_dimensions(id, args)?;
                     let template_data = codegen
                         .program_archive
                         .templates
@@ -1014,7 +1002,7 @@ where
                             }
                         }
                     }));
-                    // Undefs have unknown locations at creation and we set it when we encounters
+                    // Undefs have unknown locations at creation and we set it when we encounter
                     // the corresponding write.
                     let unk = Location::unknown(&codegen.context);
                     let builder = OpBuilder::new(codegen.context);
@@ -1098,7 +1086,7 @@ fn build_access_chain<'ctx, 'val, 'func, 'blk>(
     let builder = OpBuilder::new(codegen.context);
     chain.iter().try_fold(receiver, |receiver: Value<'_, '_>, access| match access {
         Access::ComponentAccess(field) => {
-            let receiver_type: StructType = receiver.r#type().try_into()?;
+            let _receiver_type: StructType = receiver.r#type().try_into()?;
 
             fc.append_op_unnamed_result(
                 r#struct::readf(
@@ -1114,7 +1102,7 @@ fn build_access_chain<'ctx, 'val, 'func, 'blk>(
                 .into(),
             )
         }
-        Access::ArrayAccess(expression) => {
+        Access::ArrayAccess(_expression) => {
             todo!("Generate array write operation in template")
         }
     })

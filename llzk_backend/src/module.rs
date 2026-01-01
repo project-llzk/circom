@@ -3,9 +3,7 @@
 
 use crate::function::FunctionContext;
 use crate::function::GenerateLLZKInFunction as _;
-use crate::shared::convert_dim_expr;
 use crate::shared::map_name_to_arg_value;
-use crate::shared::struct_type_with_concrete_dimensions;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::unique_instance_types;
 use crate::subcmp::LlzkAccess;
@@ -173,7 +171,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                                 LlzkAccess::ComponentAccess(name.clone())
                             }
                             Access::ArrayAccess(expr) => {
-                                LlzkAccess::ArrayAccess(convert_dim_expr(codegen, expr)?)
+                                LlzkAccess::ArrayAccess(codegen.convert_dim_expr(expr)?)
                             }
                         })
                     })
@@ -210,7 +208,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     ) -> Result<Option<StructType<'ctx>>> {
         Ok(match expression {
             Expression::Call { meta, id, args, .. } if meta.get_type_knowledge().is_component() => {
-                Some(struct_type_with_concrete_dimensions(codegen, id, args)?)
+                Some(codegen.struct_type_with_concrete_dimensions(id, args)?)
             }
             _ => None,
         })
@@ -275,28 +273,13 @@ impl<'ctx> DeclarationInfo<'ctx> {
         Ok(())
     }
 
-    /// If `dimensions` is empty, return `base_type`. Otherwise, create ArrayType by converting the
-    /// dimension circom Expressions to LLZK Attributes.
-    fn type_with_dimensions(
-        codegen: &LlzkCodegen<'_, 'ctx>,
-        base_type: Type<'ctx>,
-        dimensions: &[Expression],
-    ) -> Result<Type<'ctx>> {
-        if dimensions.is_empty() {
-            Ok(base_type)
-        } else {
-            Self::try_dimensions_to_attrs(codegen, dimensions)
-                .map(|dims| ArrayType::new(base_type, &dims).into())
-        }
-    }
-
     /// Tries to convert a list of [`Expression`] to a list of [`Attribute`].
     #[inline]
     fn try_dimensions_to_attrs(
         codegen: &LlzkCodegen<'_, 'ctx>,
         dimensions: &[Expression],
     ) -> Result<Vec<Attribute<'ctx>>> {
-        dimensions.iter().map(|e| convert_dim_expr(codegen, e)).collect()
+        dimensions.iter().map(|e| codegen.convert_dim_expr(e)).collect()
     }
 }
 

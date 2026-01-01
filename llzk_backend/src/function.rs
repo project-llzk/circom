@@ -87,11 +87,6 @@ where
     pub(crate) func: FuncDefOpRefMut<'ctx, 'func>,
     /// Nested block context within the function.
     pub(crate) block_ctx: BlockContextStack<'ctx, 'blk, 'val>,
-    /// Local name mapped to the SSA Value with that name. Initialized with function
-    /// parameters and extended with any variable-to-variable assignments found.
-    pub(crate) name_to_value: HashMap<String, Value<'ctx, 'val>>,
-    /// Tracks the initialization of the subcomponents' signals.
-    pub(crate) subcmp_name_to_value: HashMap<(String, String), Value<'ctx, 'val>>,
 }
 
 impl<'ctx, 'func, 'blk, 'val> FunctionContext<'ctx, 'func, 'blk, 'val>
@@ -122,12 +117,7 @@ where
                 )
             })?;
         }
-        Ok(Self {
-            func,
-            block_ctx,
-            name_to_value: Default::default(),
-            subcmp_name_to_value: Default::default(),
-        })
+        Ok(Self { func, block_ctx })
     }
 
     /// Append an operation.
