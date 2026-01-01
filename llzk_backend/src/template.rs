@@ -41,6 +41,7 @@ use program_structure::ast::Meta;
 use program_structure::ast::Statement;
 use program_structure::ast::VariableType;
 use program_structure::error_code::ReportCode;
+use program_structure::wire_data::WireType;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -994,7 +995,25 @@ where
                 let location = codegen.location_from_meta(meta);
                 if meta.get_type_knowledge().is_component() {
                     let subcmp_type = struct_type_with_concrete_dimensions(codegen, id, args)?;
-                    let arg_types: Vec<Type<'_>> = vec![subcmp_type.into()];
+                    let template_data = codegen
+                        .program_archive
+                        .templates
+                        .get(id)
+                        .ok_or_else(|| anyhow::anyhow!("Template {id} not found"))?;
+                    let inputs = template_data.get_declaration_inputs();
+                    let mut arg_types: Vec<Type<'_>> = Vec::with_capacity(inputs.len() + 1);
+                    arg_types.push(subcmp_type.into());
+                    arg_types.extend(inputs.iter().map(|(name, _)| -> Type<'_> {
+                        let wire = template_data.get_input_info(name).unwrap_or_else(|| {
+                            panic!("Input {:?} not found for type {:?}", name, id)
+                        });
+                        match wire.get_type() {
+                            WireType::Signal => FeltType::new(codegen.context).into(),
+                            WireType::Bus(name) => {
+                                StructType::from_str(codegen.context, &name).into()
+                            }
+                        }
+                    }));
                     // Undefs have unknown locations at creation and we set it when we encounters
                     // the corresponding write.
                     let unk = Location::unknown(&codegen.context);
