@@ -182,11 +182,7 @@ where
                 IntegerAttribute::new(rhs.r#type(), 0),
                 codegen.location_from_meta(meta),
             ))?;
-            return self.append_op_unnamed_result(index::sub(
-                zero,
-                rhs,
-                codegen.location_from_meta(meta),
-            ));
+            self.append_op_unnamed_result(index::sub(zero, rhs, codegen.location_from_meta(meta)))
         };
         match op {
             ExpressionPrefixOpcode::Sub => {
@@ -365,16 +361,16 @@ where
                 // Need `this` to append required preceding ops. The final
                 // result is appended via the macro.
                 try_callback_for_type!(shared::is_felt, |this| {
-                    // Perform integer division by casting to integer, using
-                    // arith dialect divui, then casting the quotient back to felt.
-                    // Cast to an integer type with sufficient bits to hold the felts without truncation.
+                    // Perform integer division by casting to integer, using arith dialect
+                    // divui, then casting the quotient back to felt. Cast to an integer type
+                    // with sufficient bits to hold the felts without truncation.
                     let int_ty = IntegerType::new(codegen.context, codegen.prime_field_bits()?);
                     let loc = codegen.location_from_meta(meta);
                     let int_lhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, lhs))?;
                     let int_rhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, rhs))?;
                     let quotient =
                         this.append_op_unnamed_result(arith::divui(int_lhs, int_rhs, loc))?;
-                    Ok(Operation::from(cast::tofelt(loc, quotient)))
+                    Ok(cast::tofelt(loc, quotient).into())
                 });
                 try_index_op!(index::divu);
             }
@@ -656,6 +652,7 @@ where
 
 /// Helper for [gen_if_then_else] to mangage the special return-related variables needed
 /// when a circom [Statement::IfThenElse] contains a return statement.
+#[allow(clippy::too_many_arguments)]
 fn handle_early_return<'ast, 'ctx, 'func, 'blk, 'val>(
     codegen: &LlzkCodegen<'ast, 'ctx>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
@@ -751,7 +748,7 @@ fn gen_if_then_else<'ast, 'ctx, 'func, 'blk, 'val>(
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
-    if_case: &Box<Statement>,
+    if_case: &Statement,
     else_case: &Option<Box<Statement>>,
 ) -> Result<()>
 where
@@ -948,20 +945,15 @@ where
                 // responsible for converting this `felt.type` value to another type if needed.
                 function.append_op_unnamed_result(new_felt_const_op(codegen, meta, big_int)?)
             }
-            Expression::Variable { meta, name, access } => {
-                match access.as_slice() {
-                    [] => {
-                        let v = function.block_ctx.get_named_value(name)?;
-                        Ok(*v)
-                    }
-                    a => {
-                        // Note: `Access::ComponentAccess` is not legal in functions per
-                        // `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
-                        // so each must be `Access::ArrayAccess` only.
-                        todo!("Handle accesses in variable expression in function")
-                    }
+            Expression::Variable { meta, name, access } => match access.as_slice() {
+                [] => {
+                    let v = function.block_ctx.get_named_value(name)?;
+                    Ok(*v)
                 }
-            }
+                a => {
+                    todo!("Handle accesses in variable expression")
+                }
+            },
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {
                 let lhs = lhe.gen_llzk_in_function(codegen, function)?;
                 let rhs = rhe.gen_llzk_in_function(codegen, function)?;
@@ -992,13 +984,13 @@ where
                 function.append_op_unnamed_result(scf_if_op)
             }
             Expression::ParallelOp { meta, rhe } => {
-                todo!("Handle ParallelOp expression in function")
+                todo!("Handle ParallelOp expression")
             }
             Expression::ArrayInLine { meta, values } => {
-                todo!("Handle ArrayInLine expression in function")
+                todo!("Handle ArrayInLine expression")
             }
             Expression::UniformArray { meta, value, dimension } => {
-                todo!("Handle UniformArray expression in function")
+                todo!("Handle UniformArray expression")
             }
             Expression::Call { meta, id, args } => {
                 let builder = OpBuilder::new(codegen.context.deref());
@@ -1036,8 +1028,7 @@ where
                 )
             }
             Expression::BusCall { meta, id, args } => {
-                // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
-                unreachable!("Template elements declared inside the function")
+                todo!("Handle BusCall expression")
             }
             Expression::AnonymousComp { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
             Expression::Tuple { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
