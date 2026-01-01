@@ -999,7 +999,23 @@ where
                 todo!("Handle ArrayInLine expression in function")
             }
             Expression::UniformArray { meta, value, dimension } => {
-                todo!("Handle UniformArray expression in function")
+                let val = value.gen_llzk_in_function(codegen, function)?;
+                let dim = codegen.convert_dim_expr(dimension)?;
+                // Array dimensions must be statically known in Circom.
+                let arr_ty = ArrayType::new(FeltType::new(codegen.context).into(), &[dim]);
+                let const_dim = IntegerAttribute::try_from(dim);
+                let init_vals = if const_dim.is_ok() {
+                    vec![val; const_dim.unwrap().value() as usize]
+                } else {
+                    todo!("Handle non-integer attribute dimension in UniformArray expression")
+                };
+
+                function.append_op_unnamed_result(array::new(
+                    &OpBuilder::new(&codegen.context),
+                    codegen.location_from_meta(meta),
+                    arr_ty,
+                    llzk::dialect::array::ArrayCtor::Values(&init_vals),
+                ))
             }
             Expression::Call { meta, id, args } => {
                 let builder = OpBuilder::new(codegen.context.deref());
