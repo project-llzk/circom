@@ -7,6 +7,9 @@ use crate::shared::convert_dim_expr;
 use crate::shared::map_name_to_arg_value;
 use crate::shared::struct_type_with_concrete_dimensions;
 use crate::shared::LlzkCodegen;
+use crate::subcmp::unique_instance_types;
+use crate::subcmp::LlzkAccess;
+use crate::subcmp::SubcmpDeclInfo;
 use crate::template::GenerateLLZKInTemplate as _;
 use crate::template::TemplateContext;
 use anyhow::bail;
@@ -29,7 +32,6 @@ use program_structure::program_archive::ProgramArchive;
 use program_structure::template_data::TemplateData;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::convert::TryFrom;
 
 /// Information needed to create an LLZK struct function parameter collected from the input signal
@@ -43,69 +45,6 @@ struct InputSignalInfo<'ctx> {
     type_and_loc: (Type<'ctx>, Location<'ctx>),
     /// Named Attributes for the function parameter.
     attrs: Vec<NamedAttribute<'ctx>>,
-}
-
-/// Version of [`Access`](program_structure::ast::Access) that uses LLZK
-/// Attributes instead.
-#[derive(Debug, Eq, PartialEq)]
-enum LlzkAccess<'ctx> {
-    ComponentAccess(String),
-    ArrayAccess(Attribute<'ctx>),
-}
-
-impl LlzkAccess<'_> {
-    /// Returns true if the access is direct.
-    ///
-    /// An access is direct if it refers to a component or
-    /// if the array access refers to a literal value.
-    fn is_direct(&self) -> bool {
-        matches!(self, LlzkAccess::ComponentAccess(_))
-            || matches!(self, LlzkAccess::ArrayAccess(attribute)
-                if attribute.is_integer())
-    }
-}
-
-/// Manual implementation of Hash because the inner types do not implement it.
-impl std::hash::Hash for LlzkAccess<'_> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        /// Hash variant discriminant first to salt the hash.
-        core::mem::discriminant(self).hash(state);
-        match self {
-            LlzkAccess::ComponentAccess(name) => name.hash(state),
-            // Hash the attribute's pointer since they are unique w.r.t. the MLIR context.
-            LlzkAccess::ArrayAccess(attribute) => attribute.to_raw().ptr.hash(state),
-        }
-    }
-}
-
-/// Information collected about a subcomponent.
-#[derive(Debug)]
-struct SubcmpDeclInfo<'ctx> {
-    /// List of dimensions for arrays of subcomponents of the same type.
-    dimensions: Vec<Attribute<'ctx>>,
-    /// Name of the subcomponent type if it could be inferred during declaration.
-    decl_inferred_type: Option<String>,
-    /// Location of the declaration.
-    location: Location<'ctx>,
-    /// Instances of the subcomponent type.
-    instances: HashMap<Vec<LlzkAccess<'ctx>>, StructType<'ctx>>,
-}
-
-/// Newtype for implementing Hash in StructType.
-struct ST<'ctx>(StructType<'ctx>);
-
-impl PartialEq for ST<'_> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.to_raw().ptr == other.0.to_raw().ptr
-    }
-}
-
-impl Eq for ST<'_> {}
-
-impl std::hash::Hash for ST<'_> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.to_raw().ptr.hash(state);
-    }
 }
 
 /// Information collected from Declaration statements within a template that is used to setup LLZK
@@ -127,28 +66,27 @@ struct DeclarationInfo<'ctx> {
 impl<'ctx> DeclarationInfo<'ctx> {
     /// Completes the declaration information from the information collected from the
     /// subcomponents.
+    ///
+    /// Currently handles declaration of scalar subcomponents and array subcomponents of the same
+    /// type.
     fn complete(&mut self) {
         for (name, info) in &self.subcmp_decls {
-            let instances =
-                info.instances.iter().map(|(a, t)| (a.as_slice(), *t)).collect::<Vec<_>>();
+            let instances = info.instances();
             match instances.as_slice() {
                 [] => todo!("Handle uninitialized component decl"),
                 [([], t)] => self
                     .struct_fields
-                    .push(r#struct::field(info.location, name, *t, false, false).map(Into::into)),
+                    .push(r#struct::field(info.location(), name, *t, false, false).map(Into::into)),
                 instances => {
-                    let types = instances.iter().map(|(_, t)| ST(*t)).collect::<HashSet<_>>();
+                    let types = unique_instance_types(instances);
                     if types.len() > 1 {
                         todo!("Handle array subcomponents")
                     }
                     self.struct_fields.push(
                         r#struct::field(
-                            info.location,
+                            info.location(),
                             name,
-                            ArrayType::new(
-                                types.into_iter().next().unwrap().0.into(),
-                                &info.dimensions,
-                            ),
+                            ArrayType::new(types[0].into(), info.dimensions()),
                             false,
                             false,
                         )
@@ -245,7 +183,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 let direct_access = access.iter().all(LlzkAccess::is_direct);
                 let mut double_assign = false;
                 self.subcmp_decls.entry(var.clone()).and_modify(|info| {
-                    double_assign = info.instances.insert(access, struct_type).is_some();
+                    double_assign = info.instances_mut().insert(access, struct_type).is_some();
                 });
                 // Only emit the double assignment error if the access path was direct.
                 // To avoid reporting cases like `a[n]`.
@@ -294,12 +232,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
             .subcmp_decls
             .insert(
                 name.to_owned(),
-                SubcmpDeclInfo {
-                    dimensions: Self::try_dimensions_to_attrs(codegen, dimensions)?,
-                    decl_inferred_type: meta.component_inference.clone(),
-                    location,
-                    instances: Default::default(),
-                },
+                SubcmpDeclInfo::new(Self::try_dimensions_to_attrs(codegen, dimensions)?, location),
             )
             .is_some()
         {

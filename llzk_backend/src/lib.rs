@@ -12,6 +12,7 @@ mod function;
 mod gen_context;
 mod module;
 mod shared;
+mod subcmp;
 mod template;
 
 pub use codegen::generate_llzk;
