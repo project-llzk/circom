@@ -27,8 +27,10 @@ use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::StructType;
+use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
+use melior::ir::Type;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
@@ -922,20 +924,50 @@ where
             Expression::Call { meta, id, args, .. } => {
                 let location = codegen.location_from_meta(meta);
                 if meta.get_type_knowledge().is_component() {
-                    template.and_then_same(|fc, _| {
-                        // Generate an undef operation that will get converted to calls to
-                        // `@compute` and `@constrain`
-                        // TODO: Generate here the call to @compute and @constrain.
-                        // Passing undefs to the methods. These undefs get associated with the
-                        // signals of the subcomponent s.t. when we encounter an assignment
-                        // to one of the signals we replace the undef with the actual value,
-                        // similar to how we do for variables assignment.
-                        //
-                        fc.append_op_unnamed_result(undef::undef(
-                            location,
-                            struct_type_with_concrete_dimensions(codegen, id, args)?.into(),
-                        ))
-                    })
+                    let subcmp_type = struct_type_with_concrete_dimensions(codegen, id, args)?;
+                    let arg_types: Vec<Type<'_>> = vec![subcmp_type.into()];
+                    // Undefs have unknown locations at creation and we set it when we encounters
+                    // the corresponding write.
+                    let unk = Location::unknown(&codegen.context);
+                    let builder = OpBuilder::new(codegen.context);
+
+                    // Generate here the call to @compute and @constrain.
+                    // Passing undefs to the methods. These undefs get associated with the
+                    // signals of the subcomponent s.t. when we encounter an assignment
+                    // to one of the signals we replace the undef with the actual value,
+                    // similar to how we do for variables assignment.
+                    template.and_then(
+                        |fc, _| {
+                            let undefs = gen_arg_undefs(&arg_types[1..], unk, fc)?;
+                            fc.append_op_unnamed_result(
+                                function::call(
+                                    &builder,
+                                    location,
+                                    SymbolRefAttribute::new(codegen.context, id, &["compute"]),
+                                    &undefs,
+                                    &[subcmp_type],
+                                )?
+                                .into(),
+                            )
+                        },
+                        |fc, _| {
+                            let undefs = gen_arg_undefs(&arg_types, unk, fc)?;
+                            let empty_result: [Type<'ctx>; 0] = [];
+                            fc.append_op_no_result(
+                                function::call(
+                                    &builder,
+                                    location,
+                                    SymbolRefAttribute::new(codegen.context, id, &["constrain"]),
+                                    &undefs,
+                                    &empty_result,
+                                )?
+                                .into(),
+                            )?;
+                            // Return the reference to the subcomponent to match the result of
+                            // compute.
+                            Ok(undefs[0])
+                        },
+                    )
                 } else {
                     let builder = OpBuilder::new(codegen.context.deref());
                     // Visit each argument and collect the resulting LLZK Values for both functions.
@@ -998,4 +1030,14 @@ fn build_access_chain<'ctx, 'val, 'func, 'blk>(
             todo!("Generate array write operation in template")
         }
     })
+}
+
+#[inline]
+/// Generates a list of undef ops inside the given function context.
+fn gen_arg_undefs<'ctx: 'func, 'func: 'blk, 'blk: 'val, 'val>(
+    args: &[Type<'ctx>],
+    loc: Location<'ctx>,
+    fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+) -> Result<Vec<Value<'ctx, 'val>>> {
+    args.iter().copied().map(|t| fc.append_op_unnamed_result(undef::undef(loc, t))).collect()
 }
