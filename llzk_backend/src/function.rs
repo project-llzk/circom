@@ -1007,8 +1007,8 @@ where
                 let call_operands = args
                     .iter()
                     .map(|arg| {
-                        // TODO: Non-felt integers need to be converted to felt here,
-                        // as functions currently only accept felt.type arguments.
+                        // TODO: As mentioned in `gen_llzk()` for `FunctionData`, functions could also take
+                        // array type parameters but that is not currently implemented.
                         let operand_val = arg.gen_llzk_in_function(codegen, function)?;
                         if !is_felt(operand_val.r#type()) {
                             function.append_op_unnamed_result(cast::tofelt(location, operand_val))
