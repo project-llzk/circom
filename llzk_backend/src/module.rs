@@ -1,5 +1,5 @@
 //! Handles the top-level constructs (i.e. circom templates and functions), by delegating
-//! to the [function] and [template] modules to generate the code for each.
+//! to the [crate::function] and [crate::template] modules to generate the code for each.
 
 use crate::function::FunctionContext;
 use crate::function::GenerateLLZKInFunction as _;

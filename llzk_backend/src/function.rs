@@ -1,7 +1,7 @@
 //! Handles function-level LLZK code generation for both free functions and functions within
-//! structs. The [function::FunctionContext] carries information about the current LLZK function
+//! structs. The [FunctionContext] carries information about the current LLZK function
 //! being generated and some helpers related to generating code within the function. The
-//! [function::GenerateLLZKInFunction] trait provides the visitor to generate LLZK IR for all circom
+//! [GenerateLLZKInFunction] trait provides the visitor to generate LLZK IR for all circom
 //! [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
 //! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes.
 
@@ -10,6 +10,7 @@ use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::shared::erase_op;
 use crate::shared::get_function_type_attribute;
+use crate::shared::is_bool;
 use crate::shared::is_scf_yield;
 use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
@@ -19,6 +20,7 @@ use crate::shared::{self};
 use anyhow::anyhow;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
+use llzk::dialect::cast;
 use llzk::prelude::bool;
 use llzk::prelude::felt;
 use llzk::prelude::function;
@@ -111,7 +113,7 @@ where
             block_ctx.declare_name_if_not_present(VAR_NAME_NO_RETURN, || {
                 codegen.new_nondet_at_location(
                     Location::unknown(codegen.context),
-                    IntegerType::new(codegen.context, 1).into(),
+                    codegen.bool_type().into(),
                 )
             })?;
         }
@@ -172,6 +174,14 @@ where
         op: &ExpressionPrefixOpcode,
         rhs: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
+        let mut get_negative_idx = || {
+            let zero = self.append_op_unnamed_result(index::constant(
+                codegen.context,
+                IntegerAttribute::new(rhs.r#type(), 0),
+                codegen.location_from_meta(meta),
+            ))?;
+            self.append_op_unnamed_result(index::sub(zero, rhs, codegen.location_from_meta(meta)))
+        };
         match op {
             ExpressionPrefixOpcode::Sub => {
                 if shared::is_felt(rhs.r#type()) {
@@ -182,16 +192,7 @@ where
                 }
                 // For index negation, we need to subtract from zero.
                 if shared::is_index(rhs.r#type()) {
-                    let zero = self.append_op_unnamed_result(index::constant(
-                        codegen.context,
-                        IntegerAttribute::new(rhs.r#type(), 0),
-                        codegen.location_from_meta(meta),
-                    ))?;
-                    return self.append_op_unnamed_result(index::sub(
-                        zero,
-                        rhs,
-                        codegen.location_from_meta(meta),
-                    ));
+                    return get_negative_idx();
                 }
             }
             ExpressionPrefixOpcode::BoolNot => {
@@ -203,9 +204,27 @@ where
                 }
             }
             ExpressionPrefixOpcode::Complement => {
-                // This op is defined as:
-                // Complement to the number of bits of the prime number.
-                todo!("Handle complement prefix op")
+                if shared::is_felt(rhs.r#type()) {
+                    return self.append_op_unnamed_result(felt::bit_not(
+                        codegen.location_from_meta(meta),
+                        rhs,
+                    )?);
+                }
+                // For index negation, we need to subtract one from the negative
+                // value (for the identity that `~x == -x - 1`).
+                if shared::is_index(rhs.r#type()) {
+                    let negative_idx = get_negative_idx()?;
+                    let one = self.append_op_unnamed_result(index::constant(
+                        codegen.context,
+                        IntegerAttribute::new(rhs.r#type(), 1),
+                        codegen.location_from_meta(meta),
+                    ))?;
+                    return self.append_op_unnamed_result(index::sub(
+                        negative_idx,
+                        one,
+                        codegen.location_from_meta(meta),
+                    ));
+                }
             }
         }
         let err_msg = format!(
@@ -226,10 +245,11 @@ where
         rhs_type_filter: impl FnOnce(Type) -> bool,
         lhs: Value<'ctx, 'val>,
         rhs: Value<'ctx, 'val>,
-        op_gen_fn: impl FnOnce() -> Result<Operation<'ctx>>,
+        op_gen_fn: impl FnOnce(&mut Self) -> Result<Operation<'ctx>>,
     ) -> Result<Option<Value<'ctx, 'val>>> {
         if lhs_type_filter(lhs.r#type()) && rhs_type_filter(rhs.r#type()) {
-            self.append_op_unnamed_result(op_gen_fn()?).map(Option::Some)
+            let op_res = op_gen_fn(self)?;
+            self.append_op_unnamed_result(op_res).map(Option::Some)
         } else {
             Ok(None)
         }
@@ -257,7 +277,7 @@ where
 
         macro_rules! generic_op_callback {
             ($op_path:path) => {{
-                || {
+                |_| {
                     let loc = codegen.location_from_meta(meta);
                     $op_path(loc, lhs, rhs).map_err(Into::into)
                 }
@@ -278,7 +298,7 @@ where
 
         macro_rules! try_index_op {
             ($op_path:path) => {{
-                try_callback_for_type!(shared::is_index, || {
+                try_callback_for_type!(shared::is_index, |_| {
                     let loc = codegen.location_from_meta(meta);
                     Ok($op_path(lhs, rhs, loc))
                 });
@@ -287,7 +307,7 @@ where
 
         macro_rules! try_math_op {
             ($op_path:path) => {{
-                try_callback_for_type!(shared::is_index, || {
+                try_callback_for_type!(shared::is_index, |_| {
                     let loc = codegen.location_from_meta(meta);
                     Ok(Operation::from($op_path(codegen.context, lhs, rhs, loc)))
                 });
@@ -315,7 +335,7 @@ where
         macro_rules! try_bool_cmp_op {
             ($bool_op:path, $cmp:ident) => {{
                 try_felt_op!($bool_op);
-                try_callback_for_type!(shared::is_index, || {
+                try_callback_for_type!(shared::is_index, |_| {
                     let loc = codegen.location_from_meta(meta);
                     Ok(index::cmp(codegen.context, arith::CmpiPredicate::$cmp, lhs, rhs, loc))
                 });
@@ -336,7 +356,21 @@ where
                 try_felt_or_index_op!(felt::div, index::divu);
             }
             ExpressionInfixOpcode::IntDiv => {
-                todo!("Handle IntDiv infix op")
+                // Need `this` to append required preceding ops. The final
+                // result is appended via the macro.
+                try_callback_for_type!(shared::is_felt, |this| {
+                    // Perform integer division by casting to integer, using arith dialect
+                    // divui, then casting the quotient back to felt. Cast to an integer type
+                    // with sufficient bits to hold the felts without truncation.
+                    let int_ty = IntegerType::new(codegen.context, codegen.prime_field_bits()?);
+                    let loc = codegen.location_from_meta(meta);
+                    let int_lhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, lhs))?;
+                    let int_rhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, rhs))?;
+                    let quotient =
+                        this.append_op_unnamed_result(arith::divui(int_lhs, int_rhs, loc))?;
+                    Ok(cast::tofelt(loc, quotient).into())
+                });
+                try_index_op!(index::divu);
             }
             ExpressionInfixOpcode::Mod => {
                 try_felt_or_index_op!(felt::r#mod, index::remu);
@@ -392,6 +426,81 @@ where
         );
         codegen.emit_circom_error(meta, err_msg.as_str(), ReportCode::InfixOperatorWithWrongTypes);
         Err(anyhow!(err_msg))
+    }
+
+    /// Generate an `scf.if` op based on the given [NestedBlockInfo] for each branch and update the
+    /// block context with the results of the `scf.if` op mapped to the given names.
+    pub fn gen_scf_if<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        location: Location<'ctx>,
+        condition: Value<'ctx, 'val>,
+        mut then_info: NestedBlockInfo<'ctx, 'blk, 'val>,
+        else_info: NestedBlockInfo<'ctx, 'blk, 'val>,
+    ) -> Result<()> {
+        // Ensure both blocks will yield the same set of variables.
+        then_info.add_missing_values(&else_info, self)?;
+
+        // Split `then_block_info.var_overwrites` into ordered lists of names and values. The
+        // ordering of names here defines the ordering of results from the `scf.if` op and
+        // thus the ordering of operands to `scf.yield` ops in both branches. Sort by circom
+        // variable names to ensure a stable order.
+        let mut overwrites_sorted: Vec<_> = then_info.var_overwrites.into_iter().collect();
+        overwrites_sorted.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
+        let (overwrite_names, then_values): (Vec<_>, Vec<_>) =
+            overwrites_sorted.into_iter().unzip();
+
+        // Create list of values to yield from the `else` block in the same order
+        // as `overwrite_names`, again using current-scope values for missing keys.
+        let else_values = overwrite_names
+            .iter()
+            .map(|name| {
+                else_info
+                    .var_overwrites
+                    .get(name)
+                    .map_or_else(|| self.block_ctx.get_named_value(name).cloned(), |v| Ok(*v))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Insert `scf.yield` at the end of each block.
+        no_results(then_info.block.append_operation(scf::r#yield(&then_values, location)))?;
+        no_results(else_info.block.append_operation(scf::r#yield(&else_values, location)))?;
+
+        // Use `overwrite_names` and the current block context to get the types of
+        // the named values to define the result types of the `scf.if` op.
+        let result_types = overwrite_names
+            .iter()
+            .map(|name| {
+                self.block_ctx
+                    .get_named_value(name)
+                    .inspect_err(|e| eprintln!("\nERROR: {:?}", e))
+                    .map(|v| v.r#type())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Cast condition value to bool type if needed.
+        let condition = if !is_bool(condition.r#type()) {
+            self.append_op_unnamed_result(
+                cast::toint(location, codegen.bool_type(), condition).into(),
+            )?
+        } else {
+            condition
+        };
+        // Generate the `scf.if` op for the circom `IfThenElse` statement.
+        let scf_if_op = self.append_op(scf::r#if(
+            condition,
+            &result_types,
+            then_info.region,
+            else_info.region,
+            location,
+        ));
+
+        // Update the current block context with results from the `scf.if` op.
+        overwrite_names
+            .into_iter()
+            .zip(scf_if_op.results())
+            .try_for_each(|(name, result)| self.block_ctx.set_named_value(name, result.into()))?;
+        Ok(())
     }
 }
 
@@ -541,6 +650,7 @@ where
 
 /// Helper for [gen_if_then_else] to mangage the special return-related variables needed
 /// when a circom [Statement::IfThenElse] contains a return statement.
+#[allow(clippy::too_many_arguments)]
 fn handle_early_return<'ast, 'ctx, 'func, 'blk, 'val>(
     codegen: &LlzkCodegen<'ast, 'ctx>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
@@ -636,7 +746,7 @@ fn gen_if_then_else<'ast, 'ctx, 'func, 'blk, 'val>(
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
-    if_case: &Box<Statement>,
+    if_case: &Statement,
     else_case: &Option<Box<Statement>>,
 ) -> Result<()>
 where
@@ -703,69 +813,7 @@ where
         )?;
     }
 
-    // Update `then_block_info.var_overwrites` to ensure it has all keys from
-    // `else_block_info.var_overwrites`, using current-scope values for missing keys. This
-    // ensures that both blocks will yield the same set of variables.
-    for name in else_info.var_overwrites.keys() {
-        if !then_info.var_overwrites.contains_key(name) {
-            then_info
-                .var_overwrites
-                .insert(name.clone(), *function.block_ctx.get_named_value(name)?);
-        }
-    }
-
-    // Split `then_block_info.var_overwrites` into ordered lists of names and values. The ordering
-    // of names here defines the ordering of results from the `scf.if` op and thus the ordering
-    // of operands to `scf.yield` ops in both branches. Sort by circom variable names to ensure
-    // a stable order.
-    let mut overwrites_sorted: Vec<_> = then_info.var_overwrites.into_iter().collect();
-    overwrites_sorted.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
-    let (overwrite_names, then_values): (Vec<_>, Vec<_>) = overwrites_sorted.into_iter().unzip();
-
-    // Insert `scf.yield` at the end of the `then` block.
-    no_results(then_info.block.append_operation(scf::r#yield(&then_values, location)))?;
-
-    // Create list of values to yield from the `else` block in the same order
-    // as `overwrite_names`, again using current-scope values for missing keys.
-    let else_values = overwrite_names
-        .iter()
-        .map(|name| {
-            else_info
-                .var_overwrites
-                .get(name)
-                .map_or_else(|| function.block_ctx.get_named_value(name).cloned(), |v| Ok(*v))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    // Insert `scf.yield` at the end of the `else` block.
-    no_results(else_info.block.append_operation(scf::r#yield(&else_values, location)))?;
-
-    // Use the `overwrite_names` and the current block context to get the types of the named values
-    // to define the result types of the `scf.if` op. Then generate the `scf.if` op itself for
-    // the circom `IfThenElse` statement.
-    let result_types = overwrite_names
-        .iter()
-        .map(|name| {
-            function
-                .block_ctx
-                .get_named_value(name)
-                .inspect_err(|e| eprintln!("\nERROR: {:?}", e))
-                .map(|v| v.r#type())
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    let scf_if_op = function.append_op(scf::r#if(
-        condition,
-        &result_types,
-        then_info.region,
-        else_info.region,
-        location,
-    ));
-
-    // Update the current block context with results from the `scf.if` op.
-    overwrite_names
-        .into_iter()
-        .zip(scf_if_op.results())
-        .try_for_each(|(name, result)| function.block_ctx.set_named_value(name, result.into()))?;
+    function.gen_scf_if(codegen, location, condition, then_info, else_info)?;
 
     // Finally, if both blocks ended with a return, then add a new return here. Else, if
     // only one block returned, the code following the `scf.if` needs to be wrapped in

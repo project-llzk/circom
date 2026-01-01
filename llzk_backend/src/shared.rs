@@ -68,9 +68,26 @@ pub struct LlzkCodegen<'ast, 'ctx> {
     pub context: &'ctx LlzkContext,
     /// The generated LLZK `Module`.
     pub module: Module<'ctx>,
+    /// The name of the prime field.
+    pub prime: &'ctx str,
 }
 
 impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
+    /// Get the width of the prime field in bits.
+    pub fn prime_field_bits(&self) -> Result<u32> {
+        match self.prime {
+            "bn128" => Ok(254),
+            "bls12381" => Ok(381),
+            "goldilocks" => Ok(64),
+            "grumpkin" => Ok(254),
+            "pallas" => Ok(254),
+            "vesta" => Ok(255),
+            "secq256r1" => Ok(256),
+            "bls12377" => Ok(377),
+            _ => Err(anyhow!("Unsupported prime field: {}", self.prime)),
+        }
+    }
+
     /// Emit a circom-style warning.
     pub fn emit_circom_warning(&self, meta: &Meta, message: &str, code: ReportCode) {
         let mut report = Report::warning(String::from(message), code);
@@ -210,6 +227,12 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         self.new_nondet_felt_of_dimensions_at_location(self.location_from_meta(meta), dimensions)
     }
 
+    /// Get the boolean type (`i1`).
+    #[inline]
+    pub fn bool_type(&self) -> IntegerType<'ctx> {
+        IntegerType::new(self.context, 1)
+    }
+
     /// Run cleanup passes on the generated `Module`.
     pub fn run_passes(&mut self, pass_pipeline: &str) -> Result<()> {
         if pass_pipeline.is_empty() {
@@ -247,6 +270,8 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
     }
 
     /// Write the generated `Module` to a file in bytecode format.
+    /// TODO: currently unused, silencing repeated warning via attribute.
+    #[expect(dead_code)]
     pub fn write_bytecode_to_file(self, filename: &str) -> Result<()> {
         unsafe extern "C" fn callback(string_ref: mlir_sys::MlirStringRef, user_data: *mut c_void) {
             let file = &mut *(user_data as *mut File);
