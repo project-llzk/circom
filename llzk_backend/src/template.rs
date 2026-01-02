@@ -600,6 +600,71 @@ where
     })
 }
 
+/// Generate LLZK code for a circom [Statement::While].
+fn gen_while<'ast, 'ctx, 'str, 'func, 'blk, 'val, 'r>(
+    codegen: &LlzkCodegen<'ast, 'ctx>,
+    template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+    meta: &Meta,
+    cond: &Expression,
+    body_stmt: &Box<Statement>,
+) -> Result<()>
+where
+    'ctx: 'str,
+    'str: 'func,
+    'func: 'blk,
+    'blk: 'val,
+    'val: 'r,
+{
+    let mut template = template; // satisfy the &mut in `GenWithCircomScopeHandling`
+
+    // Generate the loop condition (i.e. "before") and body (i.e. "after") blocks naively.
+    let mut loop_cond_info = TemplateFuncPair::new(template);
+    let cond_result = template.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        loop_cond_info.block(),
+        |template| cond.gen_llzk_in_template(codegen, template),
+        &mut loop_cond_info,
+    )?;
+    let mut loop_body_info = TemplateFuncPair::new(template);
+    template.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        loop_body_info.block(),
+        |template| body_stmt.gen_llzk_in_template(codegen, template),
+        &mut loop_body_info,
+    )?;
+
+    // Create a GenResult that encapsulates both `loop_body_info` and `loop_cond_info` and
+    // then call the function to generate the `scf.while` loop in both functions.
+    let cond_and_body = {
+        let r_compute = cond_result.compute_res;
+        let r_constrain = cond_result.constrain_res;
+        let c_compute = loop_cond_info.compute;
+        let c_constrain = loop_cond_info.constrain;
+        let b_compute = loop_body_info.compute;
+        let b_constrain = loop_body_info.constrain;
+        // The unwraps are safe since these GenResult and TemplateFuncPair instances
+        // were created from the same `TemplateContext` used for `map()` below.
+        GenResult {
+            template,
+            compute_res: template
+                .compute
+                .as_ref()
+                .map(|_| (r_compute.unwrap(), c_compute.unwrap(), b_compute.unwrap())),
+            constrain_res: template
+                .constrain
+                .as_ref()
+                .map(|_| (r_constrain.unwrap(), c_constrain.unwrap(), b_constrain.unwrap())),
+        }
+    };
+    cond_and_body.and_then_same(|fc, (condition, loop_cond_info, loop_body_info)| {
+        fc.gen_scf_while(
+            codegen,
+            codegen.location_from_meta(meta),
+            condition,
+            loop_cond_info,
+            loop_body_info,
+        )
+    })
+}
+
 /// Insert cast operations as needed to make `lhs` and `rhs` have compatible types for equality
 /// constraints.
 fn unify_constrain_eq_types<'ctx, 'func, 'blk, 'val>(
@@ -807,9 +872,7 @@ where
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
                 gen_if_then_else(codegen, template, meta, cond, if_case, else_case)
             }
-            Statement::While { meta, cond, stmt } => {
-                todo!("Handle while statement in template")
-            }
+            Statement::While { meta, cond, stmt } => gen_while(codegen, template, meta, cond, stmt),
             Statement::Assert { meta, arg } => {
                 arg.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, val| {
                     fc.append_op_no_result(
@@ -863,6 +926,8 @@ where
         'val: 'r,
     {
         template.and_then_same(|fc, _| {
+            // The import is here rather than top level because it is very important that
+            // `gen_llzk_in_function()` is not used while translating statements.
             use crate::function::GenerateLLZKInFunction;
             self.gen_llzk_in_function(codegen, fc)
         })

@@ -15,6 +15,7 @@ use crate::shared::is_felt;
 use crate::shared::is_scf_yield;
 use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
+use crate::shared::replace_all_uses_in_block_with;
 use crate::shared::single_result_as_value;
 use crate::shared::LlzkCodegen;
 use crate::shared::{self};
@@ -556,6 +557,93 @@ where
             else_region,
             location,
         ))
+    }
+
+    /// Generate an `scf.while` op based on the given [NestedBlockInfo] and update the
+    /// block context with the results of the `scf.while` op mapped to the given names.
+    pub fn gen_scf_while<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        location: Location<'ctx>,
+        condition: Value<'ctx, 'val>,
+        loop_cond_info: NestedBlockInfo<'ctx, 'blk, 'val>,
+        loop_body_info: NestedBlockInfo<'ctx, 'blk, 'val>,
+    ) -> Result<()> {
+        // ASSERT: loop condition was a single Expression so there are no variable overwrites.
+        assert!(loop_cond_info.var_overwrites.is_empty());
+
+        // Split `loop_body_info.var_overwrites` into ordered lists of names and values. The
+        // ordering of names here defines the ordering of the loop-carried variables for the
+        // `scf.while` op and thus the ordering of operands for the `scf.yield` and
+        // `scf.condition` ops. Sort by circom variable names to ensure a stable order.
+        let mut overwrites_sorted: Vec<_> = loop_body_info.var_overwrites.into_iter().collect();
+        overwrites_sorted.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
+        let (loop_carried_var_names, body_yield_values): (Vec<_>, Vec<_>) =
+            overwrites_sorted.into_iter().unzip();
+
+        // Append the loop body block with an `scf.yield`
+        no_results(
+            loop_body_info.block.append_operation(scf::r#yield(&body_yield_values, location)),
+        )?;
+
+        // Use `loop_carried_var_names` and the current block context to build a list of types of
+        // the loop-carried variables, add BlockArguments of those types in both blocks, and
+        // replace uses of the overwritten variables in both blocks with references to the new
+        // BlockArguments Values.
+        let mut loop_carried_types = Vec::new();
+        for name in loop_carried_var_names.iter() {
+            let orig_val = self.block_ctx.get_named_value(name).unwrap();
+            let val_type = orig_val.r#type();
+            loop_carried_types.push(val_type);
+            let a = loop_cond_info.block.add_argument(val_type, location);
+            replace_all_uses_in_block_with(loop_cond_info.block, orig_val, a);
+            let b = loop_body_info.block.add_argument(val_type, location);
+            replace_all_uses_in_block_with(loop_body_info.block, orig_val, b);
+        }
+
+        // In the loop condition block, ensure the condition has bool type and generate an
+        // `scf.condition` op with the condition value and the loop-carried variables.
+        {
+            let condition = if !is_bool(condition.r#type()) {
+                single_result_as_value(loop_cond_info.block.append_operation(
+                    cast::toint(location, codegen.bool_type(), condition).into(),
+                ))?
+            } else {
+                condition
+            };
+            // Pass the block arguments as the initial values to the condition op.
+            let block_arg_values = (0..loop_cond_info.block.argument_count())
+                .map(|i| loop_cond_info.block.argument(i).map_err(Into::into).map(Value::from))
+                .collect::<Result<Vec<Value>>>()?;
+            no_results(loop_cond_info.block.append_operation(scf::condition(
+                condition,
+                &block_arg_values,
+                location,
+            )))?;
+        }
+
+        // Create list of initial values of the loop-carried variables (i.e. the overwritten
+        // variables, in the order of `loop_carried_var_names`) to pass into the `scf.while`.
+        let initial_values = loop_carried_var_names
+            .iter()
+            .map(|name| self.block_ctx.get_named_value(name).cloned())
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Generate the `scf.while` op for the circom `While` statement.
+        let scf_op = self.append_op(scf::r#while(
+            &initial_values,
+            &loop_carried_types,
+            loop_cond_info.region,
+            loop_body_info.region,
+            location,
+        ));
+
+        // Update the current block context with results from the `scf.while` op.
+        loop_carried_var_names
+            .into_iter()
+            .zip(scf_op.results())
+            .try_for_each(|(name, result)| self.block_ctx.set_named_value(name, result.into()))?;
+        Ok(())
     }
 }
 
