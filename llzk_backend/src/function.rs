@@ -11,6 +11,7 @@ use crate::gen_context::NestedBlockInfo;
 use crate::shared::erase_op;
 use crate::shared::get_function_type_attribute;
 use crate::shared::is_bool;
+use crate::shared::is_felt;
 use crate::shared::is_scf_yield;
 use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
@@ -502,6 +503,58 @@ where
             .zip(scf_if_op.results())
             .try_for_each(|(name, result)| self.block_ctx.set_named_value(name, result.into()))?;
         Ok(())
+    }
+
+    /// Generate one region for either the then-arm or else-arm of a simple scf.if operation.
+    /// Used by [generate_simple_scf_if].
+    /// The `value_gen` function is called to generate the value to be yielded from the arm.
+    fn generate_simple_scf_if_arm<'ast, F>(
+        &mut self,
+        location: Location<'ctx>,
+        value_gen: F,
+    ) -> Result<(Region<'ctx>, Value<'ctx, 'val>)>
+    where
+        F: FnOnce(&mut Self) -> Result<Value<'ctx, 'val>>,
+    {
+        let region = Region::new();
+        let block = region.append_block(Block::new(&[]));
+        self.block_ctx.push(block);
+        let arm_val = value_gen(self)?;
+        self.block_ctx.pop();
+        block.append_operation(scf::r#yield(&[arm_val], location));
+        Ok((region, arm_val))
+    }
+
+    /// Generate a simple scf.if operation that yields the given `then_value` or `else_value`
+    /// depending on the `condition` value. Unlike [gen_scf_if], this assumes that the
+    /// then and else arms do not modify the current block context and only produce values.
+    pub fn generate_simple_scf_if<'ast, F1, F2>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        meta: &Meta,
+        condition: Value<'ctx, 'val>,
+        then_value_gen: F1,
+        else_value_gen: F2,
+    ) -> Result<Operation<'ctx>>
+    where
+        F1: FnOnce(&mut Self) -> Result<Value<'ctx, 'val>>,
+        F2: FnOnce(&mut Self) -> Result<Value<'ctx, 'val>>,
+    {
+        let location = codegen.location_from_meta(meta);
+
+        let (then_region, then_value) =
+            self.generate_simple_scf_if_arm(location, then_value_gen)?;
+        let (else_region, else_value) =
+            self.generate_simple_scf_if_arm(location, else_value_gen)?;
+
+        // Ensure then_value and else_value have the same types
+        assert_eq!(
+            then_value.r#type(),
+            else_value.r#type(),
+            "then and else branches of scf.if must have matching value types"
+        );
+
+        Ok(scf::r#if(condition, &[then_value.r#type()], then_region, else_region, location))
     }
 
     /// Generate an `scf.while` op based on the given [NestedBlockInfo] and update the
@@ -1050,7 +1103,23 @@ where
                 function.gen_prefix_op(codegen, meta, prefix_op, rhs)
             }
             Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                todo!("Handle InlineSwitchOp expression")
+                let location = codegen.location_from_meta(meta);
+                // Ensure the condition is a bool type.
+                let cond_val = match cond.gen_llzk_in_function(codegen, function)? {
+                    v if is_bool(v.r#type()) => v,
+                    v => function.append_op_unnamed_result(
+                        cast::toint(location, codegen.bool_type(), v).into(),
+                    )?,
+                };
+                let scf_if_op = function.generate_simple_scf_if(
+                    codegen,
+                    meta,
+                    cond_val,
+                    |fc| Ok(if_true.gen_llzk_in_function(codegen, fc)?),
+                    |fc| Ok(if_false.gen_llzk_in_function(codegen, fc)?),
+                )?;
+
+                function.append_op_unnamed_result(scf_if_op)
             }
             Expression::ParallelOp { meta, rhe } => {
                 todo!("Handle ParallelOp expression")
@@ -1063,10 +1132,21 @@ where
             }
             Expression::Call { meta, id, args } => {
                 let builder = OpBuilder::new(codegen.context.deref());
+                let location = codegen.location_from_meta(meta);
                 // Visit each argument and collect the resulting LLZK Values for both functions.
                 let call_operands = args
                     .iter()
-                    .map(|arg| arg.gen_llzk_in_function(codegen, function))
+                    .map(|arg| {
+                        // TODO: As mentioned in `gen_llzk()` for `FunctionData`, functions could
+                        // also take array type parameters but that is not
+                        // currently implemented.
+                        let operand_val = arg.gen_llzk_in_function(codegen, function)?;
+                        if !is_felt(operand_val.r#type()) {
+                            function.append_op_unnamed_result(cast::tofelt(location, operand_val))
+                        } else {
+                            Ok(operand_val)
+                        }
+                    })
                     .collect::<Result<Vec<Value>>>()?;
                 // Create the CallOp in each function using the collected args.
 
@@ -1078,7 +1158,7 @@ where
                 function.append_op_unnamed_result(
                     function::call(
                         &builder,
-                        codegen.location_from_meta(meta),
+                        location,
                         FlatSymbolRefAttribute::new(codegen.context, id),
                         &call_operands,
                         return_types,
