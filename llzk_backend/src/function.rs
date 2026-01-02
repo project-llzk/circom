@@ -538,25 +538,23 @@ where
     ) -> Result<Operation<'ctx>>
     where
         F1: FnOnce(&mut Self) -> Result<Value<'ctx, 'val>>,
-        F2: FnOnce(&mut Self) -> Result<Value<'ctx, 'val>>, {
+        F2: FnOnce(&mut Self) -> Result<Value<'ctx, 'val>>,
+    {
         let location = codegen.location_from_meta(meta);
 
-        let (then_region, then_value) = self.generate_simple_scf_if_arm(location, then_value_gen)?;
-        let (else_region, else_value) = self.generate_simple_scf_if_arm(location, else_value_gen)?;
+        let (then_region, then_value) =
+            self.generate_simple_scf_if_arm(location, then_value_gen)?;
+        let (else_region, else_value) =
+            self.generate_simple_scf_if_arm(location, else_value_gen)?;
 
         // Ensure then_value and else_value have the same types
         assert_eq!(
-            then_value.r#type(), else_value.r#type(),
+            then_value.r#type(),
+            else_value.r#type(),
             "then and else branches of scf.if must have matching value types"
         );
 
-        Ok(scf::r#if(
-            condition,
-            &[then_value.r#type()],
-            then_region,
-            else_region,
-            location,
-        ))
+        Ok(scf::r#if(condition, &[then_value.r#type()], then_region, else_region, location))
     }
 
     /// Generate an `scf.while` op based on the given [NestedBlockInfo] and update the
@@ -1109,18 +1107,17 @@ where
                 // Ensure the condition is a bool type.
                 let cond_val = match cond.gen_llzk_in_function(codegen, function)? {
                     v if is_bool(v.r#type()) => v,
-                    v => {
-                        function.append_op_unnamed_result(
-                            cast::toint(location, codegen.bool_type(), v).into(),
-                        )?
-                    }
+                    v => function.append_op_unnamed_result(
+                        cast::toint(location, codegen.bool_type(), v).into(),
+                    )?,
                 };
-                let scf_if_op =
-                    function.generate_simple_scf_if(codegen, meta, cond_val, |fc| {
-                        Ok(if_true.gen_llzk_in_function(codegen, fc)?)
-                    }, |fc |{
-                        Ok(if_false.gen_llzk_in_function(codegen, fc)?)
-                    })?;
+                let scf_if_op = function.generate_simple_scf_if(
+                    codegen,
+                    meta,
+                    cond_val,
+                    |fc| Ok(if_true.gen_llzk_in_function(codegen, fc)?),
+                    |fc| Ok(if_false.gen_llzk_in_function(codegen, fc)?),
+                )?;
 
                 function.append_op_unnamed_result(scf_if_op)
             }
@@ -1140,8 +1137,9 @@ where
                 let call_operands = args
                     .iter()
                     .map(|arg| {
-                        // TODO: As mentioned in `gen_llzk()` for `FunctionData`, functions could also take
-                        // array type parameters but that is not currently implemented.
+                        // TODO: As mentioned in `gen_llzk()` for `FunctionData`, functions could
+                        // also take array type parameters but that is not
+                        // currently implemented.
                         let operand_val = arg.gen_llzk_in_function(codegen, function)?;
                         if !is_felt(operand_val.r#type()) {
                             function.append_op_unnamed_result(cast::tofelt(location, operand_val))
