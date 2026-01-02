@@ -10,17 +10,14 @@ use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::shared::is_felt;
-use crate::shared::new_felt_const_op;
 use crate::shared::LlzkCodegen;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
 use llzk::prelude::constrain;
-use llzk::prelude::function;
 use llzk::prelude::r#struct;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FeltType;
-use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::StructDefOpRefMut;
@@ -920,7 +917,6 @@ where
     where
         'val: 'r;
 
-    #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_template<'ast, 'r>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx>,
@@ -929,72 +925,11 @@ where
     where
         'val: 'r,
     {
-        match self {
-            Expression::Number(meta, big_int) => {
-                template.and_then_same(|fc, _| {
-                    // Convert the BigInt to an LLZK `felt.const` op. The user of the Expression is
-                    // responsible for converting this `felt.type` value to another type if needed.
-                    // This is done in both functions (if the result is unused in one, dce can
-                    // remove it).
-                    fc.append_op_unnamed_result(new_felt_const_op(codegen, meta, big_int)?)
-                })
-            }
-            Expression::Variable { meta, name, access } => match access.as_slice() {
-                [] => template.and_then_same(|fc, _| fc.block_ctx.get_named_value(name).copied()),
-                a => {
-                    todo!("Handle accesses in Variable expression in template")
-                }
-            },
-            Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                // Generate Value for both sides and then generate the infix op.
-                GenResultMultiVal::gen_exprs(template, codegen, [&**lhe, &**rhe])?.and_then_same(
-                    |fc, vals| fc.gen_infix_op(codegen, meta, infix_op, vals[0], vals[1]),
-                )
-            }
-            Expression::PrefixOp { meta, prefix_op, rhe } => {
-                // Generate Value for operand and then generate the prefix op.
-                rhe.gen_llzk_in_template(codegen, template)?
-                    .and_then_same(|fc, v| fc.gen_prefix_op(codegen, meta, prefix_op, v))
-            }
-            Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                todo!("Handle InlineSwitchOp expression in template")
-            }
-            Expression::ParallelOp { meta, rhe } => {
-                todo!("Handle ParallelOp expression in template")
-            }
-            Expression::ArrayInLine { meta, values } => {
-                todo!("Handle ArrayInLine expression in template")
-            }
-            Expression::UniformArray { meta, value, dimension } => {
-                todo!("Handle UniformArray expression in template")
-            }
-            Expression::Call { meta, id, args } => {
-                let builder = OpBuilder::new(codegen.context.deref());
-                // Visit each argument and collect the resulting LLZK Values for both functions.
-                let res = GenResultMultiVal::gen_exprs(template, codegen, args)?;
-                // Create the CallOp in each function using the collected args.
-                res.and_then_same(|fc, vals| {
-                    // TODO: Currently, the LLZK function will always return a `felt.type` but
-                    // eventually, this gen function may need an "expected result type"
-                    // parameter or use `poly.tvar` with function templates.
-                    let return_types = &[FeltType::new(codegen.context)];
-                    fc.append_op_unnamed_result(
-                        function::call(
-                            &builder,
-                            codegen.location_from_meta(meta),
-                            FlatSymbolRefAttribute::new(codegen.context, id),
-                            &vals,
-                            return_types,
-                        )?
-                        .into(),
-                    )
-                })
-            }
-            Expression::BusCall { meta, id, args } => {
-                todo!("Handle BusCall expression in template")
-            }
-            Expression::AnonymousComp { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
-            Expression::Tuple { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
-        }
+        template.and_then_same(|fc, _| {
+            // The import is here rather than top level because it is very important that
+            // `gen_llzk_in_function()` is not used while translating statements.
+            use crate::function::GenerateLLZKInFunction;
+            self.gen_llzk_in_function(codegen, fc)
+        })
     }
 }
