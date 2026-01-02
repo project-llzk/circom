@@ -863,6 +863,8 @@ where
         'val: 'r,
     {
         template.and_then_same(|fc, _| {
+            // The import is here rather than top level because it is very important that
+            // `gen_llzk_in_function()` is not used while translating statements.
             use crate::function::GenerateLLZKInFunction;
             self.gen_llzk_in_function(codegen, fc)
         })
