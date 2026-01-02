@@ -57,7 +57,7 @@ component main = Fibonacci();
 // CHECK-NEXT:            %[[VAL_26:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:            scf.yield %[[VAL_26]] : !felt.type
 // CHECK-NEXT:          } else {
-// CHECK-NEXT:            %[[VAL_27:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_28:[0-9a-zA-Z_\.]+]]#0, %[[VAL_28]]#1 : !felt.type, !felt.type
+// CHECK-NEXT:            %[[VAL_27:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_5]]#0, %[[VAL_5]]#1 : !felt.type, !felt.type
 // CHECK-NEXT:            scf.yield %[[VAL_27]] : !felt.type
 // CHECK-NEXT:          }
 // CHECK-NEXT:          scf.yield %[[VAL_25]] : !felt.type
