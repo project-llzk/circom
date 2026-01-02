@@ -31,13 +31,13 @@ fn start() -> Result<(), ()> {
     if user_input.dump_parse_flag() {
         write_to_file(format!("{:#?}", program_archive), user_input.dump_parse_file())?;
     }
-    // Generate LLZK IR output if requested
-    if user_input.llzk_flag() {
+    // If requested, generate LLZK IR output with generic templates
+    if Some(crate::input_user::LLZK_KIND_TEMPLATED) == user_input.llzk_flag().as_deref() {
         return llzk_backend::generate_llzk(
             &program_archive,
             user_input.llzk_file(),
             &user_input.llzk_pass_pipeline(),
-            &user_input.prime()
+            &user_input.prime(),
         );
     }
 
@@ -60,6 +60,17 @@ fn start() -> Result<(), ()> {
         prime: user_input.prime(),        
     };
     let circuit = execution_user::execute_project(program_archive, config)?;
+
+    // If requested, generate LLZK IR output after templates have been made concrete
+    if Some(crate::input_user::LLZK_KIND_CONCRETE) == user_input.llzk_flag().as_deref() {
+        return llzk_backend::generate_llzk(
+            &circuit,
+            user_input.llzk_file(),
+            &user_input.llzk_pass_pipeline(),
+            &user_input.prime(),
+        );
+    }
+
     let compilation_config = CompilerConfig {
         vcp: circuit,
         debug_output: user_input.print_ir_flag(),

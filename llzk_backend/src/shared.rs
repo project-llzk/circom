@@ -1,5 +1,6 @@
 //! Shared code generation utilities.
 
+use crate::module::ProgramLike;
 use ansi_term::Color;
 use anyhow::anyhow;
 use anyhow::Result;
@@ -47,7 +48,6 @@ use program_structure::error_code::ReportCode;
 use program_structure::error_definition::Report;
 use program_structure::file_definition::FileID;
 use program_structure::file_definition::FileLocation;
-use program_structure::program_archive::ProgramArchive;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto as _;
@@ -62,9 +62,10 @@ use std::path::Path;
 ///
 /// 'ast: lifetime of the circom AST element
 /// 'ctx: lifetime of the `LlzkContext` and generated `Module`
-pub struct LlzkCodegen<'ast, 'ctx> {
+#[derive(Debug)]
+pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     /// The circom program AST.
-    pub program_archive: &'ast ProgramArchive,
+    pub program: &'ast P,
     /// The LLZK (and MLIR) context.
     pub context: &'ctx LlzkContext,
     /// The generated LLZK `Module`.
@@ -73,7 +74,7 @@ pub struct LlzkCodegen<'ast, 'ctx> {
     pub prime: &'ctx str,
 }
 
-impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
+impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     /// Get the width of the prime field in bits.
     pub fn prime_field_bits(&self) -> Result<u32> {
         match self.prime {
@@ -93,19 +94,24 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
     pub fn emit_circom_warning(&self, meta: &Meta, message: &str, code: ReportCode) {
         let mut report = Report::warning(String::from(message), code);
         report.add_primary(meta.file_location(), meta.get_file_id(), String::from("here"));
-        Report::print_reports(&[report], &self.program_archive.file_library);
+        Report::print_reports(&[report], self.program.get_file_library());
     }
 
     /// Emit a circom-style error.
     pub fn emit_circom_error(&self, meta: &Meta, message: &str, code: ReportCode) {
         let mut report = Report::error(String::from(message), code);
         report.add_primary(meta.file_location(), meta.get_file_id(), String::from("here"));
-        Report::print_reports(&[report], &self.program_archive.file_library);
+        Report::print_reports(&[report], self.program.get_file_library());
+    }
+
+    /// Get the unknown location.
+    pub fn location_unknown(&self) -> Location<'ctx> {
+        Location::unknown(self.context)
     }
 
     /// Convert circom location information to MLIR location.
     pub fn location(&self, file_id: FileID, file_location: FileLocation) -> Location<'ctx> {
-        let files = &self.program_archive.file_library;
+        let files = self.program.get_file_library();
         let filename = files.get_filename_or_default(&file_id);
         let line = files.get_line(file_location.start, file_id).unwrap_or(0);
         let column = files.get_column(file_location.start, file_id).unwrap_or(0);
@@ -117,7 +123,7 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         if let Some(file) = meta.file_id {
             self.location(file, meta.file_location())
         } else {
-            Location::unknown(self.context)
+            self.location_unknown()
         }
     }
 
@@ -304,7 +310,7 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
 ///
 /// 'ctx: lifetime of the `LlzkContext` and generated `Module`
 pub fn new_felt_const_op<'ctx>(
-    codegen: &LlzkCodegen<'_, 'ctx>,
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     meta: &Meta,
     from: &BigInt,
 ) -> Result<Operation<'ctx>> {
@@ -356,13 +362,13 @@ pub fn no_results<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> Result<()> {
 #[inline]
 pub fn map_name_to_arg_value<'ctx, 'val>(
     func: FuncDefOpRefMut<'ctx, 'val>,
-    arg_names: &[String],
+    arg_names: Vec<String>,
 ) -> Result<HashMap<String, Value<'ctx, 'val>>> {
     arg_names
-        .iter()
+        .into_iter()
         .enumerate()
         .map(|(i, name)| {
-            func.deref().argument(i).map(|x| (name.clone(), Value::from(x))).map_err(Into::into)
+            func.deref().argument(i).map_err(Into::into).map(|a| (name, Value::from(a)))
         })
         .collect::<Result<HashMap<_, _>, _>>()
 }

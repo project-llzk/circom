@@ -9,6 +9,7 @@
 use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
+use crate::module::ProgramLike;
 use crate::shared::is_felt;
 use crate::shared::LlzkCodegen;
 use anyhow::Result;
@@ -363,7 +364,7 @@ where
     #[inline]
     fn gen_exprs<'ast, I>(
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         exprs: I,
     ) -> Result<Self>
     where
@@ -498,7 +499,7 @@ where
     /// 'ast: lifetime of the circom AST element
     fn gen_llzk_in_template<'ast, 'r>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
@@ -520,7 +521,7 @@ where
 
     fn gen_llzk_in_template<'ast, 'r>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
@@ -542,7 +543,7 @@ where
 
 /// Generate LLZK code for a circom [Statement::IfThenElse].
 fn gen_if_then_else<'ast, 'ctx, 'str, 'func, 'blk, 'val, 'r>(
-    codegen: &LlzkCodegen<'ast, 'ctx>,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
@@ -602,7 +603,7 @@ where
 
 /// Generate LLZK code for a circom [Statement::While].
 fn gen_while<'ast, 'ctx, 'str, 'func, 'blk, 'val, 'r>(
-    codegen: &LlzkCodegen<'ast, 'ctx>,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
@@ -700,7 +701,7 @@ where
     #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_template<'ast, 'r>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
@@ -919,7 +920,7 @@ where
 
     fn gen_llzk_in_template<'ast, 'r>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
