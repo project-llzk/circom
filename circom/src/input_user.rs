@@ -541,7 +541,7 @@ mod input_processing {
                 Arg::with_name("print_dump_parse")
                     .long("dump_parse")
                     .takes_value(false)
-                    .display_order(89)
+                    .display_order(10)
                     .help("Parses the circuit and dumps the program archive"),
             )
             .arg(
@@ -618,7 +618,7 @@ mod input_processing {
                     .long("llzk_passes")
                     .takes_value(true)
                     .default_value("")
-                    .display_order(998)
+                    .display_order(5002)
                     .help("Specify an MLIR pass pipeline to apply on the LLZK IR output"),
             )
             .get_matches()
