@@ -11,9 +11,11 @@ use crate::gen_context::NestedBlockInfo;
 use crate::shared::erase_op;
 use crate::shared::get_function_type_attribute;
 use crate::shared::is_bool;
+use crate::shared::is_felt;
 use crate::shared::is_scf_yield;
 use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
+use crate::shared::replace_all_uses_in_block_with;
 use crate::shared::single_result_as_value;
 use crate::shared::LlzkCodegen;
 use crate::shared::{self};
@@ -506,6 +508,145 @@ where
             .try_for_each(|(name, result)| self.block_ctx.set_named_value(name, result.into()))?;
         Ok(())
     }
+
+    /// Generate one region for either the then-arm or else-arm of a simple scf.if operation.
+    /// Used by [generate_simple_scf_if].
+    /// The `value_gen` function is called to generate the value to be yielded from the arm.
+    fn generate_simple_scf_if_arm<'ast, F>(
+        &mut self,
+        location: Location<'ctx>,
+        value_gen: F,
+    ) -> Result<(Region<'ctx>, Value<'ctx, 'val>)>
+    where
+        F: FnOnce(&mut Self) -> Result<Value<'ctx, 'val>>,
+    {
+        let region = Region::new();
+        let block = region.append_block(Block::new(&[]));
+        self.block_ctx.push(block);
+        let arm_val = value_gen(self)?;
+        self.block_ctx.pop();
+        block.append_operation(scf::r#yield(&[arm_val], location));
+        Ok((region, arm_val))
+    }
+
+    /// Generate a simple scf.if operation that yields the given `then_value` or `else_value`
+    /// depending on the `condition` value. Unlike [gen_scf_if], this assumes that the
+    /// then and else arms do not modify the current block context and only produce values.
+    pub fn generate_simple_scf_if<'ast, F1, F2>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        meta: &Meta,
+        condition: Value<'ctx, 'val>,
+        then_value_gen: F1,
+        else_value_gen: F2,
+    ) -> Result<Operation<'ctx>>
+    where
+        F1: FnOnce(&mut Self) -> Result<Value<'ctx, 'val>>,
+        F2: FnOnce(&mut Self) -> Result<Value<'ctx, 'val>>,
+    {
+        let location = codegen.location_from_meta(meta);
+
+        let (then_region, then_value) =
+            self.generate_simple_scf_if_arm(location, then_value_gen)?;
+        let (else_region, else_value) =
+            self.generate_simple_scf_if_arm(location, else_value_gen)?;
+
+        // Ensure then_value and else_value have the same types
+        assert_eq!(
+            then_value.r#type(),
+            else_value.r#type(),
+            "then and else branches of scf.if must have matching value types"
+        );
+
+        Ok(scf::r#if(condition, &[then_value.r#type()], then_region, else_region, location))
+    }
+
+    /// Generate an `scf.while` op based on the given [NestedBlockInfo] and update the
+    /// block context with the results of the `scf.while` op mapped to the given names.
+    pub fn gen_scf_while<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        location: Location<'ctx>,
+        condition: Value<'ctx, 'val>,
+        loop_cond_info: NestedBlockInfo<'ctx, 'blk, 'val>,
+        loop_body_info: NestedBlockInfo<'ctx, 'blk, 'val>,
+    ) -> Result<()> {
+        // ASSERT: loop condition was a single Expression so there are no variable overwrites.
+        assert!(loop_cond_info.var_overwrites.is_empty());
+
+        // Split `loop_body_info.var_overwrites` into ordered lists of names and values. The
+        // ordering of names here defines the ordering of the loop-carried variables for the
+        // `scf.while` op and thus the ordering of operands for the `scf.yield` and
+        // `scf.condition` ops. Sort by circom variable names to ensure a stable order.
+        let mut overwrites_sorted: Vec<_> = loop_body_info.var_overwrites.into_iter().collect();
+        overwrites_sorted.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
+        let (loop_carried_var_names, body_yield_values): (Vec<_>, Vec<_>) =
+            overwrites_sorted.into_iter().unzip();
+
+        // Append the loop body block with an `scf.yield`
+        no_results(
+            loop_body_info.block.append_operation(scf::r#yield(&body_yield_values, location)),
+        )?;
+
+        // Use `loop_carried_var_names` and the current block context to build a list of types of
+        // the loop-carried variables, add BlockArguments of those types in both blocks, and
+        // replace uses of the overwritten variables in both blocks with references to the new
+        // BlockArguments Values.
+        let mut loop_carried_types = Vec::new();
+        for name in loop_carried_var_names.iter() {
+            let orig_val = self.block_ctx.get_named_value(name).unwrap();
+            let val_type = orig_val.r#type();
+            loop_carried_types.push(val_type);
+            let a = loop_cond_info.block.add_argument(val_type, location);
+            replace_all_uses_in_block_with(loop_cond_info.block, orig_val, a);
+            let b = loop_body_info.block.add_argument(val_type, location);
+            replace_all_uses_in_block_with(loop_body_info.block, orig_val, b);
+        }
+
+        // In the loop condition block, ensure the condition has bool type and generate an
+        // `scf.condition` op with the condition value and the loop-carried variables.
+        {
+            let condition = if !is_bool(condition.r#type()) {
+                single_result_as_value(loop_cond_info.block.append_operation(
+                    cast::toint(location, codegen.bool_type(), condition).into(),
+                ))?
+            } else {
+                condition
+            };
+            // Pass the block arguments as the initial values to the condition op.
+            let block_arg_values = (0..loop_cond_info.block.argument_count())
+                .map(|i| loop_cond_info.block.argument(i).map_err(Into::into).map(Value::from))
+                .collect::<Result<Vec<Value>>>()?;
+            no_results(loop_cond_info.block.append_operation(scf::condition(
+                condition,
+                &block_arg_values,
+                location,
+            )))?;
+        }
+
+        // Create list of initial values of the loop-carried variables (i.e. the overwritten
+        // variables, in the order of `loop_carried_var_names`) to pass into the `scf.while`.
+        let initial_values = loop_carried_var_names
+            .iter()
+            .map(|name| self.block_ctx.get_named_value(name).cloned())
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Generate the `scf.while` op for the circom `While` statement.
+        let scf_op = self.append_op(scf::r#while(
+            &initial_values,
+            &loop_carried_types,
+            loop_cond_info.region,
+            loop_body_info.region,
+            location,
+        ));
+
+        // Update the current block context with results from the `scf.while` op.
+        loop_carried_var_names
+            .into_iter()
+            .zip(scf_op.results())
+            .try_for_each(|(name, result)| self.block_ctx.set_named_value(name, result.into()))?;
+        Ok(())
+    }
 }
 
 /// The [FunctionContext] directly accesses a single [BlockContextStack] for circom scope handling.
@@ -872,6 +1013,8 @@ where
                     unreachable!("Function uses template operators");
                 }
                 let rhs = rhe.gen_llzk_in_function(codegen, function)?;
+                println!("Substitution to variable '{}' in function", var);
+                println!("RHS value: {:?}", rhs);
                 if access.is_empty() {
                     // Since there's no simple assignment in LLZK, just update the mapped Value
                     // which essentially propagates the assignment.
@@ -979,7 +1122,7 @@ where
                         function.append_op_unnamed_result(array_get_op)
                     }
                 }
-            }
+            },
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {
                 let lhs = lhe.gen_llzk_in_function(codegen, function)?;
                 let rhs = rhe.gen_llzk_in_function(codegen, function)?;
@@ -990,16 +1133,34 @@ where
                 function.gen_prefix_op(codegen, meta, prefix_op, rhs)
             }
             Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                todo!("Handle InlineSwitchOp expression in function")
+                let location = codegen.location_from_meta(meta);
+                // Ensure the condition is a bool type.
+                let cond_val = match cond.gen_llzk_in_function(codegen, function)? {
+                    v if is_bool(v.r#type()) => v,
+                    v => function.append_op_unnamed_result(
+                        cast::toint(location, codegen.bool_type(), v).into(),
+                    )?,
+                };
+                let scf_if_op = function.generate_simple_scf_if(
+                    codegen,
+                    meta,
+                    cond_val,
+                    |fc| Ok(if_true.gen_llzk_in_function(codegen, fc)?),
+                    |fc| Ok(if_false.gen_llzk_in_function(codegen, fc)?),
+                )?;
+
+                function.append_op_unnamed_result(scf_if_op)
             }
             Expression::ParallelOp { meta, rhe } => {
-                todo!("Handle ParallelOp expression in function")
+                todo!("Handle ParallelOp expression")
             }
             Expression::ArrayInLine { meta, values } => {
-                todo!("Handle ArrayInLine expression in function")
+                todo!("Handle ArrayInLine expression")
             }
             Expression::UniformArray { meta, value, dimension } => {
+                println!("Uniform array value expression: {:?}", value);
                 let val = value.gen_llzk_in_function(codegen, function)?;
+                println!("Uniform array element value: {:?}", val);
                 let dim = codegen.convert_dim_expr(dimension)?;
                 // Array dimensions must be statically known in Circom.
                 let arr_ty = ArrayType::new(FeltType::new(codegen.context).into(), &[dim]);
@@ -1019,10 +1180,21 @@ where
             }
             Expression::Call { meta, id, args } => {
                 let builder = OpBuilder::new(codegen.context.deref());
+                let location = codegen.location_from_meta(meta);
                 // Visit each argument and collect the resulting LLZK Values for both functions.
                 let call_operands = args
                     .iter()
-                    .map(|arg| arg.gen_llzk_in_function(codegen, function))
+                    .map(|arg| {
+                        // TODO: As mentioned in `gen_llzk()` for `FunctionData`, functions could
+                        // also take array type parameters but that is not
+                        // currently implemented.
+                        let operand_val = arg.gen_llzk_in_function(codegen, function)?;
+                        if !is_felt(operand_val.r#type()) {
+                            function.append_op_unnamed_result(cast::tofelt(location, operand_val))
+                        } else {
+                            Ok(operand_val)
+                        }
+                    })
                     .collect::<Result<Vec<Value>>>()?;
                 // Create the CallOp in each function using the collected args.
 
@@ -1034,7 +1206,7 @@ where
                 function.append_op_unnamed_result(
                     function::call(
                         &builder,
-                        codegen.location_from_meta(meta),
+                        location,
                         FlatSymbolRefAttribute::new(codegen.context, id),
                         &call_operands,
                         return_types,
@@ -1043,8 +1215,7 @@ where
                 )
             }
             Expression::BusCall { meta, id, args } => {
-                // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
-                unreachable!("Template elements declared inside the function")
+                todo!("Handle BusCall expression")
             }
             Expression::AnonymousComp { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
             Expression::Tuple { .. } => unreachable!("removed by 'syntax_sugar_remover'"),

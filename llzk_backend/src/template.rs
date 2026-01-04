@@ -10,17 +10,14 @@ use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::shared::is_felt;
-use crate::shared::new_felt_const_op;
 use crate::shared::LlzkCodegen;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
 use llzk::prelude::constrain;
-use llzk::prelude::function;
 use llzk::prelude::r#struct;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FeltType;
-use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::StructDefOpRefMut;
@@ -603,6 +600,71 @@ where
     })
 }
 
+/// Generate LLZK code for a circom [Statement::While].
+fn gen_while<'ast, 'ctx, 'str, 'func, 'blk, 'val, 'r>(
+    codegen: &LlzkCodegen<'ast, 'ctx>,
+    template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+    meta: &Meta,
+    cond: &Expression,
+    body_stmt: &Box<Statement>,
+) -> Result<()>
+where
+    'ctx: 'str,
+    'str: 'func,
+    'func: 'blk,
+    'blk: 'val,
+    'val: 'r,
+{
+    let mut template = template; // satisfy the &mut in `GenWithCircomScopeHandling`
+
+    // Generate the loop condition (i.e. "before") and body (i.e. "after") blocks naively.
+    let mut loop_cond_info = TemplateFuncPair::new(template);
+    let cond_result = template.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        loop_cond_info.block(),
+        |template| cond.gen_llzk_in_template(codegen, template),
+        &mut loop_cond_info,
+    )?;
+    let mut loop_body_info = TemplateFuncPair::new(template);
+    template.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        loop_body_info.block(),
+        |template| body_stmt.gen_llzk_in_template(codegen, template),
+        &mut loop_body_info,
+    )?;
+
+    // Create a GenResult that encapsulates both `loop_body_info` and `loop_cond_info` and
+    // then call the function to generate the `scf.while` loop in both functions.
+    let cond_and_body = {
+        let r_compute = cond_result.compute_res;
+        let r_constrain = cond_result.constrain_res;
+        let c_compute = loop_cond_info.compute;
+        let c_constrain = loop_cond_info.constrain;
+        let b_compute = loop_body_info.compute;
+        let b_constrain = loop_body_info.constrain;
+        // The unwraps are safe since these GenResult and TemplateFuncPair instances
+        // were created from the same `TemplateContext` used for `map()` below.
+        GenResult {
+            template,
+            compute_res: template
+                .compute
+                .as_ref()
+                .map(|_| (r_compute.unwrap(), c_compute.unwrap(), b_compute.unwrap())),
+            constrain_res: template
+                .constrain
+                .as_ref()
+                .map(|_| (r_constrain.unwrap(), c_constrain.unwrap(), b_constrain.unwrap())),
+        }
+    };
+    cond_and_body.and_then_same(|fc, (condition, loop_cond_info, loop_body_info)| {
+        fc.gen_scf_while(
+            codegen,
+            codegen.location_from_meta(meta),
+            condition,
+            loop_cond_info,
+            loop_body_info,
+        )
+    })
+}
+
 /// Insert cast operations as needed to make `lhs` and `rhs` have compatible types for equality
 /// constraints.
 fn unify_constrain_eq_types<'ctx, 'func, 'blk, 'val>(
@@ -810,9 +872,7 @@ where
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
                 gen_if_then_else(codegen, template, meta, cond, if_case, else_case)
             }
-            Statement::While { meta, cond, stmt } => {
-                todo!("Handle while statement in template")
-            }
+            Statement::While { meta, cond, stmt } => gen_while(codegen, template, meta, cond, stmt),
             Statement::Assert { meta, arg } => {
                 arg.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, val| {
                     fc.append_op_no_result(
@@ -857,7 +917,6 @@ where
     where
         'val: 'r;
 
-    #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_template<'ast, 'r>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx>,
@@ -866,72 +925,11 @@ where
     where
         'val: 'r,
     {
-        match self {
-            Expression::Number(meta, big_int) => {
-                template.and_then_same(|fc, _| {
-                    // Convert the BigInt to an LLZK `felt.const` op. The user of the Expression is
-                    // responsible for converting this `felt.type` value to another type if needed.
-                    // This is done in both functions (if the result is unused in one, dce can
-                    // remove it).
-                    fc.append_op_unnamed_result(new_felt_const_op(codegen, meta, big_int)?)
-                })
-            }
-            Expression::Variable { meta, name, access } => match access.as_slice() {
-                [] => template.and_then_same(|fc, _| fc.block_ctx.get_named_value(name).copied()),
-                a => {
-                    todo!("Handle accesses in Variable expression in template")
-                }
-            },
-            Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                // Generate Value for both sides and then generate the infix op.
-                GenResultMultiVal::gen_exprs(template, codegen, [&**lhe, &**rhe])?.and_then_same(
-                    |fc, vals| fc.gen_infix_op(codegen, meta, infix_op, vals[0], vals[1]),
-                )
-            }
-            Expression::PrefixOp { meta, prefix_op, rhe } => {
-                // Generate Value for operand and then generate the prefix op.
-                rhe.gen_llzk_in_template(codegen, template)?
-                    .and_then_same(|fc, v| fc.gen_prefix_op(codegen, meta, prefix_op, v))
-            }
-            Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                todo!("Handle InlineSwitchOp expression in template")
-            }
-            Expression::ParallelOp { meta, rhe } => {
-                todo!("Handle ParallelOp expression in template")
-            }
-            Expression::ArrayInLine { meta, values } => {
-                todo!("Handle ArrayInLine expression in template")
-            }
-            Expression::UniformArray { meta, value, dimension } => {
-                todo!("Handle UniformArray expression in template")
-            }
-            Expression::Call { meta, id, args } => {
-                let builder = OpBuilder::new(codegen.context.deref());
-                // Visit each argument and collect the resulting LLZK Values for both functions.
-                let res = GenResultMultiVal::gen_exprs(template, codegen, args)?;
-                // Create the CallOp in each function using the collected args.
-                res.and_then_same(|fc, vals| {
-                    // TODO: Currently, the LLZK function will always return a `felt.type` but
-                    // eventually, this gen function may need an "expected result type"
-                    // parameter or use `poly.tvar` with function templates.
-                    let return_types = &[FeltType::new(codegen.context)];
-                    fc.append_op_unnamed_result(
-                        function::call(
-                            &builder,
-                            codegen.location_from_meta(meta),
-                            FlatSymbolRefAttribute::new(codegen.context, id),
-                            &vals,
-                            return_types,
-                        )?
-                        .into(),
-                    )
-                })
-            }
-            Expression::BusCall { meta, id, args } => {
-                todo!("Handle BusCall expression in template")
-            }
-            Expression::AnonymousComp { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
-            Expression::Tuple { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
-        }
+        template.and_then_same(|fc, _| {
+            // The import is here rather than top level because it is very important that
+            // `gen_llzk_in_function()` is not used while translating statements.
+            use crate::function::GenerateLLZKInFunction;
+            self.gen_llzk_in_function(codegen, fc)
+        })
     }
 }
