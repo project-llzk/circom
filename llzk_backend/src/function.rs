@@ -238,6 +238,21 @@ where
         Err(anyhow!(err_msg))
     }
 
+    /// Create a cast to bool type (i1) if the given value is not already a bool.
+    #[inline]
+    fn cast_to_bool_if_needed<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx>,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        if !is_bool(val.r#type()) {
+            self.append_op_unnamed_result(cast::toint(location, codegen.bool_type(), val).into())
+        } else {
+            Ok(val)
+        }
+    }
+
     /// If both operands have types that match the respective filter predicates, generate the
     /// operation using the provided generator function and return the result, otherwise None.
     #[inline]
@@ -481,13 +496,7 @@ where
             .collect::<Result<Vec<_>, _>>()?;
 
         // Cast condition value to bool type if needed.
-        let condition = if !is_bool(condition.r#type()) {
-            self.append_op_unnamed_result(
-                cast::toint(location, codegen.bool_type(), condition).into(),
-            )?
-        } else {
-            condition
-        };
+        let condition = self.cast_to_bool_if_needed(codegen, location, condition)?;
         // Generate the `scf.if` op for the circom `IfThenElse` statement.
         let scf_if_op = self.append_op(scf::r#if(
             condition,
@@ -602,13 +611,7 @@ where
         // In the loop condition block, ensure the condition has bool type and generate an
         // `scf.condition` op with the condition value and the loop-carried variables.
         {
-            let condition = if !is_bool(condition.r#type()) {
-                single_result_as_value(loop_cond_info.block.append_operation(
-                    cast::toint(location, codegen.bool_type(), condition).into(),
-                ))?
-            } else {
-                condition
-            };
+            let condition = self.cast_to_bool_if_needed(codegen, location, condition)?;
             // Pass the block arguments as the initial values to the condition op.
             let block_arg_values = (0..loop_cond_info.block.argument_count())
                 .map(|i| loop_cond_info.block.argument(i).map_err(Into::into).map(Value::from))
@@ -1105,16 +1108,12 @@ where
             Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
                 let location = codegen.location_from_meta(meta);
                 // Ensure the condition is a bool type.
-                let cond_val = match cond.gen_llzk_in_function(codegen, function)? {
-                    v if is_bool(v.r#type()) => v,
-                    v => function.append_op_unnamed_result(
-                        cast::toint(location, codegen.bool_type(), v).into(),
-                    )?,
-                };
+                let cond_val = cond.gen_llzk_in_function(codegen, function)?;
+                let condition = function.cast_to_bool_if_needed(codegen, location, cond_val)?;
                 let scf_if_op = function.generate_simple_scf_if(
                     codegen,
                     meta,
-                    cond_val,
+                    condition,
                     |fc| Ok(if_true.gen_llzk_in_function(codegen, fc)?),
                     |fc| Ok(if_false.gen_llzk_in_function(codegen, fc)?),
                 )?;
