@@ -1181,7 +1181,7 @@ where
                     values.iter().all(|&v| v.r#type() == elem_ty),
                     "All array elements must have the same type"
                 );
-                let dim = IntegerAttribute::new(codegen.index_type(), values.len() as i64);
+                let dim = IntegerAttribute::new(codegen.index_type(), i64::try_from(values.len())?);
                 let arr_ty = ArrayType::new(elem_ty.into(), &[dim.into()]);
                 function.append_op_unnamed_result(array::new(
                     &OpBuilder::new(&codegen.context),
