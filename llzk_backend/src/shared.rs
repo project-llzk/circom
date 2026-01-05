@@ -143,7 +143,7 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         match expr {
             Expression::Number(meta, big_int) => {
                 let int_attr = IntegerAttribute::new(
-                    Type::index(self.context),
+                    self.index_type(),
                     big_int.to_i64().ok_or_else(|| anyhow!("Array dimension must fit in i64"))?,
                 );
                 Ok(int_attr.into())
@@ -238,6 +238,12 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
     #[inline]
     pub fn felt_type(&self) -> FeltType<'ctx> {
         FeltType::new(self.context)
+    }
+
+    /// Get the index type.
+    #[inline]
+    pub fn index_type(&self) -> Type<'ctx> {
+        Type::index(self.context)
     }
 
     /// Run cleanup passes on the generated `Module`.

@@ -1170,7 +1170,23 @@ where
                 todo!("Handle ParallelOp expression")
             }
             Expression::ArrayInLine { meta, values } => {
-                todo!("Handle ArrayInLine expression")
+                let location = codegen.location_from_meta(meta);
+                let values = values
+                    .iter()
+                    .map(|val_expr| val_expr.gen_llzk_in_function(codegen, function))
+                    .collect::<Result<Vec<Value>>>()?;
+                let elem_ty = values.iter().reduce(|a, b|{
+                    assert_eq!(a.r#type(), b.r#type(), "All array elements must have the same type");
+                    a
+                }).expect("all elements should be the same type").r#type();
+                let dim = IntegerAttribute::new(codegen.index_type(), values.len() as i64);
+                let arr_ty = ArrayType::new(elem_ty.into(), &[dim.into()]);
+                function.append_op_unnamed_result(array::new(
+                    &OpBuilder::new(&codegen.context),
+                    location,
+                    arr_ty,
+                    llzk::dialect::array::ArrayCtor::Values(&values),
+                ))
             }
             Expression::UniformArray { meta, value, dimension } => {
                 let val = value.gen_llzk_in_function(codegen, function)?;
