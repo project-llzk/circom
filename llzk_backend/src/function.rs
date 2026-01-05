@@ -1175,10 +1175,12 @@ where
                     .iter()
                     .map(|val_expr| val_expr.gen_llzk_in_function(codegen, function))
                     .collect::<Result<Vec<Value>>>()?;
-                let elem_ty = values.iter().reduce(|a, b|{
-                    assert_eq!(a.r#type(), b.r#type(), "All array elements must have the same type");
-                    a
-                }).expect("all elements should be the same type").r#type();
+                let elem_ty =
+                    values.first().expect("Array must have at least one element").r#type();
+                assert!(
+                    values.iter().all(|&v| v.r#type() == elem_ty),
+                    "All array elements must have the same type"
+                );
                 let dim = IntegerAttribute::new(codegen.index_type(), values.len() as i64);
                 let arr_ty = ArrayType::new(elem_ty.into(), &[dim.into()]);
                 function.append_op_unnamed_result(array::new(
