@@ -178,13 +178,18 @@ impl<'ctx> DeclarationInfo<'ctx> {
 /// A trait that allows common handling of the structs used to represent a circom
 /// function at different stages in the compilation process.
 pub trait FunctionLike {
+    /// Generate the LLZK Location for the function definition.
     fn get_location<'ctx>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Location<'ctx>;
+    /// Get the name of the function.
     fn get_name(&self) -> &str;
+    /// Get the number of parameters of the function.
     fn get_num_of_params(&self) -> usize;
+    /// Get the names of the parameters of the function.
     fn get_name_of_params(&self) -> Vec<String>;
+    /// Get the body statements of the function.
     fn get_body(&self) -> &[Statement];
 }
 
@@ -266,12 +271,16 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
 /// A trait that allows common handling of the structs used to represent a circom
 /// template at different stages in the compilation process.
 pub trait TemplateLike {
+    /// Generate the LLZK Location for the template definition.
     fn get_location<'ctx>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Location<'ctx>;
+    /// Get the name of the template.
     fn get_name(&self) -> &str;
+    /// Get the names of the parameters of the template.
     fn get_name_of_params(&self) -> Vec<String>;
+    /// Get the body statements of the template.
     fn get_body(&self) -> &[Statement];
 }
 
@@ -400,10 +409,15 @@ fn sort_templates_by_name<T: TemplateLike>(templates: &mut [&T]) {
 /// A trait that allows common handling of the structs used to represent a circom
 /// program at different stages in the compilation process.
 pub trait ProgramLike {
+    /// Get the file library of the program.
     fn get_file_library(&self) -> &FileLibrary;
+    /// Get the FileID of the file containing the "main" declaration.
     fn get_main_file_id(&self) -> &FileID;
+    /// Get the names of public inputs of the main component.
     fn get_main_public_inputs(&self) -> &Vec<String>;
+    /// Get an iterator over all functions in the program.
     fn get_functions(&self, sorted: bool) -> impl IntoIterator<Item = &impl FunctionLike>;
+    /// Get an iterator over all templates in the program.
     fn get_templates(&self, sorted: bool) -> impl IntoIterator<Item = &impl TemplateLike>;
 }
 
@@ -436,15 +450,10 @@ impl ProgramLike for ProgramArchive {
 /// A wrapper around a VCP that also includes the public inputs for the main component.
 #[derive(Debug)]
 pub struct VCPPlus<'ctx> {
-    vcp: &'ctx VCP,
-    public_inputs: Vec<String>,
-}
-
-impl VCPPlus<'_> {
-    /// Create a new VCPPlus wrapper
-    pub fn new<'ctx>(vcp: &'ctx VCP, public_inputs: Vec<String>) -> VCPPlus<'ctx> {
-        VCPPlus { vcp, public_inputs }
-    }
+    /// Reference to the [VCP].
+    pub vcp: &'ctx VCP,
+    /// Names of public inputs of the main component.
+    pub public_inputs: Vec<String>,
 }
 
 impl ProgramLike for VCPPlus<'_> {

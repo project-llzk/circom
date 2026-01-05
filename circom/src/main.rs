@@ -71,7 +71,7 @@ fn start() -> Result<(), ()> {
 
     // If requested, generate LLZK IR output after templates have been made concrete
     if let Some(public_inputs) = public_inputs {
-        let vcp_plus = llzk_backend::VCPPlus::new(&circuit, public_inputs);
+        let vcp_plus = llzk_backend::VCPPlus { vcp: &circuit, public_inputs };
         return llzk_backend::generate_llzk(
             &vcp_plus,
             user_input.llzk_file(),
