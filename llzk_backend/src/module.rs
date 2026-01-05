@@ -433,25 +433,39 @@ impl ProgramLike for ProgramArchive {
     }
 }
 
-impl ProgramLike for VCP {
+/// A wrapper around a VCP that also includes the public inputs for the main component.
+#[derive(Debug)]
+pub struct VCPPlus<'ctx> {
+    vcp: &'ctx VCP,
+    public_inputs: Vec<String>,
+}
+
+impl VCPPlus<'_> {
+    /// Create a new VCPPlus wrapper
+    pub fn new<'ctx>(vcp: &'ctx VCP, public_inputs: Vec<String>) -> VCPPlus<'ctx> {
+        VCPPlus { vcp, public_inputs }
+    }
+}
+
+impl ProgramLike for VCPPlus<'_> {
     fn get_file_library(&self) -> &FileLibrary {
-        &self.file_library
+        &self.vcp.file_library
     }
     fn get_main_file_id(&self) -> &FileID {
-        &self.main_id
+        &self.vcp.main_id
     }
     fn get_main_public_inputs(&self) -> &Vec<String> {
-        todo!("implement getting public inputs from VCP")
+        &self.public_inputs
     }
     fn get_functions(&self, sorted: bool) -> impl IntoIterator<Item = &impl FunctionLike> {
-        let mut functions: Vec<_> = self.functions.iter().collect();
+        let mut functions: Vec<_> = self.vcp.functions.iter().collect();
         if sorted {
             sort_functions_by_name(&mut functions);
         }
         functions
     }
     fn get_templates(&self, sorted: bool) -> impl IntoIterator<Item = &impl TemplateLike> {
-        let mut templates: Vec<_> = self.templates.iter().collect();
+        let mut templates: Vec<_> = self.vcp.templates.iter().collect();
         if sorted {
             sort_templates_by_name(&mut templates);
         }

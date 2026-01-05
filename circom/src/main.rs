@@ -32,7 +32,8 @@ fn start() -> Result<(), ()> {
         write_to_file(format!("{:#?}", program_archive), user_input.dump_parse_file())?;
     }
     // If requested, generate LLZK IR output with generic templates
-    if Some(crate::input_user::LLZK_KIND_TEMPLATED) == user_input.llzk_flag().as_deref() {
+    let llzk_gen_opt = user_input.llzk_flag().as_deref();
+    if Some(crate::input_user::LLZK_KIND_TEMPLATED) == llzk_gen_opt {
         return llzk_backend::generate_llzk(
             &program_archive,
             user_input.llzk_file(),
@@ -59,12 +60,20 @@ fn start() -> Result<(), ()> {
         json_substitutions: user_input.json_substitutions_file().to_string(),
         prime: user_input.prime(),        
     };
+    let public_inputs =
+        if llzk_gen_opt.is_some_and(|kind| kind == crate::input_user::LLZK_KIND_CONCRETE) {
+            Some(program_archive.get_public_inputs_main_component().clone())
+        } else {
+            None
+        };
+
     let circuit = execution_user::execute_project(program_archive, config)?;
 
     // If requested, generate LLZK IR output after templates have been made concrete
-    if Some(crate::input_user::LLZK_KIND_CONCRETE) == user_input.llzk_flag().as_deref() {
+    if let Some(public_inputs) = public_inputs {
+        let vcp_plus = llzk_backend::VCPPlus::new(&circuit, public_inputs);
         return llzk_backend::generate_llzk(
-            &circuit,
+            &vcp_plus,
             user_input.llzk_file(),
             &user_input.llzk_pass_pipeline(),
             &user_input.prime(),
