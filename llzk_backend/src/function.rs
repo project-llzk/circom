@@ -12,6 +12,7 @@ use crate::shared::erase_op;
 use crate::shared::get_function_type_attribute;
 use crate::shared::is_bool;
 use crate::shared::is_felt;
+use crate::shared::is_index;
 use crate::shared::is_scf_yield;
 use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
@@ -240,6 +241,20 @@ where
         );
         codegen.emit_circom_error(meta, err_msg.as_str(), ReportCode::PrefixOperatorWithWrongTypes);
         Err(anyhow!(err_msg))
+    }
+
+    /// Create a cast to index type if the given value is not already an index.
+    #[inline]
+    fn cast_to_index_if_needed(
+        &mut self,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        if !is_index(val.r#type()) {
+            self.append_op_unnamed_result(cast::toindex(location, val).into())
+        } else {
+            Ok(val)
+        }
     }
 
     /// If both operands have types that match the respective filter predicates, generate the
@@ -1097,24 +1112,22 @@ where
                         Ok(*v)
                     }
                     a => {
-                        // Note: `Access::ComponentAccess` is not legal in functions per
-                        // `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
-                        // so each must be `Access::ArrayAccess` only.
+                        let location = codegen.location_from_meta(meta);
                         let indices = a.iter().map(|access| {
-                            match access {
+                            let idx = match access {
                                 Access::ArrayAccess(index_expr) => {
                                     index_expr.gen_llzk_in_function(codegen, function)
                                 }
-                                Access::ComponentAccess { .. } => {
-                                    // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
-                                    unreachable!("Component access in function")
+                                Access::ComponentAccess(name) => {
+                                    Ok(*function.block_ctx.get_named_value(name)?)
                                 }
-                            }
+                            }?;
+                            function.cast_to_index_if_needed(location, idx)
                         }).collect::<Result<Vec<Value<'_, '_>>>>()?;
                         let v = function.block_ctx.get_named_value(name)?;
                         let arr_ty = ArrayType::try_from(v.r#type())?;
                         let array_get_op = array::read(
-                            codegen.location_from_meta(meta),
+                            location,
                             arr_ty.element_type(),
                             *v,
                             &indices,
