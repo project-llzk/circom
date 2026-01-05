@@ -768,9 +768,9 @@ checksum = "884e2677b40cc8c339eaefcb701c32ef1fd2493d71118dc0ca4b6a736c93bd67"
 
 [[package]]
 name = "libc"
-version = "0.2.178"
+version = "0.2.179"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37c93d8daa9d8a012fd8ab92f088405fb202ea0b6ab73ee2482ae66af4f42091"
+checksum = "c5a2d376baa530d1238d133232d15e239abad80d05838b4b59354e5268af431f"
 
 [[package]]
 name = "libloading"
@@ -807,7 +807,7 @@ checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
 [[package]]
 name = "llzk"
 version = "0.1.0"
-source = "git+https://github.com/Veridise/llzk-rs?branch=dani%2Fclang_cmake_flags#767c05ebc17832c28640cd77076ae1f4eb941346"
+source = "git+https://github.com/Veridise/llzk-rs#6fb7b30a3495973d9e28f278b142dbd8189aab57"
 dependencies = [
  "llzk-macro",
  "llzk-sys",
@@ -821,7 +821,7 @@ dependencies = [
 [[package]]
 name = "llzk-macro"
 version = "0.1.0"
-source = "git+https://github.com/Veridise/llzk-rs?branch=dani%2Fclang_cmake_flags#767c05ebc17832c28640cd77076ae1f4eb941346"
+source = "git+https://github.com/Veridise/llzk-rs#6fb7b30a3495973d9e28f278b142dbd8189aab57"
 dependencies = [
  "convert_case",
  "proc-macro2",
@@ -833,7 +833,7 @@ dependencies = [
 [[package]]
 name = "llzk-sys"
 version = "0.1.0"
-source = "git+https://github.com/Veridise/llzk-rs?branch=dani%2Fclang_cmake_flags#767c05ebc17832c28640cd77076ae1f4eb941346"
+source = "git+https://github.com/Veridise/llzk-rs#6fb7b30a3495973d9e28f278b142dbd8189aab57"
 dependencies = [
  "anyhow",
  "llzk-sys-build-support",
@@ -843,7 +843,7 @@ dependencies = [
 [[package]]
 name = "llzk-sys-build-support"
 version = "0.1.0"
-source = "git+https://github.com/Veridise/llzk-rs?branch=dani%2Fclang_cmake_flags#767c05ebc17832c28640cd77076ae1f4eb941346"
+source = "git+https://github.com/Veridise/llzk-rs#6fb7b30a3495973d9e28f278b142dbd8189aab57"
 dependencies = [
  "anyhow",
  "bindgen 0.71.1",
@@ -1060,9 +1060,9 @@ checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "pest"
-version = "2.8.4"
+version = "2.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cbcfd20a6d4eeba40179f05735784ad32bdaef05ce8e8af05f180d45bb3e7e22"
+checksum = "2c9eb05c21a464ea704b53158d358a31e6425db2f63a1a7312268b05fe2b75f7"
 dependencies = [
  "memchr",
  "ucd-trie",
@@ -1070,9 +1070,9 @@ dependencies = [
 
 [[package]]
 name = "pest_derive"
-version = "2.8.4"
+version = "2.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51f72981ade67b1ca6adc26ec221be9f463f2b5839c7508998daa17c23d94d7f"
+checksum = "68f9dbced329c441fa79d80472764b1a2c7e57123553b8519b36663a2fb234ed"
 dependencies = [
  "pest",
  "pest_generator",
@@ -1080,9 +1080,9 @@ dependencies = [
 
 [[package]]
 name = "pest_generator"
-version = "2.8.4"
+version = "2.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dee9efd8cdb50d719a80088b76f81aec7c41ed6d522ee750178f83883d271625"
+checksum = "3bb96d5051a78f44f43c8f712d8e810adb0ebf923fc9ed2655a7f66f63ba8ee5"
 dependencies = [
  "pest",
  "pest_meta",
@@ -1093,9 +1093,9 @@ dependencies = [
 
 [[package]]
 name = "pest_meta"
-version = "2.8.4"
+version = "2.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf1d70880e76bdc13ba52eafa6239ce793d85c8e43896507e43dd8984ff05b82"
+checksum = "602113b5b5e8621770cfd490cfd90b9f84ab29bd2b0e49ad83eb6d186cef2365"
 dependencies = [
  "pest",
  "sha2",
@@ -1448,9 +1448,9 @@ checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
 
 [[package]]
 name = "syn"
-version = "2.0.112"
+version = "2.0.113"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21f182278bf2d2bcb3c88b1b08a37df029d71ce3d3ae26168e3c653b213b99d4"
+checksum = "678faa00651c9eb72dd2020cbdf275d92eccb2400d568e419efdd64838145cb4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1838,6 +1838,6 @@ dependencies = [
 
 [[package]]
 name = "zmij"
-version = "1.0.6"
+version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aac060176f7020d62c3bcc1cdbcec619d54f48b07ad1963a3f80ce7a0c17755f"
+checksum = "30e0d8dffbae3d840f64bda38e28391faef673a7b5a6017840f2a106c8145868"
