@@ -1171,17 +1171,16 @@ where
                 todo!("Handle ArrayInLine expression")
             }
             Expression::UniformArray { meta, value, dimension } => {
-                println!("Uniform array value expression: {:?}", value);
                 let val = value.gen_llzk_in_function(codegen, function)?;
-                println!("Uniform array element value: {:?}", val);
                 let dim = codegen.convert_dim_expr(dimension)?;
                 // Array dimensions must be statically known in Circom.
+                // Non-constant array lengths will result in "error[T20463]: Variable array length"
                 let arr_ty = ArrayType::new(FeltType::new(codegen.context).into(), &[dim]);
                 let const_dim = IntegerAttribute::try_from(dim);
                 let init_vals = if const_dim.is_ok() {
                     vec![val; const_dim.unwrap().value() as usize]
                 } else {
-                    todo!("Handle non-integer attribute dimension in UniformArray expression")
+                    unreachable!("Array dimensions must be constant expressions in Circom")
                 };
 
                 function.append_op_unnamed_result(array::new(
