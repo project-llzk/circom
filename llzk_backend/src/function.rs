@@ -52,6 +52,7 @@ use melior::dialect::scf;
 use melior::ir::operation::OperationRefMut;
 use melior::ir::operation::WalkOrder;
 use melior::ir::operation::WalkResult;
+use program_structure::ast::Access;
 use program_structure::ast::Expression;
 use program_structure::ast::ExpressionInfixOpcode;
 use program_structure::ast::ExpressionPrefixOpcode;
@@ -1067,6 +1068,11 @@ where
     }
 }
 
+/// This handles translation of circom [Expression] nodes within functions and templates (i.e.
+/// [crate::template::GenerateLLZKInTemplate] implementation for [Expression] directly calls this).
+/// Therefore, it must handle things that are not legal in functions such as [Expression::BusCall]
+/// and [Access::ComponentAccess]. The `type_analysis_user::analyse_project()` pass that runs before
+/// the LLZK translation pass ensures that these illegal constructs do not appear in pure functions.
 impl<'ctx, 'func, 'blk, 'val> GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val> for Expression
 where
     'ctx: 'func,
