@@ -1174,11 +1174,14 @@ where
                         }
                     },
                 ),
-                a => {
+                _ => {
                     todo!("Handle accesses in Variable expression in template")
                 }
             },
-            Expression::Call { meta, id, args, .. } if meta.get_type_knowledge().is_component() => {
+            Expression::Call { meta, id, args, .. }
+                if meta.get_type_knowledge().is_component()
+                    && codegen.program_archive.contains_template(id) =>
+            {
                 let location = codegen.location_from_meta(meta);
                 let subcmp_type = codegen.struct_type_with_concrete_dimensions(id, args)?;
                 let template_data = codegen
