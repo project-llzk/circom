@@ -18,6 +18,7 @@ use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
 use llzk::dialect::undef;
 use llzk::prelude::constrain;
+use llzk::prelude::function;
 use llzk::prelude::r#struct;
 use llzk::prelude::BlockRef;
 use llzk::prelude::CallOpLike as _;
