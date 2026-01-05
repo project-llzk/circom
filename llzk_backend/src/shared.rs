@@ -234,6 +234,12 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         IntegerType::new(self.context, 1)
     }
 
+    /// Get the felt type.
+    #[inline]
+    pub fn felt_type(&self) -> FeltType<'ctx> {
+        FeltType::new(self.context)
+    }
+
     /// Run cleanup passes on the generated `Module`.
     pub fn run_passes(&mut self, pass_pipeline: &str) -> Result<()> {
         if pass_pipeline.is_empty() {

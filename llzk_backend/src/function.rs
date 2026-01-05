@@ -12,6 +12,7 @@ use crate::shared::erase_op;
 use crate::shared::get_function_type_attribute;
 use crate::shared::is_bool;
 use crate::shared::is_felt;
+use crate::shared::is_index;
 use crate::shared::is_scf_yield;
 use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
@@ -23,9 +24,11 @@ use anyhow::anyhow;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
+use llzk::prelude::array;
 use llzk::prelude::bool;
 use llzk::prelude::felt;
 use llzk::prelude::function;
+use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
@@ -52,6 +55,7 @@ use melior::dialect::scf;
 use melior::ir::operation::OperationRefMut;
 use melior::ir::operation::WalkOrder;
 use melior::ir::operation::WalkResult;
+use program_structure::ast::Access;
 use program_structure::ast::Expression;
 use program_structure::ast::ExpressionInfixOpcode;
 use program_structure::ast::ExpressionPrefixOpcode;
@@ -60,6 +64,7 @@ use program_structure::ast::Statement;
 use program_structure::ast::VariableType;
 use program_structure::error_code::ReportCode;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::ops::Deref;
 use std::ops::DerefMut;
 
@@ -236,6 +241,20 @@ where
         );
         codegen.emit_circom_error(meta, err_msg.as_str(), ReportCode::PrefixOperatorWithWrongTypes);
         Err(anyhow!(err_msg))
+    }
+
+    /// Create a cast to index type if the given value is not already an index.
+    #[inline]
+    fn cast_to_index_if_needed(
+        &mut self,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        if !is_index(val.r#type()) {
+            self.append_op_unnamed_result(cast::toindex(location, val).into())
+        } else {
+            Ok(val)
+        }
     }
 
     /// Create a cast to bool type (i1) if the given value is not already a bool.
@@ -1087,13 +1106,35 @@ where
                 // responsible for converting this `felt.type` value to another type if needed.
                 function.append_op_unnamed_result(new_felt_const_op(codegen, meta, big_int)?)
             }
-            Expression::Variable { meta, name, access } => match access.as_slice() {
-                [] => {
-                    let v = function.block_ctx.get_named_value(name)?;
-                    Ok(*v)
-                }
-                a => {
-                    todo!("Handle accesses in variable expression")
+            Expression::Variable { meta, name, access } => {
+                match access.as_slice() {
+                    [] => {
+                        let v = function.block_ctx.get_named_value(name)?;
+                        Ok(*v)
+                    }
+                    a => {
+                        let location = codegen.location_from_meta(meta);
+                        let indices = a.iter().map(|access| {
+                            let idx = match access {
+                                Access::ArrayAccess(index_expr) => {
+                                    index_expr.gen_llzk_in_function(codegen, function)
+                                }
+                                Access::ComponentAccess(name) => {
+                                    todo!("Handle component access in function")
+                                }
+                            }?;
+                            function.cast_to_index_if_needed(location, idx)
+                        }).collect::<Result<Vec<Value<'_, '_>>>>()?;
+                        let v = function.block_ctx.get_named_value(name)?;
+                        let arr_ty = ArrayType::try_from(v.r#type())?;
+                        let array_get_op = array::read(
+                            location,
+                            arr_ty.element_type(),
+                            *v,
+                            &indices,
+                        );
+                        function.append_op_unnamed_result(array_get_op)
+                    }
                 }
             },
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {
@@ -1127,7 +1168,24 @@ where
                 todo!("Handle ArrayInLine expression")
             }
             Expression::UniformArray { meta, value, dimension } => {
-                todo!("Handle UniformArray expression")
+                let val = value.gen_llzk_in_function(codegen, function)?;
+                let dim = codegen.convert_dim_expr(dimension)?;
+                // Array dimensions must be statically known in Circom.
+                // Non-constant array lengths will result in "error[T20463]: Variable array length"
+                let arr_ty = ArrayType::new(codegen.felt_type().into(), &[dim]);
+                let const_dim = IntegerAttribute::try_from(dim);
+                let init_vals = if const_dim.is_ok() {
+                    vec![val; const_dim.unwrap().value() as usize]
+                } else {
+                    todo!("Handle template parameter array lengths in function")
+                };
+
+                function.append_op_unnamed_result(array::new(
+                    &OpBuilder::new(&codegen.context),
+                    codegen.location_from_meta(meta),
+                    arr_ty,
+                    llzk::dialect::array::ArrayCtor::Values(&init_vals),
+                ))
             }
             Expression::Call { meta, id, args } => {
                 let builder = OpBuilder::new(codegen.context.deref());
