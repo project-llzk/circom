@@ -1120,8 +1120,8 @@ where
                     codegen,
                     meta,
                     condition,
-                    |fc| Ok(if_true.gen_llzk_in_function(codegen, fc)?),
-                    |fc| Ok(if_false.gen_llzk_in_function(codegen, fc)?),
+                    |fc| if_true.gen_llzk_in_function(codegen, fc),
+                    |fc| if_false.gen_llzk_in_function(codegen, fc),
                 )?;
 
                 function.append_op_unnamed_result(scf_if_op)
