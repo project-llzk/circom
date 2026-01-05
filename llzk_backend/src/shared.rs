@@ -3,12 +3,14 @@
 use ansi_term::Color;
 use anyhow::anyhow;
 use anyhow::Result;
+use llzk::operation::replace_uses_of_with;
 use llzk::prelude::felt;
 use llzk::prelude::undef;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::BlockLike;
+use llzk::prelude::BlockRef;
 use llzk::prelude::FeltConstAttribute;
 use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
@@ -24,6 +26,8 @@ use llzk::prelude::LlzkError;
 use llzk::prelude::Location;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike;
+use llzk::prelude::OperationRef;
+use llzk::prelude::PassManager;
 use llzk::prelude::StructDefOp;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructDefOpRefMut;
@@ -36,10 +40,7 @@ use melior::dialect::arith;
 use melior::ir::attribute::BoolAttribute;
 use melior::ir::attribute::TypeAttribute;
 use melior::ir::Module;
-use melior::pass;
 use melior::utility;
-use mlir_sys::mlirOpOperandIsNull;
-use mlir_sys::mlirValueGetFirstUse;
 use num_bigint_dig::BigInt;
 use num_traits::cast::ToPrimitive;
 use program_structure::ast::Expression;
@@ -241,7 +242,7 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         if pass_pipeline.is_empty() {
             return Ok(());
         }
-        let manager = pass::PassManager::new(self.context);
+        let manager = PassManager::new(self.context);
         manager.enable_verifier(true);
         utility::register_all_passes();
         utility::parse_pass_pipeline(manager.as_operation_pass_manager(), pass_pipeline)
@@ -425,8 +426,29 @@ pub fn is_felt(t: Type) -> bool {
 #[inline]
 pub fn has_uses(val: Value) -> bool {
     unsafe {
-        let first_use = mlirValueGetFirstUse(val.to_raw());
-        !mlirOpOperandIsNull(first_use)
+        let first_use = mlir_sys::mlirValueGetFirstUse(val.to_raw());
+        !mlir_sys::mlirOpOperandIsNull(first_use)
+    }
+}
+
+/// Replace all uses of `orig` within the given [Block] with `replacement`. Based on
+/// `mlir::replaceAllUsesInRegionWith` which is not exposed through any CAPI.
+///
+/// TODO: `llzk-rs` should provide this directly
+pub fn replace_all_uses_in_block_with(block: BlockRef, orig: &Value, replacement: Value) {
+    unsafe {
+        let mut op_use = mlir_sys::mlirValueGetFirstUse(orig.to_raw());
+        while !op_use.ptr.is_null() {
+            // Save next use *before* mutating (early-inc behavior)
+            let next = mlir_sys::mlirOpOperandGetNextUse(op_use);
+            // If the use is within the given block, replace it
+            let owner = mlir_sys::mlirOpOperandGetOwner(op_use);
+            if mlir_sys::mlirBlockEqual(mlir_sys::mlirOperationGetBlock(owner), block.to_raw()) {
+                replace_uses_of_with(&OperationRef::from_raw(owner), *orig, replacement);
+            }
+            // increment to next use
+            op_use = next;
+        }
     }
 }
 
