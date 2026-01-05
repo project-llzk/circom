@@ -1031,8 +1031,6 @@ where
                     unreachable!("Function uses template operators");
                 }
                 let rhs = rhe.gen_llzk_in_function(codegen, function)?;
-                println!("Substitution to variable '{}' in function", var);
-                println!("RHS value: {:?}", rhs);
                 if access.is_empty() {
                     // Since there's no simple assignment in LLZK, just update the mapped Value
                     // which essentially propagates the assignment.
@@ -1122,7 +1120,7 @@ where
                                     index_expr.gen_llzk_in_function(codegen, function)
                                 }
                                 Access::ComponentAccess(name) => {
-                                    Ok(*function.block_ctx.get_named_value(name)?)
+                                    todo!("Handle component access in function")
                                 }
                             }?;
                             function.cast_to_index_if_needed(location, idx)
@@ -1174,12 +1172,12 @@ where
                 let dim = codegen.convert_dim_expr(dimension)?;
                 // Array dimensions must be statically known in Circom.
                 // Non-constant array lengths will result in "error[T20463]: Variable array length"
-                let arr_ty = ArrayType::new(FeltType::new(codegen.context).into(), &[dim]);
+                let arr_ty = ArrayType::new(codegen.felt_type().into(), &[dim]);
                 let const_dim = IntegerAttribute::try_from(dim);
                 let init_vals = if const_dim.is_ok() {
                     vec![val; const_dim.unwrap().value() as usize]
                 } else {
-                    unreachable!("Array dimensions must be constant expressions in Circom")
+                    todo!("Handle template parameter array lengths in function")
                 };
 
                 function.append_op_unnamed_result(array::new(
