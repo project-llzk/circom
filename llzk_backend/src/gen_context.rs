@@ -213,7 +213,7 @@ where
             .rev()
             .find_map(|bc| bc.get(name))
             .or_else(|| self.root.get(name))
-            .ok_or_else(|| anyhow!("variable {name} not found"))
+            .ok_or_else(|| anyhow!("variable '{name}' not found"))
     }
 
     /// Push a new block onto the stack to make it the current block.
