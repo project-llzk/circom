@@ -1098,86 +1098,93 @@ where
         // This function handles the special cases that happen in templates and any other kind of
         // expression is delegated.
         match self {
-            Expression::Variable { meta, name, access } => match access.as_slice() {
-                [] => template.and_then_same(|fc, _| fc.block_ctx.get_named_value(name).copied()),
-                [Access::ComponentAccess(signal_name)] => template.and_then(
-                    |fc, _| {
-                        let subcmp_value = fc.block_ctx.get_named_value(name)?;
-                        let template_data = fc
-                            .subcmp_calls
-                            .get(subcmp_value)
-                            .ok_or_else(|| {
-                                anyhow::anyhow!("subcomponent call for {subcmp_value} not found")
-                            })
-                            .and_then(|name| {
-                                codegen
-                                    .find_template_data(name)
-                                    .ok_or_else(|| anyhow::anyhow!("template {name:?} not found"))
-                            })?;
-                        if template_data.get_outputs().contains_key(signal_name) {
-                            fc.append_op_unnamed_result(r#struct::readf(
-                                &OpBuilder::new(codegen.context),
-                                codegen.location_from_meta(meta),
-                                FeltType::new(codegen.context).into(),
-                                *subcmp_value,
-                                signal_name,
-                            )?)
-                        } else if template_data.get_inputs().contains_key(signal_name) {
-                            let idx = template_data
-                                .get_declaration_inputs()
-                                .iter()
-                                .find_map(|(s, idx)| (signal_name == s).then_some(*idx))
-                                .expect("signal in mapping but not in declaration list");
-                            let call =
-                                CallOpRef::try_from(try_into_op_result_owner(*subcmp_value)?)?;
-                            assert!(call.callee_is_struct_compute());
-                            Ok(call.operand(idx)?)
-                        } else {
-                            anyhow::bail!(
-                                "signal {signal_name} of subcomponent {name} is internal"
-                            );
-                        }
-                    },
-                    |fc, _| {
-                        let subcmp_value = fc.block_ctx.get_named_value(name)?;
-                        let template_data = fc
-                            .subcmp_calls
-                            .get(subcmp_value)
-                            .ok_or_else(|| {
-                                anyhow::anyhow!("subcomponent call for {subcmp_value} not found")
-                            })
-                            .and_then(|name| {
-                                codegen
-                                    .find_template_data(name)
-                                    .ok_or_else(|| anyhow::anyhow!("template {name:?} not found"))
-                            })?;
-                        if template_data.get_outputs().contains_key(signal_name) {
-                            fc.append_op_unnamed_result(r#struct::readf(
-                                &OpBuilder::new(codegen.context),
-                                codegen.location_from_meta(meta),
-                                FeltType::new(codegen.context).into(),
-                                *subcmp_value,
-                                signal_name,
-                            )?)
-                        } else if template_data.get_inputs().contains_key(signal_name) {
-                            let idx = template_data
-                                .get_declaration_inputs()
-                                .iter()
-                                .find_map(|(s, idx)| (signal_name == s).then_some(*idx))
-                                .expect("signal in mapping but not in declaration list");
-                            let call = get_constrain_call(*subcmp_value)?;
-                            Ok(call.operand(idx + 1)?)
-                        } else {
-                            anyhow::bail!(
-                                "signal {signal_name} of subcomponent {name} is internal"
-                            );
-                        }
-                    },
-                ),
-                _ => {
-                    todo!("Handle accesses in Variable expression in template")
+            Expression::Variable { meta, name, access }
+                if { matches!(access[..], [Access::ComponentAccess(_)]) } =>
+            {
+                match access.as_slice() {
+                    [Access::ComponentAccess(signal_name)] => template.and_then(
+                        |fc, _| {
+                            let subcmp_value = fc.block_ctx.get_named_value(name)?;
+                            let template_data = fc
+                                .subcmp_calls
+                                .get(subcmp_value)
+                                .ok_or_else(|| {
+                                    anyhow::anyhow!(
+                                        "subcomponent call for {subcmp_value} not found"
+                                    )
+                                })
+                                .and_then(|name| {
+                                    codegen.find_template_data(name).ok_or_else(|| {
+                                        anyhow::anyhow!("template {name:?} not found")
+                                    })
+                                })?;
+                            if template_data.get_outputs().contains_key(signal_name) {
+                                fc.append_op_unnamed_result(r#struct::readf(
+                                    &OpBuilder::new(codegen.context),
+                                    codegen.location_from_meta(meta),
+                                    FeltType::new(codegen.context).into(),
+                                    *subcmp_value,
+                                    signal_name,
+                                )?)
+                            } else if template_data.get_inputs().contains_key(signal_name) {
+                                let idx = template_data
+                                    .get_declaration_inputs()
+                                    .iter()
+                                    .find_map(|(s, idx)| (signal_name == s).then_some(*idx))
+                                    .expect("signal in mapping but not in declaration list");
+                                let call =
+                                    CallOpRef::try_from(try_into_op_result_owner(*subcmp_value)?)?;
+                                assert!(call.callee_is_struct_compute());
+                                Ok(call.operand(idx)?)
+                            } else {
+                                anyhow::bail!(
+                                    "signal {signal_name} of subcomponent {name} is internal"
+                                );
+                            }
+                        },
+                        |fc, _| {
+                            let subcmp_value = fc.block_ctx.get_named_value(name)?;
+                            let template_data = fc
+                                .subcmp_calls
+                                .get(subcmp_value)
+                                .ok_or_else(|| {
+                                    anyhow::anyhow!(
+                                        "subcomponent call for {subcmp_value} not found"
+                                    )
+                                })
+                                .and_then(|name| {
+                                    codegen.find_template_data(name).ok_or_else(|| {
+                                        anyhow::anyhow!("template {name:?} not found")
+                                    })
+                                })?;
+                            if template_data.get_outputs().contains_key(signal_name) {
+                                fc.append_op_unnamed_result(r#struct::readf(
+                                    &OpBuilder::new(codegen.context),
+                                    codegen.location_from_meta(meta),
+                                    FeltType::new(codegen.context).into(),
+                                    *subcmp_value,
+                                    signal_name,
+                                )?)
+                            } else if template_data.get_inputs().contains_key(signal_name) {
+                                let idx = template_data
+                                    .get_declaration_inputs()
+                                    .iter()
+                                    .find_map(|(s, idx)| (signal_name == s).then_some(*idx))
+                                    .expect("signal in mapping but not in declaration list");
+                                let call = get_constrain_call(*subcmp_value)?;
+                                Ok(call.operand(idx + 1)?)
+                            } else {
+                                anyhow::bail!(
+                                    "signal {signal_name} of subcomponent {name} is internal"
+                                );
+                            }
+                        },
+                    ),
+                    _ => {
+                        unreachable!()
+                    }
                 }
-            },
+            }
             Expression::Call { meta, id, args, .. }
                 if meta.get_type_knowledge().is_component()
                     && codegen.program_archive.contains_template(id) =>
