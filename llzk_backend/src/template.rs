@@ -1034,16 +1034,9 @@ where
     where
         'val: 'r,
     {
+        // This function handles the special cases that happen in templates and any other kind of
+        // expression is delegated.
         match self {
-            Expression::Number(meta, big_int) => {
-                template.and_then_same(|fc, _| {
-                    // Convert the BigInt to an LLZK `felt.const` op. The user of the Expression is
-                    // responsible for converting this `felt.type` value to another type if needed.
-                    // This is done in both functions (if the result is unused in one, dce can
-                    // remove it).
-                    fc.append_op_unnamed_result(new_felt_const_op(codegen, meta, big_int)?)
-                })
-            }
             Expression::Variable { meta, name, access } => match access.as_slice() {
                 [] => template.and_then_same(|fc, _| fc.block_ctx.get_named_value(name).copied()),
                 [Access::ComponentAccess(signal_name)] => template.and_then(
@@ -1124,125 +1117,81 @@ where
                     todo!("Handle accesses in Variable expression in template")
                 }
             },
-            Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                // Generate Value for both sides and then generate the infix op.
-                GenResultMultiVal::gen_exprs(template, codegen, [&**lhe, &**rhe])?.and_then_same(
-                    |fc, vals| fc.gen_infix_op(codegen, meta, infix_op, vals[0], vals[1]),
-                )
-            }
-            Expression::PrefixOp { meta, prefix_op, rhe } => {
-                // Generate Value for operand and then generate the prefix op.
-                rhe.gen_llzk_in_template(codegen, template)?
-                    .and_then_same(|fc, v| fc.gen_prefix_op(codegen, meta, prefix_op, v))
-            }
-            Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                todo!("Handle InlineSwitchOp expression in template")
-            }
-            Expression::ParallelOp { meta, rhe } => {
-                todo!("Handle ParallelOp expression in template")
-            }
-            Expression::ArrayInLine { meta, values } => {
-                todo!("Handle ArrayInLine expression in template")
-            }
-            Expression::UniformArray { meta, value, dimension } => {
-                todo!("Handle UniformArray expression in template")
-            }
-            Expression::Call { meta, id, args, .. } => {
+            Expression::Call { meta, id, args, .. } if meta.get_type_knowledge().is_component() => {
                 let location = codegen.location_from_meta(meta);
-                if meta.get_type_knowledge().is_component() {
-                    let subcmp_type = codegen.struct_type_with_concrete_dimensions(id, args)?;
-                    let template_data = codegen
-                        .program_archive
-                        .templates
-                        .get(id)
-                        .ok_or_else(|| anyhow::anyhow!("Template {id} not found"))?;
-                    let inputs = template_data.get_declaration_inputs();
-                    let mut arg_types: Vec<Type<'_>> = Vec::with_capacity(inputs.len() + 1);
-                    arg_types.push(subcmp_type.into());
-                    arg_types.extend(inputs.iter().map(|(name, _)| -> Type<'_> {
-                        let wire = template_data.get_input_info(name).unwrap_or_else(|| {
-                            panic!("Input {:?} not found for type {:?}", name, id)
-                        });
-                        match wire.get_type() {
-                            WireType::Signal => FeltType::new(codegen.context).into(),
-                            WireType::Bus(name) => {
-                                StructType::from_str(codegen.context, &name).into()
-                            }
-                        }
-                    }));
-                    // Undefs have unknown locations at creation and we set it when we encounter
-                    // the corresponding write.
-                    let unk = Location::unknown(&codegen.context);
-                    let builder = OpBuilder::new(codegen.context);
+                let subcmp_type = codegen.struct_type_with_concrete_dimensions(id, args)?;
+                let template_data = codegen
+                    .program_archive
+                    .templates
+                    .get(id)
+                    .ok_or_else(|| anyhow::anyhow!("Template {id} not found"))?;
+                let inputs = template_data.get_declaration_inputs();
+                let mut arg_types: Vec<Type<'_>> = Vec::with_capacity(inputs.len() + 1);
+                arg_types.push(subcmp_type.into());
+                arg_types.extend(inputs.iter().map(|(name, _)| -> Type<'_> {
+                    let wire = template_data
+                        .get_input_info(name)
+                        .unwrap_or_else(|| panic!("Input {:?} not found for type {:?}", name, id));
+                    match wire.get_type() {
+                        WireType::Signal => FeltType::new(codegen.context).into(),
+                        WireType::Bus(name) => StructType::from_str(codegen.context, &name).into(),
+                    }
+                }));
+                // Undefs have unknown locations at creation and we set it when we encounter
+                // the corresponding write.
+                let unk = Location::unknown(&codegen.context);
+                let builder = OpBuilder::new(codegen.context);
 
-                    // Generate here the call to @compute and @constrain.
-                    // Passing undefs to the methods. These undefs get associated with the
-                    // signals of the subcomponent s.t. when we encounter an assignment
-                    // to one of the signals we replace the undef with the actual value,
-                    // similar to how we do for variables assignment.
-                    template.and_then(
-                        |fc, _| {
-                            let undefs = gen_arg_undefs(&arg_types[1..], unk, fc)?;
-                            let val = fc.append_op_unnamed_result(
-                                function::call(
-                                    &builder,
-                                    location,
-                                    SymbolRefAttribute::new(codegen.context, id, &["compute"]),
-                                    &undefs,
-                                    &[subcmp_type],
-                                )?
-                                .into(),
-                            )?;
-                            fc.subcmp_calls.insert(&val, id.clone());
-                            Ok(val)
-                        },
-                        |fc, _| {
-                            let undefs = gen_arg_undefs(&arg_types, unk, fc)?;
-                            let empty_result: [Type<'ctx>; 0] = [];
-                            fc.append_op_no_result(
-                                function::call(
-                                    &builder,
-                                    location,
-                                    SymbolRefAttribute::new(codegen.context, id, &["constrain"]),
-                                    &undefs,
-                                    &empty_result,
-                                )?
-                                .into(),
-                            )?;
-                            fc.subcmp_calls.insert(&undefs[0], id.clone());
-                            // Return the reference to the subcomponent to match the result of
-                            // compute.
-                            Ok(undefs[0])
-                        },
-                    )
-                } else {
-                    let builder = OpBuilder::new(codegen.context.deref());
-                    // Visit each argument and collect the resulting LLZK Values for both functions.
-                    let res = GenResultMultiVal::gen_exprs(template, codegen, args)?;
-                    // Create the CallOp in each function using the collected args.
-                    res.and_then_same(|fc, vals| {
-                        // TODO: Currently, the LLZK function will always return a `felt.type` but
-                        // eventually, this gen function may need an "expected result type"
-                        // parameter or use `poly.tvar` with function templates.
-                        let return_types = &[FeltType::new(codegen.context)];
-                        fc.append_op_unnamed_result(
+                // Generate here the call to @compute and @constrain.
+                // Passing undefs to the methods. These undefs get associated with the
+                // signals of the subcomponent s.t. when we encounter an assignment
+                // to one of the signals we replace the undef with the actual value,
+                // similar to how we do for variables assignment.
+                template.and_then(
+                    |fc, _| {
+                        let undefs = gen_arg_undefs(&arg_types[1..], unk, fc)?;
+                        let val = fc.append_op_unnamed_result(
                             function::call(
                                 &builder,
-                                codegen.location_from_meta(meta),
-                                FlatSymbolRefAttribute::new(codegen.context, id),
-                                &vals,
-                                return_types,
+                                location,
+                                SymbolRefAttribute::new(codegen.context, id, &["compute"]),
+                                &undefs,
+                                &[subcmp_type],
                             )?
                             .into(),
-                        )
-                    })
-                }
+                        )?;
+                        fc.subcmp_calls.insert(&val, id.clone());
+                        Ok(val)
+                    },
+                    |fc, _| {
+                        let undefs = gen_arg_undefs(&arg_types, unk, fc)?;
+                        let empty_result: [Type<'ctx>; 0] = [];
+                        fc.append_op_no_result(
+                            function::call(
+                                &builder,
+                                location,
+                                SymbolRefAttribute::new(codegen.context, id, &["constrain"]),
+                                &undefs,
+                                &empty_result,
+                            )?
+                            .into(),
+                        )?;
+                        fc.subcmp_calls.insert(&undefs[0], id.clone());
+                        // Return the reference to the subcomponent to match the result of
+                        // compute.
+                        Ok(undefs[0])
+                    },
+                )
             }
-            Expression::BusCall { meta, id, args } => {
-                todo!("Handle BusCall expression in template")
+            // Delegate any other kind of expression to the implementation in `function.rs`.
+            expr => {
+                template.and_then_same(|fc, _| {
+                    // The import is here rather than top level because it is very important that
+                    // `gen_llzk_in_function()` is not used while translating statements.
+                    use crate::function::GenerateLLZKInFunction;
+                    expr.gen_llzk_in_function(codegen, fc)
+                })
             }
-            Expression::AnonymousComp { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
-            Expression::Tuple { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
         }
     }
 }
