@@ -1180,7 +1180,7 @@ where
                 let arr_ty = ArrayType::new(codegen.felt_type().into(), &[dim]);
                 let const_dim = IntegerAttribute::try_from(dim);
                 let init_vals = if const_dim.is_ok() {
-                    vec![val; const_dim.unwrap().value() as usize]
+                    vec![val; usize::try_from(const_dim.unwrap().value())?]
                 } else {
                     todo!("Handle template parameter array lengths in function")
                 };
