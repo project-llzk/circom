@@ -1256,38 +1256,6 @@ where
     }
 }
 
-fn build_access_chain<'ctx, 'val, 'func, 'blk>(
-    codegen: &LlzkCodegen<'_, 'ctx>,
-    meta: &Meta,
-    fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
-    receiver: Value<'ctx, 'val>,
-    chain: &[Access],
-) -> Result<Value<'ctx, 'val>> {
-    let builder = OpBuilder::new(codegen.context);
-    chain.iter().try_fold(receiver, |receiver: Value<'_, '_>, access| match access {
-        Access::ComponentAccess(field) => {
-            let _receiver_type: StructType = receiver.r#type().try_into()?;
-
-            fc.append_op_unnamed_result(
-                r#struct::readf(
-                    &builder,
-                    codegen.location_from_meta(meta),
-                    // TODO: We need to track the types of variables so we know what type to pass here.
-                    // The type that we need to use is stored in a field in the defining op of
-                    // `receiver_type`
-                    FeltType::new(codegen.context).into(),
-                    receiver,
-                    field,
-                )?
-                .into(),
-            )
-        }
-        Access::ArrayAccess(_expression) => {
-            todo!("Generate array write operation in template")
-        }
-    })
-}
-
 #[inline]
 /// Generates a list of undef ops inside the given function context.
 fn gen_arg_undefs<'ctx: 'func, 'func: 'blk, 'blk: 'val, 'val>(
@@ -1307,6 +1275,8 @@ fn try_into_op_result<'ctx, 'val>(value: Value<'ctx, 'val>) -> Result<OperationR
     Ok(unsafe { OperationResult::from_raw(value.to_raw()) })
 }
 
+#[inline]
+/// Tries to obtain the owner operation of a [`Value`](melior::ir::Value).
 fn try_into_op_result_owner<'ctx, 'val, 'op: 'val>(
     value: Value<'ctx, 'val>,
 ) -> Result<OperationRef<'ctx, 'op>> {

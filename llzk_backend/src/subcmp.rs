@@ -10,7 +10,9 @@ use std::{
 /// Attributes instead.
 #[derive(Debug, Eq, PartialEq)]
 pub enum LlzkAccess<'ctx> {
+    /// Access to the signals of a component.
     ComponentAccess(String),
+    /// Index access.
     ArrayAccess(Attribute<'ctx>),
 }
 
@@ -51,22 +53,27 @@ pub struct SubcmpDeclInfo<'ctx> {
 }
 
 impl<'ctx> SubcmpDeclInfo<'ctx> {
+    /// Creates a new declaration instance.
     pub fn new(dimensions: Vec<Attribute<'ctx>>, location: Location<'ctx>) -> Self {
         Self { dimensions, location, instances: Default::default() }
     }
 
+    /// Returns the dimensions of the declaration.
     pub fn dimensions(&self) -> &[Attribute<'ctx>] {
         &self.dimensions
     }
 
+    /// Returns the location of the declaration.
     pub fn location(&self) -> Location<'ctx> {
         self.location
     }
 
+    /// Returns a mutable reference to the different type instances.
     pub fn instances_mut(&mut self) -> &mut HashMap<Vec<LlzkAccess<'ctx>>, StructType<'ctx>> {
         &mut self.instances
     }
 
+    /// Returns a reference to the different type instances.
     pub fn instances(&self) -> Vec<(&[LlzkAccess<'ctx>], StructType<'ctx>)> {
         self.instances.iter().map(|(a, s)| (a.as_slice(), *s)).collect()
     }
@@ -108,7 +115,9 @@ impl std::hash::Hash for ST<'_> {
 /// minimize risk, it has a lifetime parameter tied to a [`Context`].
 #[derive(Debug)]
 pub struct SubcmpCallsMap<'ctx> {
+    /// Mapping between a value representing a constructor and the name of the type it constructs.
     map: HashMap<*const std::ffi::c_void, String>,
+    /// Marker to link the lifetime of a MLIR context to this instance.
     _marker: PhantomData<&'ctx Context>,
 }
 
