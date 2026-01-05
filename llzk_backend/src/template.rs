@@ -606,7 +606,7 @@ fn gen_while<'ast, 'ctx, 'str, 'func, 'blk, 'val, 'r>(
     template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
-    body_stmt: &Box<Statement>,
+    body_stmt: &Statement,
 ) -> Result<()>
 where
     'ctx: 'str,

@@ -1086,6 +1086,11 @@ where
     }
 }
 
+/// This handles translation of circom [Expression] nodes within functions and templates (i.e.
+/// [crate::template::GenerateLLZKInTemplate] implementation for [Expression] directly calls this).
+/// Therefore, it must handle things that are not legal in functions such as [Expression::BusCall]
+/// and [Access::ComponentAccess]. The `type_analysis_user::analyse_project()` pass that runs before
+/// the LLZK translation pass ensures that these illegal constructs do not appear in pure functions.
 impl<'ctx, 'func, 'blk, 'val> GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val> for Expression
 where
     'ctx: 'func,
@@ -1155,8 +1160,8 @@ where
                     codegen,
                     meta,
                     condition,
-                    |fc| Ok(if_true.gen_llzk_in_function(codegen, fc)?),
-                    |fc| Ok(if_false.gen_llzk_in_function(codegen, fc)?),
+                    |fc| if_true.gen_llzk_in_function(codegen, fc),
+                    |fc| if_false.gen_llzk_in_function(codegen, fc),
                 )?;
 
                 function.append_op_unnamed_result(scf_if_op)
