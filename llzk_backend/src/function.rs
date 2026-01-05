@@ -17,6 +17,7 @@ use crate::shared::no_results;
 use crate::shared::single_result_as_value;
 use crate::shared::LlzkCodegen;
 use crate::shared::{self};
+use crate::subcmp::SubcmpCallsMap;
 use anyhow::anyhow;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
@@ -30,6 +31,7 @@ use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
+use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::IntegerAttribute;
 use llzk::prelude::IntegerType;
@@ -87,6 +89,8 @@ where
     pub(crate) func: FuncDefOpRefMut<'ctx, 'func>,
     /// Nested block context within the function.
     pub(crate) block_ctx: BlockContextStack<'ctx, 'blk, 'val>,
+    /// Calls to subcomponents
+    pub(crate) subcmp_calls: SubcmpCallsMap<'ctx>,
 }
 
 impl<'ctx, 'func, 'blk, 'val> FunctionContext<'ctx, 'func, 'blk, 'val>
@@ -117,7 +121,7 @@ where
                 )
             })?;
         }
-        Ok(Self { func, block_ctx })
+        Ok(Self { func, block_ctx, subcmp_calls: Default::default() })
     }
 
     /// Append an operation.

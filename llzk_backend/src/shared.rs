@@ -49,6 +49,7 @@ use program_structure::error_definition::Report;
 use program_structure::file_definition::FileID;
 use program_structure::file_definition::FileLocation;
 use program_structure::program_archive::ProgramArchive;
+use program_structure::template_data::TemplateData;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto as _;
@@ -309,6 +310,15 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
                 .map(|e| self.convert_dim_expr(e))
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(StructType::new(FlatSymbolRefAttribute::new(&self.context, name), &attrs))
+        }
+    }
+
+    /// Returns the data for the template with that name.
+    pub fn find_template_data(&self, name: &str) -> Option<&TemplateData> {
+        if self.program_archive.contains_template(name) {
+            Some(self.program_archive.get_template_data(name))
+        } else {
+            None
         }
     }
 }

@@ -1,7 +1,10 @@
 //! Helper types for handling subcomponents.
 
 use llzk::prelude::*;
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    marker::PhantomData,
+};
 
 /// Version of [`Access`](program_structure::ast::Access) that uses LLZK
 /// Attributes instead.
@@ -90,5 +93,55 @@ impl Eq for ST<'_> {}
 impl std::hash::Hash for ST<'_> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.0.to_raw().ptr.hash(state);
+    }
+}
+
+/// Maps the values of a subcomponent call to it's name.
+///
+/// The actual value used depends on the context; if it's a call to `@compute` then is the value
+/// returned by the call op. If it's a call to `@constrain` then is the value of the first operand
+/// of the call op.
+///
+/// # Safety
+///
+/// Uses the raw pointer as key since [`Value`] does not implement [`Hash`](std::hash::Hash). To
+/// minimize risk, it has a lifetime parameter tied to a [`Context`].
+#[derive(Debug)]
+pub struct SubcmpCallsMap<'ctx> {
+    map: HashMap<*const std::ffi::c_void, String>,
+    _marker: PhantomData<&'ctx Context>,
+}
+
+impl<'ctx> SubcmpCallsMap<'ctx> {
+    /// Creates an empty map.
+    pub fn new() -> Self {
+        Self { map: HashMap::new(), _marker: PhantomData }
+    }
+
+    /// Inserts a new mapping.
+    ///
+    /// Panics if the key already exists.
+    pub fn insert(&mut self, value: &impl ValueLike<'ctx>, name: String) {
+        assert!(self.map.insert(value.to_raw().ptr, name).is_none());
+    }
+
+    /// Returns the name of the type or `None` if not found.
+    pub fn get(&self, value: &impl ValueLike<'ctx>) -> Option<&str> {
+        self.map.get(&value.to_raw().ptr).map(String::as_str)
+    }
+
+    /// Updates the mapping with the new key.
+    ///
+    /// The new key must not be already mapped to another name.
+    pub fn update_keys(&mut self, key: impl ValueLike<'ctx>, new: impl ValueLike<'ctx>) {
+        if let Some(name) = self.map.remove(&key.to_raw().ptr) {
+            self.insert(&new, name)
+        }
+    }
+}
+
+impl Default for SubcmpCallsMap<'_> {
+    fn default() -> Self {
+        Self::new()
     }
 }
