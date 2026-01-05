@@ -260,7 +260,7 @@ where
     #[inline]
     fn cast_to_bool_if_needed<'ast>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -557,7 +557,7 @@ where
     /// then and else arms do not modify the current block context and only produce values.
     pub fn generate_simple_scf_if<'ast, F1, F2>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         meta: &Meta,
         condition: Value<'ctx, 'val>,
         then_value_gen: F1,
