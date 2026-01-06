@@ -531,7 +531,7 @@ where
     }
 
     /// Generate one region for either the then-arm or else-arm of a simple scf.if operation.
-    /// Used by [generate_simple_scf_if].
+    /// Used by [Self::generate_simple_scf_if].
     /// The `value_gen` function is called to generate the value to be yielded from the arm.
     fn generate_simple_scf_if_arm<'ast, F>(
         &mut self,
@@ -551,7 +551,7 @@ where
     }
 
     /// Generate a simple scf.if operation that yields the given `then_value` or `else_value`
-    /// depending on the `condition` value. Unlike [gen_scf_if], this assumes that the
+    /// depending on the `condition` value. Unlike [Self::gen_scf_if], this assumes that the
     /// then and else arms do not modify the current block context and only produce values.
     pub fn generate_simple_scf_if<'ast, F1, F2>(
         &mut self,
