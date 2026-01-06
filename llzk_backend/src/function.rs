@@ -8,22 +8,27 @@
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
-use crate::shared::LlzkCodegen;
 use crate::shared::erase_op;
 use crate::shared::get_function_type_attribute;
 use crate::shared::is_bool;
 use crate::shared::is_felt;
 use crate::shared::is_index;
 use crate::shared::is_scf_yield;
+use crate::shared::new_array_type;
 use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
 use crate::shared::replace_all_uses_in_block_with;
 use crate::shared::single_result_as_value;
+use crate::shared::LlzkCodegen;
 use crate::shared::{self};
-use anyhow::Result;
 use anyhow::anyhow;
+use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
+use llzk::prelude::array;
+use llzk::prelude::bool;
+use llzk::prelude::felt;
+use llzk::prelude::function;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::Block;
@@ -42,10 +47,6 @@ use llzk::prelude::RegionLike as _;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
-use llzk::prelude::array;
-use llzk::prelude::bool;
-use llzk::prelude::felt;
-use llzk::prelude::function;
 use melior::dialect::arith;
 use melior::dialect::index;
 use melior::dialect::ods::math;
@@ -1028,13 +1029,40 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Function uses template operators");
                 }
-                let rhs = rhe.gen_llzk_in_function(codegen, function)?;
-                if access.is_empty() {
-                    // Since there's no simple assignment in LLZK, just update the mapped Value
-                    // which essentially propagates the assignment.
-                    function.block_ctx.set_named_value(var.clone(), rhs)
-                } else {
-                    todo!("Generate array write operation in function");
+                let rvalue = rhe.gen_llzk_in_function(codegen, function)?;
+                match access.as_slice() {
+                    [] => {
+                        // Since there's no simple assignment in LLZK, just update the mapped Value
+                        // which essentially propagates the assignment.
+                        function.block_ctx.set_named_value(var.clone(), rvalue)
+                    }
+                    a => {
+                        let location = codegen.location_from_meta(meta);
+                        let indices = &a
+                            .iter()
+                            .map(|access| {
+                                let idx = match access {
+                                    Access::ArrayAccess(index_expr) => {
+                                        index_expr.gen_llzk_in_function(codegen, function)
+                                    }
+                                    Access::ComponentAccess(name) => {
+                                        todo!("Handle Substitution component access in function")
+                                    }
+                                }?;
+                                function.cast_to_index_if_needed(location, idx)
+                            })
+                            .collect::<Result<Vec<Value<'_, '_>>>>()?;
+                        let arr_ref = function.block_ctx.get_named_value(var)?;
+                        let arr_ty = ArrayType::try_from(arr_ref.r#type())?;
+                        let arr_dims = arr_ty.num_dims() as usize;
+                        assert!(arr_dims >= indices.len());
+                        let write_op = if arr_dims > indices.len() {
+                            array::insert(location, *arr_ref, indices, rvalue)
+                        } else {
+                            array::write(location, *arr_ref, indices, rvalue)
+                        };
+                        no_results(function.append_op(write_op))
+                    }
                 }
             }
             Statement::UnderscoreSubstitution { meta, op, rhe } => {
@@ -1165,44 +1193,109 @@ where
             }
             Expression::ArrayInLine { meta, values } => {
                 let location = codegen.location_from_meta(meta);
+                let builder = &OpBuilder::new(&codegen.context);
+                // Multi-dimensional arrays are made up of array values as their elements
                 let values = values
                     .iter()
                     .map(|val_expr| val_expr.gen_llzk_in_function(codegen, function))
                     .collect::<Result<Vec<Value>>>()?;
-                let elem_ty =
+                let value_ty =
                     values.first().expect("Array must have at least one element").r#type();
                 assert!(
-                    values.iter().all(|&v| v.r#type() == elem_ty),
+                    values.iter().all(|&v| v.r#type() == value_ty),
                     "All array elements must have the same type"
                 );
-                let dim = IntegerAttribute::new(codegen.index_type(), i64::try_from(values.len())?);
-                let arr_ty = ArrayType::new(elem_ty.into(), &[dim.into()]);
-                function.append_op_unnamed_result(array::new(
-                    &OpBuilder::new(&codegen.context),
-                    location,
-                    arr_ty,
-                    llzk::dialect::array::ArrayCtor::Values(&values),
-                ))
+                let subarr_ty = ArrayType::try_from(value_ty);
+                if let Ok(subarr_ty) = subarr_ty {
+                    // For subarrays, we need to create a new array then insert the values
+                    let dim = codegen.index_attr(i64::try_from(values.len())?);
+                    let arr_ty = new_array_type(dim.into(), &subarr_ty);
+                    let new_arr = function.append_op_unnamed_result(array::new(
+                        builder,
+                        location,
+                        arr_ty,
+                        llzk::dialect::array::ArrayCtor::Values(&[]),
+                    ))?;
+                    for (idx, val) in values.iter().enumerate() {
+                        let idx_attr = codegen.index_attr(i64::try_from(idx)?);
+                        let idx_val = function.append_op_unnamed_result(arith::constant(
+                            &codegen.context,
+                            idx_attr.into(),
+                            location,
+                        ))?;
+                        function.append_op_no_result(array::insert(
+                            location,
+                            new_arr,
+                            &[idx_val],
+                            *val,
+                        ))?;
+                    }
+
+                    // Output value is still the newly created array
+                    Ok(new_arr)
+                } else {
+                    let dim = codegen.index_attr(i64::try_from(values.len())?);
+                    let arr_ty = ArrayType::new(value_ty.into(), &[dim.into()]);
+                    function.append_op_unnamed_result(array::new(
+                        builder,
+                        location,
+                        arr_ty,
+                        llzk::dialect::array::ArrayCtor::Values(&values),
+                    ))
+                }
             }
             Expression::UniformArray { meta, value, dimension } => {
+                let location = codegen.location_from_meta(meta);
+                // Multi-dimensional arrays are made up of array values as their elements
                 let val = value.gen_llzk_in_function(codegen, function)?;
                 let dim = codegen.convert_dim_expr(dimension)?;
-                // Array dimensions must be statically known in Circom.
-                // Non-constant array lengths will result in "error[T20463]: Variable array length"
-                let arr_ty = ArrayType::new(codegen.felt_type().into(), &[dim]);
                 let const_dim = IntegerAttribute::try_from(dim);
-                let init_vals = if const_dim.is_ok() {
-                    vec![val; usize::try_from(const_dim.unwrap().value())?]
-                } else {
-                    todo!("Handle template parameter array lengths in function")
-                };
+                let subarr_ty = ArrayType::try_from(val.r#type());
 
-                function.append_op_unnamed_result(array::new(
-                    &OpBuilder::new(&codegen.context),
-                    codegen.location_from_meta(meta),
-                    arr_ty,
-                    llzk::dialect::array::ArrayCtor::Values(&init_vals),
-                ))
+                if let Ok(subarr_ty) = subarr_ty {
+                    let arr_ty = new_array_type(dim, &subarr_ty);
+                    // The array.new constructor doesn't accept arrays as initializer values,
+                    // so we instead create the array empty and use array.insert to insert values.
+                    let new_arr = function.append_op_unnamed_result(array::new(
+                        &OpBuilder::new(&codegen.context),
+                        codegen.location_from_meta(meta),
+                        arr_ty,
+                        llzk::dialect::array::ArrayCtor::Values(&[]),
+                    ))?;
+                    if let Ok(const_dim) = const_dim {
+                        for idx in 0..const_dim.value() {
+                            let idx_attr = codegen.index_attr(idx);
+                            let idx_val = function.append_op_unnamed_result(arith::constant(
+                                &codegen.context,
+                                idx_attr.into(),
+                                location,
+                            ))?;
+                            function.append_op_no_result(array::insert(
+                                location,
+                                new_arr,
+                                &[idx_val],
+                                val,
+                            ))?;
+                        }
+                    } else {
+                        todo!("Handle template parameter array lengths in function")
+                    };
+                    // Output value is still the newly created array
+                    Ok(new_arr)
+                } else {
+                    let arr_ty = ArrayType::new(val.r#type(), &[dim]);
+                    let init_vals = if let Ok(const_dim) = const_dim {
+                        vec![val; usize::try_from(const_dim.value())?]
+                    } else {
+                        todo!("Handle template parameter array lengths in function")
+                    };
+                    function.append_op_unnamed_result(array::new(
+                        &OpBuilder::new(&codegen.context),
+                        codegen.location_from_meta(meta),
+                        arr_ty,
+                        llzk::dialect::array::ArrayCtor::Values(&init_vals),
+                    ))
+                }
             }
             Expression::Call { meta, id, args } => {
                 let builder = OpBuilder::new(codegen.context.deref());
