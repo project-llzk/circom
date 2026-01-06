@@ -213,7 +213,7 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
     ) -> Result<Operation<'ctx>> {
         self.new_nondet_at_location(
             location,
-            self.type_with_dimensions(FeltType::new(self.context).into(), dimensions)?,
+            self.type_with_dimensions(self.felt_type().into(), dimensions)?,
         )
     }
 

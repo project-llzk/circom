@@ -772,7 +772,7 @@ where
                                     r#struct::readf(
                                         &OpBuilder::new(codegen.context.deref()),
                                         codegen.location_from_meta(meta),
-                                        FeltType::new(codegen.context).into(),
+                                        codegen.felt_type().into(),
                                         fc.func.self_value_of_constrain()?,
                                         var,
                                     )?
@@ -813,12 +813,11 @@ where
                                     // Read value of field from "self" struct and generate
                                     // equality constraint with 'val'.
                                     let builder = OpBuilder::new(codegen.context.deref());
-                                    let felt_type = FeltType::new(codegen.context).into();
                                     let val_from_read = fc.append_op_unnamed_result(
                                         r#struct::readf(
                                             &builder,
                                             codegen.location_from_meta(meta),
-                                            felt_type,
+                                            codegen.felt_type().into(),
                                             fc.func.self_value_of_constrain()?,
                                             var,
                                         )?

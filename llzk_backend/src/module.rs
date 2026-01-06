@@ -102,7 +102,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         name,
                         dimensions,
                         signal_type,
-                        FeltType::new(codegen.context).into(),
+                        codegen.felt_type().into(),
                     ),
                     VariableType::Bus(bus_name, signal_type, ..) => self.visit_signal_or_bus(
                         codegen,
@@ -199,7 +199,7 @@ impl<'ctx> GenerateLLZKInModule<'ctx> for ProgramArchive {
 impl<'ctx> GenerateLLZKInModule<'ctx> for FunctionData {
     fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx>) -> Result<()> {
         let location = codegen.location(self.get_file_id(), self.get_param_location());
-        let felt_type = FeltType::new(codegen.context).into();
+        let felt_type = codegen.felt_type().into();
         // TODO: This just uses `felt.type` for param and return types but those must actually be
         // determined based on the caller. Circom functions cannot accept or return components or
         // busses so the only types allowed for params and return are `felt.type` and arrays of

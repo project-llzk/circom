@@ -1230,7 +1230,7 @@ where
                 // eventually, this gen function may need an "expected result type"
                 // parameter or use `poly.tvar` with function templates.
                 // See template.rs for Expression::Call generation there.
-                let return_types = &[FeltType::new(codegen.context)];
+                let return_types = &[codegen.felt_type()];
                 function.append_op_unnamed_result(
                     function::call(
                         &builder,
