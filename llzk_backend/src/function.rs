@@ -8,6 +8,7 @@
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
+use crate::shared::LlzkCodegen;
 use crate::shared::erase_op;
 use crate::shared::get_function_type_attribute;
 use crate::shared::is_bool;
@@ -18,26 +19,19 @@ use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
 use crate::shared::replace_all_uses_in_block_with;
 use crate::shared::single_result_as_value;
-use crate::shared::LlzkCodegen;
 use crate::shared::{self};
-use anyhow::anyhow;
 use anyhow::Result;
+use anyhow::anyhow;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
-use llzk::prelude::array;
-use llzk::prelude::bool;
-use llzk::prelude::felt;
-use llzk::prelude::function;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
-use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::IntegerAttribute;
-use llzk::prelude::IntegerType;
 use llzk::prelude::Location;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike as _;
@@ -48,6 +42,10 @@ use llzk::prelude::RegionLike as _;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
+use llzk::prelude::array;
+use llzk::prelude::bool;
+use llzk::prelude::felt;
+use llzk::prelude::function;
 use melior::dialect::arith;
 use melior::dialect::index;
 use melior::dialect::ods::math;
@@ -398,7 +396,7 @@ where
                     // Perform integer division by casting to integer, using arith dialect
                     // divui, then casting the quotient back to felt. Cast to an integer type
                     // with sufficient bits to hold the felts without truncation.
-                    let int_ty = IntegerType::new(codegen.context, codegen.prime_field_bits()?);
+                    let int_ty = codegen.int_type(codegen.prime_field_bits()?);
                     let loc = codegen.location_from_meta(meta);
                     let int_lhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, lhs))?;
                     let int_rhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, rhs))?;
@@ -1230,7 +1228,7 @@ where
                 // eventually, this gen function may need an "expected result type"
                 // parameter or use `poly.tvar` with function templates.
                 // See template.rs for Expression::Call generation there.
-                let return_types = &[FeltType::new(codegen.context)];
+                let return_types = &[codegen.felt_type()];
                 function.append_op_unnamed_result(
                     function::call(
                         &builder,

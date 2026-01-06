@@ -1,12 +1,9 @@
 //! Shared code generation utilities.
 
 use ansi_term::Color;
-use anyhow::anyhow;
 use anyhow::Result;
+use anyhow::anyhow;
 use llzk::operation::replace_uses_of_with;
-use llzk::prelude::felt;
-use llzk::prelude::undef;
-use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::BlockLike;
@@ -30,14 +27,18 @@ use llzk::prelude::PassManager;
 use llzk::prelude::StructDefOp;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructDefOpRefMut;
+use llzk::prelude::StructType;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
+use llzk::prelude::felt;
+use llzk::prelude::undef;
+use llzk::prelude::verify_operation_with_diags;
 use melior::dialect::arith;
+use melior::ir::Module;
 use melior::ir::attribute::BoolAttribute;
 use melior::ir::attribute::TypeAttribute;
-use melior::ir::Module;
 use melior::utility;
 use num_bigint_dig::BigInt;
 use num_traits::cast::ToPrimitive;
@@ -213,7 +214,7 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
     ) -> Result<Operation<'ctx>> {
         self.new_nondet_at_location(
             location,
-            self.type_with_dimensions(FeltType::new(self.context).into(), dimensions)?,
+            self.type_with_dimensions(self.felt_type().into(), dimensions)?,
         )
     }
 
@@ -228,10 +229,22 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         self.new_nondet_felt_of_dimensions_at_location(self.location_from_meta(meta), dimensions)
     }
 
+    /// Get the integer type of the given bitwidth.
+    #[inline]
+    pub fn int_type(&self, bits: u32) -> IntegerType<'ctx> {
+        IntegerType::new(self.context, bits)
+    }
+
     /// Get the boolean type (`i1`).
     #[inline]
     pub fn bool_type(&self) -> IntegerType<'ctx> {
-        IntegerType::new(self.context, 1)
+        self.int_type(1)
+    }
+
+    /// Get the index type.
+    #[inline]
+    pub fn index_type(&self) -> Type<'ctx> {
+        Type::index(self.context)
     }
 
     /// Get the felt type.
@@ -240,10 +253,10 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         FeltType::new(self.context)
     }
 
-    /// Get the index type.
+    /// Get the struct type for the given struct name.
     #[inline]
-    pub fn index_type(&self) -> Type<'ctx> {
-        Type::index(self.context)
+    pub fn struct_type(&self, name: &str) -> StructType<'ctx> {
+        StructType::from_str(self.context, name)
     }
 
     /// Run cleanup passes on the generated `Module`.
