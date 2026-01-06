@@ -8,8 +8,8 @@
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
-use crate::shared::LlzkCodegen;
 use crate::module::ProgramLike;
+use crate::shared::LlzkCodegen;
 use crate::shared::erase_op;
 use crate::shared::get_function_type_attribute;
 use crate::shared::is_bool;

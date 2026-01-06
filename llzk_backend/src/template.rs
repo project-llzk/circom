@@ -697,7 +697,6 @@ where
     where
         'val: 'r;
 
-    #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_template<'ast, 'r>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
@@ -710,7 +709,7 @@ where
             Statement::InitializationBlock { initializations, .. } => {
                 initializations.gen_llzk_in_template(codegen, template)
             }
-            Statement::Declaration { meta, xtype, name, dimensions, .. } => {
+            Statement::Declaration { meta, name, dimensions, .. } => {
                 template.and_then_same(|fc, _| {
                     fc.block_ctx.declare_name_if_not_present(name, || {
                         codegen.new_nondet_felt_of_dimensions(meta, dimensions)
@@ -842,7 +841,7 @@ where
                     }
                 }
             }
-            Statement::UnderscoreSubstitution { meta, op, rhe } => {
+            Statement::UnderscoreSubstitution { op, rhe, .. } => {
                 // The `<--` operator is witness generation only so this should not
                 // generate any code in the constrain function.
                 let template =
