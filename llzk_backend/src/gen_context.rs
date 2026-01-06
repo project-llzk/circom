@@ -2,8 +2,8 @@
 
 use crate::function::FunctionContext;
 use crate::shared::single_result_as_value;
-use anyhow::anyhow;
 use anyhow::Result;
+use anyhow::anyhow;
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;

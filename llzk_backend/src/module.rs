@@ -3,8 +3,8 @@
 
 use crate::function::FunctionContext;
 use crate::function::GenerateLLZKInFunction as _;
-use crate::shared::map_name_to_arg_value;
 use crate::shared::LlzkCodegen;
+use crate::shared::map_name_to_arg_value;
 use crate::template::GenerateLLZKInTemplate as _;
 use crate::template::TemplateContext;
 use anyhow::Result;
@@ -13,13 +13,8 @@ use compiler::hir::very_concrete_program::VCF;
 use compiler::hir::very_concrete_program::VCP;
 use llzk::attributes::NamedAttribute;
 use llzk::error::Error;
-use llzk::prelude::function;
-use llzk::prelude::r#struct::helpers::compute_fn;
-use llzk::prelude::r#struct::helpers::constrain_fn;
-use llzk::prelude::r#struct::{self};
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
-use llzk::prelude::FeltType;
 use llzk::prelude::FuncDefOpRef;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::FunctionType;
@@ -29,8 +24,11 @@ use llzk::prelude::OperationLike as _;
 use llzk::prelude::PublicAttribute;
 use llzk::prelude::RegionLike;
 use llzk::prelude::StructDefOpLike as _;
-use llzk::prelude::StructType;
 use llzk::prelude::Type;
+use llzk::prelude::function;
+use llzk::prelude::r#struct::helpers::compute_fn;
+use llzk::prelude::r#struct::helpers::constrain_fn;
+use llzk::prelude::r#struct::{self};
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
 use program_structure::ast::SignalType;
@@ -107,7 +105,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         name,
                         dimensions,
                         signal_type,
-                        FeltType::new(codegen.context).into(),
+                        codegen.felt_type().into(),
                     ),
                     VariableType::Bus(bus_name, signal_type, ..) => self.visit_signal_or_bus(
                         codegen,
@@ -115,7 +113,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         name,
                         dimensions,
                         signal_type,
-                        StructType::from_str(codegen.context, bus_name).into(),
+                        codegen.struct_type(bus_name).into(),
                     ),
                     VariableType::Var => {
                         // Create an `undef` of the appropriate type. When the actual assignment is
@@ -241,7 +239,7 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
     codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
 ) -> Result<()> {
     let location = func_like.get_location(codegen);
-    let felt_type = FeltType::new(codegen.context).into();
+    let felt_type = codegen.felt_type().into();
     // TODO: This just uses `felt.type` for param and return types but those must actually be
     // determined based on the caller. Circom functions cannot accept or return components or
     // busses so the only types allowed for params and return are `felt.type` and arrays of

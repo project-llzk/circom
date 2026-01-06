@@ -8,6 +8,7 @@
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
+use crate::shared::LlzkCodegen;
 use crate::module::ProgramLike;
 use crate::shared::erase_op;
 use crate::shared::get_function_type_attribute;
@@ -19,26 +20,19 @@ use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
 use crate::shared::replace_all_uses_in_block_with;
 use crate::shared::single_result_as_value;
-use crate::shared::LlzkCodegen;
 use crate::shared::{self};
-use anyhow::anyhow;
 use anyhow::Result;
+use anyhow::anyhow;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
-use llzk::prelude::array;
-use llzk::prelude::bool;
-use llzk::prelude::felt;
-use llzk::prelude::function;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
-use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::IntegerAttribute;
-use llzk::prelude::IntegerType;
 use llzk::prelude::Location;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike as _;
@@ -49,6 +43,10 @@ use llzk::prelude::RegionLike as _;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
+use llzk::prelude::array;
+use llzk::prelude::bool;
+use llzk::prelude::felt;
+use llzk::prelude::function;
 use melior::dialect::arith;
 use melior::dialect::index;
 use melior::dialect::ods::math;
@@ -397,7 +395,7 @@ where
                     // Perform integer division by casting to integer, using arith dialect
                     // divui, then casting the quotient back to felt. Cast to an integer type
                     // with sufficient bits to hold the felts without truncation.
-                    let int_ty = IntegerType::new(codegen.context, codegen.prime_field_bits()?);
+                    let int_ty = codegen.int_type(codegen.prime_field_bits()?);
                     let loc = codegen.location_from_meta(meta);
                     let int_lhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, lhs))?;
                     let int_rhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, rhs))?;
@@ -1110,15 +1108,16 @@ where
                 // responsible for converting this `felt.type` value to another type if needed.
                 function.append_op_unnamed_result(new_felt_const_op(codegen, meta, big_int)?)
             }
-            Expression::Variable { meta, name, access } => {
-                match access.as_slice() {
-                    [] => {
-                        let v = function.block_ctx.get_named_value(name)?;
-                        Ok(*v)
-                    }
-                    a => {
-                        let location = codegen.location_from_meta(meta);
-                        let indices = a.iter().map(|access| {
+            Expression::Variable { meta, name, access } => match access.as_slice() {
+                [] => {
+                    let v = function.block_ctx.get_named_value(name)?;
+                    Ok(*v)
+                }
+                a => {
+                    let location = codegen.location_from_meta(meta);
+                    let indices = a
+                        .iter()
+                        .map(|access| {
                             let idx = match access {
                                 Access::ArrayAccess(index_expr) => {
                                     index_expr.gen_llzk_in_function(codegen, function)
@@ -1128,17 +1127,12 @@ where
                                 }
                             }?;
                             function.cast_to_index_if_needed(location, idx)
-                        }).collect::<Result<Vec<Value<'_, '_>>>>()?;
-                        let v = function.block_ctx.get_named_value(name)?;
-                        let arr_ty = ArrayType::try_from(v.r#type())?;
-                        let array_get_op = array::read(
-                            location,
-                            arr_ty.element_type(),
-                            *v,
-                            &indices,
-                        );
-                        function.append_op_unnamed_result(array_get_op)
-                    }
+                        })
+                        .collect::<Result<Vec<Value<'_, '_>>>>()?;
+                    let v = function.block_ctx.get_named_value(name)?;
+                    let arr_ty = ArrayType::try_from(v.r#type())?;
+                    let array_get_op = array::read(location, arr_ty.element_type(), *v, &indices);
+                    function.append_op_unnamed_result(array_get_op)
                 }
             },
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {
@@ -1169,7 +1163,25 @@ where
                 todo!("Handle ParallelOp expression")
             }
             Expression::ArrayInLine { meta, values } => {
-                todo!("Handle ArrayInLine expression")
+                let location = codegen.location_from_meta(meta);
+                let values = values
+                    .iter()
+                    .map(|val_expr| val_expr.gen_llzk_in_function(codegen, function))
+                    .collect::<Result<Vec<Value>>>()?;
+                let elem_ty =
+                    values.first().expect("Array must have at least one element").r#type();
+                assert!(
+                    values.iter().all(|&v| v.r#type() == elem_ty),
+                    "All array elements must have the same type"
+                );
+                let dim = IntegerAttribute::new(codegen.index_type(), i64::try_from(values.len())?);
+                let arr_ty = ArrayType::new(elem_ty.into(), &[dim.into()]);
+                function.append_op_unnamed_result(array::new(
+                    &OpBuilder::new(&codegen.context),
+                    location,
+                    arr_ty,
+                    llzk::dialect::array::ArrayCtor::Values(&values),
+                ))
             }
             Expression::UniformArray { meta, value, dimension } => {
                 let val = value.gen_llzk_in_function(codegen, function)?;
@@ -1179,7 +1191,7 @@ where
                 let arr_ty = ArrayType::new(codegen.felt_type().into(), &[dim]);
                 let const_dim = IntegerAttribute::try_from(dim);
                 let init_vals = if const_dim.is_ok() {
-                    vec![val; const_dim.unwrap().value() as usize]
+                    vec![val; usize::try_from(const_dim.unwrap().value())?]
                 } else {
                     todo!("Handle template parameter array lengths in function")
                 };
@@ -1215,7 +1227,7 @@ where
                 // eventually, this gen function may need an "expected result type"
                 // parameter or use `poly.tvar` with function templates.
                 // See template.rs for Expression::Call generation there.
-                let return_types = &[FeltType::new(codegen.context)];
+                let return_types = &[codegen.felt_type()];
                 function.append_op_unnamed_result(
                     function::call(
                         &builder,

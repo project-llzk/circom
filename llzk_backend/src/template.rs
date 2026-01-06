@@ -10,20 +10,19 @@ use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::module::ProgramLike;
-use crate::shared::is_felt;
 use crate::shared::LlzkCodegen;
+use crate::shared::is_felt;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
-use llzk::prelude::constrain;
-use llzk::prelude::r#struct;
 use llzk::prelude::BlockRef;
-use llzk::prelude::FeltType;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
+use llzk::prelude::constrain;
+use llzk::prelude::r#struct;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -773,7 +772,7 @@ where
                                     r#struct::readf(
                                         &OpBuilder::new(codegen.context.deref()),
                                         codegen.location_from_meta(meta),
-                                        FeltType::new(codegen.context).into(),
+                                        codegen.felt_type().into(),
                                         fc.func.self_value_of_constrain()?,
                                         var,
                                     )?
@@ -814,12 +813,11 @@ where
                                     // Read value of field from "self" struct and generate
                                     // equality constraint with 'val'.
                                     let builder = OpBuilder::new(codegen.context.deref());
-                                    let felt_type = FeltType::new(codegen.context).into();
                                     let val_from_read = fc.append_op_unnamed_result(
                                         r#struct::readf(
                                             &builder,
                                             codegen.location_from_meta(meta),
-                                            felt_type,
+                                            codegen.felt_type().into(),
                                             fc.func.self_value_of_constrain()?,
                                             var,
                                         )?
