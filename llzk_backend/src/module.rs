@@ -11,6 +11,7 @@ use anyhow::Result;
 use compiler::hir::very_concrete_program::TemplateInstance;
 use compiler::hir::very_concrete_program::VCF;
 use compiler::hir::very_concrete_program::VCP;
+use compiler::hir::very_concrete_program::Wire;
 use llzk::attributes::NamedAttribute;
 use llzk::error::Error;
 use llzk::prelude::Block;
@@ -47,6 +48,7 @@ use std::slice;
 /// Declaration statements within a circom template.
 ///
 /// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+#[derive(Debug)]
 struct InputSignalInfo<'ctx> {
     /// Name of circom input signal that maps to a function parameter.
     name: String,
@@ -60,34 +62,54 @@ struct InputSignalInfo<'ctx> {
 /// struct fields and parameters to the functions with the struct.
 ///
 /// 'ctx: lifetime of the `LlzkContext` and generated `Module`
-#[derive(Default)]
-struct DeclarationInfo<'ctx> {
+#[derive(Debug, Default)]
+pub struct DeclarationInfo<'ctx> {
     /// Input Signal declarations to use as parameters to the LLZK struct functions.
     inputs: Vec<InputSignalInfo<'ctx>>,
     /// Output and Intermediate declarations to use as LLZK struct fields.
     struct_fields: Vec<Result<Operation<'ctx>, Error>>,
-    /// Map `var` name to its LLZK declaration Operation (usually `undef.undef`).
-    var_decls: HashMap<String, Operation<'ctx>>,
+    /// Map var/signal name to its LLZK declaration Operation (usually `undef.undef`).
+    decl_inits: HashMap<String, Operation<'ctx>>,
 }
 
 impl<'ctx> DeclarationInfo<'ctx> {
-    /// Visit a statement and populate this `DeclarationInfo` with any declarations found.
+    /// Visit all statements in the body of the template and return a new [DeclarationInfo]
+    /// with any declarations found.
+    fn from_template(
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        template: &impl TemplateLike,
+    ) -> Result<DeclarationInfo<'ctx>> {
+        let mut declarations = DeclarationInfo::default();
+        for s in template.get_body() {
+            declarations.visit(codegen, s)?;
+        }
+        Ok(declarations)
+    }
+
+    /// Visit a statement and populate this [DeclarationInfo] with any declarations found.
     ///
     /// TODO: This currently visits only top-level statements within the template body. However,
     /// since circom 2.1.5, signal declarations are allowed inside of blocks and known-condition if
     /// statements. Those nested declarations are not currently processed here.
-    ///
-    /// 'ast: lifetime of the circom AST element
-    fn visit<'ast>(
+    fn visit(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
-        stmt: &'ast Statement,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        stmt: &Statement,
     ) -> Result<()> {
         match stmt {
+            Statement::Block { stmts, .. } => {
+                // TemplateInstance (in concrete programs) has Declaration in Block (but only for
+                // var, not signals). The Block contains no additional information beyond the
+                // Declarations that appear within it so just process the inner statements.
+                for init in stmts {
+                    self.visit(codegen, init)?;
+                }
+                Ok(())
+            }
             Statement::InitializationBlock { initializations, .. } => {
-                // The InitializationBlock is just a wrapper that contains no additional information
-                // beyond the Declarations that must appear within it so just process the inner
-                // statements.
+                // TemplateData (in non-concrete programs) has Declaration in InitializationBlock.
+                // The InitializationBlock contains no additional information beyond the
+                // Declarations that appear within it so just process the inner statements.
                 for init in initializations {
                     self.visit(codegen, init)?;
                 }
@@ -101,24 +123,24 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 match xtype {
                     VariableType::Signal(signal_type, ..) => self.visit_signal_or_bus(
                         codegen,
-                        meta,
-                        name,
-                        dimensions,
                         signal_type,
+                        name,
+                        meta,
+                        dimensions,
                         codegen.felt_type().into(),
                     ),
                     VariableType::Bus(bus_name, signal_type, ..) => self.visit_signal_or_bus(
                         codegen,
-                        meta,
-                        name,
-                        dimensions,
                         signal_type,
+                        name,
+                        meta,
+                        dimensions,
                         codegen.struct_type(bus_name).into(),
                     ),
                     VariableType::Var => {
                         // Create an `undef` of the appropriate type. When the actual assignment is
-                        // processed later, replace the `undef` with the appropriate value.
-                        self.var_decls.insert(
+                        // processed later, this is replaced with the appropriate value.
+                        self.decl_inits.insert(
                             name.clone(),
                             codegen.new_nondet_felt_of_dimensions(meta, dimensions)?,
                         );
@@ -137,19 +159,31 @@ impl<'ctx> DeclarationInfo<'ctx> {
     }
 
     /// `visit()` helper for Signal and Bus VariableType.
+    #[inline]
     fn visit_signal_or_bus(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        meta: &Meta,
-        name: &String,
-        dimensions: &[Expression],
         signal_type: &SignalType,
+        name: &String,
+        meta: &Meta,
+        dimensions: &[Expression],
         base_type: Type<'ctx>,
     ) -> Result<()> {
         let location = codegen.location_from_meta(meta);
-        let decl_type = codegen.type_with_dimensions(base_type, dimensions)?;
+        let decl_type = codegen.type_from_dimension_exprs(base_type, dimensions)?;
+        self.visit_signal_or_bus_impl(codegen, signal_type, name, location, decl_type)
+    }
+
+    /// `visit()` helper for Signal and Bus VariableType.
+    fn visit_signal_or_bus_impl(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        signal_type: &SignalType,
+        name: &String,
+        location: Location<'ctx>,
+        decl_type: Type<'ctx>,
+    ) -> Result<()> {
         if SignalType::Input == *signal_type {
-            // self.func_inputs.push((decl_type, location));
             let mut attrs: Vec<NamedAttribute<'_>> = Vec::new();
             if codegen.program.get_main_public_inputs().contains(name) {
                 attrs.push(PublicAttribute::new_named_attr(codegen.context));
@@ -167,9 +201,13 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 false,
                 SignalType::Output == *signal_type,
             );
-            self.struct_fields.push(new.map(|f| f.into()));
+            self.struct_fields.push(new.map(Into::into));
         }
-        Ok(())
+        // Create an `undef` of the appropriate type. When the actual assignment is
+        // processed later, this is replaced with the appropriate value.
+        codegen.new_nondet_at_location(location, decl_type).map(|op| {
+            self.decl_inits.insert(name.clone(), op);
+        })
     }
 }
 
@@ -220,7 +258,7 @@ impl FunctionLike for VCF {
         codegen.location_unknown()
     }
     fn get_name(&self) -> &str {
-        &self.name
+        &self.header
     }
     fn get_num_of_params(&self) -> usize {
         self.params_types.len()
@@ -229,7 +267,12 @@ impl FunctionLike for VCF {
         self.params_types.iter().map(|p| p.name.clone()).collect()
     }
     fn get_body(&self) -> &[Statement] {
-        slice::from_ref(&self.body)
+        // In VCF format, the function body is wrapped in a Block that conveys no additional
+        // information but will cause returns to generate `scf.yield`` instead of `function.return`.
+        match &self.body {
+            Statement::Block { stmts, .. } => return stmts,
+            b => slice::from_ref(b),
+        }
     }
 }
 
@@ -268,7 +311,7 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
 
 /// A trait that allows common handling of the structs used to represent a circom
 /// template at different stages in the compilation process.
-pub trait TemplateLike {
+pub trait TemplateLike: std::fmt::Debug {
     /// Generate the LLZK Location for the template definition.
     fn get_location<'ctx>(
         &self,
@@ -280,6 +323,12 @@ pub trait TemplateLike {
     fn get_name_of_params(&self) -> Vec<String>;
     /// Get the body statements of the template.
     fn get_body(&self) -> &[Statement];
+    /// Construct [DeclarationInfo] containing var and signal declarations
+    /// found in this template body.
+    fn get_declarations<'ctx>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Result<DeclarationInfo<'ctx>>;
 }
 
 impl TemplateLike for TemplateData {
@@ -297,6 +346,12 @@ impl TemplateLike for TemplateData {
     }
     fn get_body(&self) -> &[Statement] {
         self.get_body_as_vec()
+    }
+    fn get_declarations<'ctx>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Result<DeclarationInfo<'ctx>> {
+        DeclarationInfo::from_template(codegen, self)
     }
 }
 
@@ -316,6 +371,35 @@ impl TemplateLike for TemplateInstance {
     fn get_body(&self) -> &[Statement] {
         slice::from_ref(&self.code)
     }
+    fn get_declarations<'ctx>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Result<DeclarationInfo<'ctx>> {
+        let mut declarations = DeclarationInfo::from_template(codegen, self)?;
+        for w in &self.wires {
+            match w {
+                Wire::TSignal(signal) => declarations.visit_signal_or_bus_impl(
+                    codegen,
+                    &signal.xtype,
+                    &signal.name,
+                    self.get_location(codegen),
+                    codegen
+                        .type_from_dimension_consts(codegen.felt_type().into(), &signal.lengths)?,
+                )?,
+                Wire::TBus(bus) => declarations.visit_signal_or_bus_impl(
+                    codegen,
+                    &bus.xtype,
+                    &bus.name,
+                    self.get_location(codegen),
+                    codegen.type_from_dimension_consts(
+                        codegen.struct_type(&bus.name).into(),
+                        &bus.lengths,
+                    )?,
+                )?,
+            }
+        }
+        Ok(declarations)
+    }
 }
 
 /// Generate LLZK for a template-like construct. Helper to avoid code duplication.
@@ -324,10 +408,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
 ) -> Result<()> {
     // Collect declarations first to determine struct fields and function parameters.
-    let mut declarations = DeclarationInfo::default();
-    for s in template_like.get_body() {
-        declarations.visit(codegen, s)?;
-    }
+    let declarations = template_like.get_declarations(codegen)?;
 
     // Generate the struct definition, prepopulated with fields.
     let struct_loc = template_like.get_location(codegen);
@@ -380,7 +461,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     )?;
     // Insert the Operations created from variable Declaration statements and map the circom
     // variable name to LLZK op result Value (do this in each function).
-    for (name, op) in declarations.var_decls {
+    for (name, op) in declarations.decl_inits {
         // Insert (a clone of) the declaration into the compute function.
         compute_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op.clone()))?;
         // Insert the declaration into the constrain function.

@@ -179,9 +179,31 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         }
     }
 
-    /// If `dimensions` is empty, return `base_type`. Otherwise, create ArrayType by converting the
-    /// dimension circom [Expressions](Expression) to LLZK Attributes.
-    pub fn type_with_dimensions(
+    /// If `dimensions` is empty, return `base_type`. Otherwise, create [ArrayType] by
+    /// converting the dimension sizes to LLZK Attributes.
+    pub fn type_from_dimension_consts(
+        &self,
+        base_type: Type<'ctx>,
+        dimensions: &[usize],
+    ) -> Result<Type<'ctx>> {
+        if dimensions.is_empty() {
+            Ok(base_type)
+        } else {
+            dimensions
+                .iter()
+                .map(|c| {
+                    i64::try_from(*c).map_err(Into::into).map(|c| {
+                        Attribute::from(IntegerAttribute::new(Type::index(self.context), c))
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .map(|dims| ArrayType::new(base_type, &dims).into())
+        }
+    }
+
+    /// If `dimensions` is empty, return `base_type`. Otherwise, create [ArrayType] by
+    /// converting the dimension circom [Expressions](Expression) to LLZK Attributes.
+    pub fn type_from_dimension_exprs(
         &self,
         base_type: Type<'ctx>,
         dimensions: &[Expression],
@@ -220,7 +242,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     ) -> Result<Operation<'ctx>> {
         self.new_nondet_at_location(
             location,
-            self.type_with_dimensions(self.felt_type().into(), dimensions)?,
+            self.type_from_dimension_exprs(self.felt_type().into(), dimensions)?,
         )
     }
 
