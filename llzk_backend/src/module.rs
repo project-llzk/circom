@@ -320,7 +320,7 @@ pub trait TemplateLike: std::fmt::Debug {
     /// Get the name of the template.
     fn get_name(&self) -> &str;
     /// Get the names of the parameters of the template.
-    fn get_name_of_params(&self) -> Vec<String>;
+    fn get_name_of_params(&self) -> &[String];
     /// Get the body statements of the template.
     fn get_body(&self) -> &[Statement];
     /// Construct [DeclarationInfo] containing var and signal declarations
@@ -341,8 +341,8 @@ impl TemplateLike for TemplateData {
     fn get_name(&self) -> &str {
         self.get_name()
     }
-    fn get_name_of_params(&self) -> Vec<String> {
-        self.get_name_of_params().clone()
+    fn get_name_of_params(&self) -> &[String] {
+        self.get_name_of_params()
     }
     fn get_body(&self) -> &[Statement] {
         self.get_body_as_vec()
@@ -365,8 +365,8 @@ impl TemplateLike for TemplateInstance {
     fn get_name(&self) -> &str {
         &self.template_name
     }
-    fn get_name_of_params(&self) -> Vec<String> {
-        self.header.iter().map(|a| a.name.clone()).collect()
+    fn get_name_of_params(&self) -> &[String] {
+        &[]
     }
     fn get_body(&self) -> &[Statement] {
         slice::from_ref(&self.code)
@@ -412,8 +412,8 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
 
     // Generate the struct definition, prepopulated with fields.
     let struct_loc = template_like.get_location(codegen);
-    let struct_params = template_like.get_name_of_params();
-    let struct_params: Vec<_> = struct_params.iter().map(String::as_str).collect();
+    let struct_params: Vec<_> =
+        template_like.get_name_of_params().iter().map(String::as_str).collect();
     let struct_def = r#struct::def(
         struct_loc,
         template_like.get_name(),
