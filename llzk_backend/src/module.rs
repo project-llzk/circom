@@ -21,7 +21,6 @@ use llzk::prelude::OperationLike as _;
 use llzk::prelude::PublicAttribute;
 use llzk::prelude::RegionLike;
 use llzk::prelude::StructDefOpLike as _;
-use llzk::prelude::StructType;
 use llzk::prelude::Type;
 use llzk::prelude::function;
 use llzk::prelude::r#struct::helpers::compute_fn;
@@ -109,7 +108,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         name,
                         dimensions,
                         signal_type,
-                        StructType::from_str(codegen.context, bus_name).into(),
+                        codegen.struct_type(bus_name).into(),
                     ),
                     VariableType::Var => {
                         // Create an `undef` of the appropriate type. When the actual assignment is

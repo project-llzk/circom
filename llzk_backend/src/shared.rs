@@ -27,6 +27,7 @@ use llzk::prelude::PassManager;
 use llzk::prelude::StructDefOp;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructDefOpRefMut;
+use llzk::prelude::StructType;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
@@ -228,10 +229,22 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         self.new_nondet_felt_of_dimensions_at_location(self.location_from_meta(meta), dimensions)
     }
 
+    /// Get the integer type of the given bitwidth.
+    #[inline]
+    pub fn int_type(&self, bits: u32) -> IntegerType<'ctx> {
+        IntegerType::new(self.context, bits)
+    }
+
     /// Get the boolean type (`i1`).
     #[inline]
     pub fn bool_type(&self) -> IntegerType<'ctx> {
-        IntegerType::new(self.context, 1)
+        self.int_type(1)
+    }
+
+    /// Get the index type.
+    #[inline]
+    pub fn index_type(&self) -> Type<'ctx> {
+        Type::index(self.context)
     }
 
     /// Get the felt type.
@@ -240,10 +253,10 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         FeltType::new(self.context)
     }
 
-    /// Get the index type.
+    /// Get the struct type for the given struct name.
     #[inline]
-    pub fn index_type(&self) -> Type<'ctx> {
-        Type::index(self.context)
+    pub fn struct_type(&self, name: &str) -> StructType<'ctx> {
+        StructType::from_str(self.context, name)
     }
 
     /// Run cleanup passes on the generated `Module`.
