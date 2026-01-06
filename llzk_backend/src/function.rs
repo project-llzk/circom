@@ -1111,15 +1111,16 @@ where
                 // responsible for converting this `felt.type` value to another type if needed.
                 function.append_op_unnamed_result(new_felt_const_op(codegen, meta, big_int)?)
             }
-            Expression::Variable { meta, name, access } => {
-                match access.as_slice() {
-                    [] => {
-                        let v = function.block_ctx.get_named_value(name)?;
-                        Ok(*v)
-                    }
-                    a => {
-                        let location = codegen.location_from_meta(meta);
-                        let indices = a.iter().map(|access| {
+            Expression::Variable { meta, name, access } => match access.as_slice() {
+                [] => {
+                    let v = function.block_ctx.get_named_value(name)?;
+                    Ok(*v)
+                }
+                a => {
+                    let location = codegen.location_from_meta(meta);
+                    let indices = a
+                        .iter()
+                        .map(|access| {
                             let idx = match access {
                                 Access::ArrayAccess(index_expr) => {
                                     index_expr.gen_llzk_in_function(codegen, function)
@@ -1129,17 +1130,12 @@ where
                                 }
                             }?;
                             function.cast_to_index_if_needed(location, idx)
-                        }).collect::<Result<Vec<Value<'_, '_>>>>()?;
-                        let v = function.block_ctx.get_named_value(name)?;
-                        let arr_ty = ArrayType::try_from(v.r#type())?;
-                        let array_get_op = array::read(
-                            location,
-                            arr_ty.element_type(),
-                            *v,
-                            &indices,
-                        );
-                        function.append_op_unnamed_result(array_get_op)
-                    }
+                        })
+                        .collect::<Result<Vec<Value<'_, '_>>>>()?;
+                    let v = function.block_ctx.get_named_value(name)?;
+                    let arr_ty = ArrayType::try_from(v.r#type())?;
+                    let array_get_op = array::read(location, arr_ty.element_type(), *v, &indices);
+                    function.append_op_unnamed_result(array_get_op)
                 }
             },
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {
@@ -1170,7 +1166,25 @@ where
                 todo!("Handle ParallelOp expression")
             }
             Expression::ArrayInLine { meta, values } => {
-                todo!("Handle ArrayInLine expression")
+                let location = codegen.location_from_meta(meta);
+                let values = values
+                    .iter()
+                    .map(|val_expr| val_expr.gen_llzk_in_function(codegen, function))
+                    .collect::<Result<Vec<Value>>>()?;
+                let elem_ty =
+                    values.first().expect("Array must have at least one element").r#type();
+                assert!(
+                    values.iter().all(|&v| v.r#type() == elem_ty),
+                    "All array elements must have the same type"
+                );
+                let dim = IntegerAttribute::new(codegen.index_type(), i64::try_from(values.len())?);
+                let arr_ty = ArrayType::new(elem_ty.into(), &[dim.into()]);
+                function.append_op_unnamed_result(array::new(
+                    &OpBuilder::new(&codegen.context),
+                    location,
+                    arr_ty,
+                    llzk::dialect::array::ArrayCtor::Values(&values),
+                ))
             }
             Expression::UniformArray { meta, value, dimension } => {
                 let val = value.gen_llzk_in_function(codegen, function)?;
