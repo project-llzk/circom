@@ -19,7 +19,7 @@ pub struct Input {
     //pub field: &'static str,
     pub dump_parse_flag: bool,
     pub c_flag: bool,
-    pub llzk_flag: bool,
+    pub llzk_flag: Option<String>,
     pub wasm_flag: bool,
     pub wat_flag: bool,
     pub no_asm_flag: bool,
@@ -54,6 +54,8 @@ const DAT: &'static str = "dat";
 const SYM: &'static str = "sym";
 const JSON: &'static str = "json";
 
+pub const LLZK_KIND_CONCRETE: &'static str = "concrete";
+pub const LLZK_KIND_TEMPLATED: &'static str = "templated";
 
 impl Input {
     pub fn new() -> Result<Input, ()> {
@@ -203,8 +205,8 @@ impl Input {
     pub fn c_flag(&self) -> bool {
         self.c_flag
     }
-    pub fn llzk_flag(&self) -> bool {
-        self.llzk_flag
+    pub fn llzk_flag(&self) -> &Option<String> {
+        &self.llzk_flag
     }
     pub fn no_asm_flag(&self) -> bool {
         self.no_asm_flag
@@ -346,8 +348,14 @@ mod input_processing {
         matches.is_present("print_c")
     }
 
-    pub fn get_llzk(matches: &ArgMatches) -> bool {
-        matches.is_present("print_llzk_ir")
+    pub fn get_llzk(matches: &ArgMatches) -> Option<String> {
+        // Since there's a default value, `matches.is_present()` is
+        // always true so `occurrences_of()` must be used instead.
+        if matches.occurrences_of("gen_llzk_ir") > 0 {
+            matches.value_of("gen_llzk_ir").map(String::from)
+        } else {
+            None
+        }
     }
 
     pub fn get_main_inputs_log(matches: &ArgMatches) -> bool {
@@ -405,6 +413,7 @@ mod input_processing {
             false => Ok(String::from("bn128")),
         }
     }
+
     pub fn get_llzk_pass_pipeline(matches: &ArgMatches) -> Result<String, ()> {
         match matches.is_present("mlir_pass_pipeline") {
             true => Ok(String::from(matches.value_of("mlir_pass_pipeline").unwrap())),
@@ -541,7 +550,7 @@ mod input_processing {
                 Arg::with_name("print_dump_parse")
                     .long("dump_parse")
                     .takes_value(false)
-                    .display_order(89)
+                    .display_order(10)
                     .help("Parses the circuit and dumps the program archive"),
             )
             .arg(
@@ -553,10 +562,12 @@ mod input_processing {
                     .help("Compiles the circuit to C++"),
             )
             .arg(
-                Arg::with_name("print_llzk_ir")
+                Arg::with_name("gen_llzk_ir")
                     .long("llzk")
-                    .takes_value(false)
-                    .display_order(91)
+                    .takes_value(true)
+                    .possible_values(&[super::LLZK_KIND_CONCRETE, super::LLZK_KIND_TEMPLATED])
+                    .default_value(super::LLZK_KIND_TEMPLATED)
+                    .display_order(5001)
                     .help("Compiles the circuit to LLZK-IR"),
             )
             .arg(
@@ -618,7 +629,7 @@ mod input_processing {
                     .long("llzk_passes")
                     .takes_value(true)
                     .default_value("")
-                    .display_order(998)
+                    .display_order(5002)
                     .help("Specify an MLIR pass pipeline to apply on the LLZK IR output"),
             )
             .get_matches()

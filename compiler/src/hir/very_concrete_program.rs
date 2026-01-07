@@ -12,7 +12,7 @@ pub type Code = Statement;
 
 pub type TagInfo = BTreeMap<String, Option<BigInt>>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Argument {
     pub name: String,
     pub values: Vec<BigInt>,
@@ -24,7 +24,7 @@ impl PartialEq for Argument {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Wire{
     TSignal(Signal),
     TBus(Bus)
@@ -103,7 +103,7 @@ impl Wire {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Signal {
     pub name: String,
     pub lengths: Vec<Length>,
@@ -114,7 +114,7 @@ pub struct Signal {
 }
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Bus{
     pub name: String,
     pub lengths: Vec<Length>,
@@ -143,7 +143,7 @@ pub struct BusInstance{
     pub fields: BTreeMap<String, FieldInfo>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Component {
     pub name: String,
     pub lengths: Vec<Length>,
@@ -156,7 +156,7 @@ impl Component {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Trigger {
     pub runs: String,
     pub offset: usize,
@@ -169,12 +169,12 @@ pub struct Trigger {
     pub is_parallel: bool,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ClusterType {
     Mixed { tmp_name: String },
     Uniform { offset_jump: usize, component_offset_jump:usize, instance_id: usize, header: String },
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TriggerCluster {
     pub cmp_name: String,
     pub slice: Range<usize>,
@@ -183,7 +183,7 @@ pub struct TriggerCluster {
     pub defined_positions: Vec<Vec<usize>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TemplateInstance {
     pub is_parallel: bool,
     pub is_parallel_component: bool,
@@ -263,13 +263,13 @@ impl TemplateInstance {
     }
 }
 
-#[derive(Eq, PartialEq, Clone)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct Param {
     pub name: String,
     pub length: VCT,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VCF {
     pub name: String,
     pub header: String,
@@ -278,7 +278,7 @@ pub struct VCF {
     pub body: Statement,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Stats {
     pub all_signals: usize,
     pub io_signals: usize,
@@ -299,7 +299,7 @@ pub struct VCPConfig {
     pub has_extern_c: bool,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VCP {
     pub stats: Stats,
     pub main_id: usize,

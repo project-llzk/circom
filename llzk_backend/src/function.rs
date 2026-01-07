@@ -8,6 +8,7 @@
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
+use crate::module::ProgramLike;
 use crate::shared::LlzkCodegen;
 use crate::shared::erase_op;
 use crate::shared::get_function_type_attribute;
@@ -102,7 +103,7 @@ where
 {
     /// Create a new [FunctionContext] for the given function with an initial name-to-value mapping.
     pub fn new<'ast, const FREE_FUNC: bool>(
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         func: FuncDefOpRefMut<'ctx, 'func>,
         param_name_to_value: HashMap<String, Value<'ctx, 'val>>,
     ) -> Result<Self> {
@@ -113,13 +114,11 @@ where
                 // Get the result type from the free function. It supports exactly 1.
                 let ty = get_function_type_attribute(func)?;
                 assert_eq!(ty.result_count(), 1);
-                codegen.new_nondet_at_location(Location::unknown(codegen.context), ty.result(0)?)
+                codegen.new_nondet_at_location(codegen.location_unknown(), ty.result(0)?)
             })?;
             block_ctx.declare_name_if_not_present(VAR_NAME_NO_RETURN, || {
-                codegen.new_nondet_at_location(
-                    Location::unknown(codegen.context),
-                    codegen.bool_type().into(),
-                )
+                codegen
+                    .new_nondet_at_location(codegen.location_unknown(), codegen.bool_type().into())
             })?;
         }
         Ok(Self { func, block_ctx })
@@ -158,7 +157,7 @@ where
     /// case, it is marked with the [CIRCOM_RETURN_MARKER_ATTR] attribute.
     pub fn append_circom_return<'ast>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         value: Value<'ctx, 'val>,
     ) -> Result<()> {
@@ -174,7 +173,7 @@ where
     /// Generate LLZK code in the current function for a circom prefix operation.
     pub fn gen_prefix_op<'ast>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         meta: &Meta,
         op: &ExpressionPrefixOpcode,
         rhs: Value<'ctx, 'val>,
@@ -259,7 +258,7 @@ where
     #[inline]
     fn cast_to_bool_if_needed<'ast>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -292,7 +291,7 @@ where
     /// Generate LLZK code in the current function for an infix operation.
     pub fn gen_infix_op<'ast>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         meta: &Meta,
         op: &ExpressionInfixOpcode,
         lhs: Value<'ctx, 'val>,
@@ -466,7 +465,7 @@ where
     /// block context with the results of the `scf.if` op mapped to the given names.
     pub fn gen_scf_if<'ast>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         mut then_info: NestedBlockInfo<'ctx, 'blk, 'val>,
@@ -532,7 +531,7 @@ where
     }
 
     /// Generate one region for either the then-arm or else-arm of a simple scf.if operation.
-    /// Used by [generate_simple_scf_if].
+    /// Used by [Self::generate_simple_scf_if].
     /// The `value_gen` function is called to generate the value to be yielded from the arm.
     fn generate_simple_scf_if_arm<'ast, F>(
         &mut self,
@@ -552,11 +551,11 @@ where
     }
 
     /// Generate a simple scf.if operation that yields the given `then_value` or `else_value`
-    /// depending on the `condition` value. Unlike [gen_scf_if], this assumes that the
+    /// depending on the `condition` value. Unlike [Self::gen_scf_if], this assumes that the
     /// then and else arms do not modify the current block context and only produce values.
     pub fn generate_simple_scf_if<'ast, F1, F2>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         meta: &Meta,
         condition: Value<'ctx, 'val>,
         then_value_gen: F1,
@@ -587,7 +586,7 @@ where
     /// block context with the results of the `scf.while` op mapped to the given names.
     pub fn gen_scf_while<'ast>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         loop_cond_info: NestedBlockInfo<'ctx, 'blk, 'val>,
@@ -748,7 +747,7 @@ where
     /// 'ast: lifetime of the circom AST element
     fn gen_llzk_in_function<'ast>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     ) -> Result<Self::Output>;
 }
@@ -763,7 +762,7 @@ where
 
     fn gen_llzk_in_function<'ast>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     ) -> Result<Self::Output> {
         for s in self {
@@ -813,7 +812,7 @@ where
 /// when a circom [Statement::IfThenElse] contains a return statement.
 #[allow(clippy::too_many_arguments)]
 fn handle_early_return<'ast, 'ctx, 'func, 'blk, 'val>(
-    codegen: &LlzkCodegen<'ast, 'ctx>,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     location: Location<'ctx>,
     return_val: Value<'ctx, 'val>,
@@ -870,7 +869,7 @@ where
 ///  function.return VAR_NAME_RETURN_VAL
 /// ```
 fn gen_if_then_else_unbalanced_return_extra<'ast, 'ctx, 'func, 'blk, 'val>(
-    codegen: &LlzkCodegen<'ast, 'ctx>,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     location: Location<'ctx>,
 ) -> Result<()>
@@ -903,7 +902,7 @@ where
 
 /// Generate LLZK code for a circom [Statement::IfThenElse].
 fn gen_if_then_else<'ast, 'ctx, 'func, 'blk, 'val>(
-    codegen: &LlzkCodegen<'ast, 'ctx>,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
@@ -999,7 +998,7 @@ where
     #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_function<'ast>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     ) -> Result<Self::Output> {
         match self {
@@ -1100,7 +1099,7 @@ where
     #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_function<'ast>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     ) -> Result<Self::Output> {
         match self {
