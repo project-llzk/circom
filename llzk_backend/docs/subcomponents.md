@@ -5,12 +5,12 @@ LLZK.
 
 ## 1. Subcomponent detection
 
-During the *declaration info* phase the backend collects all the subcomponent
-declarations and the instances assigned to them. For each declaration the
+During the *declaration info* phase, the backend collects all the subcomponent
+declarations and the instances assigned to them. For each declaration, the
 backend collects the name of the subcomponent and the dimensions if it was
 declared as an array of subcomponents.
 
-For each instance the backend collects the type that was instantiated for that
+For each instance, the backend collects the type that was instantiated for that
 subcomponent. Currently the backend only supports scalar subcomponents or array
 subcomponents in which all instances are of the same type.
 
@@ -39,11 +39,11 @@ struct and adds the name to the scope in preparation for lowering.
 Call expressions that create a new subcomponent are translated to calls to
 `@compute`/`@constrain`. Since the call is an expression, it needs to return a
 value. In the case of `@compute` that is the operation's result and in the case
-of `@constrain` is the first argument of the function. Refering to a
+of `@constrain` that is the first argument of the function. Refering to a
 subcomponent by name is refering to this value. The second piece of the
 construction is an assign var statement. When a variable tied to a subcomponent
-gets assigned it does different things depending on the function. In `@compute`
-updates the its value with the result of lowering the right hand expression. In
+gets assigned it does different things depending on the function. In `@compute`,
+it updates the value with the result of lowering the right hand expression. In
 the case of `@constrain` the value gets replaced with a `struct.readf` that
 reads the field with the same name as the subcomponent.
 
