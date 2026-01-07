@@ -36,7 +36,6 @@ use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
-use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::IntegerAttribute;
 use llzk::prelude::IntegerType;
