@@ -333,8 +333,6 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     }
 
     /// Write the generated `Module` to a file in bytecode format.
-    /// TODO: currently unused, silencing repeated warning via attribute.
-    #[expect(dead_code)]
     pub fn write_bytecode_to_file(self, filename: &str) -> Result<()> {
         unsafe extern "C" fn callback(string_ref: mlir_sys::MlirStringRef, user_data: *mut c_void) {
             let file = &mut *(user_data as *mut File);

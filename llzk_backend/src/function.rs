@@ -21,7 +21,6 @@ use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
 use crate::shared::replace_all_uses_in_block_with;
 use crate::shared::single_result_as_value;
-use crate::shared::LlzkCodegen;
 use crate::shared::{self};
 use anyhow::anyhow;
 use anyhow::Result;

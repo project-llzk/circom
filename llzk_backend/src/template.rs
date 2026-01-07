@@ -12,7 +12,6 @@ use crate::gen_context::NestedBlockInfo;
 use crate::module::ProgramLike;
 use crate::shared::LlzkCodegen;
 use crate::shared::is_felt;
-use crate::shared::LlzkCodegen;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
