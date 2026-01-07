@@ -14,4 +14,4 @@ num-traits = "0.2.6"
 mlir-sys = "0.5.0"
 melior = { version = "0.25", features = ["ods-dialects"] }
 melior-macro = "0.18"
-llzk = { git = "https://github.com/Veridise/llzk-rs", package = "llzk"}
+llzk = { git = "https://github.com/Veridise/llzk-rs", package = "llzk" }
