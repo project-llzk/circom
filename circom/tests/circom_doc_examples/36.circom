@@ -16,6 +16,7 @@ component main = Translate(1);
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      (%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Translate<[@n]>> attributes {function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Translate<[@n]>>
+// CHECK-NEXT:        %[[VAL_N:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  254
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = bool.cmp le(%[[VAL_0]], %[[VAL_2]])
 // CHECK-NEXT:        bool.assert %[[VAL_3]], "assertion failed"
@@ -23,6 +24,7 @@ component main = Translate(1);
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@Translate<[@n]>>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK-NEXT:        %[[VAL_N:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  254
 // CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = bool.cmp le(%[[VAL_5]], %[[VAL_6]])
 // CHECK-NEXT:        bool.assert %[[VAL_7]], "assertion failed"
