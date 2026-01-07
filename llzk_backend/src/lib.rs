@@ -15,3 +15,4 @@ mod shared;
 mod template;
 
 pub use codegen::generate_llzk;
+pub use module::VCPPlus;

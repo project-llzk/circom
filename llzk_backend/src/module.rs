@@ -8,6 +8,10 @@ use crate::shared::LlzkCodegen;
 use crate::template::GenerateLLZKInTemplate as _;
 use crate::template::TemplateContext;
 use anyhow::Result;
+use compiler::hir::very_concrete_program::TemplateInstance;
+use compiler::hir::very_concrete_program::VCF;
+use compiler::hir::very_concrete_program::VCP;
+use compiler::hir::very_concrete_program::Wire;
 use llzk::attributes::NamedAttribute;
 use llzk::error::Error;
 use llzk::prelude::function;
@@ -31,17 +35,20 @@ use program_structure::ast::Meta;
 use program_structure::ast::SignalType;
 use program_structure::ast::Statement;
 use program_structure::ast::VariableType;
+use program_structure::file_definition::FileID;
+use program_structure::file_definition::FileLibrary;
 use program_structure::function_data::FunctionData;
 use program_structure::program_archive::ProgramArchive;
 use program_structure::template_data::TemplateData;
-use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::slice;
 
 /// Information needed to create an LLZK struct function parameter collected from the input signal
 /// Declaration statements within a circom template.
 ///
 /// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+#[derive(Debug)]
 struct InputSignalInfo<'ctx> {
     /// Name of circom input signal that maps to a function parameter.
     name: String,
@@ -55,34 +62,54 @@ struct InputSignalInfo<'ctx> {
 /// struct fields and parameters to the functions with the struct.
 ///
 /// 'ctx: lifetime of the `LlzkContext` and generated `Module`
-#[derive(Default)]
-struct DeclarationInfo<'ctx> {
+#[derive(Debug, Default)]
+pub struct DeclarationInfo<'ctx> {
     /// Input Signal declarations to use as parameters to the LLZK struct functions.
     inputs: Vec<InputSignalInfo<'ctx>>,
     /// Output and Intermediate declarations to use as LLZK struct fields.
     struct_fields: Vec<Result<Operation<'ctx>, Error>>,
-    /// Map `var` name to its LLZK declaration Operation (usually `undef.undef`).
-    var_decls: HashMap<String, Operation<'ctx>>,
+    /// Map var/signal name to its LLZK declaration Operation (usually `undef.undef`).
+    decl_inits: HashMap<String, Operation<'ctx>>,
 }
 
 impl<'ctx> DeclarationInfo<'ctx> {
-    /// Visit a statement and populate this `DeclarationInfo` with any declarations found.
+    /// Visit all statements in the body of the template and return a new [DeclarationInfo]
+    /// with any declarations found.
+    fn from_template(
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        template: &impl TemplateLike,
+    ) -> Result<DeclarationInfo<'ctx>> {
+        let mut declarations = DeclarationInfo::default();
+        for s in template.get_body() {
+            declarations.visit(codegen, s)?;
+        }
+        Ok(declarations)
+    }
+
+    /// Visit a statement and populate this [DeclarationInfo] with any declarations found.
     ///
     /// TODO: This currently visits only top-level statements within the template body. However,
     /// since circom 2.1.5, signal declarations are allowed inside of blocks and known-condition if
     /// statements. Those nested declarations are not currently processed here.
-    ///
-    /// 'ast: lifetime of the circom AST element
-    fn visit<'ast>(
+    fn visit(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
-        stmt: &'ast Statement,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        stmt: &Statement,
     ) -> Result<()> {
         match stmt {
+            Statement::Block { stmts, .. } => {
+                // TemplateInstance (in concrete programs) has Declaration in Block (but only for
+                // var, not signals). The Block contains no additional information beyond the
+                // Declarations that appear within it so just process the inner statements.
+                for init in stmts {
+                    self.visit(codegen, init)?;
+                }
+                Ok(())
+            }
             Statement::InitializationBlock { initializations, .. } => {
-                // The InitializationBlock is just a wrapper that contains no additional information
-                // beyond the Declarations that must appear within it so just process the inner
-                // statements.
+                // TemplateData (in non-concrete programs) has Declaration in InitializationBlock.
+                // The InitializationBlock contains no additional information beyond the
+                // Declarations that appear within it so just process the inner statements.
                 for init in initializations {
                     self.visit(codegen, init)?;
                 }
@@ -96,24 +123,24 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 match xtype {
                     VariableType::Signal(signal_type, ..) => self.visit_signal_or_bus(
                         codegen,
-                        meta,
-                        name,
-                        dimensions,
                         signal_type,
+                        name,
+                        meta,
+                        dimensions,
                         codegen.felt_type().into(),
                     ),
                     VariableType::Bus(bus_name, signal_type, ..) => self.visit_signal_or_bus(
                         codegen,
-                        meta,
-                        name,
-                        dimensions,
                         signal_type,
+                        name,
+                        meta,
+                        dimensions,
                         codegen.struct_type(bus_name).into(),
                     ),
                     VariableType::Var => {
                         // Create an `undef` of the appropriate type. When the actual assignment is
-                        // processed later, replace the `undef` with the appropriate value.
-                        self.var_decls.insert(
+                        // processed later, this is replaced with the appropriate value.
+                        self.decl_inits.insert(
                             name.clone(),
                             codegen.new_nondet_felt_of_dimensions(meta, dimensions)?,
                         );
@@ -132,21 +159,33 @@ impl<'ctx> DeclarationInfo<'ctx> {
     }
 
     /// `visit()` helper for Signal and Bus VariableType.
+    #[inline]
     fn visit_signal_or_bus(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx>,
-        meta: &Meta,
-        name: &String,
-        dimensions: &[Expression],
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         signal_type: &SignalType,
+        name: &String,
+        meta: &Meta,
+        dimensions: &[Expression],
         base_type: Type<'ctx>,
     ) -> Result<()> {
         let location = codegen.location_from_meta(meta);
-        let decl_type = codegen.type_with_dimensions(base_type, dimensions)?;
+        let decl_type = codegen.type_from_dimension_exprs(base_type, dimensions)?;
+        self.visit_signal_or_bus_impl(codegen, signal_type, name, location, decl_type)
+    }
+
+    /// `visit()` helper for Signal and Bus VariableType.
+    fn visit_signal_or_bus_impl(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        signal_type: &SignalType,
+        name: &String,
+        location: Location<'ctx>,
+        decl_type: Type<'ctx>,
+    ) -> Result<()> {
         if SignalType::Input == *signal_type {
-            // self.func_inputs.push((decl_type, location));
             let mut attrs: Vec<NamedAttribute<'_>> = Vec::new();
-            if codegen.program_archive.get_public_inputs_main_component().contains(name) {
+            if codegen.program.get_main_public_inputs().contains(name) {
                 attrs.push(PublicAttribute::new_named_attr(codegen.context));
             }
             self.inputs.push(InputSignalInfo {
@@ -162,9 +201,363 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 false,
                 SignalType::Output == *signal_type,
             );
-            self.struct_fields.push(new.map(|f| f.into()));
+            self.struct_fields.push(new.map(Into::into));
         }
-        Ok(())
+        // Create an `undef` of the appropriate type. When the actual assignment is
+        // processed later, this is replaced with the appropriate value.
+        codegen.new_nondet_at_location(location, decl_type).map(|op| {
+            self.decl_inits.insert(name.clone(), op);
+        })
+    }
+}
+
+/// A trait that allows common handling of the structs used to represent a circom
+/// function at different stages in the compilation process.
+pub trait FunctionLike {
+    /// Generate the LLZK Location for the function definition.
+    fn get_location<'ctx>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Location<'ctx>;
+    /// Get the name of the function.
+    fn get_name(&self) -> &str;
+    /// Get the number of parameters of the function.
+    fn get_num_of_params(&self) -> usize;
+    /// Get the names of the parameters of the function.
+    fn get_name_of_params(&self) -> Vec<String>;
+    /// Get the body statements of the function.
+    fn get_body(&self) -> &[Statement];
+}
+
+impl FunctionLike for FunctionData {
+    fn get_location<'ctx>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Location<'ctx> {
+        codegen.location(self.get_file_id(), self.get_param_location())
+    }
+    fn get_name(&self) -> &str {
+        self.get_name()
+    }
+    fn get_num_of_params(&self) -> usize {
+        self.get_num_of_params()
+    }
+    fn get_name_of_params(&self) -> Vec<String> {
+        self.get_name_of_params().clone()
+    }
+    fn get_body(&self) -> &[Statement] {
+        self.get_body_as_vec()
+    }
+}
+
+impl FunctionLike for VCF {
+    fn get_location<'ctx>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Location<'ctx> {
+        codegen.location_unknown()
+    }
+    fn get_name(&self) -> &str {
+        &self.header
+    }
+    fn get_num_of_params(&self) -> usize {
+        self.params_types.len()
+    }
+    fn get_name_of_params(&self) -> Vec<String> {
+        self.params_types.iter().map(|p| p.name.clone()).collect()
+    }
+    fn get_body(&self) -> &[Statement] {
+        // In VCF format, the function body is wrapped in a Block that conveys no additional
+        // information but will cause returns to generate `scf.yield`` instead of `function.return`.
+        match &self.body {
+            Statement::Block { stmts, .. } => return stmts,
+            b => slice::from_ref(b),
+        }
+    }
+}
+
+/// Generate LLZK for a function-like construct. Helper to avoid code duplication.
+fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
+    func_like: &'ast F,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+) -> Result<()> {
+    let location = func_like.get_location(codegen);
+    let felt_type = codegen.felt_type().into();
+    // TODO: This just uses `felt.type` for param and return types but those must actually be
+    // determined based on the caller. Circom functions cannot accept or return components or
+    // busses so the only types allowed for params and return are `felt.type` and arrays of
+    // `felt.type`. The actual type used here also affects the dimensions of array types and
+    // which array read/write-like ops must be used when translating the body.
+    let inputs = vec![felt_type; func_like.get_num_of_params()];
+    let func_type = FunctionType::new(codegen.context, &inputs, &[felt_type]);
+    let func_def =
+        function::def(location, func_like.get_name(), func_type, &[], None).and_then(|f| {
+            let arguments: Vec<(Type, Location)> =
+                inputs.into_iter().map(|t| (t, location)).collect();
+            f.region(0)?.append_block(Block::new(&arguments));
+            Ok(f)
+        })?;
+
+    // Store function to the module.
+    let func: FuncDefOpRefMut = codegen.add_function(func_def)?;
+
+    // Generate mapping from parameter names to SSA Values.
+    let name_to_value = map_name_to_arg_value(func, func_like.get_name_of_params())?;
+
+    // Visit the body of the function and generate LLZK IR for it.
+    let mut func_context = FunctionContext::new::<true>(codegen, func, name_to_value)?;
+    func_like.get_body().gen_llzk_in_function(codegen, &mut func_context)
+}
+
+/// A trait that allows common handling of the structs used to represent a circom
+/// template at different stages in the compilation process.
+pub trait TemplateLike: std::fmt::Debug {
+    /// Generate the LLZK Location for the template definition.
+    fn get_location<'ctx>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Location<'ctx>;
+    /// Get the name of the template.
+    fn get_name(&self) -> &str;
+    /// Get the names of the parameters of the template.
+    fn get_name_of_params(&self) -> &[String];
+    /// Get the body statements of the template.
+    fn get_body(&self) -> &[Statement];
+    /// Construct [DeclarationInfo] containing var and signal declarations
+    /// found in this template body.
+    fn get_declarations<'ctx>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Result<DeclarationInfo<'ctx>>;
+}
+
+impl TemplateLike for TemplateData {
+    fn get_location<'ctx>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Location<'ctx> {
+        codegen.location(self.get_file_id(), self.get_param_location())
+    }
+    fn get_name(&self) -> &str {
+        self.get_name()
+    }
+    fn get_name_of_params(&self) -> &[String] {
+        self.get_name_of_params()
+    }
+    fn get_body(&self) -> &[Statement] {
+        self.get_body_as_vec()
+    }
+    fn get_declarations<'ctx>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Result<DeclarationInfo<'ctx>> {
+        DeclarationInfo::from_template(codegen, self)
+    }
+}
+
+impl TemplateLike for TemplateInstance {
+    fn get_location<'ctx>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Location<'ctx> {
+        codegen.location_unknown()
+    }
+    fn get_name(&self) -> &str {
+        &self.template_name
+    }
+    fn get_name_of_params(&self) -> &[String] {
+        &[]
+    }
+    fn get_body(&self) -> &[Statement] {
+        slice::from_ref(&self.code)
+    }
+    fn get_declarations<'ctx>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Result<DeclarationInfo<'ctx>> {
+        let mut declarations = DeclarationInfo::from_template(codegen, self)?;
+        for w in &self.wires {
+            match w {
+                Wire::TSignal(signal) => declarations.visit_signal_or_bus_impl(
+                    codegen,
+                    &signal.xtype,
+                    &signal.name,
+                    self.get_location(codegen),
+                    codegen
+                        .type_from_dimension_consts(codegen.felt_type().into(), &signal.lengths)?,
+                )?,
+                Wire::TBus(bus) => declarations.visit_signal_or_bus_impl(
+                    codegen,
+                    &bus.xtype,
+                    &bus.name,
+                    self.get_location(codegen),
+                    codegen.type_from_dimension_consts(
+                        codegen.struct_type(&bus.name).into(),
+                        &bus.lengths,
+                    )?,
+                )?,
+            }
+        }
+        Ok(declarations)
+    }
+}
+
+/// Generate LLZK for a template-like construct. Helper to avoid code duplication.
+fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
+    template_like: &'ast T,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+) -> Result<()> {
+    // Collect declarations first to determine struct fields and function parameters.
+    let declarations = template_like.get_declarations(codegen)?;
+
+    // Generate the struct definition, prepopulated with fields.
+    let struct_loc = template_like.get_location(codegen);
+    let struct_params: Vec<_> =
+        template_like.get_name_of_params().iter().map(String::as_str).collect();
+    let struct_def = r#struct::def(
+        struct_loc,
+        template_like.get_name(),
+        &struct_params,
+        declarations.struct_fields,
+    )?;
+    let new_struct = codegen.add_struct(struct_def)?;
+
+    // Consume and separate 'declarations.inputs' (to avoid cloning 'attrs' and 'name').
+    let (inputs, arg_attrs, arg_names) = declarations.inputs.into_iter().fold(
+        (Vec::new(), Vec::new(), Vec::new()),
+        |(mut inputs, mut attrs, mut names), v| {
+            inputs.push(v.type_and_loc);
+            attrs.push(v.attrs);
+            names.push(v.name);
+            (inputs, attrs, names)
+        },
+    );
+    // Generate the compute and constrain functions.
+    let new_struct_type = new_struct.r#type();
+    let struct_body = new_struct.body();
+    let compute_func = FuncDefOpRef::try_from(struct_body.append_operation(
+        compute_fn(struct_loc, new_struct_type, &inputs, Some(&arg_attrs))?.into(),
+    ))?
+    .into();
+    let constrain_func = FuncDefOpRef::try_from(struct_body.append_operation(
+        constrain_fn(struct_loc, new_struct_type, &inputs, Some(&arg_attrs))?.into(),
+    ))?
+    .into();
+
+    // Map parameter Values of each LLZK function to the corresponding circom variable names and
+    // then create the FunctionContext for each function. Before creating the FunctionContext
+    // for constrain, add a dummy name at index 0 since the first parameter is the struct ref.
+    let mut compute_ctx = FunctionContext::new::<false>(
+        codegen,
+        compute_func,
+        map_name_to_arg_value(compute_func, arg_names.clone())?,
+    )?;
+    let mut arg_names = arg_names;
+    arg_names.insert(0, "**self**".to_string());
+    let mut constrain_ctx = FunctionContext::new::<false>(
+        codegen,
+        constrain_func,
+        map_name_to_arg_value(constrain_func, arg_names)?,
+    )?;
+    // Insert the Operations created from variable Declaration statements and map the circom
+    // variable name to LLZK op result Value (do this in each function).
+    for (name, op) in declarations.decl_inits {
+        // Insert (a clone of) the declaration into the compute function.
+        compute_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op.clone()))?;
+        // Insert the declaration into the constrain function.
+        constrain_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op))?;
+    }
+
+    // Visit the body of the template and generate LLZK IR for it within the struct functions.
+    let template_context = TemplateContext::new(new_struct, compute_ctx, constrain_ctx);
+    template_like.get_body().gen_llzk_in_template(codegen, &template_context)
+}
+
+/// Helper function to sort a vector of &FunctionLike by name.
+#[inline]
+fn sort_functions_by_name<T: FunctionLike>(functions: &mut [&T]) {
+    functions.sort_by(|a, b| a.get_name().cmp(b.get_name()));
+}
+
+/// Helper function to sort a vector of &TemplateLike by name.
+#[inline]
+fn sort_templates_by_name<T: TemplateLike>(templates: &mut [&T]) {
+    templates.sort_by(|a, b| a.get_name().cmp(b.get_name()));
+}
+
+/// A trait that allows common handling of the structs used to represent a circom
+/// program at different stages in the compilation process.
+pub trait ProgramLike {
+    /// Get the file library of the program.
+    fn get_file_library(&self) -> &FileLibrary;
+    /// Get the FileID of the file containing the "main" declaration.
+    fn get_main_file_id(&self) -> &FileID;
+    /// Get the names of public inputs of the main component.
+    fn get_main_public_inputs(&self) -> &Vec<String>;
+    /// Get an iterator over all functions in the program.
+    fn get_functions(&self, sorted: bool) -> impl IntoIterator<Item = &impl FunctionLike>;
+    /// Get an iterator over all templates in the program.
+    fn get_templates(&self, sorted: bool) -> impl IntoIterator<Item = &impl TemplateLike>;
+}
+
+impl ProgramLike for ProgramArchive {
+    fn get_file_library(&self) -> &FileLibrary {
+        &self.file_library
+    }
+    fn get_main_file_id(&self) -> &FileID {
+        self.get_file_id_main()
+    }
+    fn get_main_public_inputs(&self) -> &Vec<String> {
+        self.get_public_inputs_main_component()
+    }
+    fn get_functions(&self, sorted: bool) -> impl IntoIterator<Item = &impl FunctionLike> {
+        let mut functions: Vec<_> = self.functions.values().collect();
+        if sorted {
+            sort_functions_by_name(&mut functions);
+        }
+        functions
+    }
+    fn get_templates(&self, sorted: bool) -> impl IntoIterator<Item = &impl TemplateLike> {
+        let mut templates: Vec<_> = self.templates.values().collect();
+        if sorted {
+            sort_templates_by_name(&mut templates);
+        }
+        templates
+    }
+}
+
+/// A wrapper around a VCP that also includes the public inputs for the main component.
+#[derive(Debug)]
+pub struct VCPPlus<'ctx> {
+    /// Reference to the [VCP].
+    pub vcp: &'ctx VCP,
+    /// Names of public inputs of the main component.
+    pub public_inputs: Vec<String>,
+}
+
+impl ProgramLike for VCPPlus<'_> {
+    fn get_file_library(&self) -> &FileLibrary {
+        &self.vcp.file_library
+    }
+    fn get_main_file_id(&self) -> &FileID {
+        &self.vcp.main_id
+    }
+    fn get_main_public_inputs(&self) -> &Vec<String> {
+        &self.public_inputs
+    }
+    fn get_functions(&self, sorted: bool) -> impl IntoIterator<Item = &impl FunctionLike> {
+        let mut functions: Vec<_> = self.vcp.functions.iter().collect();
+        if sorted {
+            sort_functions_by_name(&mut functions);
+        }
+        functions
+    }
+    fn get_templates(&self, sorted: bool) -> impl IntoIterator<Item = &impl TemplateLike> {
+        let mut templates: Vec<_> = self.vcp.templates.iter().collect();
+        if sorted {
+            sort_templates_by_name(&mut templates);
+        }
+        templates
     }
 }
 
@@ -172,122 +565,24 @@ impl<'ctx> DeclarationInfo<'ctx> {
 /// ProgramArchive, TemplateData, and FunctionData.
 ///
 /// 'ctx: lifetime of the `LlzkContext` and generated `Module`
-pub trait GenerateLLZKInModule<'ctx> {
+pub trait GenerateLLZKInModule<'ctx, P: ProgramLike> {
     /// Generates LLZK IR from the circom AST element.
     ///
     /// 'ast: lifetime of the circom AST element
-    fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx>) -> Result<()>;
+    fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx, P>) -> Result<()>;
 }
 
-impl<'ctx> GenerateLLZKInModule<'ctx> for ProgramArchive {
-    fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx>) -> Result<()> {
+impl<'ctx, P: ProgramLike> GenerateLLZKInModule<'ctx, P> for P {
+    fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx, P>) -> Result<()> {
         // Sort functions and templates by name for deterministic output (this is only needed for
         // the lit tests since the order in a HashMap is non-deterministic and could be triggered
         // only based on a debug flag or similar).
-        for (_, data) in self.functions.iter().collect::<BTreeMap<_, _>>() {
-            data.gen_llzk(codegen)?;
+        for f in self.get_functions(true) {
+            gen_function_llzk(f, codegen)?;
         }
-        for (_, data) in self.templates.iter().collect::<BTreeMap<_, _>>() {
-            data.gen_llzk(codegen)?;
+        for t in self.get_templates(true) {
+            gen_template_llzk(t, codegen)?;
         }
         Ok(())
-    }
-}
-
-impl<'ctx> GenerateLLZKInModule<'ctx> for FunctionData {
-    fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx>) -> Result<()> {
-        let location = codegen.location(self.get_file_id(), self.get_param_location());
-        let felt_type = codegen.felt_type().into();
-        // TODO: This just uses `felt.type` for param and return types but those must actually be
-        // determined based on the caller. Circom functions cannot accept or return components or
-        // busses so the only types allowed for params and return are `felt.type` and arrays of
-        // `felt.type`. The actual type used here also affects the dimensions of array types and
-        // which array read/write-like ops must be used when translating the body.
-        let inputs = vec![felt_type; self.get_num_of_params()];
-        let func_type = FunctionType::new(codegen.context, &inputs, &[felt_type]);
-        let func_def =
-            function::def(location, self.get_name(), func_type, &[], None).and_then(|f| {
-                let arguments: Vec<(Type, Location)> =
-                    inputs.into_iter().map(|t| (t, location)).collect();
-                f.region(0)?.append_block(Block::new(&arguments));
-                Ok(f)
-            })?;
-
-        // Store function to the module.
-        let func: FuncDefOpRefMut = codegen.add_function(func_def)?;
-
-        // Generate mapping from parameter names to SSA Values.
-        let name_to_value = map_name_to_arg_value(func, self.get_name_of_params())?;
-
-        // Visit the body of the function and generate LLZK IR for it.
-        let mut func_context = FunctionContext::new::<true>(codegen, func, name_to_value)?;
-        self.get_body_as_vec().gen_llzk_in_function(codegen, &mut func_context)
-    }
-}
-
-impl<'ctx> GenerateLLZKInModule<'ctx> for TemplateData {
-    fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx>) -> Result<()> {
-        // Collect declarations first to determine struct fields and function parameters.
-        let mut declarations = DeclarationInfo::default();
-        for s in self.get_body_as_vec() {
-            declarations.visit(codegen, s)?;
-        }
-
-        // Generate the struct definition, prepopulated with fields.
-        let struct_loc = codegen.location(self.get_file_id(), self.get_param_location());
-        let struct_params: Vec<_> = self.get_name_of_params().iter().map(String::as_str).collect();
-        let struct_def =
-            r#struct::def(struct_loc, self.get_name(), &struct_params, declarations.struct_fields)?;
-        let new_struct = codegen.add_struct(struct_def)?;
-
-        // Consume and separate 'declarations.inputs' (to avoid cloning 'attrs' and 'name').
-        let (inputs, arg_attrs, arg_names) = declarations.inputs.into_iter().fold(
-            (Vec::new(), Vec::new(), Vec::new()),
-            |(mut inputs, mut attrs, mut names), v| {
-                inputs.push(v.type_and_loc);
-                attrs.push(v.attrs);
-                names.push(v.name);
-                (inputs, attrs, names)
-            },
-        );
-        // Generate the compute and constrain functions.
-        let new_struct_type = new_struct.r#type();
-        let struct_body = new_struct.body();
-        let compute_func = FuncDefOpRef::try_from(struct_body.append_operation(
-            compute_fn(struct_loc, new_struct_type, &inputs, Some(&arg_attrs))?.into(),
-        ))?
-        .into();
-        let constrain_func = FuncDefOpRef::try_from(struct_body.append_operation(
-            constrain_fn(struct_loc, new_struct_type, &inputs, Some(&arg_attrs))?.into(),
-        ))?
-        .into();
-
-        // Map parameter Values of each LLZK function to the corresponding circom variable names and
-        // then create the FunctionContext for each function. Before creating the FunctionContext
-        // for constrain, add a dummy name at index 0 since the first parameter is the struct ref.
-        let mut compute_ctx = FunctionContext::new::<false>(
-            codegen,
-            compute_func,
-            map_name_to_arg_value(compute_func, &arg_names)?,
-        )?;
-        let mut arg_names = arg_names;
-        arg_names.insert(0, "**self**".to_string());
-        let mut constrain_ctx = FunctionContext::new::<false>(
-            codegen,
-            constrain_func,
-            map_name_to_arg_value(constrain_func, &arg_names)?,
-        )?;
-        // Insert the Operations created from variable Declaration statements and map the circom
-        // variable name to LLZK op result Value (do this in each function).
-        for (name, op) in declarations.var_decls {
-            // Insert (a clone of) the declaration into the compute function.
-            compute_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op.clone()))?;
-            // Insert the declaration into the constrain function.
-            constrain_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op))?;
-        }
-
-        // Visit the body of the template and generate LLZK IR for it within the struct functions.
-        let template_context = TemplateContext::new(new_struct, compute_ctx, constrain_ctx);
-        self.get_body_as_vec().gen_llzk_in_template(codegen, &template_context)
     }
 }
