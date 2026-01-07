@@ -9,11 +9,12 @@
 use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
-use crate::shared::get_single_user;
 use crate::program_ext::ProgramLike;
+use crate::shared::get_single_user;
 use crate::shared::is_felt;
 use crate::shared::replace_all_uses;
 use crate::shared::LlzkCodegen;
+use crate::template_ext::TemplateLike as _;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
@@ -151,7 +152,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
     }
 
     /// Finalizes the context by emitting the final write operations that write subcomponent declarations to the declaring component.
-    pub fn finalize(self, codegen: &LlzkCodegen<'_, 'ctx>) -> Result<()> {
+    pub fn finalize(self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Result<()> {
         let subcmps = self.subcmps;
         self.and_then(
             |fc, _| {
@@ -1159,7 +1160,7 @@ where
             }
             Expression::Call { meta, id, args, .. }
                 if meta.get_type_knowledge().is_component()
-                    && codegen.program_archive.contains_template(id) =>
+                    && codegen.program.contains_template(id) =>
             {
                 let location = codegen.location_from_meta(meta);
                 let subcmp_type = codegen.struct_type_with_concrete_dimensions(id, args)?;

@@ -11,8 +11,8 @@ use crate::subcmp::unique_instance_types;
 use crate::subcmp::SubcmpDeclInfo;
 use crate::template::GenerateLLZKInTemplate as _;
 use crate::template::TemplateContext;
-use anyhow::bail;
 use crate::template_ext::TemplateLike;
+use anyhow::bail;
 use anyhow::Result;
 use llzk::attributes::NamedAttribute;
 use llzk::builder::OpBuilder;
@@ -102,7 +102,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
         }
         Ok(declarations)
     }
-  
+
     /// Visit a statement and populate this `DeclarationInfo` with any declarations found.
     ///
     /// TODO: This currently visits only top-level statements within the template body. However,
@@ -189,7 +189,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     ///
     /// In this context, constructor refers to `Foo(n)` in Circom, not `@Foo::@compute` in LLZK.
     fn find_subcmp_ctor_call<'ast>(
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         expression: &'ast Expression,
     ) -> Result<StructType<'ctx>> {
         match expression {
@@ -203,7 +203,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     /// [`visit`](Self::visit) helper for component declarations.
     fn visit_component_decl(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         meta: &Meta,
         name: &str,
         dimensions: &[Expression],
@@ -376,31 +376,32 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         constrain_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op))?;
     }
     let op_builder = OpBuilder::new(codegen.context);
-        let subcmp_decls = declarations.subcmp_decls;
-        // Insert the Operations created from subcomponent Declaration statements and map the
-        // circom variable name to a LLZK op result Value.
-        for (name, subcmp_type) in subcmps {
-            compute_ctx.block_ctx.declare_name_if_not_present(&name, || {
-                Ok(undef::undef(Location::unknown(codegen.context), subcmp_type))
-            })?;
+    let subcmp_decls = declarations.subcmp_decls;
+    // Insert the Operations created from subcomponent Declaration statements and map the
+    // circom variable name to a LLZK op result Value.
+    for (name, subcmp_type) in subcmps {
+        compute_ctx.block_ctx.declare_name_if_not_present(&name, || {
+            Ok(undef::undef(Location::unknown(codegen.context), subcmp_type))
+        })?;
 
-            let self_ref = *constrain_ctx.block_ctx.get_named_value("**self**")?;
-            constrain_ctx.block_ctx.declare_name_if_not_present(&name, || {
-                Ok(r#struct::readf(
-                    &op_builder,
-                    subcmp_decls[&name].location(),
-                    subcmp_type,
-                    self_ref,
-                    &name,
-                )?)
-            })?;
-        }
+        let self_ref = *constrain_ctx.block_ctx.get_named_value("**self**")?;
+        constrain_ctx.block_ctx.declare_name_if_not_present(&name, || {
+            Ok(r#struct::readf(
+                &op_builder,
+                subcmp_decls[&name].location(),
+                subcmp_type,
+                self_ref,
+                &name,
+            )?)
+        })?;
+    }
 
-        let subcmp_names = subcmp_decls.into_iter().map(|(name, _)| name).collect();
+    let subcmp_names = subcmp_decls.into_iter().map(|(name, _)| name).collect();
 
     // Visit the body of the template and generate LLZK IR for it within the struct functions.
-    let template_context = TemplateContext::new(new_struct, compute_ctx, constrain_ctx, &subcmp_names);
-    template_like.get_body().gen_llzk_in_template(codegen, &template_context)
+    let template_context =
+        TemplateContext::new(new_struct, compute_ctx, constrain_ctx, &subcmp_names);
+    template_like.get_body().gen_llzk_in_template(codegen, &template_context)?;
     template_context.finalize(codegen)
 }
 

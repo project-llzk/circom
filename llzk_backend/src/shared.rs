@@ -1,6 +1,8 @@
 //! Shared code generation utilities.
 
 use crate::program_ext::ProgramLike;
+use crate::template_ext::TemplateLike;
+use crate::template_ext::WireLike;
 use ansi_term::Color;
 use anyhow::anyhow;
 use anyhow::Result;
@@ -51,8 +53,6 @@ use program_structure::error_code::ReportCode;
 use program_structure::error_definition::Report;
 use program_structure::file_definition::FileID;
 use program_structure::file_definition::FileLocation;
-use program_structure::program_archive::ProgramArchive;
-use program_structure::template_data::TemplateData;
 use program_structure::wire_data::WireType;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -385,9 +385,12 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     }
 
     /// Returns the data for the template with that name.
-    pub fn find_template_data(&self, name: &str) -> Option<&TemplateData> {
-        if self.program_archive.contains_template(name) {
-            Some(self.program_archive.get_template_data(name))
+    pub fn find_template_data(
+        &self,
+        name: &'ast str,
+    ) -> Option<&'ast (impl TemplateLike + use<'ast, P>)> {
+        if self.program.contains_template(name) {
+            Some(self.program.get_template_data(name))
         } else {
             None
         }

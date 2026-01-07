@@ -25,6 +25,7 @@ use crate::shared::single_result_as_value;
 use crate::shared::LlzkCodegen;
 use crate::shared::{self};
 use crate::subcmp::SubcmpCallsMap;
+use crate::template_ext::TemplateLike as _;
 use anyhow::anyhow;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
@@ -310,7 +311,7 @@ where
         &self,
         subcmp_signal: &String,
         subcmp_value: &Value<'ctx, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Result<usize> {
         let name = self.subcmp_calls.get(subcmp_value).ok_or_else(|| {
             anyhow::anyhow!(
@@ -346,7 +347,7 @@ where
         rhe: Value<'ctx, 'val>,
         var: &String,
         subcmp_signal: &String,
-        codegen: &LlzkCodegen<'_, 'ctx>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         arg_offset: usize,
         get_call: impl FnOnce(Value<'ctx, 'val>) -> Result<OperationRef<'ctx, 'op>>,
     ) -> Result<()>
