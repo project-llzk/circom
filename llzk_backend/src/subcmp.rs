@@ -1,10 +1,9 @@
 //! Helper types for handling subcomponents.
 
 use llzk::prelude::*;
-use std::{
-    collections::{HashMap, HashSet},
-    marker::PhantomData,
-};
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::marker::PhantomData;
 
 /// Version of [`Access`](program_structure::ast::Access) that uses LLZK
 /// Attributes instead.

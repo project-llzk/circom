@@ -492,6 +492,8 @@ pub fn get_function_type_attribute<'c: 'a, 'a>(
 ///
 /// Uses `mlir-sys` directly since that function doesn't seem to be
 /// implemented in melior.
+///
+/// TODO: `llzk-rs` should provide this directly
 pub fn replace_all_uses<'ctx>(of: Value<'ctx, '_>, with: Value<'ctx, '_>) {
     unsafe { mlir_sys::mlirValueReplaceAllUsesOfWith(of.to_raw(), with.to_raw()) }
 }

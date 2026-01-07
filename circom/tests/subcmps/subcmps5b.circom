@@ -34,7 +34,7 @@ component main = SubCmp();
 // CHECK-SAME:        %[[ARG_0:[0-9a-zA-Z_\.]+]]: !felt.type
 // CHECK-SAME:      ) attributes {function.allow_constraint} {
 // CHECK-DAG:         %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.readf %[[SELF]][@o] : <@Nop<[]>>, !felt.type
-// CHECK-DAG:         constrain.eq %[[VAL_0:[0-9a-zA-Z_\.]+]], %[[ARG_0]] : !felt.type, !felt.type
+// CHECK-DAG:         constrain.eq %[[VAL_0]], %[[ARG_0]] : !felt.type, !felt.type
 // CHECK:             function.return
 // CHECK-LABEL:  struct.def @SubCmp<[]> {
 // CHECK:          struct.field @o : !felt.type {llzk.pub}
@@ -54,5 +54,5 @@ component main = SubCmp();
 // CHECK-SAME:     ) attributes {function.allow_constraint} {
 // CHECK-DAG:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.readf %[[SELF]][@n] : <@SubCmp<[]>>, !struct.type<@Nop<[]>>
 // CHECK-DAG:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
-// CHECK-DAG:        function.call @Nop::@constrain(%0, %[[VAL_1]]) : (!struct.type<@Nop<[]>>, !felt.type) -> ()
+// CHECK-DAG:        function.call @Nop::@constrain(%[[VAL_0]], %[[VAL_1]]) : (!struct.type<@Nop<[]>>, !felt.type) -> ()
 // CHECK:            function.return

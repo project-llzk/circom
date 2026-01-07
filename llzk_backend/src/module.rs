@@ -201,7 +201,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
 
     /// Searches in an [`Expression`] for a call to a subcomponent's constructor.
     ///
-    /// In this context constructor refers to `Foo(n)` in Circom, not `@Foo::@compute` in LLZK.
+    /// In this context, constructor refers to `Foo(n)` in Circom, not `@Foo::@compute` in LLZK.
     fn find_subcmp_ctor_call<'ast>(
         codegen: &LlzkCodegen<'ast, 'ctx>,
         expression: &'ast Expression,
@@ -232,7 +232,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
             )
             .is_some()
         {
-            anyhow::bail!("Subcomponent {name} declared twice");
+            bail!("Subcomponent {name} declared twice");
         }
         Ok(())
     }
