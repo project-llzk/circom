@@ -7,13 +7,28 @@ use anyhow::Result;
 use compiler::hir::very_concrete_program::TemplateInstance;
 use compiler::hir::very_concrete_program::Wire;
 use melior::ir::Location;
+use program_structure::ast::SignalType;
 use program_structure::ast::Statement;
 use program_structure::template_data::TemplateData;
+use program_structure::wire_data::WireData;
+use program_structure::wire_data::WireType;
+use std::borrow::Cow;
+use std::collections::HashMap;
 use std::slice;
+
+/// A trait that allows common handling of structs/enums that represent template
+/// inputs or outputs.
+pub trait WireLike: Clone {
+    /// Type of the wire (signal or bus).
+    fn get_type(&self) -> WireType;
+}
 
 /// A trait that allows common handling of the structs used to represent a circom
 /// template at different stages in the compilation process.
 pub trait TemplateLike: std::fmt::Debug {
+    /// The type used to represent wires.
+    type WireData: WireLike;
+
     /// Generate the LLZK Location for the template definition.
     fn get_location<'ctx>(
         &self,
@@ -31,9 +46,24 @@ pub trait TemplateLike: std::fmt::Debug {
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Result<DeclarationInfo<'ctx>>;
+    /// Returns the inputs in declaration order.
+    fn get_declaration_inputs(&self) -> Cow<Vec<(String, usize)>>;
+    /// Returns the inputs of the template.
+    fn get_inputs(&self) -> Cow<HashMap<String, Self::WireData>>;
+    /// Returns the outputs of the template.
+    fn get_outputs(&self) -> Cow<HashMap<String, Self::WireData>>;
+/// Returns information about a concrete input.
+    fn get_input_info(&self, name: &str) -> Option<Cow<Self::WireData>> {
+        match self.get_inputs() {
+            Cow::Borrowed(i) => i.get(name).map(Cow::Borrowed),
+            Cow::Owned(i) => i.get(name).cloned().map(Cow::Owned),
+        }
+    }
 }
 
 impl TemplateLike for TemplateData {
+    type WireData = WireData;
+
     fn get_location<'ctx>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -55,9 +85,33 @@ impl TemplateLike for TemplateData {
     ) -> Result<DeclarationInfo<'ctx>> {
         DeclarationInfo::from_template(codegen, self)
     }
+
+    fn get_declaration_inputs(&self) -> Cow<Vec<(String, usize)>> {
+        Cow::Borrowed(self.get_declaration_inputs())
+    }
+
+    fn get_inputs(&self) -> Cow<HashMap<String, WireData>> {
+        Cow::Borrowed(self.get_inputs())
+    }
+
+    fn get_outputs(&self) -> Cow<HashMap<String, WireData>> {
+        Cow::Borrowed(self.get_outputs())
+    }
+
+    fn get_input_info(&self, name: &str) -> Option<Cow<WireData>> {
+        self.get_input_info(name).map(Cow::Borrowed)
+    }
+}
+
+impl WireLike for WireData {
+    fn get_type(&self) -> WireType {
+        self.get_type()
+    }
 }
 
 impl TemplateLike for TemplateInstance {
+    type WireData = Wire;
+
     fn get_location<'ctx>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -101,5 +155,54 @@ impl TemplateLike for TemplateInstance {
             }
         }
         Ok(declarations)
+    }
+
+    fn get_declaration_inputs(&self) -> Cow<Vec<(String, usize)>> {
+        Cow::Owned(
+            self.wires
+                .iter()
+                .filter_map(|w| match w {
+                    Wire::TSignal(signal) if signal.xtype == SignalType::Input => {
+                        Some((signal.name.clone(), signal.lengths.len()))
+                    }
+                    Wire::TBus(bus) if bus.xtype == SignalType::Input => {
+                        Some((bus.name.clone(), bus.lengths.len()))
+                    }
+                    _ => None,
+                })
+                .collect(),
+        )
+    }
+
+    fn get_inputs(&self) -> Cow<HashMap<String, Wire>> {
+        Cow::Owned(wires_of_type(&self.wires, SignalType::Input))
+    }
+    fn get_outputs(&self) -> Cow<HashMap<String, Wire>> {
+        Cow::Owned(wires_of_type(&self.wires, SignalType::Output))
+    }
+}
+
+/// Filters the wires that match the given type and builds a map with them.
+fn wires_of_type(wires: &[Wire], xtype: SignalType) -> HashMap<String, Wire> {
+    wires
+        .iter()
+        .filter_map(|w| match w {
+            Wire::TSignal(signal) if signal.xtype == xtype => {
+                Some((signal.name.clone(), Wire::TSignal(signal.clone())))
+            }
+            Wire::TBus(bus) if bus.xtype == xtype => {
+                Some((bus.name.clone(), Wire::TBus(bus.clone())))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+impl WireLike for Wire {
+    fn get_type(&self) -> WireType {
+        match self {
+            Wire::TSignal(_) => WireType::Signal,
+            Wire::TBus(bus) => WireType::Bus(bus.name.clone()),
+        }
     }
 }

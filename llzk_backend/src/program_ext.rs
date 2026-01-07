@@ -20,6 +20,18 @@ pub trait ProgramLike {
     fn get_functions(&self, sorted: bool) -> impl IntoIterator<Item = &impl FunctionLike>;
     /// Get an iterator over all templates in the program.
     fn get_templates(&self, sorted: bool) -> impl IntoIterator<Item = &impl TemplateLike>;
+    /// Returns true if the program contains a template with the given name.
+    fn contains_template(&self, name: &str) -> bool {
+        self.get_templates(false).into_iter().find(|t| t.get_name() == name).is_some()
+    }
+    /// Returns the template with the given name.
+    ///
+    /// # Panics
+    ///
+    /// If the program does not have a template with that name.
+    fn get_template_data(&self, name: &str) -> &impl TemplateLike {
+        self.get_templates(false).into_iter().find(|t| t.get_name() == name).unwrap()
+    }
 }
 
 impl ProgramLike for ProgramArchive {
@@ -45,6 +57,12 @@ impl ProgramLike for ProgramArchive {
             sort_templates_by_name(&mut templates);
         }
         templates
+    }
+    fn contains_template(&self, name: &str) -> bool {
+        self.contains_template(name)
+    }
+    fn get_template_data(&self, name: &str) -> &impl TemplateLike {
+        self.get_template_data(name)
     }
 }
 

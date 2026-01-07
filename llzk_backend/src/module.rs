@@ -7,28 +7,20 @@ use crate::function_ext::FunctionLike;
 use crate::program_ext::ProgramLike;
 use crate::shared::map_name_to_arg_value;
 use crate::shared::LlzkCodegen;
+use crate::subcmp::unique_instance_types;
+use crate::subcmp::SubcmpDeclInfo;
 use crate::template::GenerateLLZKInTemplate as _;
 use crate::template::TemplateContext;
 use crate::template_ext::TemplateLike;
+use anyhow::bail;
 use anyhow::Result;
 use llzk::attributes::NamedAttribute;
+use llzk::builder::OpBuilder;
 use llzk::error::Error;
-use llzk::prelude::function;
 use llzk::prelude::r#struct::helpers::compute_fn;
 use llzk::prelude::r#struct::helpers::constrain_fn;
-use llzk::prelude::r#struct::{self};
-use llzk::prelude::Block;
-use llzk::prelude::BlockLike as _;
-use llzk::prelude::FuncDefOpRef;
-use llzk::prelude::FuncDefOpRefMut;
-use llzk::prelude::FunctionType;
-use llzk::prelude::Location;
-use llzk::prelude::Operation;
-use llzk::prelude::OperationLike as _;
-use llzk::prelude::PublicAttribute;
-use llzk::prelude::RegionLike;
-use llzk::prelude::StructDefOpLike as _;
-use llzk::prelude::Type;
+use llzk::prelude::*;
+use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
 use program_structure::ast::SignalType;
@@ -63,9 +55,41 @@ pub struct DeclarationInfo<'ctx> {
     struct_fields: Vec<Result<Operation<'ctx>, Error>>,
     /// Map var/signal name to its LLZK declaration Operation (usually `undef.undef`).
     decl_inits: HashMap<String, Operation<'ctx>>,
+    /// Map `component` name to its declaration information.
+    subcmp_decls: HashMap<String, SubcmpDeclInfo<'ctx>>,
 }
 
 impl<'ctx> DeclarationInfo<'ctx> {
+    /// Completes the declaration information from the information collected from the
+    /// subcomponents.
+    ///
+    /// Returns a vector with an associative list of names to the type of the declaration.
+    ///
+    /// Currently handles declaration of scalar subcomponents and array subcomponents of the same
+    /// type.
+    fn complete(&mut self) -> Vec<(String, Type<'ctx>)> {
+        let mut ops = vec![];
+        for (name, info) in &self.subcmp_decls {
+            let instances = info.instances();
+            let field_type: Type<'_> = match instances {
+                [] => todo!("Handle uninitialized component decl"),
+                [t] => (*t).into(),
+                instances => {
+                    let types = unique_instance_types(instances);
+                    if types.len() > 1 {
+                        todo!("Handle array subcomponents")
+                    }
+                    ArrayType::new(types[0].into(), info.dimensions()).into()
+                }
+            };
+            self.struct_fields.push(
+                r#struct::field(info.location(), name, field_type, false, false).map(Into::into),
+            );
+            ops.push((name.clone(), field_type));
+        }
+        ops
+    }
+
     /// Visit all statements in the body of the template and return a new [DeclarationInfo]
     /// with any declarations found.
     pub(crate) fn from_template(
@@ -79,7 +103,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
         Ok(declarations)
     }
 
-    /// Visit a statement and populate this [DeclarationInfo] with any declarations found.
+    /// Visit a statement and populate this `DeclarationInfo` with any declarations found.
     ///
     /// TODO: This currently visits only top-level statements within the template body. However,
     /// since circom 2.1.5, signal declarations are allowed inside of blocks and known-condition if
@@ -140,15 +164,63 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         Ok(())
                     }
                     VariableType::Component => {
-                        todo!("Handle component declaration in template")
+                        self.visit_component_decl(codegen, meta, name, dimensions)
                     }
                     VariableType::AnonymousComponent => {
                         unreachable!("removed by 'syntax_sugar_remover'")
                     }
                 }
             }
+            Statement::Substitution { var, op, rhe, .. }
+                if matches!(op, AssignOp::AssignVar) && self.subcmp_decls.contains_key(var) =>
+            {
+                let struct_type = Self::find_subcmp_ctor_call(codegen, rhe)?;
+                self.subcmp_decls.entry(var.clone()).and_modify(|info| {
+                    info.instances_mut().push(struct_type);
+                });
+
+                Ok(())
+            }
             _ => Ok(()),
         }
+    }
+
+    /// Searches in an [`Expression`] for a call to a subcomponent's constructor.
+    ///
+    /// In this context, constructor refers to `Foo(n)` in Circom, not `@Foo::@compute` in LLZK.
+    fn find_subcmp_ctor_call<'ast>(
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        expression: &'ast Expression,
+    ) -> Result<StructType<'ctx>> {
+        match expression {
+            Expression::Call { meta, id, args, .. } if meta.get_type_knowledge().is_component() => {
+                codegen.struct_type_with_concrete_dimensions(id, args)
+            }
+            _ => bail!("expected call expression for subcomponent substitution rhe"),
+        }
+    }
+
+    /// [`visit`](Self::visit) helper for component declarations.
+    fn visit_component_decl(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        meta: &Meta,
+        name: &str,
+        dimensions: &[Expression],
+    ) -> Result<()> {
+        let location = codegen.location_from_meta(meta);
+
+        if self
+            .subcmp_decls
+            .insert(
+                name.to_owned(),
+                SubcmpDeclInfo::new(codegen.try_dimensions_to_attrs(dimensions)?, location),
+            )
+            .is_some()
+        {
+            bail!("Subcomponent {name} declared twice");
+        }
+        Ok(())
     }
 
     /// `visit()` helper for Signal and Bus VariableType.
@@ -243,7 +315,8 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
 ) -> Result<()> {
     // Collect declarations first to determine struct fields and function parameters.
-    let declarations = template_like.get_declarations(codegen)?;
+    let mut declarations = template_like.get_declarations(codegen)?;
+    let subcmps = declarations.complete();
 
     // Generate the struct definition, prepopulated with fields.
     let struct_loc = template_like.get_location(codegen);
@@ -302,10 +375,34 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         // Insert the declaration into the constrain function.
         constrain_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op))?;
     }
+    let op_builder = OpBuilder::new(codegen.context);
+    let subcmp_decls = declarations.subcmp_decls;
+    // Insert the Operations created from subcomponent Declaration statements and map the
+    // circom variable name to a LLZK op result Value.
+    for (name, subcmp_type) in subcmps {
+        compute_ctx.block_ctx.declare_name_if_not_present(&name, || {
+            Ok(undef::undef(Location::unknown(codegen.context), subcmp_type))
+        })?;
+
+        let self_ref = *constrain_ctx.block_ctx.get_named_value("**self**")?;
+        constrain_ctx.block_ctx.declare_name_if_not_present(&name, || {
+            Ok(r#struct::readf(
+                &op_builder,
+                subcmp_decls[&name].location(),
+                subcmp_type,
+                self_ref,
+                &name,
+            )?)
+        })?;
+    }
+
+    let subcmp_names = subcmp_decls.into_iter().map(|(name, _)| name).collect();
 
     // Visit the body of the template and generate LLZK IR for it within the struct functions.
-    let template_context = TemplateContext::new(new_struct, compute_ctx, constrain_ctx);
-    template_like.get_body().gen_llzk_in_template(codegen, &template_context)
+    let template_context =
+        TemplateContext::new(new_struct, compute_ctx, constrain_ctx, &subcmp_names);
+    template_like.get_body().gen_llzk_in_template(codegen, &template_context)?;
+    template_context.finalize(codegen)
 }
 
 /// A trait to generate LLZK IR for structural elements of the circom AST:

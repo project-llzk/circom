@@ -14,6 +14,7 @@ mod gen_context;
 mod module;
 mod program_ext;
 mod shared;
+mod subcmp;
 mod template;
 mod template_ext;
 
