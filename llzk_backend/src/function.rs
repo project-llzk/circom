@@ -1277,7 +1277,7 @@ where
                             ))?;
                         }
                     } else {
-                        todo!("Handle template parameter array lengths in function")
+                        todo!("Handle template parameter array lengths")
                     };
                     // Output value is still the newly created array
                     Ok(new_arr)
