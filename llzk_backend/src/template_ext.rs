@@ -19,12 +19,14 @@ use std::slice;
 /// A trait that allows common handling of structs/enums that represent template
 /// inputs or outputs.
 pub trait WireLike: Clone {
+    /// Type of the wire (signal or bus).
     fn get_type(&self) -> WireType;
 }
 
 /// A trait that allows common handling of the structs used to represent a circom
 /// template at different stages in the compilation process.
 pub trait TemplateLike: std::fmt::Debug {
+    /// The type used to represent wires.
     type WireData: WireLike;
 
     /// Generate the LLZK Location for the template definition.
@@ -180,6 +182,7 @@ impl TemplateLike for TemplateInstance {
     }
 }
 
+/// Filters the wires that match the given type and builds a map with them.
 fn wires_of_type(wires: &[Wire], xtype: SignalType) -> HashMap<String, Wire> {
     wires
         .iter()
