@@ -2,9 +2,12 @@
 
 use crate::module::ProgramLike;
 use ansi_term::Color;
-use anyhow::Result;
 use anyhow::anyhow;
+use anyhow::Result;
 use llzk::operation::replace_uses_of_with;
+use llzk::prelude::felt;
+use llzk::prelude::undef;
+use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::BlockLike;
@@ -33,13 +36,10 @@ use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
-use llzk::prelude::felt;
-use llzk::prelude::undef;
-use llzk::prelude::verify_operation_with_diags;
 use melior::dialect::arith;
-use melior::ir::Module;
 use melior::ir::attribute::BoolAttribute;
 use melior::ir::attribute::TypeAttribute;
+use melior::ir::Module;
 use melior::utility;
 use num_bigint_dig::BigInt;
 use num_traits::cast::ToPrimitive;
@@ -287,6 +287,15 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         StructType::from_str(self.context, name)
     }
 
+    /// Create an index attribute.
+    #[inline]
+    pub fn index_attr<T>(&self, integer: T) -> IntegerAttribute<'ctx>
+    where
+        T: Into<i64>,
+    {
+        IntegerAttribute::new(self.index_type(), integer.into())
+    }
+
     /// Run cleanup passes on the generated `Module`.
     pub fn run_passes(&mut self, pass_pipeline: &str) -> Result<()> {
         if pass_pipeline.is_empty() {
@@ -324,8 +333,6 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     }
 
     /// Write the generated `Module` to a file in bytecode format.
-    /// TODO: currently unused, silencing repeated warning via attribute.
-    #[expect(dead_code)]
     pub fn write_bytecode_to_file(self, filename: &str) -> Result<()> {
         unsafe extern "C" fn callback(string_ref: mlir_sys::MlirStringRef, user_data: *mut c_void) {
             let file = &mut *(user_data as *mut File);
@@ -502,4 +509,19 @@ pub fn get_function_type_attribute<'c: 'a, 'a>(
     let type_attr: TypeAttribute<'c> = attr.try_into()?;
     let func_type: FunctionType<'c> = type_attr.value().try_into()?;
     Ok(func_type)
+}
+
+/// Get all dimensions from an [ArrayType].
+///
+/// TODO: `llzk-rs` should provide this directly
+#[inline]
+pub fn get_dims<'c>(arr_ty: &ArrayType<'c>) -> Vec<Attribute<'c>> {
+    (0..arr_ty.num_dims()).map(|idx| arr_ty.dim(idx)).collect::<Vec<_>>()
+}
+
+/// Create new array type that is an array of the given sub-array type.
+#[inline]
+pub fn new_array_type<'c>(dim: Attribute<'c>, subarr_ty: &ArrayType<'c>) -> ArrayType<'c> {
+    let dims: Vec<_> = std::iter::once(dim).chain(get_dims(subarr_ty).iter().copied()).collect();
+    ArrayType::new(subarr_ty.element_type(), &dims)
 }
