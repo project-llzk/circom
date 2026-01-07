@@ -22,7 +22,7 @@ pub trait ProgramLike {
     fn get_templates(&self, sorted: bool) -> impl IntoIterator<Item = &impl TemplateLike>;
     /// Returns true if the program contains a template with the given name.
     fn contains_template(&self, name: &str) -> bool {
-        self.get_templates(false).into_iter().find(|t| t.get_name() == name).is_some()
+        self.get_templates(false).into_iter().any(|t| t.get_name() == name)
     }
     /// Returns the template with the given name.
     ///

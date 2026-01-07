@@ -1275,7 +1275,7 @@ where
             }
             Expression::ArrayInLine { meta, values } => {
                 let location = codegen.location_from_meta(meta);
-                let builder = &OpBuilder::new(&codegen.context);
+                let builder = &OpBuilder::new(codegen.context);
                 // Multi-dimensional arrays are made up of array values as their elements
                 let values = values
                     .iter()
@@ -1301,7 +1301,7 @@ where
                     for (idx, val) in values.iter().enumerate() {
                         let idx_attr = codegen.index_attr(i64::try_from(idx)?);
                         let idx_val = function.append_op_unnamed_result(arith::constant(
-                            &codegen.context,
+                            codegen.context,
                             idx_attr.into(),
                             location,
                         ))?;
@@ -1339,7 +1339,7 @@ where
                     // The array.new constructor doesn't accept arrays as initializer values,
                     // so we instead create the array empty and use array.insert to insert values.
                     let new_arr = function.append_op_unnamed_result(array::new(
-                        &OpBuilder::new(&codegen.context),
+                        &OpBuilder::new(codegen.context),
                         codegen.location_from_meta(meta),
                         arr_ty,
                         llzk::dialect::array::ArrayCtor::Values(&[]),
@@ -1348,7 +1348,7 @@ where
                         for idx in 0..const_dim.value() {
                             let idx_attr = codegen.index_attr(idx);
                             let idx_val = function.append_op_unnamed_result(arith::constant(
-                                &codegen.context,
+                                codegen.context,
                                 idx_attr.into(),
                                 location,
                             ))?;
@@ -1372,7 +1372,7 @@ where
                         todo!("Handle template parameter array lengths")
                     };
                     function.append_op_unnamed_result(array::new(
-                        &OpBuilder::new(&codegen.context),
+                        &OpBuilder::new(codegen.context),
                         codegen.location_from_meta(meta),
                         arr_ty,
                         llzk::dialect::array::ArrayCtor::Values(&init_vals),

@@ -1169,7 +1169,7 @@ where
                     .collect::<Vec<_>>();
                 // Undefs have unknown locations at creation and we set it when we encounter
                 // the corresponding write.
-                let unk = Location::unknown(&codegen.context);
+                let unk = Location::unknown(codegen.context);
                 let builder = OpBuilder::new(codegen.context);
 
                 // Generate here the call to @compute and @constrain.
