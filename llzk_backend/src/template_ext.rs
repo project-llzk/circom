@@ -47,13 +47,13 @@ pub trait TemplateLike: std::fmt::Debug {
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Result<DeclarationInfo<'ctx>>;
     /// Returns the inputs in declaration order.
-    fn get_declaration_inputs(&self) -> Cow<Vec<(String, usize)>>;
+    fn get_declaration_inputs(&'_ self) -> Cow<'_, [(String, usize)]>;
     /// Returns the inputs of the template.
-    fn get_inputs(&self) -> Cow<HashMap<String, Self::WireData>>;
+    fn get_inputs(&'_ self) -> Cow<'_, HashMap<String, Self::WireData>>;
     /// Returns the outputs of the template.
-    fn get_outputs(&self) -> Cow<HashMap<String, Self::WireData>>;
+    fn get_outputs(&'_ self) -> Cow<'_, HashMap<String, Self::WireData>>;
     /// Returns information about a concrete input.
-    fn get_input_info(&self, name: &str) -> Option<Cow<Self::WireData>> {
+    fn get_input_info(&'_ self, name: &str) -> Option<Cow<'_, Self::WireData>> {
         match self.get_inputs() {
             Cow::Borrowed(i) => i.get(name).map(Cow::Borrowed),
             Cow::Owned(i) => i.get(name).cloned().map(Cow::Owned),
@@ -86,19 +86,19 @@ impl TemplateLike for TemplateData {
         DeclarationInfo::from_template(codegen, self)
     }
 
-    fn get_declaration_inputs(&self) -> Cow<Vec<(String, usize)>> {
+    fn get_declaration_inputs(&'_ self) -> Cow<'_, [(String, usize)]> {
         Cow::Borrowed(self.get_declaration_inputs())
     }
 
-    fn get_inputs(&self) -> Cow<HashMap<String, WireData>> {
+    fn get_inputs(&'_ self) -> Cow<'_, HashMap<String, WireData>> {
         Cow::Borrowed(self.get_inputs())
     }
 
-    fn get_outputs(&self) -> Cow<HashMap<String, WireData>> {
+    fn get_outputs(&'_ self) -> Cow<'_, HashMap<String, WireData>> {
         Cow::Borrowed(self.get_outputs())
     }
 
-    fn get_input_info(&self, name: &str) -> Option<Cow<WireData>> {
+    fn get_input_info(&'_ self, name: &str) -> Option<Cow<'_, WireData>> {
         self.get_input_info(name).map(Cow::Borrowed)
     }
 }
@@ -157,7 +157,7 @@ impl TemplateLike for TemplateInstance {
         Ok(declarations)
     }
 
-    fn get_declaration_inputs(&self) -> Cow<Vec<(String, usize)>> {
+    fn get_declaration_inputs(&'_ self) -> Cow<'_, [(String, usize)]> {
         Cow::Owned(
             self.wires
                 .iter()
@@ -174,10 +174,10 @@ impl TemplateLike for TemplateInstance {
         )
     }
 
-    fn get_inputs(&self) -> Cow<HashMap<String, Wire>> {
+    fn get_inputs(&'_ self) -> Cow<'_, HashMap<String, Wire>> {
         Cow::Owned(wires_of_type(&self.wires, SignalType::Input))
     }
-    fn get_outputs(&self) -> Cow<HashMap<String, Wire>> {
+    fn get_outputs(&'_ self) -> Cow<'_, HashMap<String, Wire>> {
         Cow::Owned(wires_of_type(&self.wires, SignalType::Output))
     }
 }
