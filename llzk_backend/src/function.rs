@@ -18,7 +18,7 @@ use crate::shared::is_scf_yield;
 use crate::shared::new_array_type;
 use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
-use crate::shared::replace_all_uses_in_block_with;
+use crate::shared::replace_uses_with_new_block_argument;
 use crate::shared::single_result_as_value;
 use crate::shared::LlzkCodegen;
 use crate::shared::{self};
@@ -617,12 +617,9 @@ where
         let mut loop_carried_types = Vec::new();
         for name in loop_carried_var_names.iter() {
             let orig_val = self.block_ctx.get_named_value(name).unwrap();
-            let val_type = orig_val.r#type();
-            loop_carried_types.push(val_type);
-            let a = loop_cond_info.block.add_argument(val_type, location);
-            replace_all_uses_in_block_with(loop_cond_info.block, orig_val, a);
-            let b = loop_body_info.block.add_argument(val_type, location);
-            replace_all_uses_in_block_with(loop_body_info.block, orig_val, b);
+            loop_carried_types.push(orig_val.r#type());
+            replace_uses_with_new_block_argument(loop_cond_info.block, orig_val, location);
+            replace_uses_with_new_block_argument(loop_body_info.block, orig_val, location);
         }
 
         // In the loop condition block, ensure the condition has bool type and generate an

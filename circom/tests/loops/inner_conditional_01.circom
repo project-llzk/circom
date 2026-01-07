@@ -1,9 +1,6 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
-// XFAIL:.*
-// TODO: Values are replaced within the "after" block of the loop but when it contains nested regions/blocks,
-//  the replacements were not done there. Once that is fixed, the CHECKs should match.
 
 pragma circom 2.0.0;
 

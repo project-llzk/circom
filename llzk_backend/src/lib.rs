@@ -13,6 +13,7 @@ mod gen_context;
 mod module;
 mod shared;
 mod template;
+mod traversal;
 
 pub use codegen::generate_llzk;
 pub use module::VCPPlus;
