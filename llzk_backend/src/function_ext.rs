@@ -1,13 +1,12 @@
 //! Extensions for the [`FunctionData`] and [`VCF`] types.
 
-use std::slice;
-
 use crate::program_ext::ProgramLike;
 use crate::shared::LlzkCodegen;
 use compiler::hir::very_concrete_program::VCF;
 use melior::ir::Location;
 use program_structure::ast::Statement;
 use program_structure::function_data::FunctionData;
+use std::slice;
 
 /// A trait that allows common handling of the structs used to represent a circom
 /// function at different stages in the compilation process.
