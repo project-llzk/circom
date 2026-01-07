@@ -5,41 +5,6 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::marker::PhantomData;
 
-/// Version of [`Access`](program_structure::ast::Access) that uses LLZK
-/// Attributes instead.
-#[derive(Debug, Eq, PartialEq)]
-pub enum LlzkAccess<'ctx> {
-    /// Access to the signals of a component.
-    ComponentAccess(String),
-    /// Index access.
-    ArrayAccess(Attribute<'ctx>),
-}
-
-impl LlzkAccess<'_> {
-    /// Returns true if the access is direct.
-    ///
-    /// An access is direct if it refers to a component or
-    /// if the array access refers to a literal value.
-    pub fn is_direct(&self) -> bool {
-        matches!(self, LlzkAccess::ComponentAccess(_))
-            || matches!(self, LlzkAccess::ArrayAccess(attribute)
-                if attribute.is_integer())
-    }
-}
-
-/// Manual implementation of Hash because the inner types do not implement it.
-impl std::hash::Hash for LlzkAccess<'_> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        // Hash variant discriminant first to salt the hash.
-        core::mem::discriminant(self).hash(state);
-        match self {
-            LlzkAccess::ComponentAccess(name) => name.hash(state),
-            // Hash the attribute's pointer since they are unique w.r.t. the MLIR context.
-            LlzkAccess::ArrayAccess(attribute) => attribute.to_raw().ptr.hash(state),
-        }
-    }
-}
-
 /// Information collected about a subcomponent.
 #[derive(Debug)]
 pub struct SubcmpDeclInfo<'ctx> {
@@ -48,7 +13,7 @@ pub struct SubcmpDeclInfo<'ctx> {
     /// Location of the declaration.
     location: Location<'ctx>,
     /// Instances of the subcomponent type.
-    instances: HashMap<Vec<LlzkAccess<'ctx>>, StructType<'ctx>>,
+    instances: Vec<StructType<'ctx>>,
 }
 
 impl<'ctx> SubcmpDeclInfo<'ctx> {
@@ -68,21 +33,19 @@ impl<'ctx> SubcmpDeclInfo<'ctx> {
     }
 
     /// Returns a mutable reference to the different type instances.
-    pub fn instances_mut(&mut self) -> &mut HashMap<Vec<LlzkAccess<'ctx>>, StructType<'ctx>> {
+    pub fn instances_mut(&mut self) -> &mut Vec<StructType<'ctx>> {
         &mut self.instances
     }
 
     /// Returns a reference to the different type instances.
-    pub fn instances(&self) -> Vec<(&[LlzkAccess<'ctx>], StructType<'ctx>)> {
-        self.instances.iter().map(|(a, s)| (a.as_slice(), *s)).collect()
+    pub fn instances(&self) -> &[StructType<'ctx>] {
+        &self.instances
     }
 }
 
 /// Returns a list with the unique struct types in the given instances.
-pub fn unique_instance_types<'ctx>(
-    instances: &[(&[LlzkAccess<'ctx>], StructType<'ctx>)],
-) -> Vec<StructType<'ctx>> {
-    instances.iter().map(|(_, t)| ST(*t)).collect::<HashSet<_>>().into_iter().map(|s| s.0).collect()
+pub fn unique_instance_types<'ctx>(instances: &[StructType<'ctx>]) -> Vec<StructType<'ctx>> {
+    instances.iter().copied().map(ST).collect::<HashSet<_>>().into_iter().map(|s| s.0).collect()
 }
 
 /// Newtype for implementing Hash in StructType.

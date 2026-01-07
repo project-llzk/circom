@@ -10,6 +10,7 @@ use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::shared::erase_op;
 use crate::shared::get_function_type_attribute;
+use crate::shared::insert_after_if_op_result;
 use crate::shared::is_bool;
 use crate::shared::is_felt;
 use crate::shared::is_index;
@@ -17,6 +18,7 @@ use crate::shared::is_scf_yield;
 use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
 use crate::shared::replace_all_uses_in_block_with;
+use crate::shared::set_operand_if_undef;
 use crate::shared::single_result_as_value;
 use crate::shared::LlzkCodegen;
 use crate::shared::{self};
@@ -29,6 +31,7 @@ use llzk::prelude::array;
 use llzk::prelude::bool;
 use llzk::prelude::felt;
 use llzk::prelude::function;
+use llzk::prelude::undef;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::Block;
@@ -292,6 +295,75 @@ where
         } else {
             Ok(None)
         }
+    }
+
+    #[inline]
+    /// Generates a list of undef ops inside the given function context.
+    pub fn gen_arg_undefs(
+        &mut self,
+        args: &[Type<'ctx>],
+        loc: Location<'ctx>,
+    ) -> Result<Vec<Value<'ctx, 'val>>> {
+        args.iter().copied().map(|t| self.append_op_unnamed_result(undef::undef(loc, t))).collect()
+    }
+
+    /// Searches for the argument index of a subcomponent's signal.
+    pub fn lookup_arg_idx(
+        &self,
+        subcmp_signal: &String,
+        subcmp_value: &Value<'ctx, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx>,
+    ) -> Result<usize> {
+        let name = self.subcmp_calls.get(subcmp_value).ok_or_else(|| {
+            anyhow::anyhow!(
+                "template constructed by {subcmp_value}@{:?} not found (map: {:?})",
+                subcmp_value.to_raw().ptr,
+                self.subcmp_calls
+            )
+        })?;
+        let template_data = codegen.find_template_data(name).ok_or_else(|| {
+            anyhow::anyhow!("template with name {name:?} constructed by {subcmp_value} not found")
+        })?;
+        template_data
+            .get_declaration_inputs()
+            .iter()
+            .find_map(|(signal, idx)| (subcmp_signal == signal).then_some(*idx))
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "template '{}' has no input signal '{subcmp_signal}'",
+                    template_data.get_name()
+                )
+            })
+    }
+
+    /// Assigns the `rhe` value to the given subcomponent signal.
+    ///
+    /// The subcomponent is determined by
+    /// `var`, which must correspond to a named value in the current scope.
+    /// Since the subcomponent's call is different depending on the current function the
+    /// `get_call` callback needs to return the operation representing the call from the value
+    /// representing the subcomponent.
+    pub fn assign_subcmp<'op>(
+        &mut self,
+        rhe: Value<'ctx, 'val>,
+        var: &String,
+        subcmp_signal: &String,
+        codegen: &LlzkCodegen<'_, 'ctx>,
+        arg_offset: usize,
+        get_call: impl FnOnce(Value<'ctx, 'val>) -> Result<OperationRef<'ctx, 'op>>,
+    ) -> Result<()>
+    where
+        'ctx: 'op,
+    {
+        let subcmp_value = self.block_ctx.get_named_value(var)?;
+
+        let arg_idx = self.lookup_arg_idx(subcmp_signal, subcmp_value, codegen)?;
+
+        let call_op = get_call(*subcmp_value)?;
+        set_operand_if_undef(call_op, arg_idx + arg_offset, rhe)?;
+        insert_after_if_op_result(rhe, call_op);
+
+        Ok(())
     }
 
     /// Generate LLZK code in the current function for an infix operation.
@@ -1121,15 +1193,16 @@ where
                 // responsible for converting this `felt.type` value to another type if needed.
                 function.append_op_unnamed_result(new_felt_const_op(codegen, meta, big_int)?)
             }
-            Expression::Variable { meta, name, access } => {
-                match access.as_slice() {
-                    [] => {
-                        let v = function.block_ctx.get_named_value(name)?;
-                        Ok(*v)
-                    }
-                    a => {
-                        let location = codegen.location_from_meta(meta);
-                        let indices = a.iter().map(|access| {
+            Expression::Variable { meta, name, access } => match access.as_slice() {
+                [] => {
+                    let v = function.block_ctx.get_named_value(name)?;
+                    Ok(*v)
+                }
+                a => {
+                    let location = codegen.location_from_meta(meta);
+                    let indices = a
+                        .iter()
+                        .map(|access| {
                             let idx = match access {
                                 Access::ArrayAccess(index_expr) => {
                                     index_expr.gen_llzk_in_function(codegen, function)
@@ -1139,17 +1212,12 @@ where
                                 }
                             }?;
                             function.cast_to_index_if_needed(location, idx)
-                        }).collect::<Result<Vec<Value<'_, '_>>>>()?;
-                        let v = function.block_ctx.get_named_value(name)?;
-                        let arr_ty = ArrayType::try_from(v.r#type())?;
-                        let array_get_op = array::read(
-                            location,
-                            arr_ty.element_type(),
-                            *v,
-                            &indices,
-                        );
-                        function.append_op_unnamed_result(array_get_op)
-                    }
+                        })
+                        .collect::<Result<Vec<Value<'_, '_>>>>()?;
+                    let v = function.block_ctx.get_named_value(name)?;
+                    let arr_ty = ArrayType::try_from(v.r#type())?;
+                    let array_get_op = array::read(location, arr_ty.element_type(), *v, &indices);
+                    function.append_op_unnamed_result(array_get_op)
                 }
             },
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {

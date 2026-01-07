@@ -9,13 +9,13 @@
 use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
+use crate::shared::get_single_user;
 use crate::shared::is_felt;
 use crate::shared::replace_all_uses;
 use crate::shared::LlzkCodegen;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
-use llzk::dialect::undef;
 use llzk::prelude::constrain;
 use llzk::prelude::function;
 use llzk::prelude::r#struct;
@@ -27,11 +27,9 @@ use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::OperationLike;
 use llzk::prelude::StructDefOpRefMut;
-use llzk::prelude::StructType;
 use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Value;
 use melior::ir::operation::OperationResult;
-use melior::ir::BlockLike as _;
 use melior::ir::OperationRef;
 use melior::ir::Type;
 use melior::ir::ValueLike;
@@ -41,7 +39,6 @@ use program_structure::ast::Expression;
 use program_structure::ast::Meta;
 use program_structure::ast::Statement;
 use program_structure::error_code::ReportCode;
-use program_structure::wire_data::WireType;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -787,7 +784,7 @@ where
                                         // Replace value. Ensure that the value comes from a
                                         // `struct.readf`
                                         let field_read = fc.block_ctx.get_named_value(var)?;
-                                        let field_read_op = try_into_op_result(*field_read)?;
+                                        let field_read_op = OperationResult::try_from(*field_read)?;
                                         // Temporary workaround until we have
                                         // `llzkOperationIsAStructFieldReadOp`
                                         assert_eq!(
@@ -873,23 +870,17 @@ where
                                 // We use that name to look for the signal's declaration index and
                                 // use it to locate the corresponding operand and
                                 // replace it with the given `rhe`.
-                                let compute_only = template.compute_only();
-                                rhe.gen_llzk_in_template(codegen, &compute_only)?.and_then_same(
-                                    |fc, val| {
-                                        let subcmp_value = fc.block_ctx.get_named_value(var)?;
-                                        let arg_idx = lookup_arg_idx(
+                                rhe.gen_llzk_in_template(codegen, &template.compute_only())?
+                                    .and_then_same(|fc, rhe| {
+                                        fc.assign_subcmp(
+                                            rhe,
+                                            var,
                                             subcmp_signal,
-                                            subcmp_value,
-                                            fc,
                                             codegen,
-                                        )?;
-                                        let compute_call = try_into_op_result(*subcmp_value)?;
-
-                                        set_operand_if_undef(compute_call.owner(), arg_idx, val)?;
-                                        insert_after_if_op_result(val, compute_call.owner());
-                                        Ok(())
-                                    },
-                                )
+                                            0,
+                                            op_result_owner,
+                                        )
+                                    })
                             }
                             _ => todo!("Generate array write operation in template: {access:?}"),
                         }
@@ -968,35 +959,25 @@ where
                                 // use it to locate the corresponding operand and
                                 // replace it with the given `rhe`.
                                 rhe.gen_llzk_in_template(codegen, template)?.and_then(
-                                    |fc, val| {
-                                        let subcmp_value = fc.block_ctx.get_named_value(var)?;
-                                        let arg_idx = lookup_arg_idx(
+                                    |fc, rhe| {
+                                        fc.assign_subcmp(
+                                            rhe,
+                                            var,
                                             subcmp_signal,
-                                            subcmp_value,
-                                            fc,
                                             codegen,
-                                        )?;
-                                        let compute_call = try_into_op_result(*subcmp_value)?;
-
-                                        set_operand_if_undef(compute_call.owner(), arg_idx, val)?;
-                                        insert_after_if_op_result(val, compute_call.owner());
-                                        Ok(())
+                                            0,
+                                            op_result_owner,
+                                        )
                                     },
-                                    |fc, val| {
-                                        let subcmp_value = fc.block_ctx.get_named_value(var)?;
-                                        let arg_idx = lookup_arg_idx(
+                                    |fc, rhe| {
+                                        fc.assign_subcmp(
+                                            rhe,
+                                            var,
                                             subcmp_signal,
-                                            subcmp_value,
-                                            fc,
                                             codegen,
-                                        )?;
-                                        // The value is the first argument, so we need to extract
-                                        // the call from the use list of the value.
-                                        let constrain_call = get_constrain_call(*subcmp_value)?;
-                                        // Offset argument index by one since it's a constrain call
-                                        set_operand_if_undef(constrain_call, arg_idx + 1, val)?;
-                                        insert_after_if_op_result(val, constrain_call);
-                                        Ok(())
+                                            1,
+                                            get_constrain_call,
+                                        )
                                     },
                                 )
                             }
@@ -1124,8 +1105,7 @@ where
                                     .iter()
                                     .find_map(|(s, idx)| (signal_name == s).then_some(*idx))
                                     .expect("signal in mapping but not in declaration list");
-                                let call =
-                                    CallOpRef::try_from(try_into_op_result_owner(*subcmp_value)?)?;
+                                let call = CallOpRef::try_from(op_result_owner(*subcmp_value)?)?;
                                 assert!(call.callee_is_struct_compute());
                                 Ok(call.operand(idx)?)
                             } else {
@@ -1183,23 +1163,9 @@ where
             {
                 let location = codegen.location_from_meta(meta);
                 let subcmp_type = codegen.struct_type_with_concrete_dimensions(id, args)?;
-                let template_data = codegen
-                    .program_archive
-                    .templates
-                    .get(id)
-                    .ok_or_else(|| anyhow::anyhow!("Template {id} not found"))?;
-                let inputs = template_data.get_declaration_inputs();
-                let mut arg_types: Vec<Type<'_>> = Vec::with_capacity(inputs.len() + 1);
-                arg_types.push(subcmp_type.into());
-                arg_types.extend(inputs.iter().map(|(name, _)| -> Type<'_> {
-                    let wire = template_data
-                        .get_input_info(name)
-                        .unwrap_or_else(|| panic!("Input {:?} not found for type {:?}", name, id));
-                    match wire.get_type() {
-                        WireType::Signal => FeltType::new(codegen.context).into(),
-                        WireType::Bus(name) => StructType::from_str(codegen.context, &name).into(),
-                    }
-                }));
+                let arg_types = std::iter::once(Type::from(subcmp_type))
+                    .chain(codegen.get_template_input_types(id)?)
+                    .collect::<Vec<_>>();
                 // Undefs have unknown locations at creation and we set it when we encounter
                 // the corresponding write.
                 let unk = Location::unknown(&codegen.context);
@@ -1212,7 +1178,7 @@ where
                 // similar to how we do for variables assignment.
                 template.and_then(
                     |fc, _| {
-                        let undefs = gen_arg_undefs(&arg_types[1..], unk, fc)?;
+                        let undefs = fc.gen_arg_undefs(&arg_types[1..], unk)?;
                         let val = fc.append_op_unnamed_result(
                             function::call(
                                 &builder,
@@ -1227,7 +1193,7 @@ where
                         Ok(val)
                     },
                     |fc, _| {
-                        let undefs = gen_arg_undefs(&arg_types, unk, fc)?;
+                        let undefs = fc.gen_arg_undefs(&arg_types, unk)?;
                         let empty_result: [Type<'ctx>; 0] = [];
                         fc.append_op_no_result(
                             function::call(
@@ -1260,27 +1226,12 @@ where
 }
 
 #[inline]
-/// Generates a list of undef ops inside the given function context.
-fn gen_arg_undefs<'ctx: 'func, 'func: 'blk, 'blk: 'val, 'val>(
-    args: &[Type<'ctx>],
-    loc: Location<'ctx>,
-    fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
-) -> Result<Vec<Value<'ctx, 'val>>> {
-    args.iter().copied().map(|t| fc.append_op_unnamed_result(undef::undef(loc, t))).collect()
-}
-
-#[inline]
-/// Tries to convert a [`Value`](melior::ir::Value) into an [`OperationResult`](melior::ir::operation::OperationResult).
-fn try_into_op_result<'ctx, 'val>(value: Value<'ctx, 'val>) -> Result<OperationResult<'ctx, 'val>> {
-    if !value.is_operation_result() {
-        anyhow::bail!("Value {value} is not an operation result");
-    }
-    Ok(unsafe { OperationResult::from_raw(value.to_raw()) })
-}
-
-#[inline]
 /// Tries to obtain the owner operation of a [`Value`](melior::ir::Value).
-fn try_into_op_result_owner<'ctx, 'val, 'op: 'val>(
+///
+/// This function works around a lifetime issue in [`OperationResult::owner`] that
+/// is resolved in [mlir-sys/melior#784](https://github.com/mlir-rs/melior/pull/784) but that
+/// we cannot benefit from yet.
+fn op_result_owner<'ctx, 'val, 'op: 'val>(
     value: Value<'ctx, 'val>,
 ) -> Result<OperationRef<'ctx, 'op>> {
     if !value.is_operation_result() {
@@ -1288,68 +1239,6 @@ fn try_into_op_result_owner<'ctx, 'val, 'op: 'val>(
     }
     unsafe { OperationRef::from_option_raw(mlir_sys::mlirOpResultGetOwner(value.to_raw())) }
         .ok_or_else(|| anyhow::anyhow!("owner of {value} is not a valid operation"))
-}
-
-#[inline]
-/// Sets the n-th operand of the operation to the given value if the current value is an
-/// `undef.undef` op.
-fn set_operand_if_undef<'ctx, 'op>(
-    op: OperationRef<'ctx, 'op>,
-    idx: usize,
-    value: impl ValueLike<'ctx>,
-) -> Result<()> {
-    let arg = try_into_op_result(op.operand(idx)?)?;
-    if !undef::is_undef_op(arg.owner()) {
-        anyhow::bail!("Argument {idx} was assigned twice: {arg}");
-    }
-
-    unsafe { mlir_sys::mlirOperationSetOperand(op.to_raw(), idx as isize, value.to_raw()) }
-    Ok(())
-}
-
-#[inline]
-/// Moves the operation after the value if the value comes from another operation.
-///
-/// If the operation the value comes from is in an inner block, moves the op right after the parent
-/// op that is in the same block as the op about to be moved.
-///
-/// # Panics
-///
-/// If the parent search reaches the top, meaning that the value comes from an op in a block that
-/// is a 'parent' of the other op or that the value's op is not owned by a block.
-fn insert_after_if_op_result<'ctx, 'val, 'op>(val: Value<'ctx, 'val>, op: OperationRef<'ctx, 'op>) {
-    if val.is_block_argument() {
-        return;
-    }
-    let binding = try_into_op_result(val).unwrap();
-    let mut reference_op = binding.owner();
-    let _ = reference_op.block().expect("reference op must belong to a block");
-    if let Some(op_block) = op.block() {
-        reference_op = find_parent_in_block(op_block, reference_op).expect("parent op not found");
-    };
-    move_op_after(reference_op, op);
-}
-
-/// Returns the op (or a parent op) that belongs to the block.
-fn find_parent_in_block<'ctx, 'blk, 'op>(
-    block: BlockRef<'ctx, 'blk>,
-    op: OperationRef<'ctx, 'op>,
-) -> Option<OperationRef<'ctx, 'op>> {
-    let parent_block = op.block()?;
-    if block == parent_block {
-        Some(op)
-    } else {
-        find_parent_in_block(block, parent_block.parent_operation()?)
-    }
-}
-
-#[inline]
-/// Moves the operation right after the reference op.
-fn move_op_after<'ctx: 'op, 'op>(
-    reference: impl OperationLike<'ctx, 'op>,
-    op: impl OperationLike<'ctx, 'op>,
-) {
-    unsafe { mlir_sys::mlirOperationMoveAfter(op.to_raw(), reference.to_raw()) }
 }
 
 #[inline]
@@ -1373,51 +1262,4 @@ fn get_constrain_call<'ctx, 'op, 'val>(
     }
 
     Ok(owner.into())
-}
-
-#[inline]
-/// Returns the one user of a value.
-///
-/// Fails if the value has more than one use or not at all.
-fn get_single_user<'ctx, 'val, 'op>(value: Value<'ctx, 'val>) -> Result<OperationRef<'ctx, 'op>> {
-    // There is no `OpOperand` type in melior as far as I'm aware.
-    let first_use = unsafe { mlir_sys::mlirValueGetFirstUse(value.to_raw()) };
-    if first_use.ptr.is_null() {
-        anyhow::bail!("value {value} has no uses");
-    }
-    let second_use = unsafe { mlir_sys::mlirOpOperandGetNextUse(first_use) };
-    if !second_use.ptr.is_null() {
-        anyhow::bail!("value {value} can have only one use");
-    }
-    unsafe { OperationRef::from_option_raw(mlir_sys::mlirOpOperandGetOwner(first_use)) }
-        .ok_or_else(|| anyhow::anyhow!("invalid operation for user of {value}"))
-}
-
-/// Searches for the argument index of a subcomponent's signal.
-fn lookup_arg_idx<'ctx, 'func, 'blk, 'val>(
-    subcmp_signal: &String,
-    subcmp_value: &Value<'ctx, 'val>,
-    fc: &FunctionContext<'ctx, 'func, 'blk, 'val>,
-    codegen: &LlzkCodegen<'_, 'ctx>,
-) -> Result<usize> {
-    let name = fc.subcmp_calls.get(subcmp_value).ok_or_else(|| {
-        anyhow::anyhow!(
-            "template constructed by {subcmp_value}@{:?} not found (map: {:?})",
-            subcmp_value.to_raw().ptr,
-            fc.subcmp_calls
-        )
-    })?;
-    let template_data = codegen.find_template_data(name).ok_or_else(|| {
-        anyhow::anyhow!("template with name {name:?} constructed by {subcmp_value} not found")
-    })?;
-    template_data
-        .get_declaration_inputs()
-        .iter()
-        .find_map(|(signal, idx)| (subcmp_signal == signal).then_some(*idx))
-        .ok_or_else(|| {
-            anyhow::anyhow!(
-                "template '{}' has no input signal '{subcmp_signal}'",
-                template_data.get_name()
-            )
-        })
 }

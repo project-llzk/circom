@@ -6,7 +6,6 @@ use crate::function::GenerateLLZKInFunction as _;
 use crate::shared::map_name_to_arg_value;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::unique_instance_types;
-use crate::subcmp::LlzkAccess;
 use crate::subcmp::SubcmpDeclInfo;
 use crate::template::GenerateLLZKInTemplate as _;
 use crate::template::TemplateContext;
@@ -18,14 +17,12 @@ use llzk::error::Error;
 use llzk::prelude::r#struct::helpers::compute_fn;
 use llzk::prelude::r#struct::helpers::constrain_fn;
 use llzk::prelude::*;
-use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
 use program_structure::ast::SignalType;
 use program_structure::ast::Statement;
 use program_structure::ast::VariableType;
-use program_structure::error_code::ReportCode;
 use program_structure::function_data::FunctionData;
 use program_structure::program_archive::ProgramArchive;
 use program_structure::template_data::TemplateData;
@@ -74,9 +71,9 @@ impl<'ctx> DeclarationInfo<'ctx> {
         let mut ops = vec![];
         for (name, info) in &self.subcmp_decls {
             let instances = info.instances();
-            let field_type: Type<'_> = match instances.as_slice() {
+            let field_type: Type<'_> = match instances {
                 [] => todo!("Handle uninitialized component decl"),
-                [([], t)] => (*t).into(),
+                [t] => (*t).into(),
                 instances => {
                     let types = unique_instance_types(instances);
                     if types.len() > 1 {
@@ -154,44 +151,13 @@ impl<'ctx> DeclarationInfo<'ctx> {
                     }
                 }
             }
-            Statement::Substitution { meta, var, access, op, rhe } => {
-                // We need to gather the concrete types of the subcomponents used across the template.
-                // These are defined in the AST as a substitution over the variable name of the
-                // subcomponent.
-                if !matches!(op, AssignOp::AssignVar) || !self.subcmp_decls.contains_key(var) {
-                    return Ok(());
-                }
-
-                let struct_type = Self::find_subcmp_ctor_call(codegen, rhe)?.expect("missing type");
-                let access = access
-                    .iter()
-                    .map(|access| {
-                        Ok(match access {
-                            Access::ComponentAccess(name) => {
-                                LlzkAccess::ComponentAccess(name.clone())
-                            }
-                            Access::ArrayAccess(expr) => {
-                                LlzkAccess::ArrayAccess(codegen.convert_dim_expr(expr)?)
-                            }
-                        })
-                    })
-                    .collect::<Result<Vec<_>>>()?;
-                let direct_access = access.iter().all(LlzkAccess::is_direct);
-                let mut double_assign = false;
+            Statement::Substitution { var, op, rhe, .. }
+                if matches!(op, AssignOp::AssignVar) && self.subcmp_decls.contains_key(var) =>
+            {
+                let struct_type = Self::find_subcmp_ctor_call(codegen, rhe)?;
                 self.subcmp_decls.entry(var.clone()).and_modify(|info| {
-                    double_assign = info.instances_mut().insert(access, struct_type).is_some();
+                    info.instances_mut().push(struct_type);
                 });
-                // Only emit the double assignment error if the access path was direct.
-                // To avoid reporting cases like `a[n]`.
-                if double_assign && direct_access {
-                    let err_msg = format!("Component {var} assigned twice",);
-                    codegen.emit_circom_error(
-                        meta,
-                        err_msg.as_str(),
-                        ReportCode::AssigningAComponentTwice,
-                    );
-                    bail!(err_msg);
-                }
 
                 Ok(())
             }
@@ -205,13 +171,13 @@ impl<'ctx> DeclarationInfo<'ctx> {
     fn find_subcmp_ctor_call<'ast>(
         codegen: &LlzkCodegen<'ast, 'ctx>,
         expression: &'ast Expression,
-    ) -> Result<Option<StructType<'ctx>>> {
-        Ok(match expression {
+    ) -> Result<StructType<'ctx>> {
+        match expression {
             Expression::Call { meta, id, args, .. } if meta.get_type_knowledge().is_component() => {
-                Some(codegen.struct_type_with_concrete_dimensions(id, args)?)
+                codegen.struct_type_with_concrete_dimensions(id, args)
             }
-            _ => None,
-        })
+            _ => bail!("expected call expression for subcomponent substitution rhe"),
+        }
     }
 
     /// [`visit`](Self::visit) helper for component declarations.
@@ -228,7 +194,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
             .subcmp_decls
             .insert(
                 name.to_owned(),
-                SubcmpDeclInfo::new(Self::try_dimensions_to_attrs(codegen, dimensions)?, location),
+                SubcmpDeclInfo::new(codegen.try_dimensions_to_attrs(dimensions)?, location),
             )
             .is_some()
         {
@@ -271,15 +237,6 @@ impl<'ctx> DeclarationInfo<'ctx> {
             self.struct_fields.push(new.map(|f| f.into()));
         }
         Ok(())
-    }
-
-    /// Tries to convert a list of [`Expression`] to a list of [`Attribute`].
-    #[inline]
-    fn try_dimensions_to_attrs(
-        codegen: &LlzkCodegen<'_, 'ctx>,
-        dimensions: &[Expression],
-    ) -> Result<Vec<Attribute<'ctx>>> {
-        dimensions.iter().map(|e| codegen.convert_dim_expr(e)).collect()
     }
 }
 
@@ -422,7 +379,7 @@ impl<'ctx> GenerateLLZKInModule<'ctx> for TemplateData {
             })?;
         }
 
-        let subcmp_names = subcmp_decls.iter().map(|t| t.0.clone()).collect();
+        let subcmp_names = subcmp_decls.into_iter().map(|(name, _)| name).collect();
         // Visit the body of the template and generate LLZK IR for it within the struct functions.
         let template_context =
             TemplateContext::new(new_struct, compute_ctx, constrain_ctx, &subcmp_names);
