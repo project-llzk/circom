@@ -1,12 +1,11 @@
 //! Extensions for the [`ProgramArchive`] and [`VCP`] types.
 
+use crate::function_ext::FunctionLike;
+use crate::template_ext::TemplateLike;
 use compiler::compiler_interface::VCP;
-use program_structure::{
-    file_definition::{FileID, FileLibrary},
-    program_archive::ProgramArchive,
-};
-
-use crate::{function_ext::FunctionLike, template_ext::TemplateLike};
+use program_structure::file_definition::FileID;
+use program_structure::file_definition::FileLibrary;
+use program_structure::program_archive::ProgramArchive;
 
 /// A trait that allows common handling of the structs used to represent a circom
 /// program at different stages in the compilation process.
@@ -82,4 +81,16 @@ impl ProgramLike for VCPPlus<'_> {
         }
         templates
     }
+}
+
+/// Helper function to sort a vector of &FunctionLike by name.
+#[inline]
+fn sort_functions_by_name<T: FunctionLike>(functions: &mut [&T]) {
+    functions.sort_by(|a, b| a.get_name().cmp(b.get_name()));
+}
+
+/// Helper function to sort a vector of &TemplateLike by name.
+#[inline]
+fn sort_templates_by_name<T: TemplateLike>(templates: &mut [&T]) {
+    templates.sort_by(|a, b| a.get_name().cmp(b.get_name()));
 }

@@ -9,7 +9,7 @@
 use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
-use crate::module::ProgramLike;
+use crate::program_ext::ProgramLike;
 use crate::shared::is_felt;
 use crate::shared::LlzkCodegen;
 use anyhow::Result;

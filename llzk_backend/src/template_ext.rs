@@ -1,10 +1,16 @@
 //! Extensions for the [`TemplateData`] and [`TemplateInstance`] types.
 
-use compiler::hir::very_concrete_program::TemplateInstance;
-use melior::ir::Location;
-use program_structure::{ast::Statement, template_data::TemplateData};
+use std::slice;
 
-use crate::{module::DeclarationInfo, program_ext::ProgramLike, shared::LlzkCodegen};
+use crate::module::DeclarationInfo;
+use crate::program_ext::ProgramLike;
+use crate::shared::LlzkCodegen;
+use anyhow::Result;
+use compiler::hir::very_concrete_program::TemplateInstance;
+use compiler::hir::very_concrete_program::Wire;
+use melior::ir::Location;
+use program_structure::ast::Statement;
+use program_structure::template_data::TemplateData;
 
 /// A trait that allows common handling of the structs used to represent a circom
 /// template at different stages in the compilation process.

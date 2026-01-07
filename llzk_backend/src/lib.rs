@@ -18,4 +18,4 @@ mod template;
 mod template_ext;
 
 pub use codegen::generate_llzk;
-pub use module::VCPPlus;
+pub use program_ext::VCPPlus;

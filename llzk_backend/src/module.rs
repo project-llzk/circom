@@ -11,10 +11,6 @@ use crate::template::GenerateLLZKInTemplate as _;
 use crate::template::TemplateContext;
 use crate::template_ext::TemplateLike;
 use anyhow::Result;
-use compiler::hir::very_concrete_program::TemplateInstance;
-use compiler::hir::very_concrete_program::Wire;
-use compiler::hir::very_concrete_program::VCF;
-use compiler::hir::very_concrete_program::VCP;
 use llzk::attributes::NamedAttribute;
 use llzk::error::Error;
 use llzk::prelude::function;
@@ -38,14 +34,8 @@ use program_structure::ast::Meta;
 use program_structure::ast::SignalType;
 use program_structure::ast::Statement;
 use program_structure::ast::VariableType;
-use program_structure::file_definition::FileID;
-use program_structure::file_definition::FileLibrary;
-use program_structure::function_data::FunctionData;
-use program_structure::program_archive::ProgramArchive;
-use program_structure::template_data::TemplateData;
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::slice;
 
 /// Information needed to create an LLZK struct function parameter collected from the input signal
 /// Declaration statements within a circom template.
@@ -316,18 +306,6 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     // Visit the body of the template and generate LLZK IR for it within the struct functions.
     let template_context = TemplateContext::new(new_struct, compute_ctx, constrain_ctx);
     template_like.get_body().gen_llzk_in_template(codegen, &template_context)
-}
-
-/// Helper function to sort a vector of &FunctionLike by name.
-#[inline]
-fn sort_functions_by_name<T: FunctionLike>(functions: &mut [&T]) {
-    functions.sort_by(|a, b| a.get_name().cmp(b.get_name()));
-}
-
-/// Helper function to sort a vector of &TemplateLike by name.
-#[inline]
-fn sort_templates_by_name<T: TemplateLike>(templates: &mut [&T]) {
-    templates.sort_by(|a, b| a.get_name().cmp(b.get_name()));
 }
 
 /// A trait to generate LLZK IR for structural elements of the circom AST:
