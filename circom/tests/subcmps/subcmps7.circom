@@ -16,11 +16,13 @@ template SubCmp() {
     component n[2];
     n[0] = Nop(1);
     n[1] = Nop(1);
-    //n.i <== i;
-    //o <== n.o;
+    //n[0].i <== i;
+    //o <== n[0].o;
 }
 
 component main = SubCmp();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
-// CHECK:     struct.field @n : !struct.type<@Nop<[1]>>
+// This test is not 100% testable because array support is not complete.
+// Currently we only care about having the right type in the field definition.
+// CHECK:     struct.field @n : !array.type<2, !struct.type<@Nop<[1]>>>
