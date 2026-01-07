@@ -52,7 +52,7 @@ pub trait TemplateLike: std::fmt::Debug {
     fn get_inputs(&self) -> Cow<HashMap<String, Self::WireData>>;
     /// Returns the outputs of the template.
     fn get_outputs(&self) -> Cow<HashMap<String, Self::WireData>>;
-/// Returns information about a concrete input.
+    /// Returns information about a concrete input.
     fn get_input_info(&self, name: &str) -> Option<Cow<Self::WireData>> {
         match self.get_inputs() {
             Cow::Borrowed(i) => i.get(name).map(Cow::Borrowed),

@@ -151,7 +151,8 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
         }
     }
 
-    /// Finalizes the context by emitting the final write operations that write subcomponent declarations to the declaring component.
+    /// Finalizes the context by emitting the final write operations that write subcomponent
+    /// declarations to the declaring component.
     pub fn finalize(self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Result<()> {
         let subcmps = self.subcmps;
         self.and_then(
