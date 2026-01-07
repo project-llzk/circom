@@ -1286,7 +1286,7 @@ where
                     let init_vals = if let Ok(const_dim) = const_dim {
                         vec![val; usize::try_from(const_dim.value())?]
                     } else {
-                        todo!("Handle template parameter array lengths in function")
+                        todo!("Handle template parameter array lengths")
                     };
                     function.append_op_unnamed_result(array::new(
                         &OpBuilder::new(&codegen.context),
