@@ -515,7 +515,7 @@ pub fn get_function_type_attribute<'c: 'a, 'a>(
 /// TODO: `llzk-rs` should provide this directly
 #[inline]
 pub fn get_dims<'c>(arr_ty: &ArrayType<'c>) -> Vec<Attribute<'c>> {
-    (0..arr_ty.num_dims()).map(|idx| arr_ty.dim(idx)).collect::<Vec<_>>()
+    (0..arr_ty.num_dims()).map(|idx| arr_ty.dim(idx)).collect()
 }
 
 /// Create new array type that is an array of the given sub-array type.
