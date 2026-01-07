@@ -85,19 +85,15 @@ impl TemplateLike for TemplateData {
     ) -> Result<DeclarationInfo<'ctx>> {
         DeclarationInfo::from_template(codegen, self)
     }
-
     fn get_declaration_inputs(&'_ self) -> Cow<'_, [(String, usize)]> {
         Cow::Borrowed(self.get_declaration_inputs())
     }
-
     fn get_inputs(&'_ self) -> Cow<'_, HashMap<String, WireData>> {
         Cow::Borrowed(self.get_inputs())
     }
-
     fn get_outputs(&'_ self) -> Cow<'_, HashMap<String, WireData>> {
         Cow::Borrowed(self.get_outputs())
     }
-
     fn get_input_info(&'_ self, name: &str) -> Option<Cow<'_, WireData>> {
         self.get_input_info(name).map(Cow::Borrowed)
     }
@@ -156,7 +152,6 @@ impl TemplateLike for TemplateInstance {
         }
         Ok(declarations)
     }
-
     fn get_declaration_inputs(&'_ self) -> Cow<'_, [(String, usize)]> {
         Cow::Owned(
             self.wires
@@ -173,7 +168,6 @@ impl TemplateLike for TemplateInstance {
                 .collect(),
         )
     }
-
     fn get_inputs(&'_ self) -> Cow<'_, HashMap<String, Wire>> {
         Cow::Owned(wires_of_type(&self.wires, SignalType::Input))
     }
