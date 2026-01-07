@@ -309,7 +309,7 @@ where
     /// Searches for the argument index of a subcomponent's signal.
     pub fn lookup_arg_idx(
         &self,
-        subcmp_signal: &String,
+        subcmp_signal: &str,
         subcmp_value: &Value<'ctx, 'val>,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Result<usize> {
@@ -345,8 +345,8 @@ where
     pub fn assign_subcmp<'op>(
         &mut self,
         rhe: Value<'ctx, 'val>,
-        var: &String,
-        subcmp_signal: &String,
+        var: &str,
+        subcmp_signal: &str,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         arg_offset: usize,
         get_call: impl FnOnce(Value<'ctx, 'val>) -> Result<OperationRef<'ctx, 'op>>,
