@@ -522,6 +522,6 @@ pub fn get_dims<'c>(arr_ty: &ArrayType<'c>) -> Vec<Attribute<'c>> {
 /// Create new array type that is an array of the given sub-array type.
 #[inline]
 pub fn new_array_type<'c>(dim: Attribute<'c>, subarr_ty: &ArrayType<'c>) -> ArrayType<'c> {
-    let dims = [&[dim], get_dims(subarr_ty).as_slice()].concat();
+    let dims: Vec<_> = std::iter::once(dim).chain(get_dims(subarr_ty).iter().copied()).collect();
     ArrayType::new(subarr_ty.element_type(), &dims)
 }
