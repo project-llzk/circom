@@ -166,17 +166,17 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                 // Write the subcomponent declarations to self.
                 let self_value = fc.func.self_value_of_compute()?;
                 for name in subcmps {
-                    let val = fc.block_ctx.get_named_value(&name)?;
+                    let val = fc.block_ctx.get_named_value(name)?;
                     fc.append_op_no_result(r#struct::writef(
                         Location::unknown(codegen.context),
                         self_value,
-                        &name,
+                        name,
                         *val,
                     )?)?;
                 }
                 Ok(())
             },
-            |_fc, _| Ok(()),
+            |_, _| Ok(()),
         )
     }
 }
@@ -783,9 +783,7 @@ where
                             if template.subcmps.contains(var) {
                                 rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                     |fc, rhe| {
-                                        if let Some(current) =
-                                            fc.block_ctx.get_named_value(var).ok()
-                                        {
+                                        if let Ok(current) = fc.block_ctx.get_named_value(var) {
                                             replace_all_uses(*current, rhe);
                                         }
 
@@ -899,7 +897,7 @@ where
                                     },
                                 )
                             }
-                            _ => todo!("Generate array write operation in template"),
+                            _ => todo!("Generate array write operation in template: {access:?}"),
                         }
                     }
                     AssignOp::AssignConstraintSignal => {
@@ -1318,22 +1316,21 @@ fn set_operand_if_undef<'ctx, 'op>(
 #[inline]
 /// Moves the operation after the value if the value comes from another operation.
 ///
-/// If the operation the value comes from is in an inner block moves the op right after the parent
+/// If the operation the value comes from is in an inner block, moves the op right after the parent
 /// op that is in the same block as the op about to be moved.
 ///
 /// # Panics
 ///
 /// If the parent search reaches the top, meaning that the value comes from an op in a block that
 /// is a 'parent' of the other op or that the value's op is not owned by a block.
-fn insert_after_if_op_result<'ctx, 'val, 'op>(val: Value<'ctx, 'op>, op: OperationRef<'ctx, 'op>) {
+fn insert_after_if_op_result<'ctx, 'val, 'op>(val: Value<'ctx, 'val>, op: OperationRef<'ctx, 'op>) {
     if val.is_block_argument() {
         return;
     }
     let binding = try_into_op_result(val).unwrap();
     let mut reference_op = binding.owner();
     let _ = reference_op.block().expect("reference op must belong to a block");
-    let op_block = op.block();
-    if let Some(op_block) = op_block {
+    if let Some(op_block) = op.block() {
         reference_op = find_parent_in_block(op_block, reference_op).expect("parent op not found");
     };
     move_op_after(reference_op, op);
