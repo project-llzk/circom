@@ -9,10 +9,13 @@
 
 mod codegen;
 mod function;
+mod function_ext;
 mod gen_context;
 mod module;
+mod program_ext;
 mod shared;
 mod template;
+mod template_ext;
 
 pub use codegen::generate_llzk;
-pub use module::VCPPlus;
+pub use program_ext::VCPPlus;

@@ -1,6 +1,6 @@
 //! Shared code generation utilities.
 
-use crate::module::ProgramLike;
+use crate::program_ext::ProgramLike;
 use ansi_term::Color;
 use anyhow::anyhow;
 use anyhow::Result;
