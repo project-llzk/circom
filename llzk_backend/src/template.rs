@@ -10,6 +10,7 @@ use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::shared::get_single_user;
+use crate::program_ext::ProgramLike;
 use crate::shared::is_felt;
 use crate::shared::replace_all_uses;
 use crate::shared::LlzkCodegen;
@@ -405,7 +406,7 @@ where
     #[inline]
     fn gen_exprs<'ast, I>(
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         exprs: I,
     ) -> Result<Self>
     where
@@ -540,7 +541,7 @@ where
     /// 'ast: lifetime of the circom AST element
     fn gen_llzk_in_template<'ast, 'r>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
@@ -562,7 +563,7 @@ where
 
     fn gen_llzk_in_template<'ast, 'r>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
@@ -584,7 +585,7 @@ where
 
 /// Generate LLZK code for a circom [Statement::IfThenElse].
 fn gen_if_then_else<'ast, 'ctx, 'str, 'func, 'blk, 'val, 'r>(
-    codegen: &LlzkCodegen<'ast, 'ctx>,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
@@ -644,7 +645,7 @@ where
 
 /// Generate LLZK code for a circom [Statement::While].
 fn gen_while<'ast, 'ctx, 'str, 'func, 'blk, 'val, 'r>(
-    codegen: &LlzkCodegen<'ast, 'ctx>,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
@@ -739,10 +740,9 @@ where
     where
         'val: 'r;
 
-    #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_template<'ast, 'r>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
@@ -986,7 +986,7 @@ where
                     }
                 }
             }
-            Statement::UnderscoreSubstitution { meta, op, rhe } => {
+            Statement::UnderscoreSubstitution { op, rhe, .. } => {
                 // The `<--` operator is witness generation only so this should not
                 // generate any code in the constrain function.
                 let template =
@@ -1062,7 +1062,7 @@ where
 
     fn gen_llzk_in_template<'ast, 'r>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where

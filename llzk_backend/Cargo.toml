@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 program_structure = { path = "../program_structure" }
+compiler = { path = "../compiler" }
 ansi_term = "0.12.1"
 anyhow = "1.0"
 num-bigint-dig = "0.8.4"

@@ -8,6 +8,7 @@
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
+use crate::program_ext::ProgramLike;
 use crate::shared::erase_op;
 use crate::shared::get_function_type_attribute;
 use crate::shared::insert_after_if_op_result;
@@ -15,6 +16,7 @@ use crate::shared::is_bool;
 use crate::shared::is_felt;
 use crate::shared::is_index;
 use crate::shared::is_scf_yield;
+use crate::shared::new_array_type;
 use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
 use crate::shared::replace_all_uses_in_block_with;
@@ -37,11 +39,9 @@ use llzk::prelude::Attribute;
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
-use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::IntegerAttribute;
-use llzk::prelude::IntegerType;
 use llzk::prelude::Location;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike as _;
@@ -110,7 +110,7 @@ where
 {
     /// Create a new [FunctionContext] for the given function with an initial name-to-value mapping.
     pub fn new<'ast, const FREE_FUNC: bool>(
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         func: FuncDefOpRefMut<'ctx, 'func>,
         param_name_to_value: HashMap<String, Value<'ctx, 'val>>,
     ) -> Result<Self> {
@@ -121,13 +121,11 @@ where
                 // Get the result type from the free function. It supports exactly 1.
                 let ty = get_function_type_attribute(func)?;
                 assert_eq!(ty.result_count(), 1);
-                codegen.new_nondet_at_location(Location::unknown(codegen.context), ty.result(0)?)
+                codegen.new_nondet_at_location(codegen.location_unknown(), ty.result(0)?)
             })?;
             block_ctx.declare_name_if_not_present(VAR_NAME_NO_RETURN, || {
-                codegen.new_nondet_at_location(
-                    Location::unknown(codegen.context),
-                    codegen.bool_type().into(),
-                )
+                codegen
+                    .new_nondet_at_location(codegen.location_unknown(), codegen.bool_type().into())
             })?;
         }
         Ok(Self { func, block_ctx, subcmp_calls: Default::default() })
@@ -166,7 +164,7 @@ where
     /// case, it is marked with the [CIRCOM_RETURN_MARKER_ATTR] attribute.
     pub fn append_circom_return<'ast>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         value: Value<'ctx, 'val>,
     ) -> Result<()> {
@@ -182,7 +180,7 @@ where
     /// Generate LLZK code in the current function for a circom prefix operation.
     pub fn gen_prefix_op<'ast>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         meta: &Meta,
         op: &ExpressionPrefixOpcode,
         rhs: Value<'ctx, 'val>,
@@ -267,7 +265,7 @@ where
     #[inline]
     fn cast_to_bool_if_needed<'ast>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -369,7 +367,7 @@ where
     /// Generate LLZK code in the current function for an infix operation.
     pub fn gen_infix_op<'ast>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         meta: &Meta,
         op: &ExpressionInfixOpcode,
         lhs: Value<'ctx, 'val>,
@@ -473,7 +471,7 @@ where
                     // Perform integer division by casting to integer, using arith dialect
                     // divui, then casting the quotient back to felt. Cast to an integer type
                     // with sufficient bits to hold the felts without truncation.
-                    let int_ty = IntegerType::new(codegen.context, codegen.prime_field_bits()?);
+                    let int_ty = codegen.int_type(codegen.prime_field_bits()?);
                     let loc = codegen.location_from_meta(meta);
                     let int_lhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, lhs))?;
                     let int_rhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, rhs))?;
@@ -543,7 +541,7 @@ where
     /// block context with the results of the `scf.if` op mapped to the given names.
     pub fn gen_scf_if<'ast>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         mut then_info: NestedBlockInfo<'ctx, 'blk, 'val>,
@@ -609,7 +607,7 @@ where
     }
 
     /// Generate one region for either the then-arm or else-arm of a simple scf.if operation.
-    /// Used by [generate_simple_scf_if].
+    /// Used by [Self::generate_simple_scf_if].
     /// The `value_gen` function is called to generate the value to be yielded from the arm.
     fn generate_simple_scf_if_arm<'ast, F>(
         &mut self,
@@ -629,11 +627,11 @@ where
     }
 
     /// Generate a simple scf.if operation that yields the given `then_value` or `else_value`
-    /// depending on the `condition` value. Unlike [gen_scf_if], this assumes that the
+    /// depending on the `condition` value. Unlike [Self::gen_scf_if], this assumes that the
     /// then and else arms do not modify the current block context and only produce values.
     pub fn generate_simple_scf_if<'ast, F1, F2>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         meta: &Meta,
         condition: Value<'ctx, 'val>,
         then_value_gen: F1,
@@ -664,7 +662,7 @@ where
     /// block context with the results of the `scf.while` op mapped to the given names.
     pub fn gen_scf_while<'ast>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         loop_cond_info: NestedBlockInfo<'ctx, 'blk, 'val>,
@@ -832,7 +830,7 @@ where
     /// 'ast: lifetime of the circom AST element
     fn gen_llzk_in_function<'ast>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     ) -> Result<Self::Output>;
 }
@@ -847,7 +845,7 @@ where
 
     fn gen_llzk_in_function<'ast>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     ) -> Result<Self::Output> {
         for s in self {
@@ -897,7 +895,7 @@ where
 /// when a circom [Statement::IfThenElse] contains a return statement.
 #[allow(clippy::too_many_arguments)]
 fn handle_early_return<'ast, 'ctx, 'func, 'blk, 'val>(
-    codegen: &LlzkCodegen<'ast, 'ctx>,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     location: Location<'ctx>,
     return_val: Value<'ctx, 'val>,
@@ -954,7 +952,7 @@ where
 ///  function.return VAR_NAME_RETURN_VAL
 /// ```
 fn gen_if_then_else_unbalanced_return_extra<'ast, 'ctx, 'func, 'blk, 'val>(
-    codegen: &LlzkCodegen<'ast, 'ctx>,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     location: Location<'ctx>,
 ) -> Result<()>
@@ -987,7 +985,7 @@ where
 
 /// Generate LLZK code for a circom [Statement::IfThenElse].
 fn gen_if_then_else<'ast, 'ctx, 'func, 'blk, 'val>(
-    codegen: &LlzkCodegen<'ast, 'ctx>,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
@@ -1083,7 +1081,7 @@ where
     #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_function<'ast>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     ) -> Result<Self::Output> {
         match self {
@@ -1112,13 +1110,40 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Function uses template operators");
                 }
-                let rhs = rhe.gen_llzk_in_function(codegen, function)?;
-                if access.is_empty() {
-                    // Since there's no simple assignment in LLZK, just update the mapped Value
-                    // which essentially propagates the assignment.
-                    function.block_ctx.set_named_value(var.clone(), rhs)
-                } else {
-                    todo!("Generate array write operation in function");
+                let rvalue = rhe.gen_llzk_in_function(codegen, function)?;
+                match access.as_slice() {
+                    [] => {
+                        // Since there's no simple assignment in LLZK, just update the mapped Value
+                        // which essentially propagates the assignment.
+                        function.block_ctx.set_named_value(var.clone(), rvalue)
+                    }
+                    a => {
+                        let location = codegen.location_from_meta(meta);
+                        let indices = &a
+                            .iter()
+                            .map(|access| {
+                                let idx = match access {
+                                    Access::ArrayAccess(index_expr) => {
+                                        index_expr.gen_llzk_in_function(codegen, function)
+                                    }
+                                    Access::ComponentAccess(name) => {
+                                        todo!("Handle Substitution component access in function")
+                                    }
+                                }?;
+                                function.cast_to_index_if_needed(location, idx)
+                            })
+                            .collect::<Result<Vec<Value<'_, '_>>>>()?;
+                        let arr_ref = function.block_ctx.get_named_value(var)?;
+                        let arr_ty = ArrayType::try_from(arr_ref.r#type())?;
+                        let arr_dims = arr_ty.num_dims() as usize;
+                        assert!(arr_dims >= indices.len());
+                        let write_op = if arr_dims > indices.len() {
+                            array::insert(location, *arr_ref, indices, rvalue)
+                        } else {
+                            array::write(location, *arr_ref, indices, rvalue)
+                        };
+                        no_results(function.append_op(write_op))
+                    }
                 }
             }
             Statement::UnderscoreSubstitution { meta, op, rhe } => {
@@ -1184,7 +1209,7 @@ where
     #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_function<'ast>(
         &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     ) -> Result<Self::Output> {
         match self {
@@ -1248,27 +1273,110 @@ where
                 todo!("Handle ParallelOp expression")
             }
             Expression::ArrayInLine { meta, values } => {
-                todo!("Handle ArrayInLine expression")
+                let location = codegen.location_from_meta(meta);
+                let builder = &OpBuilder::new(&codegen.context);
+                // Multi-dimensional arrays are made up of array values as their elements
+                let values = values
+                    .iter()
+                    .map(|val_expr| val_expr.gen_llzk_in_function(codegen, function))
+                    .collect::<Result<Vec<Value>>>()?;
+                let value_ty =
+                    values.first().expect("Array must have at least one element").r#type();
+                assert!(
+                    values.iter().all(|&v| v.r#type() == value_ty),
+                    "All array elements must have the same type"
+                );
+                let subarr_ty = ArrayType::try_from(value_ty);
+                if let Ok(subarr_ty) = subarr_ty {
+                    // For subarrays, we need to create a new array then insert the values
+                    let dim = codegen.index_attr(i64::try_from(values.len())?);
+                    let arr_ty = new_array_type(dim.into(), &subarr_ty);
+                    let new_arr = function.append_op_unnamed_result(array::new(
+                        builder,
+                        location,
+                        arr_ty,
+                        llzk::dialect::array::ArrayCtor::Values(&[]),
+                    ))?;
+                    for (idx, val) in values.iter().enumerate() {
+                        let idx_attr = codegen.index_attr(i64::try_from(idx)?);
+                        let idx_val = function.append_op_unnamed_result(arith::constant(
+                            &codegen.context,
+                            idx_attr.into(),
+                            location,
+                        ))?;
+                        function.append_op_no_result(array::insert(
+                            location,
+                            new_arr,
+                            &[idx_val],
+                            *val,
+                        ))?;
+                    }
+
+                    // Output value is still the newly created array
+                    Ok(new_arr)
+                } else {
+                    let dim = codegen.index_attr(i64::try_from(values.len())?);
+                    let arr_ty = ArrayType::new(value_ty.into(), &[dim.into()]);
+                    function.append_op_unnamed_result(array::new(
+                        builder,
+                        location,
+                        arr_ty,
+                        llzk::dialect::array::ArrayCtor::Values(&values),
+                    ))
+                }
             }
             Expression::UniformArray { meta, value, dimension } => {
+                let location = codegen.location_from_meta(meta);
+                // Multi-dimensional arrays are made up of array values as their elements
                 let val = value.gen_llzk_in_function(codegen, function)?;
                 let dim = codegen.convert_dim_expr(dimension)?;
-                // Array dimensions must be statically known in Circom.
-                // Non-constant array lengths will result in "error[T20463]: Variable array length"
-                let arr_ty = ArrayType::new(codegen.felt_type().into(), &[dim]);
                 let const_dim = IntegerAttribute::try_from(dim);
-                let init_vals = if const_dim.is_ok() {
-                    vec![val; const_dim.unwrap().value() as usize]
-                } else {
-                    todo!("Handle template parameter array lengths in function")
-                };
+                let subarr_ty = ArrayType::try_from(val.r#type());
 
-                function.append_op_unnamed_result(array::new(
-                    &OpBuilder::new(&codegen.context),
-                    codegen.location_from_meta(meta),
-                    arr_ty,
-                    llzk::dialect::array::ArrayCtor::Values(&init_vals),
-                ))
+                if let Ok(subarr_ty) = subarr_ty {
+                    let arr_ty = new_array_type(dim, &subarr_ty);
+                    // The array.new constructor doesn't accept arrays as initializer values,
+                    // so we instead create the array empty and use array.insert to insert values.
+                    let new_arr = function.append_op_unnamed_result(array::new(
+                        &OpBuilder::new(&codegen.context),
+                        codegen.location_from_meta(meta),
+                        arr_ty,
+                        llzk::dialect::array::ArrayCtor::Values(&[]),
+                    ))?;
+                    if let Ok(const_dim) = const_dim {
+                        for idx in 0..const_dim.value() {
+                            let idx_attr = codegen.index_attr(idx);
+                            let idx_val = function.append_op_unnamed_result(arith::constant(
+                                &codegen.context,
+                                idx_attr.into(),
+                                location,
+                            ))?;
+                            function.append_op_no_result(array::insert(
+                                location,
+                                new_arr,
+                                &[idx_val],
+                                val,
+                            ))?;
+                        }
+                    } else {
+                        todo!("Handle template parameter array lengths")
+                    };
+                    // Output value is still the newly created array
+                    Ok(new_arr)
+                } else {
+                    let arr_ty = ArrayType::new(val.r#type(), &[dim]);
+                    let init_vals = if let Ok(const_dim) = const_dim {
+                        vec![val; usize::try_from(const_dim.value())?]
+                    } else {
+                        todo!("Handle template parameter array lengths")
+                    };
+                    function.append_op_unnamed_result(array::new(
+                        &OpBuilder::new(&codegen.context),
+                        codegen.location_from_meta(meta),
+                        arr_ty,
+                        llzk::dialect::array::ArrayCtor::Values(&init_vals),
+                    ))
+                }
             }
             Expression::Call { meta, id, args } => {
                 let builder = OpBuilder::new(codegen.context.deref());
@@ -1294,7 +1402,7 @@ where
                 // eventually, this gen function may need an "expected result type"
                 // parameter or use `poly.tvar` with function templates.
                 // See template.rs for Expression::Call generation there.
-                let return_types = &[FeltType::new(codegen.context)];
+                let return_types = &[codegen.felt_type()];
                 function.append_op_unnamed_result(
                     function::call(
                         &builder,
