@@ -149,8 +149,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     pub fn convert_dim_expr(&self, expr: &Expression) -> Result<Attribute<'ctx>> {
         match expr {
             Expression::Number(meta, big_int) => {
-                let int_attr = IntegerAttribute::new(
-                    self.index_type(),
+                let int_attr = self.index_attr(
                     big_int.to_i64().ok_or_else(|| anyhow!("Array dimension must fit in i64"))?,
                 );
                 Ok(int_attr.into())
@@ -192,9 +191,9 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
             dimensions
                 .iter()
                 .map(|c| {
-                    i64::try_from(*c).map_err(Into::into).map(|c| {
-                        Attribute::from(IntegerAttribute::new(Type::index(self.context), c))
-                    })
+                    i64::try_from(*c)
+                        .map_err(Into::into)
+                        .map(|c| Attribute::from(self.index_attr(c)))
                 })
                 .collect::<Result<Vec<_>, _>>()
                 .map(|dims| ArrayType::new(base_type, &dims).into())
@@ -516,7 +515,7 @@ pub fn get_function_type_attribute<'c: 'a, 'a>(
 /// TODO: `llzk-rs` should provide this directly
 #[inline]
 pub fn get_dims<'c>(arr_ty: &ArrayType<'c>) -> Vec<Attribute<'c>> {
-    (0..arr_ty.num_dims()).map(|idx| arr_ty.dim(idx)).collect::<Vec<_>>()
+    (0..arr_ty.num_dims()).map(|idx| arr_ty.dim(idx)).collect()
 }
 
 /// Create new array type that is an array of the given sub-array type.
