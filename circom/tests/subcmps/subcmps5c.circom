@@ -57,4 +57,8 @@ component main = SubCmp();
 // CHECK-DAG:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.readf %[[SELF]][@n] : <@SubCmp<[]>>, !struct.type<@Nop<[]>>
 // CHECK-DAG:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
 // CHECK-DAG:        function.call @Nop::@constrain(%[[VAL_0]], %[[VAL_1]]) : (!struct.type<@Nop<[]>>, !felt.type) -> ()
+// CHECK-DAG:        constrain.eq %[[VAL_1]], %[[ARG_0]] : !felt.type, !felt.type
+// CHECK-DAG:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.readf %arg0[@o] : <@SubCmp<[]>>, !felt.type
+// CHECK-DAG:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = struct.readf %0[@o] : <@Nop<[]>>, !felt.type
+// CHECK-DAG:        constrain.eq %[[VAL_2]], %[[VAL_3]] : !felt.type, !felt.type
 // CHECK:            function.return
