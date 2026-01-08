@@ -7,7 +7,7 @@ use ansi_term::Color;
 use anyhow::Result;
 use llzk::prelude::LlzkContext;
 use llzk::prelude::Location;
-use melior::ir::Module;
+use llzk::prelude::Module;
 
 /// Create a new, empty LLZK `Module` with Location "main" from the `ProgramArchive`.
 ///

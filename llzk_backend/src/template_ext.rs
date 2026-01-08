@@ -6,7 +6,7 @@ use crate::shared::LlzkCodegen;
 use anyhow::Result;
 use compiler::hir::very_concrete_program::TemplateInstance;
 use compiler::hir::very_concrete_program::Wire;
-use melior::ir::Location;
+use llzk::prelude::Location;
 use program_structure::ast::SignalType;
 use program_structure::ast::Statement;
 use program_structure::template_data::TemplateData;

@@ -29,13 +29,13 @@ use llzk::prelude::FeltType;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::OperationLike;
+use llzk::prelude::OperationRef;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::SymbolRefAttribute;
+use llzk::prelude::Type;
 use llzk::prelude::Value;
+use llzk::prelude::ValueLike;
 use melior::ir::operation::OperationResult;
-use melior::ir::OperationRef;
-use melior::ir::Type;
-use melior::ir::ValueLike;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
@@ -1221,7 +1221,7 @@ where
 }
 
 #[inline]
-/// Tries to obtain the owner operation of a [`Value`](melior::ir::Value).
+/// Tries to obtain the owner operation of a [`Value`](llzk::prelude::Value).
 ///
 /// This function works around a lifetime issue in [`OperationResult::owner`] that
 /// is resolved in [mlir-sys/melior#784](https://github.com/mlir-rs/melior/pull/784) but that

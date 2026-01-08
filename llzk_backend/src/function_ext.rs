@@ -3,7 +3,7 @@
 use crate::program_ext::ProgramLike;
 use crate::shared::LlzkCodegen;
 use compiler::hir::very_concrete_program::VCF;
-use melior::ir::Location;
+use llzk::prelude::Location;
 use program_structure::ast::Statement;
 use program_structure::function_data::FunctionData;
 use std::slice;
