@@ -326,7 +326,8 @@ where
         template_data
             .get_declaration_inputs()
             .iter()
-            .find_map(|(signal, idx)| (subcmp_signal == signal).then_some(*idx))
+            .enumerate()
+            .find_map(|(idx, (signal, _))| (subcmp_signal == signal).then_some(idx))
             .ok_or_else(|| {
                 anyhow::anyhow!(
                     "template '{}' has no input signal '{subcmp_signal}'",

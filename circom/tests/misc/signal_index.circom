@@ -1,8 +1,6 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
-// XFAIL:.*
-// TODO: the calls to `@B::*` within `@A::*` incorrectly use `(b, undef)` instead of `(a, b)` for the inputs
 
 pragma circom 2.0.0;
 
