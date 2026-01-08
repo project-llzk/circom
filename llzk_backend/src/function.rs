@@ -531,7 +531,7 @@ where
         }
         let err_msg = format!(
             "Cannot generate LLZK for infix {:?} with LHS type '{}' and RHS type '{}'",
-            self,
+            op,
             lhs.r#type(),
             rhs.r#type()
         );
