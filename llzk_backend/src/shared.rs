@@ -3,6 +3,8 @@
 use crate::program_ext::ProgramLike;
 use crate::template_ext::TemplateLike;
 use crate::template_ext::WireLike;
+use crate::traversal::walk_from_block;
+use crate::traversal::WalkCallbacks;
 use ansi_term::Color;
 use anyhow::anyhow;
 use anyhow::Result;
@@ -526,7 +528,7 @@ pub fn has_uses(val: Value) -> bool {
     }
 }
 
-/// Replace all uses of `orig` within the given [Block] with `replacement`. Based on
+/// Replace all uses of `orig` within the given [BlockRef] with `replacement`. Based on
 /// `mlir::replaceAllUsesInRegionWith` which is not exposed through any CAPI.
 ///
 /// TODO: `llzk-rs` should provide this directly
@@ -545,6 +547,16 @@ pub fn replace_all_uses_in_block_with(block: BlockRef, orig: &Value, replacement
             op_use = next;
         }
     }
+}
+
+/// Add a new argument to the given [BlockRef] with the same type as `orig` and replace all uses of
+/// `orig` within the given [BlockRef] (and within any nested blocks) with the new block argument.
+pub fn replace_uses_with_new_block_argument(block: BlockRef, orig: &Value, location: Location) {
+    let replacement = block.add_argument(orig.r#type(), location);
+    walk_from_block(
+        block,
+        WalkCallbacks::for_blocks(|b| replace_all_uses_in_block_with(b, orig, replacement)),
+    );
 }
 
 /// Erase the given operation.

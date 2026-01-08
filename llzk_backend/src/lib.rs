@@ -18,6 +18,7 @@ mod shared;
 mod subcmp;
 mod template;
 mod template_ext;
+mod traversal;
 
 pub use codegen::generate_llzk;
 pub use program_ext::VCPPlus;
