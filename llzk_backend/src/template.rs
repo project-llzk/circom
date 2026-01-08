@@ -12,6 +12,7 @@ use crate::gen_context::NestedBlockInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared::get_single_user;
 use crate::shared::is_felt;
+use crate::shared::is_struct_readf;
 use crate::shared::replace_all_uses;
 use crate::shared::LlzkCodegen;
 use crate::template_ext::TemplateLike as _;
@@ -783,20 +784,12 @@ where
                                         fc.block_ctx.set_named_value(var.clone(), rhe)
                                     },
                                     |fc, rhe| {
-                                        // Replace value. Ensure that the value comes from a
-                                        // `struct.readf`
+                                        // Replace value
                                         let field_read = fc.block_ctx.get_named_value(var)?;
-                                        let field_read_op = OperationResult::try_from(*field_read)?;
-                                        // Temporary workaround until we have
-                                        // `llzkOperationIsAStructFieldReadOp`
-                                        assert_eq!(
-                                            field_read_op
-                                                .owner()
-                                                .name()
-                                                .as_string_ref()
-                                                .as_str()?,
-                                            "struct.readf"
-                                        );
+                                        // ASSERT: value comes from a `struct.readf`
+                                        assert!(is_struct_readf(
+                                            OperationResult::try_from(*field_read).unwrap().owner()
+                                        ));
                                         replace_all_uses(rhe, *field_read);
                                         fc.subcmp_calls.update_keys(rhe, *field_read);
                                         Ok(())
