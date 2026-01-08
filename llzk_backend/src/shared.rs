@@ -42,8 +42,14 @@ use melior::ir::attribute::TypeAttribute;
 use melior::ir::Module;
 use melior::utility;
 use num_bigint_dig::BigInt;
+use num_bigint_dig::BigUint;
+use num_bigint_dig::IntoBigUint;
 use num_traits::cast::ToPrimitive;
+use num_traits::One;
+use num_traits::Zero;
 use program_structure::ast::Expression;
+use program_structure::ast::ExpressionInfixOpcode;
+use program_structure::ast::ExpressionPrefixOpcode;
 use program_structure::ast::Meta;
 use program_structure::error_code::ReportCode;
 use program_structure::error_definition::Report;
@@ -76,11 +82,11 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
 }
 
 impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
-    /// Get the width of the prime field in bits.
+    /// Get the width of the scalar prime field in bits.
     pub fn prime_field_bits(&self) -> Result<u32> {
         match self.prime {
             "bn128" => Ok(254),
-            "bls12381" => Ok(381),
+            "bls12381" => Ok(255),
             "goldilocks" => Ok(64),
             "grumpkin" => Ok(254),
             "pallas" => Ok(254),
@@ -89,6 +95,21 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
             "bls12377" => Ok(377),
             _ => Err(anyhow!("Unsupported prime field: {}", self.prime)),
         }
+    }
+
+    /// Get the prime field modulus as a BigUint
+    pub fn prime(&self) -> Result<BigUint> {
+        let prime_str = match self.prime {
+            "bn128" | "grumpkin" => "21888242871839275222246405745257275088696311157297823662689037894645226208583",
+            "bls12381" => "52435875175126190479447740508185965837690552500527637822603658699938581184513",
+            "goldilocks" => "18446744069414584321",
+            "pallas" => "28948022309329048855892746252171976963363056481941647379679742748393362948097",
+            "vesta" => "28948022309329048855892746252171976963363056481941560715954676764349967630337",
+            "secq256r1" => "115792089210356248762697446949407573529996955224135760342422259061068512044369",
+            "bls12377" => "8444461749428370424248824938781546531375899335154063827935233455917409239041",
+            _ => return Err(anyhow!("Unsupported prime field: {}", self.prime)),
+        };
+        Ok(prime_str.parse::<BigUint>()?)
     }
 
     /// Emit a circom-style warning.
@@ -159,10 +180,69 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                 todo!("Handle Variable expression in dimension")
             }
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                todo!("Handle InfixOp expression in dimension")
+                let lhs = self.convert_dim_expr(lhe)?;
+                let rhs = self.convert_dim_expr(rhe)?;
+                match (IntegerAttribute::try_from(lhs), IntegerAttribute::try_from(rhs)) {
+                    (Ok(lhs), Ok(rhs)) => {
+                        // Perform the arithmetic
+                        let m = self.prime()?;
+                        let a_usize = usize::try_from(lhs.value())?;
+                        let b_usize = usize::try_from(rhs.value())?;
+                        let a: BigUint = a_usize.into();
+                        let b: BigUint = b_usize.into();
+                        let nonzero = |x| x != BigUint::zero();
+                        let bool_to_biguint = |b| (b as usize).into();
+                        let res = match infix_op {
+                            ExpressionInfixOpcode::Mul => (a * b) % m,
+                            ExpressionInfixOpcode::Div => {
+                                let b_inv = modinv(&b, &m).expect(&format!("failed to compute inverse for {b}"));
+                                (a * b_inv) % m
+                            },
+                            ExpressionInfixOpcode::Add => (a + b) % m,
+                            ExpressionInfixOpcode::Sub => modsub(&a, &b, &m),
+                            ExpressionInfixOpcode::Pow => a.modpow(&b, &m),
+                            ExpressionInfixOpcode::IntDiv => (a / b) % m,
+                            ExpressionInfixOpcode::Mod => a % b,
+                            ExpressionInfixOpcode::ShiftL => (a << b_usize) % m,
+                            ExpressionInfixOpcode::ShiftR => (a >> b_usize) % m,
+                            ExpressionInfixOpcode::LesserEq => bool_to_biguint(a <= b),
+                            ExpressionInfixOpcode::GreaterEq => bool_to_biguint(a >= b),
+                            ExpressionInfixOpcode::Lesser => bool_to_biguint(a < b),
+                            ExpressionInfixOpcode::Greater => bool_to_biguint(a > b),
+                            ExpressionInfixOpcode::Eq => bool_to_biguint(a == b),
+                            ExpressionInfixOpcode::NotEq => bool_to_biguint(a != b),
+                            ExpressionInfixOpcode::BoolOr => bool_to_biguint(nonzero(a) || nonzero(b)),
+                            ExpressionInfixOpcode::BoolAnd => bool_to_biguint(nonzero(a) && nonzero(b)),
+                            ExpressionInfixOpcode::BitOr => (a | b) % m,
+                            ExpressionInfixOpcode::BitAnd => a & b,
+                            ExpressionInfixOpcode::BitXor => (a ^ b) % m,
+                        };
+                        let integer = res.to_i64().unwrap();
+                        Ok(self.index_attr(integer).into())
+                    },
+                    _ => todo!("Handle Infix expression in dimension for non-integer attributes"),
+                }
             }
             Expression::PrefixOp { meta, prefix_op, rhe } => {
-                todo!("Handle PrefixOp expression in dimension")
+                let rhs = self.convert_dim_expr(rhe)?;
+                match IntegerAttribute::try_from(rhs) {
+                    Ok(rhs) => {
+                        // Perform the arithmetic
+                        let m = &self.prime()?;
+                        let a = rhs.value().into_biguint().unwrap();
+                        let res = match prefix_op {
+                            ExpressionPrefixOpcode::Sub => modneg(&a, m),
+                            ExpressionPrefixOpcode::BoolNot => if a == BigUint::zero() { BigUint::zero() } else { BigUint::one() },
+                            ExpressionPrefixOpcode::Complement => {
+                                let mask = (BigUint::one() << m.bits()) - BigUint::one();
+                                mask ^ a
+                            }
+                        };
+                        let integer = res.to_i64().unwrap();
+                        Ok(self.index_attr(integer).into())
+                    },
+                    _ => todo!("Handle Prefix expression in dimension for non-integer attributes")
+                }
             }
             Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
                 todo!("Handle InlineSwitchOp expression in dimension")
@@ -523,4 +603,87 @@ pub fn get_dims<'c>(arr_ty: &ArrayType<'c>) -> Vec<Attribute<'c>> {
 pub fn new_array_type<'c>(dim: Attribute<'c>, subarr_ty: &ArrayType<'c>) -> ArrayType<'c> {
     let dims: Vec<_> = std::iter::once(dim).chain(get_dims(subarr_ty).iter().copied()).collect();
     ArrayType::new(subarr_ty.element_type(), &dims)
+}
+
+/// Compute `-a` modulo `m`
+pub fn modneg(a: &BigUint, m: &BigUint) -> BigUint {
+    let a = if a >= m { a % m } else { a.clone() };
+    if a == BigUint::zero() {
+        BigUint::zero()
+    } else {
+        m - a
+    }
+}
+
+/// Compute `a` - `b` modulo `m`.
+pub fn modsub(a: &BigUint, b: &BigUint, m: &BigUint) -> BigUint {
+    let a = if a >= m { a % m } else { a.clone() };
+    let neg_b = modneg(b, m);
+    (a + neg_b) % m
+}
+
+/// Compute the inverse of `i` modulo `m`.
+/// Adapted from https://docs.rs/num-modular/latest/src/num_modular/bigint.rs.html#141-192
+/// for the num_bigint_dig implementation of BigUint.
+pub fn modinv(i: &BigUint, m: &BigUint) -> Option<BigUint> {
+    let x = if i >= m { i % m } else { i.clone() };
+
+    let (mut last_r, mut r) = (m.clone(), x);
+    let (mut last_t, mut t) = (BigUint::zero(), BigUint::one());
+
+    while &r > &BigUint::zero() {
+        let (quo, rem) = (&last_r / &r, &last_r % &r);
+        last_r = r;
+        r = rem;
+
+        let mul_res = (&quo * &t) % m;
+        let new_t = modsub(&last_t, &mul_res, m);
+        last_t = t;
+        t = new_t;
+    }
+
+    // if r = gcd(self, m) > 1, then inverse doesn't exist
+    if last_r > BigUint::one() {
+        None
+    } else {
+        Some(last_t)
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::sync::OnceLock;
+
+    use quickcheck_macros::quickcheck;
+    use super::*;
+
+    static MODULUS: OnceLock<BigUint> = OnceLock::new();
+
+    fn modulus() -> &'static BigUint {
+        MODULUS.get_or_init(|| {
+            "21888242871839275222246405745257275088696311157297823662689037894645226208583".parse::<BigUint>().unwrap()
+        })
+    }
+
+    /// Tests that the x - x == 0 (mod p)
+    #[quickcheck]
+    fn check_sub_identity(a: u64) -> bool {
+        let a = a.into_biguint().unwrap();
+        modsub(&a, &a, modulus()) == BigUint::zero()
+    }
+
+    /// Tests that the x * modinv(x) == 1 (mod p)
+    #[quickcheck]
+    fn check_inverse_identity(a: u64) -> bool {
+        let a = a.into_biguint().unwrap();
+        // skip checks where a == 0
+        if a == BigUint::zero() {
+            true
+        } else if let Some(a_inv) = modinv(&a, modulus()) {
+            (a * a_inv) % modulus() == BigUint::one()
+        } else {
+            false
+        }
+    }
 }
