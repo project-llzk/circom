@@ -367,6 +367,18 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         constrain_func,
         map_name_to_arg_value(constrain_func, arg_names)?,
     )?;
+
+    // Insert Operations to read templated struct parameters into an SSA Value in each function.
+    // This ensures the struct parameter is available as a Value in the block context.
+    for name in struct_params.into_iter() {
+        compute_ctx.block_ctx.declare_name_if_not_present(name, || {
+            Ok(poly::read_const(struct_loc, name, codegen.felt_type().into()))
+        })?;
+        constrain_ctx.block_ctx.declare_name_if_not_present(name, || {
+            Ok(poly::read_const(struct_loc, name, codegen.felt_type().into()))
+        })?;
+    }
+
     // Insert the Operations created from variable Declaration statements and map the circom
     // variable name to LLZK op result Value (do this in each function).
     for (name, op) in declarations.decl_inits {

@@ -1,7 +1,6 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
-// XFAIL:.*
 
 pragma circom 2.0.0;
 
@@ -33,3 +32,83 @@ template FibonacciTmpl(N) {
 component main = FibonacciTmpl(5);
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-NEXT:    struct.def @FibonacciTmpl<[@N]> {
+// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-LABEL:     function.def @compute
+// CHECK-SAME:      () -> !struct.type<@FibonacciTmpl<[@N]>> attributes {function.allow_witness} {
+// CHECK-NEXT:        %[[SELF:[0-9a-zA-Z_\.]+]] = struct.new : <@FibonacciTmpl<[@N]>>
+// CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
+// CHECK-NEXT:        %[[V_A0:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[V_B0:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:        %[[V_X0:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[V_5:[0-9a-zA-Z_\.]+]]:4 = scf.while (%[[V_A1:[0-9a-zA-Z_\.]+]] = %[[V_A0]], %[[V_B1:[0-9a-zA-Z_\.]+]] = %[[V_B0]], %[[V_C1:[0-9a-zA-Z_\.]+]] = %[[V_N]], %[[V_X1:[0-9a-zA-Z_\.]+]] = %[[V_X0]]) : (!felt.type, !felt.type, !felt.type, !felt.type) -> (!felt.type, !felt.type, !felt.type, !felt.type) {
+// CHECK-NEXT:          %[[V_10:[0-9a-zA-Z_\.]+]] = felt.const  2
+// CHECK-NEXT:          %[[V_11:[0-9a-zA-Z_\.]+]] = bool.cmp gt(%[[V_C1]], %[[V_10]])
+// CHECK-NEXT:          scf.condition(%[[V_11]]) %[[V_A1]], %[[V_B1]], %[[V_C1]], %[[V_X1]] : !felt.type, !felt.type, !felt.type, !felt.type
+// CHECK-NEXT:        } do {
+// CHECK-NEXT:        ^bb0(%[[V_A2:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_B2:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_C2:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_X2:[0-9a-zA-Z_\.]+]]: !felt.type):
+// CHECK-NEXT:          %[[V_X3:[0-9a-zA-Z_\.]+]] = felt.add %[[V_A2]], %[[V_B2]] : !felt.type, !felt.type
+// CHECK-NEXT:          %[[V_17:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:          %[[V_C3:[0-9a-zA-Z_\.]+]] = felt.sub %[[V_C2]], %[[V_17]] : !felt.type, !felt.type
+// CHECK-NEXT:          scf.yield %[[V_B2]], %[[V_X3]], %[[V_C3]], %[[V_X3]] : !felt.type, !felt.type, !felt.type, !felt.type
+// CHECK-NEXT:        }
+// CHECK-NEXT:        %[[V_19:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[V_20:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[V_N]], %[[V_19]])
+// CHECK-NEXT:        %[[V_21:[0-9a-zA-Z_\.]+]] = scf.if %[[V_20]] -> (!felt.type) {
+// CHECK-NEXT:          %[[V_22:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:          struct.writef %[[SELF]][@out] = %[[V_22]] : <@FibonacciTmpl<[@N]>>, !felt.type
+// CHECK-NEXT:          scf.yield %[[V_22]] : !felt.type
+// CHECK-NEXT:        } else {
+// CHECK-NEXT:          %[[V_23:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:          %[[V_24:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[V_N]], %[[V_23]])
+// CHECK-NEXT:          %[[V_25:[0-9a-zA-Z_\.]+]] = scf.if %[[V_24]] -> (!felt.type) {
+// CHECK-NEXT:            %[[V_26:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:            struct.writef %[[SELF]][@out] = %[[V_26]] : <@FibonacciTmpl<[@N]>>, !felt.type
+// CHECK-NEXT:            scf.yield %[[V_26]] : !felt.type
+// CHECK-NEXT:          } else {
+// CHECK-NEXT:            %[[V_27:[0-9a-zA-Z_\.]+]] = felt.add %[[V_5]]#0, %[[V_5]]#1 : !felt.type, !felt.type
+// CHECK-NEXT:            struct.writef %[[SELF]][@out] = %[[V_27]] : <@FibonacciTmpl<[@N]>>, !felt.type
+// CHECK-NEXT:            scf.yield %[[V_27]] : !felt.type
+// CHECK-NEXT:          }
+// CHECK-NEXT:          scf.yield %[[V_25]] : !felt.type
+// CHECK-NEXT:        }
+// CHECK-NEXT:        function.return %[[SELF]] : !struct.type<@FibonacciTmpl<[@N]>>
+// CHECK-NEXT:      }
+// CHECK-LABEL:     function.def @constrain
+// CHECK-SAME:      (%[[SELF:[0-9a-zA-Z_\.]+]]: !struct.type<@FibonacciTmpl<[@N]>>) attributes {function.allow_constraint} {
+// CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
+// CHECK-NEXT:        %[[V_A0:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[V_B0:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:        %[[V_X0:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[V_33:[0-9a-zA-Z_\.]+]]:4 = scf.while (%[[V_A1:[0-9a-zA-Z_\.]+]] = %[[V_A0]], %[[V_B1:[0-9a-zA-Z_\.]+]] = %[[V_B0]], %[[V_C1:[0-9a-zA-Z_\.]+]] = %[[V_N]], %[[V_X1:[0-9a-zA-Z_\.]+]] = %[[V_X0]]) : (!felt.type, !felt.type, !felt.type, !felt.type) -> (!felt.type, !felt.type, !felt.type, !felt.type) {
+// CHECK-NEXT:          %[[V_38:[0-9a-zA-Z_\.]+]] = felt.const  2
+// CHECK-NEXT:          %[[V_39:[0-9a-zA-Z_\.]+]] = bool.cmp gt(%[[V_C1]], %[[V_38]])
+// CHECK-NEXT:          scf.condition(%[[V_39]]) %[[V_A1]], %[[V_B1]], %[[V_C1]], %[[V_X1]] : !felt.type, !felt.type, !felt.type, !felt.type
+// CHECK-NEXT:        } do {
+// CHECK-NEXT:        ^bb0(%[[V_A2:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_B2:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_C2:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_X2:[0-9a-zA-Z_\.]+]]: !felt.type):
+// CHECK-NEXT:          %[[V_X3:[0-9a-zA-Z_\.]+]] = felt.add %[[V_A2]], %[[V_B2]] : !felt.type, !felt.type
+// CHECK-NEXT:          %[[V_45:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:          %[[V_C3:[0-9a-zA-Z_\.]+]] = felt.sub %[[V_C2]], %[[V_45]] : !felt.type, !felt.type
+// CHECK-NEXT:          scf.yield %[[V_B2]], %[[V_X3]], %[[V_C3]], %[[V_X3]] : !felt.type, !felt.type, !felt.type, !felt.type
+// CHECK-NEXT:        }
+// CHECK-NEXT:        %[[V_47:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[V_48:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[V_N]], %[[V_47]])
+// CHECK-NEXT:        %[[V_49:[0-9a-zA-Z_\.]+]] = scf.if %[[V_48]] -> (!felt.type) {
+// CHECK-NEXT:          %[[V_50:[0-9a-zA-Z_\.]+]] = struct.readf %[[SELF]][@out] : <@FibonacciTmpl<[@N]>>, !felt.type
+// CHECK-NEXT:          scf.yield %[[V_50]] : !felt.type
+// CHECK-NEXT:        } else {
+// CHECK-NEXT:          %[[V_51:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:          %[[V_52:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[V_N]], %[[V_51]])
+// CHECK-NEXT:          %[[V_53:[0-9a-zA-Z_\.]+]] = scf.if %[[V_52]] -> (!felt.type) {
+// CHECK-NEXT:            %[[V_54:[0-9a-zA-Z_\.]+]] = struct.readf %[[SELF]][@out] : <@FibonacciTmpl<[@N]>>, !felt.type
+// CHECK-NEXT:            scf.yield %[[V_54]] : !felt.type
+// CHECK-NEXT:          } else {
+// CHECK-NEXT:            %[[V_55:[0-9a-zA-Z_\.]+]] = struct.readf %[[SELF]][@out] : <@FibonacciTmpl<[@N]>>, !felt.type
+// CHECK-NEXT:            scf.yield %[[V_55]] : !felt.type
+// CHECK-NEXT:          }
+// CHECK-NEXT:          scf.yield %[[V_53]] : !felt.type
+// CHECK-NEXT:        }
+// CHECK-NEXT:        function.return
+// CHECK-NEXT:      }
+// CHECK-NEXT:    }
+// CHECK-NEXT:  }
