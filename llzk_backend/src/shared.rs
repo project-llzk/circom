@@ -569,12 +569,20 @@ pub fn erase_op<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) {
     }
 }
 
-/// Return `true` iff the given OperationRef is `scf.yield`.
+/// Return `true` iff the given op is `scf.yield`.
 ///
 /// TODO: `llzk-rs` should provide this directly
 #[inline]
 pub fn is_scf_yield<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> bool {
     op.name().as_string_ref().as_str() == Result::Ok("scf.yield")
+}
+
+/// Return `true` iff the given op is `struct.readf`.
+///
+/// TODO: `llzk-rs` should provide this directly via `llzkOperationIsAStructFieldReadOp`
+#[inline]
+pub fn is_struct_readf<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> bool {
+    op.name().as_string_ref().as_str() == Result::Ok("struct.readf")
 }
 
 /// Get the [FunctionType] from a [FuncDefOpLike].
@@ -606,11 +614,11 @@ pub fn set_operand_if_undef<'ctx, 'op>(
     idx: usize,
     value: impl ValueLike<'ctx>,
 ) -> Result<()> {
-    let arg = OperationResult::try_from(op.operand(idx)?)?;
-    if !undef::is_undef_op(arg.owner()) {
-        anyhow::bail!("Argument {idx} was assigned twice: {arg}");
+    if let Ok(arg) = OperationResult::try_from(op.operand(idx)?) {
+        if !undef::is_undef_op(arg.owner()) {
+            anyhow::bail!("Argument {idx} was assigned twice: {arg}");
+        }
     }
-
     unsafe { mlir_sys::mlirOperationSetOperand(op.to_raw(), idx as isize, value.to_raw()) }
     Ok(())
 }
@@ -660,16 +668,15 @@ pub fn insert_after_if_op_result<'ctx, 'val, 'op>(
     val: Value<'ctx, 'val>,
     op: OperationRef<'ctx, 'op>,
 ) {
-    if val.is_block_argument() {
-        return;
+    if let Ok(binding) = OperationResult::try_from(val) {
+        let mut reference_op = binding.owner();
+        let _ = reference_op.block().expect("reference op must belong to a block");
+        if let Some(op_block) = op.block() {
+            reference_op =
+                find_parent_in_block(op_block, reference_op).expect("parent op not found");
+        };
+        move_op_after(reference_op, op);
     }
-    let binding = OperationResult::try_from(val).unwrap();
-    let mut reference_op = binding.owner();
-    let _ = reference_op.block().expect("reference op must belong to a block");
-    if let Some(op_block) = op.block() {
-        reference_op = find_parent_in_block(op_block, reference_op).expect("parent op not found");
-    };
-    move_op_after(reference_op, op);
 }
 
 /// Returns the op (or a parent op) that belongs to the block.
