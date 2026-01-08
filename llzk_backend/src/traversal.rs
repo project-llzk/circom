@@ -7,45 +7,52 @@ use llzk::prelude::OperationRef;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::RegionRef;
 
+/// Callbacks for walking LLZK structures.
+#[derive(Default)]
+#[allow(clippy::type_complexity)]
 pub struct WalkCallbacks<'a> {
+    /// Optional callback for each block visited.
     pub block_visitor: Option<Box<dyn FnMut(BlockRef) + 'a>>,
+    /// Optional callback for each operation visited.
     pub op_visitor: Option<Box<dyn FnMut(OperationRef) + 'a>>,
+    /// Optional callback for each region visited.
     pub region_visitor: Option<Box<dyn FnMut(RegionRef) + 'a>>,
 }
 
-impl Default for WalkCallbacks<'_> {
-    fn default() -> Self {
-        Self { block_visitor: None, op_visitor: None, region_visitor: None }
-    }
-}
-
 impl<'a> WalkCallbacks<'a> {
+    /// Create a new [WalkCallbacks] with a block visitor.
     #[allow(unused)]
     pub fn for_blocks(visitor: impl FnMut(BlockRef) + 'a) -> Self {
         Self { block_visitor: Some(Box::new(visitor)), ..Default::default() }
     }
+    /// Create a new [WalkCallbacks] with an operation visitor.
     #[allow(unused)]
     pub fn for_ops(visitor: impl FnMut(OperationRef) + 'a) -> Self {
         Self { op_visitor: Some(Box::new(visitor)), ..Default::default() }
     }
+    /// Create a new [WalkCallbacks] with a region visitor.
     #[allow(unused)]
     pub fn for_regions(visitor: impl FnMut(RegionRef) + 'a) -> Self {
         Self { region_visitor: Some(Box::new(visitor)), ..Default::default() }
     }
+    /// Add/overwrite the block visitor in an existing [WalkCallbacks].
     #[allow(unused)]
     pub fn and_blocks(self, visitor: impl FnMut(BlockRef) + 'a) -> Self {
         Self { block_visitor: Some(Box::new(visitor)), ..self }
     }
+    /// Add/overwrite the operation visitor in an existing [WalkCallbacks].
     #[allow(unused)]
     pub fn and_ops(self, visitor: impl FnMut(OperationRef) + 'a) -> Self {
         Self { op_visitor: Some(Box::new(visitor)), ..self }
     }
+    /// Add/overwrite the region visitor in an existing [WalkCallbacks].
     #[allow(unused)]
     pub fn and_regions(self, visitor: impl FnMut(RegionRef) + 'a) -> Self {
         Self { region_visitor: Some(Box::new(visitor)), ..self }
     }
 }
 
+/// Recursive walk visitor for a block.
 fn walk_block(block: BlockRef, cb: &mut WalkCallbacks) {
     if let Some(visitor) = cb.block_visitor.as_mut() {
         visitor(block);
@@ -58,6 +65,7 @@ fn walk_block(block: BlockRef, cb: &mut WalkCallbacks) {
     }
 }
 
+/// Recursive walk visitor for an operation.
 fn walk_operation(op: OperationRef, cb: &mut WalkCallbacks) {
     if let Some(visitor) = cb.op_visitor.as_mut() {
         visitor(op);
@@ -68,6 +76,7 @@ fn walk_operation(op: OperationRef, cb: &mut WalkCallbacks) {
     }
 }
 
+/// Recursive walk visitor for a region.
 fn walk_region(region: RegionRef, cb: &mut WalkCallbacks) {
     if let Some(visitor) = cb.region_visitor.as_mut() {
         visitor(region);
@@ -80,18 +89,21 @@ fn walk_region(region: RegionRef, cb: &mut WalkCallbacks) {
     }
 }
 
+/// Walk starting from a block with the given callbacks.
 #[inline]
 #[allow(unused)]
 pub fn walk_from_block(block: BlockRef, mut callbacks: WalkCallbacks) {
     walk_block(block, &mut callbacks);
 }
 
+/// Walk starting from an operation with the given callbacks.
 #[inline]
 #[allow(unused)]
 pub fn walk_from_region(region: RegionRef, mut callbacks: WalkCallbacks) {
     walk_region(region, &mut callbacks);
 }
 
+/// Walk starting from a region with the given callbacks.
 #[inline]
 #[allow(unused)]
 pub fn walk_from_operation(operation: OperationRef, mut callbacks: WalkCallbacks) {
