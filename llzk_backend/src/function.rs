@@ -249,9 +249,23 @@ where
         Err(anyhow!(err_msg))
     }
 
+    /// Create a cast to felt (field element) type if the given value is not already a felt.
+    #[inline]
+    pub fn cast_to_felt_if_needed(
+        &mut self,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        if !is_felt(val.r#type()) {
+            self.append_op_unnamed_result(cast::tofelt(location, val))
+        } else {
+            Ok(val)
+        }
+    }
+
     /// Create a cast to index type if the given value is not already an index.
     #[inline]
-    fn cast_to_index_if_needed(
+    pub fn cast_to_index_if_needed(
         &mut self,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
@@ -265,7 +279,7 @@ where
 
     /// Create a cast to bool type (i1) if the given value is not already a bool.
     #[inline]
-    fn cast_to_bool_if_needed<'ast>(
+    pub fn cast_to_bool_if_needed<'ast>(
         &mut self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
@@ -1397,14 +1411,9 @@ where
                     .iter()
                     .map(|arg| {
                         // TODO: As mentioned in `gen_llzk()` for `FunctionData`, functions could
-                        // also take array type parameters but that is not
-                        // currently implemented.
+                        // also take array type parameters but that is not currently implemented.
                         let operand_val = arg.gen_llzk_in_function(codegen, function)?;
-                        if !is_felt(operand_val.r#type()) {
-                            function.append_op_unnamed_result(cast::tofelt(location, operand_val))
-                        } else {
-                            Ok(operand_val)
-                        }
+                        function.cast_to_felt_if_needed(location, operand_val)
                     })
                     .collect::<Result<Vec<Value>>>()?;
                 // Create the CallOp in each function using the collected args.

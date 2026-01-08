@@ -813,26 +813,20 @@ where
                                 let _: () = rhe
                                     .gen_llzk_in_template(codegen, &compute_only)?
                                     .and_then_same(|fc, val| {
+                                        let location = codegen.location_from_meta(meta);
                                         // Cast value to field type if needed.
-                                        let write_val = if !is_felt(val.r#type()) {
-                                            fc.append_op_unnamed_result(
-                                                cast::tofelt(codegen.location_from_meta(meta), val)
-                                                    .into(),
-                                            )?
-                                        } else {
-                                            val
-                                        };
+                                        let value = fc.cast_to_felt_if_needed(location, val)?;
                                         // Write value to field of "self" struct.
                                         fc.append_op_no_result(
                                             r#struct::writef(
-                                                codegen.location_from_meta(meta),
+                                                location,
                                                 fc.func.self_value_of_compute()?,
                                                 var,
-                                                write_val,
+                                                value,
                                             )?
                                             .into(),
                                         )?;
-                                        fc.block_ctx.set_named_value(var.clone(), write_val)
+                                        fc.block_ctx.set_named_value(var.clone(), value)
                                     })?;
                                 // The constrain function just reads that field from "self" struct.
                                 let constrain_only = template.constrain_only();
@@ -885,26 +879,20 @@ where
                             [] => {
                                 rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                     |fc, val| {
+                                        let location = codegen.location_from_meta(meta);
                                         // Cast value to field type if needed.
-                                        let write_val = if !is_felt(val.r#type()) {
-                                            fc.append_op_unnamed_result(
-                                                cast::tofelt(codegen.location_from_meta(meta), val)
-                                                    .into(),
-                                            )?
-                                        } else {
-                                            val
-                                        };
+                                        let value = fc.cast_to_felt_if_needed(location, val)?;
                                         // Write value to field of "self" struct.
                                         fc.append_op_no_result(
                                             r#struct::writef(
-                                                codegen.location_from_meta(meta),
+                                                location,
                                                 fc.func.self_value_of_compute()?,
                                                 var,
-                                                write_val,
+                                                value,
                                             )?
                                             .into(),
                                         )?;
-                                        fc.block_ctx.set_named_value(var.clone(), write_val)
+                                        fc.block_ctx.set_named_value(var.clone(), value)
                                     },
                                     |fc, val| {
                                         // Read value of field from "self" struct and generate
