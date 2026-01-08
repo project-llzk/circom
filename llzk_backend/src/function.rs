@@ -171,6 +171,9 @@ where
         value: Value<'ctx, 'val>,
     ) -> Result<()> {
         let mut op = if self.block_ctx.is_only_root() {
+            // TODO: As mentioned in `gen_function_llzk()`, functions could also
+            // return array type values but that is not currently implemented.
+            let value = self.cast_to_felt_if_needed(location, value)?;
             function::r#return(location, &[value])
         } else {
             scf::r#yield(&[value], location)
@@ -961,7 +964,7 @@ where
         VAR_NAME_RETURN_VAL.to_string(),
         function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL).cloned().or_else(|_| {
             single_result_as_value(nonreturning_block.append_operation(
-                // TODO: just like `gen_llzk()` for `FunctionData`, this must use an array type
+                // TODO: just like `gen_function_llzk()`, this must use an array type
                 // if applicable but is currently implemented for scalar `felt.type` only.
                 // In this case, the correct solution (once nondet op is supported for any type)
                 // is to just create the nondet op using `return_val.getType()`
@@ -1410,7 +1413,7 @@ where
                 let call_operands = args
                     .iter()
                     .map(|arg| {
-                        // TODO: As mentioned in `gen_llzk()` for `FunctionData`, functions could
+                        // TODO: As mentioned in `gen_function_llzk()`, functions could
                         // also take array type parameters but that is not currently implemented.
                         let operand_val = arg.gen_llzk_in_function(codegen, function)?;
                         function.cast_to_felt_if_needed(location, operand_val)
