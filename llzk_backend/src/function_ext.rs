@@ -65,7 +65,7 @@ impl FunctionLike for VCF {
     }
     fn get_body(&self) -> &[Statement] {
         // In VCF format, the function body is wrapped in a Block that conveys no additional
-        // information but will cause returns to generate `scf.yield`` instead of `function.return`.
+        // information but will cause returns to generate `scf.yield` instead of `function.return`.
         match &self.body {
             Statement::Block { stmts, .. } => stmts,
             b => slice::from_ref(b),
