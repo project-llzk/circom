@@ -17,7 +17,6 @@ use crate::shared::is_felt;
 use crate::shared::is_index;
 use crate::shared::is_scf_yield;
 use crate::shared::new_array_type;
-use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
 use crate::shared::replace_uses_with_new_block_argument;
 use crate::shared::set_operand_if_undef;
@@ -60,6 +59,8 @@ use llzk::prelude::ValueLike as _;
 use llzk::prelude::WalkOrder;
 use llzk::prelude::WalkResult;
 use melior::dialect::ods::math;
+use num_bigint_dig::BigInt;
+use num_traits::Zero;
 use program_structure::ast::Access;
 use program_structure::ast::Expression;
 use program_structure::ast::ExpressionInfixOpcode;
@@ -170,6 +171,9 @@ where
         value: Value<'ctx, 'val>,
     ) -> Result<()> {
         let mut op = if self.block_ctx.is_only_root() {
+            // TODO: As mentioned in `gen_function_llzk()`, functions could also
+            // return array type values but that is not currently implemented.
+            let value = self.cast_to_felt_if_needed(location, value)?;
             function::r#return(location, &[value])
         } else {
             scf::r#yield(&[value], location)
@@ -248,9 +252,23 @@ where
         Err(anyhow!(err_msg))
     }
 
+    /// Create a cast to felt (field element) type if the given value is not already a felt.
+    #[inline]
+    pub fn cast_to_felt_if_needed(
+        &mut self,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        if !is_felt(val.r#type()) {
+            self.append_op_unnamed_result(cast::tofelt(location, val))
+        } else {
+            Ok(val)
+        }
+    }
+
     /// Create a cast to index type if the given value is not already an index.
     #[inline]
-    fn cast_to_index_if_needed(
+    pub fn cast_to_index_if_needed(
         &mut self,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
@@ -264,15 +282,29 @@ where
 
     /// Create a cast to bool type (i1) if the given value is not already a bool.
     #[inline]
-    fn cast_to_bool_if_needed<'ast>(
+    pub fn cast_to_bool_if_needed<'ast>(
         &mut self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
-        if !is_bool(val.r#type()) {
-            self.append_op_unnamed_result(cast::toint(location, codegen.bool_type(), val).into())
+        // The conversion to bool is simply to check `!=0` which is the same as
+        // `normalize()` in `modular_arithmetic.rs`.
+        if is_felt(val.r#type()) {
+            let zero = self
+                .append_op_unnamed_result(codegen.new_felt_const_op(&BigInt::zero(), location)?)?;
+            self.append_op_unnamed_result(bool::ne(location, val, zero)?)
+        } else if is_index(val.r#type()) {
+            let zero = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
+            self.append_op_unnamed_result(index::cmp(
+                codegen.context,
+                arith::CmpiPredicate::Ne,
+                val,
+                zero,
+                location,
+            ))
         } else {
+            assert!(is_bool(val.r#type()));
             Ok(val)
         }
     }
@@ -403,7 +435,10 @@ where
 
         macro_rules! try_bool_op {
             ($op_path:path) => {{
-                try_callback_for_type!(shared::is_bool, generic_op_callback!($op_path));
+                let loc = codegen.location_from_meta(meta);
+                let lhs = self.cast_to_bool_if_needed(codegen, loc, lhs)?;
+                let rhs = self.cast_to_bool_if_needed(codegen, loc, rhs)?;
+                return self.append_op_unnamed_result($op_path(loc, lhs, rhs)?);
             }};
         }
 
@@ -929,7 +964,7 @@ where
         VAR_NAME_RETURN_VAL.to_string(),
         function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL).cloned().or_else(|_| {
             single_result_as_value(nonreturning_block.append_operation(
-                // TODO: just like `gen_llzk()` for `FunctionData`, this must use an array type
+                // TODO: just like `gen_function_llzk()`, this must use an array type
                 // if applicable but is currently implemented for scalar `felt.type` only.
                 // In this case, the correct solution (once nondet op is supported for any type)
                 // is to just create the nondet op using `return_val.getType()`
@@ -1215,7 +1250,9 @@ where
             Expression::Number(meta, big_int) => {
                 // Convert the BigInt to an LLZK `felt.const` op. The user of the Expression is
                 // responsible for converting this `felt.type` value to another type if needed.
-                function.append_op_unnamed_result(new_felt_const_op(codegen, meta, big_int)?)
+                function.append_op_unnamed_result(
+                    codegen.new_felt_const_op(big_int, codegen.location_from_meta(meta))?,
+                )
             }
             Expression::Variable { meta, name, access } => match access.as_slice() {
                 [] => {
@@ -1297,12 +1334,9 @@ where
                         llzk::dialect::array::ArrayCtor::Values(&[]),
                     ))?;
                     for (idx, val) in values.iter().enumerate() {
-                        let idx_attr = codegen.index_attr(i64::try_from(idx)?);
-                        let idx_val = function.append_op_unnamed_result(arith::constant(
-                            codegen.context,
-                            idx_attr.into(),
-                            location,
-                        ))?;
+                        let idx_val = function.append_op_unnamed_result(
+                            codegen.new_index_const_op(i64::try_from(idx)?, location),
+                        )?;
                         function.append_op_no_result(array::insert(
                             location,
                             new_arr,
@@ -1330,9 +1364,7 @@ where
                 let val = value.gen_llzk_in_function(codegen, function)?;
                 let dim = codegen.convert_dim_expr(dimension)?;
                 let const_dim = IntegerAttribute::try_from(dim);
-                let subarr_ty = ArrayType::try_from(val.r#type());
-
-                if let Ok(subarr_ty) = subarr_ty {
+                if let Ok(subarr_ty) = ArrayType::try_from(val.r#type()) {
                     let arr_ty = new_array_type(dim, &subarr_ty);
                     // The array.new constructor doesn't accept arrays as initializer values,
                     // so we instead create the array empty and use array.insert to insert values.
@@ -1344,12 +1376,9 @@ where
                     ))?;
                     if let Ok(const_dim) = const_dim {
                         for idx in 0..const_dim.value() {
-                            let idx_attr = codegen.index_attr(idx);
-                            let idx_val = function.append_op_unnamed_result(arith::constant(
-                                codegen.context,
-                                idx_attr.into(),
-                                location,
-                            ))?;
+                            let idx_val = function.append_op_unnamed_result(
+                                codegen.new_index_const_op(idx, location),
+                            )?;
                             function.append_op_no_result(array::insert(
                                 location,
                                 new_arr,
@@ -1384,15 +1413,10 @@ where
                 let call_operands = args
                     .iter()
                     .map(|arg| {
-                        // TODO: As mentioned in `gen_llzk()` for `FunctionData`, functions could
-                        // also take array type parameters but that is not
-                        // currently implemented.
+                        // TODO: As mentioned in `gen_function_llzk()`, functions could
+                        // also take array type parameters but that is not currently implemented.
                         let operand_val = arg.gen_llzk_in_function(codegen, function)?;
-                        if !is_felt(operand_val.r#type()) {
-                            function.append_op_unnamed_result(cast::tofelt(location, operand_val))
-                        } else {
-                            Ok(operand_val)
-                        }
+                        function.cast_to_felt_if_needed(location, operand_val)
                     })
                     .collect::<Result<Vec<Value>>>()?;
                 // Create the CallOp in each function using the collected args.
