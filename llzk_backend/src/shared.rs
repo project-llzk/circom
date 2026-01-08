@@ -1,14 +1,16 @@
 //! Shared code generation utilities.
 
-use crate::module::ProgramLike;
+use crate::program_ext::ProgramLike;
+use crate::template_ext::TemplateLike;
+use crate::template_ext::WireLike;
 use crate::traversal::walk_from_block;
 use crate::traversal::WalkCallbacks;
 use ansi_term::Color;
 use anyhow::anyhow;
 use anyhow::Result;
+use llzk::dialect::undef;
 use llzk::operation::replace_uses_of_with;
 use llzk::prelude::felt;
-use llzk::prelude::undef;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
@@ -16,6 +18,7 @@ use llzk::prelude::BlockLike;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FeltConstAttribute;
 use llzk::prelude::FeltType;
+use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOp;
 use llzk::prelude::FuncDefOpLike;
 use llzk::prelude::FuncDefOpRef;
@@ -37,11 +40,12 @@ use llzk::prelude::StructType;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
-use llzk::prelude::ValueLike as _;
 use melior::dialect::arith;
 use melior::ir::attribute::BoolAttribute;
 use melior::ir::attribute::TypeAttribute;
+use melior::ir::operation::OperationResult;
 use melior::ir::Module;
+use melior::ir::ValueLike;
 use melior::utility;
 use num_bigint_dig::BigInt;
 use num_traits::cast::ToPrimitive;
@@ -51,6 +55,7 @@ use program_structure::error_code::ReportCode;
 use program_structure::error_definition::Report;
 use program_structure::file_definition::FileID;
 use program_structure::file_definition::FileLocation;
+use program_structure::wire_data::WireType;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto as _;
@@ -220,6 +225,15 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         }
     }
 
+    /// Tries to convert a list of [`Expression`] to a list of [`Attribute`].
+    #[inline]
+    pub fn try_dimensions_to_attrs(
+        &self,
+        dimensions: &[Expression],
+    ) -> Result<Vec<Attribute<'ctx>>> {
+        dimensions.iter().map(|e| self.convert_dim_expr(e)).collect()
+    }
+
     /// Create an LLZK operation that produces a boolean constant value.
     pub fn new_bool_const_op(&self, val: bool, location: Location<'ctx>) -> Operation<'ctx> {
         arith::constant(self.context, BoolAttribute::new(self.context, val).into(), location)
@@ -351,6 +365,59 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         }
         println!("{} {}", Color::Green.paint("Written successfully:"), filename);
         Ok(())
+    }
+
+    /// If `dimensions` is empty, returns a [`StructType`] with just the name. Otherwise,
+    /// returns a [`StructType`] with parameters by converting the
+    /// dimension circom Expressions to LLZK Attributes.
+    pub fn struct_type_with_concrete_dimensions(
+        &self,
+        name: &str,
+        dimensions: &[Expression],
+    ) -> Result<StructType<'ctx>> {
+        if dimensions.is_empty() {
+            Ok(StructType::from_str(self.context, name))
+        } else {
+            let attrs = dimensions
+                .iter()
+                .map(|e| self.convert_dim_expr(e))
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(StructType::new(FlatSymbolRefAttribute::new(self.context, name), &attrs))
+        }
+    }
+
+    /// Returns the data for the template with that name.
+    pub fn find_template_data(
+        &self,
+        name: &'ast str,
+    ) -> Option<&'ast (impl TemplateLike + use<'ast, P>)> {
+        if self.program.contains_template(name) {
+            Some(self.program.get_template_data(name))
+        } else {
+            None
+        }
+    }
+
+    /// Returns the types of the inputs for the given template, in declaration order.
+    pub fn get_template_input_types(&self, name: &'ast str) -> Result<Vec<Type<'ctx>>> {
+        let data =
+            self.find_template_data(name).ok_or_else(|| anyhow!("Template {name} not found"))?;
+        Ok(data
+            .get_declaration_inputs()
+            .iter()
+            .map(move |(input, _)| -> Type<'ctx> {
+                let wire = data
+                    .get_input_info(input)
+                    // The name comes from `get_declaration_inputs`.
+                    // If `get_input_info` fails here with that name,
+                    // something has gone very wrong.
+                    .unwrap_or_else(|| panic!("Input {:?} not found for type {:?}", input, name));
+                match wire.get_type() {
+                    WireType::Signal => FeltType::new(self.context).into(),
+                    WireType::Bus(name) => StructType::from_str(self.context, &name).into(),
+                }
+            })
+            .collect())
     }
 }
 
@@ -522,6 +589,101 @@ pub fn get_function_type_attribute<'c: 'a, 'a>(
     Ok(func_type)
 }
 
+/// Replaces all uses of the first value with the second.
+///
+/// Uses `mlir-sys` directly since that function doesn't seem to be
+/// implemented in melior.
+///
+/// TODO: `llzk-rs` should provide this directly
+pub fn replace_all_uses<'ctx>(of: Value<'ctx, '_>, with: Value<'ctx, '_>) {
+    unsafe { mlir_sys::mlirValueReplaceAllUsesOfWith(of.to_raw(), with.to_raw()) }
+}
+
+/// Sets the n-th operand of the operation to the given value if the current value is an
+/// `undef.undef` op.
+pub fn set_operand_if_undef<'ctx, 'op>(
+    op: OperationRef<'ctx, 'op>,
+    idx: usize,
+    value: impl ValueLike<'ctx>,
+) -> Result<()> {
+    let arg = OperationResult::try_from(op.operand(idx)?)?;
+    if !undef::is_undef_op(arg.owner()) {
+        anyhow::bail!("Argument {idx} was assigned twice: {arg}");
+    }
+
+    unsafe { mlir_sys::mlirOperationSetOperand(op.to_raw(), idx as isize, value.to_raw()) }
+    Ok(())
+}
+
+/// Returns the one user of a value.
+///
+/// Fails if the value has more than one use or not at all.
+///
+/// TODO: `llzk-rs` should provide this directly
+pub fn get_single_user<'ctx, 'val, 'op>(
+    value: Value<'ctx, 'val>,
+) -> Result<OperationRef<'ctx, 'op>> {
+    // There is no `OpOperand` type in melior as far as I'm aware.
+    let first_use = unsafe { mlir_sys::mlirValueGetFirstUse(value.to_raw()) };
+    if first_use.ptr.is_null() {
+        anyhow::bail!("value {value} has no uses");
+    }
+    let second_use = unsafe { mlir_sys::mlirOpOperandGetNextUse(first_use) };
+    if !second_use.ptr.is_null() {
+        anyhow::bail!("value {value} can have only one use");
+    }
+    unsafe { OperationRef::from_option_raw(mlir_sys::mlirOpOperandGetOwner(first_use)) }
+        .ok_or_else(|| anyhow::anyhow!("invalid operation for user of {value}"))
+}
+
+#[inline]
+/// Moves the operation right after the reference op.
+///
+/// TODO: `llzk-rs` should provide this directly
+pub fn move_op_after<'ctx: 'op, 'op>(
+    reference: impl OperationLike<'ctx, 'op>,
+    op: impl OperationLike<'ctx, 'op>,
+) {
+    unsafe { mlir_sys::mlirOperationMoveAfter(op.to_raw(), reference.to_raw()) }
+}
+
+/// Moves the operation after the value if the value comes from another operation.
+///
+/// If the operation the value comes from is in an inner block, moves the op right after the parent
+/// op that is in the same block as the op about to be moved.
+///
+/// # Panics
+///
+/// If the parent search reaches the top, meaning that the value comes from an op in a block that
+/// is a 'parent' of the other op or that the value's op is not owned by a block.
+pub fn insert_after_if_op_result<'ctx, 'val, 'op>(
+    val: Value<'ctx, 'val>,
+    op: OperationRef<'ctx, 'op>,
+) {
+    if val.is_block_argument() {
+        return;
+    }
+    let binding = OperationResult::try_from(val).unwrap();
+    let mut reference_op = binding.owner();
+    let _ = reference_op.block().expect("reference op must belong to a block");
+    if let Some(op_block) = op.block() {
+        reference_op = find_parent_in_block(op_block, reference_op).expect("parent op not found");
+    };
+    move_op_after(reference_op, op);
+}
+
+/// Returns the op (or a parent op) that belongs to the block.
+fn find_parent_in_block<'ctx, 'blk, 'op>(
+    block: BlockRef<'ctx, 'blk>,
+    op: OperationRef<'ctx, 'op>,
+) -> Option<OperationRef<'ctx, 'op>> {
+    let parent_block = op.block()?;
+    if block == parent_block {
+        Some(op)
+    } else {
+        find_parent_in_block(block, parent_block.parent_operation()?)
+    }
+}
 /// Get all dimensions from an [ArrayType].
 ///
 /// TODO: `llzk-rs` should provide this directly

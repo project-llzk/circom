@@ -8,9 +8,10 @@
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
-use crate::module::ProgramLike;
+use crate::program_ext::ProgramLike;
 use crate::shared::erase_op;
 use crate::shared::get_function_type_attribute;
+use crate::shared::insert_after_if_op_result;
 use crate::shared::is_bool;
 use crate::shared::is_felt;
 use crate::shared::is_index;
@@ -19,9 +20,12 @@ use crate::shared::new_array_type;
 use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
 use crate::shared::replace_uses_with_new_block_argument;
+use crate::shared::set_operand_if_undef;
 use crate::shared::single_result_as_value;
 use crate::shared::LlzkCodegen;
 use crate::shared::{self};
+use crate::subcmp::SubcmpCallsMap;
+use crate::template_ext::TemplateLike as _;
 use anyhow::anyhow;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
@@ -30,6 +34,7 @@ use llzk::prelude::array;
 use llzk::prelude::bool;
 use llzk::prelude::felt;
 use llzk::prelude::function;
+use llzk::prelude::undef;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::Block;
@@ -94,6 +99,8 @@ where
     pub(crate) func: FuncDefOpRefMut<'ctx, 'func>,
     /// Nested block context within the function.
     pub(crate) block_ctx: BlockContextStack<'ctx, 'blk, 'val>,
+    /// Calls to subcomponents
+    pub(crate) subcmp_calls: SubcmpCallsMap<'ctx>,
 }
 
 impl<'ctx, 'func, 'blk, 'val> FunctionContext<'ctx, 'func, 'blk, 'val>
@@ -122,7 +129,7 @@ where
                     .new_nondet_at_location(codegen.location_unknown(), codegen.bool_type().into())
             })?;
         }
-        Ok(Self { func, block_ctx })
+        Ok(Self { func, block_ctx, subcmp_calls: Default::default() })
     }
 
     /// Append an operation.
@@ -287,6 +294,75 @@ where
         } else {
             Ok(None)
         }
+    }
+
+    #[inline]
+    /// Generates a list of undef ops inside the given function context.
+    pub fn gen_arg_undefs(
+        &mut self,
+        args: &[Type<'ctx>],
+        loc: Location<'ctx>,
+    ) -> Result<Vec<Value<'ctx, 'val>>> {
+        args.iter().copied().map(|t| self.append_op_unnamed_result(undef::undef(loc, t))).collect()
+    }
+
+    /// Searches for the argument index of a subcomponent's signal.
+    pub fn lookup_arg_idx(
+        &self,
+        subcmp_signal: &str,
+        subcmp_value: &Value<'ctx, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Result<usize> {
+        let name = self.subcmp_calls.get(subcmp_value).ok_or_else(|| {
+            anyhow::anyhow!(
+                "template constructed by {subcmp_value}@{:?} not found (map: {:?})",
+                subcmp_value.to_raw().ptr,
+                self.subcmp_calls
+            )
+        })?;
+        let template_data = codegen.find_template_data(name).ok_or_else(|| {
+            anyhow::anyhow!("template with name {name:?} constructed by {subcmp_value} not found")
+        })?;
+        template_data
+            .get_declaration_inputs()
+            .iter()
+            .find_map(|(signal, idx)| (subcmp_signal == signal).then_some(*idx))
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "template '{}' has no input signal '{subcmp_signal}'",
+                    template_data.get_name()
+                )
+            })
+    }
+
+    /// Assigns the `rhe` value to the given subcomponent signal.
+    ///
+    /// The subcomponent is determined by
+    /// `var`, which must correspond to a named value in the current scope.
+    /// Since the subcomponent's call is different depending on the current function the
+    /// `get_call` callback needs to return the operation representing the call from the value
+    /// representing the subcomponent.
+    pub fn assign_subcmp<'op>(
+        &mut self,
+        rhe: Value<'ctx, 'val>,
+        var: &str,
+        subcmp_signal: &str,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        arg_offset: usize,
+        get_call: impl FnOnce(Value<'ctx, 'val>) -> Result<OperationRef<'ctx, 'op>>,
+    ) -> Result<()>
+    where
+        'ctx: 'op,
+    {
+        let subcmp_value = self.block_ctx.get_named_value(var)?;
+
+        let arg_idx = self.lookup_arg_idx(subcmp_signal, subcmp_value, codegen)?;
+
+        let call_op = get_call(*subcmp_value)?;
+        set_operand_if_undef(call_op, arg_idx + arg_offset, rhe)?;
+        insert_after_if_op_result(rhe, call_op);
+
+        Ok(())
     }
 
     /// Generate LLZK code in the current function for an infix operation.
@@ -721,6 +797,13 @@ impl Drop for FunctionContext<'_, '_, '_, '_> {
                 WalkResult::Advance
             }
         });
+        // XXX: We may have to move this logic to a failable function since
+        // this is the point where we know if we have undefs left that may be due to an user error.
+        // For example, if a subcomponent's signal was not assigned then we need to raise a user
+        // error since that's what the compiler normally does.
+        //
+        // If we can raise issues here without having to return a `Result` then it's fine to do
+        // here. Tho I feel it may be overstretching what Drop is meant to do.
     }
 }
 
@@ -1189,7 +1272,7 @@ where
             }
             Expression::ArrayInLine { meta, values } => {
                 let location = codegen.location_from_meta(meta);
-                let builder = &OpBuilder::new(&codegen.context);
+                let builder = &OpBuilder::new(codegen.context);
                 // Multi-dimensional arrays are made up of array values as their elements
                 let values = values
                     .iter()
@@ -1215,7 +1298,7 @@ where
                     for (idx, val) in values.iter().enumerate() {
                         let idx_attr = codegen.index_attr(i64::try_from(idx)?);
                         let idx_val = function.append_op_unnamed_result(arith::constant(
-                            &codegen.context,
+                            codegen.context,
                             idx_attr.into(),
                             location,
                         ))?;
@@ -1253,7 +1336,7 @@ where
                     // The array.new constructor doesn't accept arrays as initializer values,
                     // so we instead create the array empty and use array.insert to insert values.
                     let new_arr = function.append_op_unnamed_result(array::new(
-                        &OpBuilder::new(&codegen.context),
+                        &OpBuilder::new(codegen.context),
                         codegen.location_from_meta(meta),
                         arr_ty,
                         llzk::dialect::array::ArrayCtor::Values(&[]),
@@ -1262,7 +1345,7 @@ where
                         for idx in 0..const_dim.value() {
                             let idx_attr = codegen.index_attr(idx);
                             let idx_val = function.append_op_unnamed_result(arith::constant(
-                                &codegen.context,
+                                codegen.context,
                                 idx_attr.into(),
                                 location,
                             ))?;
@@ -1286,7 +1369,7 @@ where
                         todo!("Handle template parameter array lengths")
                     };
                     function.append_op_unnamed_result(array::new(
-                        &OpBuilder::new(&codegen.context),
+                        &OpBuilder::new(codegen.context),
                         codegen.location_from_meta(meta),
                         arr_ty,
                         llzk::dialect::array::ArrayCtor::Values(&init_vals),

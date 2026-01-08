@@ -1,7 +1,7 @@
 //! Entry point for LLZK code generation.
 
 use crate::module::GenerateLLZKInModule;
-use crate::module::ProgramLike;
+use crate::program_ext::ProgramLike;
 use crate::shared::LlzkCodegen;
 use ansi_term::Color;
 use anyhow::Result;

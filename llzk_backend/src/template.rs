@@ -9,20 +9,33 @@
 use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
-use crate::module::ProgramLike;
+use crate::program_ext::ProgramLike;
+use crate::shared::get_single_user;
 use crate::shared::is_felt;
+use crate::shared::replace_all_uses;
 use crate::shared::LlzkCodegen;
+use crate::template_ext::TemplateLike as _;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
 use llzk::prelude::constrain;
+use llzk::prelude::function;
 use llzk::prelude::r#struct;
 use llzk::prelude::BlockRef;
+use llzk::prelude::CallOpLike as _;
+use llzk::prelude::CallOpRef;
+use llzk::prelude::FeltType;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
+use llzk::prelude::OperationLike;
 use llzk::prelude::StructDefOpRefMut;
+use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Value;
-use llzk::prelude::ValueLike as _;
+use melior::ir::operation::OperationResult;
+use melior::ir::OperationRef;
+use melior::ir::Type;
+use melior::ir::ValueLike;
+use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -30,6 +43,9 @@ use program_structure::ast::Statement;
 use program_structure::error_code::ReportCode;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::convert::TryFrom;
+use std::convert::TryInto as _;
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -92,6 +108,8 @@ where
     compute: ShouldGenerate<Rc<RefCell<FunctionContext<'ctx, 'func, 'blk, 'val>>>>,
     /// Codegen refs for the "@constrain" function within `struct_def`
     constrain: ShouldGenerate<Rc<RefCell<FunctionContext<'ctx, 'func, 'blk, 'val>>>>,
+    /// Set of subcomponent names.
+    subcmps: &'str HashSet<String>,
 }
 
 impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'val> {
@@ -101,11 +119,13 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
         struct_def: StructDefOpRefMut<'ctx, 'str>,
         compute: FunctionContext<'ctx, 'func, 'blk, 'val>,
         constrain: FunctionContext<'ctx, 'func, 'blk, 'val>,
+        subcmps: &'str HashSet<String>,
     ) -> TemplateContext<'ctx, 'str, 'func, 'blk, 'val> {
         Self {
             struct_def,
             compute: Some(Rc::new(RefCell::new(compute))),
             constrain: Some(Rc::new(RefCell::new(constrain))),
+            subcmps,
         }
     }
 
@@ -116,6 +136,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
             struct_def: self.struct_def,
             compute: self.compute.as_ref().map(Rc::clone),
             constrain: None,
+            subcmps: self.subcmps,
         }
     }
 
@@ -126,7 +147,31 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
             struct_def: self.struct_def,
             compute: None,
             constrain: self.constrain.as_ref().map(Rc::clone),
+            subcmps: self.subcmps,
         }
+    }
+
+    /// Finalizes the context by emitting the final write operations that write subcomponent
+    /// declarations to the declaring component.
+    pub fn finalize(self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Result<()> {
+        let subcmps = self.subcmps;
+        self.and_then(
+            |fc, _| {
+                // Write the subcomponent declarations to self.
+                let self_value = fc.func.self_value_of_compute()?;
+                for name in subcmps {
+                    let val = fc.block_ctx.get_named_value(name)?;
+                    fc.append_op_no_result(r#struct::writef(
+                        Location::unknown(codegen.context),
+                        self_value,
+                        name,
+                        *val,
+                    )?)?;
+                }
+                Ok(())
+            },
+            |_, _| Ok(()),
+        )
     }
 }
 
@@ -728,115 +773,217 @@ where
                 match op {
                     AssignOp::AssignVar => {
                         if access.is_empty() {
-                            rhe.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, val| {
-                                fc.block_ctx.set_named_value(var.clone(), val)
-                            })
+                            if template.subcmps.contains(var) {
+                                rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                                    |fc, rhe| {
+                                        if let Ok(current) = fc.block_ctx.get_named_value(var) {
+                                            replace_all_uses(*current, rhe);
+                                        }
+
+                                        fc.block_ctx.set_named_value(var.clone(), rhe)
+                                    },
+                                    |fc, rhe| {
+                                        // Replace value. Ensure that the value comes from a
+                                        // `struct.readf`
+                                        let field_read = fc.block_ctx.get_named_value(var)?;
+                                        let field_read_op = OperationResult::try_from(*field_read)?;
+                                        // Temporary workaround until we have
+                                        // `llzkOperationIsAStructFieldReadOp`
+                                        assert_eq!(
+                                            field_read_op
+                                                .owner()
+                                                .name()
+                                                .as_string_ref()
+                                                .as_str()?,
+                                            "struct.readf"
+                                        );
+                                        replace_all_uses(rhe, *field_read);
+                                        fc.subcmp_calls.update_keys(rhe, *field_read);
+                                        Ok(())
+                                    },
+                                )
+                            } else {
+                                rhe.gen_llzk_in_template(codegen, template)?.and_then_same(
+                                    |fc, val| fc.block_ctx.set_named_value(var.clone(), val),
+                                )
+                            }
                         } else {
                             todo!("Generate array write operation in template");
                         }
                     }
                     AssignOp::AssignSignal => {
-                        if access.is_empty() {
-                            // The `<--` operator is witness generation only so code for the RHS
-                            // expression should only be generated in the compute function.
-                            let compute_only = template.compute_only();
-                            let _: () = rhe
-                                .gen_llzk_in_template(codegen, &compute_only)?
-                                .and_then_same(|fc, val| {
-                                    // Cast value to field type if needed.
-                                    let write_val = if !is_felt(val.r#type()) {
-                                        fc.append_op_unnamed_result(
-                                            cast::tofelt(codegen.location_from_meta(meta), val)
-                                                .into(),
-                                        )?
-                                    } else {
-                                        val
-                                    };
-                                    // Write value to field of "self" struct.
-                                    fc.append_op_no_result(
-                                        r#struct::writef(
-                                            codegen.location_from_meta(meta),
-                                            fc.func.self_value_of_compute()?,
-                                            var,
-                                            write_val,
-                                        )?
-                                        .into(),
-                                    )?;
-                                    fc.block_ctx.set_named_value(var.clone(), write_val)
-                                })?;
-                            // The constrain function just reads that field from "self" struct.
-                            let constrain_only = template.constrain_only();
-                            (&constrain_only).and_then_same(|fc, _| {
-                                let val = fc.append_op_unnamed_result(
-                                    r#struct::readf(
-                                        &OpBuilder::new(codegen.context.deref()),
-                                        codegen.location_from_meta(meta),
-                                        codegen.felt_type().into(),
-                                        fc.func.self_value_of_constrain()?,
-                                        var,
-                                    )?
-                                    .into(),
-                                )?;
-                                fc.block_ctx.set_named_value(var.clone(), val)
-                            })
-                        } else {
-                            todo!("Generate array write operation in template");
-                        }
-                    }
-                    AssignOp::AssignConstraintSignal => {
-                        if access.is_empty() {
-                            rhe.gen_llzk_in_template(codegen, template)?.and_then(
-                                |fc, val| {
-                                    // Cast value to field type if needed.
-                                    let write_val = if !is_felt(val.r#type()) {
-                                        fc.append_op_unnamed_result(
-                                            cast::tofelt(codegen.location_from_meta(meta), val)
-                                                .into(),
-                                        )?
-                                    } else {
-                                        val
-                                    };
-                                    // Write value to field of "self" struct.
-                                    fc.append_op_no_result(
-                                        r#struct::writef(
-                                            codegen.location_from_meta(meta),
-                                            fc.func.self_value_of_compute()?,
-                                            var,
-                                            write_val,
-                                        )?
-                                        .into(),
-                                    )?;
-                                    fc.block_ctx.set_named_value(var.clone(), write_val)
-                                },
-                                |fc, val| {
-                                    // Read value of field from "self" struct and generate
-                                    // equality constraint with 'val'.
-                                    let builder = OpBuilder::new(codegen.context.deref());
-                                    let val_from_read = fc.append_op_unnamed_result(
+                        match &access[..] {
+                            [] => {
+                                // The `<--` operator is witness generation only so code for the RHS
+                                // expression should only be generated in the compute function.
+                                let compute_only = template.compute_only();
+                                let _: () = rhe
+                                    .gen_llzk_in_template(codegen, &compute_only)?
+                                    .and_then_same(|fc, val| {
+                                        // Cast value to field type if needed.
+                                        let write_val = if !is_felt(val.r#type()) {
+                                            fc.append_op_unnamed_result(
+                                                cast::tofelt(codegen.location_from_meta(meta), val)
+                                                    .into(),
+                                            )?
+                                        } else {
+                                            val
+                                        };
+                                        // Write value to field of "self" struct.
+                                        fc.append_op_no_result(
+                                            r#struct::writef(
+                                                codegen.location_from_meta(meta),
+                                                fc.func.self_value_of_compute()?,
+                                                var,
+                                                write_val,
+                                            )?
+                                            .into(),
+                                        )?;
+                                        fc.block_ctx.set_named_value(var.clone(), write_val)
+                                    })?;
+                                // The constrain function just reads that field from "self" struct.
+                                let constrain_only = template.constrain_only();
+                                (&constrain_only).and_then_same(|fc, _| {
+                                    let val = fc.append_op_unnamed_result(
                                         r#struct::readf(
-                                            &builder,
+                                            &OpBuilder::new(codegen.context.deref()),
                                             codegen.location_from_meta(meta),
-                                            codegen.felt_type().into(),
+                                            FeltType::new(codegen.context).into(),
                                             fc.func.self_value_of_constrain()?,
                                             var,
                                         )?
                                         .into(),
                                     )?;
-                                    let (lhs, rhs) = unify_constrain_eq_types(
-                                        fc,
-                                        codegen.location_from_meta(meta),
-                                        val_from_read,
-                                        val,
-                                    )?;
-                                    fc.append_op_no_result(
-                                        constrain::eq(codegen.location_from_meta(meta), lhs, rhs)
+                                    fc.block_ctx.set_named_value(var.clone(), val)
+                                })
+                            }
+                            [Access::ComponentAccess(subcmp_signal)] => {
+                                // Assigning to a subcomponent signal is translated into replacing
+                                // the corresponding argument of the `@compute`
+                                // call. Since the value was not constrained the argument is left
+                                // as `undef.undef` in the call to `@constrain`.
+                                //
+                                // The value representing the call is mapped to the name of
+                                // the subcomponent and mapped to the name of
+                                // the subcomponent's template. For `@compute` that value is the
+                                // call op to `@compute` and in `@constrain` is the first operand
+                                // to the `@constrain` call.
+                                //
+                                // We use that name to look for the signal's declaration index and
+                                // use it to locate the corresponding operand and
+                                // replace it with the given `rhe`.
+                                rhe.gen_llzk_in_template(codegen, &template.compute_only())?
+                                    .and_then_same(|fc, rhe| {
+                                        fc.assign_subcmp(
+                                            rhe,
+                                            var,
+                                            subcmp_signal,
+                                            codegen,
+                                            0,
+                                            op_result_owner,
+                                        )
+                                    })
+                            }
+                            _ => todo!("Generate array write operation in template: {access:?}"),
+                        }
+                    }
+                    AssignOp::AssignConstraintSignal => {
+                        match &access[..] {
+                            [] => {
+                                rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                                    |fc, val| {
+                                        // Cast value to field type if needed.
+                                        let write_val = if !is_felt(val.r#type()) {
+                                            fc.append_op_unnamed_result(
+                                                cast::tofelt(codegen.location_from_meta(meta), val)
+                                                    .into(),
+                                            )?
+                                        } else {
+                                            val
+                                        };
+                                        // Write value to field of "self" struct.
+                                        fc.append_op_no_result(
+                                            r#struct::writef(
+                                                codegen.location_from_meta(meta),
+                                                fc.func.self_value_of_compute()?,
+                                                var,
+                                                write_val,
+                                            )?
                                             .into(),
-                                    )?;
-                                    fc.block_ctx.set_named_value(var.clone(), rhs)
-                                },
-                            )
-                        } else {
-                            todo!("Generate array write operation in template");
+                                        )?;
+                                        fc.block_ctx.set_named_value(var.clone(), write_val)
+                                    },
+                                    |fc, val| {
+                                        // Read value of field from "self" struct and generate
+                                        // equality constraint with 'val'.
+                                        let builder = OpBuilder::new(codegen.context.deref());
+                                        let felt_type = FeltType::new(codegen.context).into();
+                                        let val_from_read = fc.append_op_unnamed_result(
+                                            r#struct::readf(
+                                                &builder,
+                                                codegen.location_from_meta(meta),
+                                                felt_type,
+                                                fc.func.self_value_of_constrain()?,
+                                                var,
+                                            )?
+                                            .into(),
+                                        )?;
+                                        let (lhs, rhs) = unify_constrain_eq_types(
+                                            fc,
+                                            codegen.location_from_meta(meta),
+                                            val_from_read,
+                                            val,
+                                        )?;
+                                        fc.append_op_no_result(
+                                            constrain::eq(
+                                                codegen.location_from_meta(meta),
+                                                lhs,
+                                                rhs,
+                                            )
+                                            .into(),
+                                        )?;
+                                        fc.block_ctx.set_named_value(var.clone(), rhs)
+                                    },
+                                )
+                            }
+                            [Access::ComponentAccess(subcmp_signal)] => {
+                                // Assigning to a subcomponent signal is translated into replacing
+                                // the corresponding argument of the `@compute` and `@constrain`
+                                // calls.
+                                //
+                                // The value representing the call is mapped to the name of
+                                // the subcomponent and mapped to the name of
+                                // the subcomponent's template. For `@compute` that value is the
+                                // call op to `@compute` and in `@constrain` is the first operand
+                                // to the `@constrain` call.
+                                //
+                                // We use that name to look for the signal's declaration index and
+                                // use it to locate the corresponding operand and
+                                // replace it with the given `rhe`.
+                                rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                                    |fc, rhe| {
+                                        fc.assign_subcmp(
+                                            rhe,
+                                            var,
+                                            subcmp_signal,
+                                            codegen,
+                                            0,
+                                            op_result_owner,
+                                        )
+                                    },
+                                    |fc, rhe| {
+                                        fc.assign_subcmp(
+                                            rhe,
+                                            var,
+                                            subcmp_signal,
+                                            codegen,
+                                            1,
+                                            get_constrain_call,
+                                        )
+                                    },
+                                )
+                            }
+                            _ => todo!("Generate array write operation in template: {access:?}"),
                         }
                     }
                 }
@@ -923,11 +1070,198 @@ where
     where
         'val: 'r,
     {
-        template.and_then_same(|fc, _| {
-            // The import is here rather than top level because it is very important that
-            // `gen_llzk_in_function()` is not used while translating statements.
-            use crate::function::GenerateLLZKInFunction;
-            self.gen_llzk_in_function(codegen, fc)
-        })
+        // This function handles the special cases that happen in templates and any other kind of
+        // expression is delegated.
+        match self {
+            Expression::Variable { meta, name, access }
+                if { matches!(access[..], [Access::ComponentAccess(_)]) } =>
+            {
+                match access.as_slice() {
+                    [Access::ComponentAccess(signal_name)] => template.and_then(
+                        |fc, _| {
+                            let subcmp_value = fc.block_ctx.get_named_value(name)?;
+                            let template_data = fc
+                                .subcmp_calls
+                                .get(subcmp_value)
+                                .ok_or_else(|| {
+                                    anyhow::anyhow!(
+                                        "subcomponent call for {subcmp_value} not found"
+                                    )
+                                })
+                                .and_then(|name| {
+                                    codegen.find_template_data(name).ok_or_else(|| {
+                                        anyhow::anyhow!("template {name:?} not found")
+                                    })
+                                })?;
+                            if template_data.get_outputs().contains_key(signal_name) {
+                                fc.append_op_unnamed_result(r#struct::readf(
+                                    &OpBuilder::new(codegen.context),
+                                    codegen.location_from_meta(meta),
+                                    FeltType::new(codegen.context).into(),
+                                    *subcmp_value,
+                                    signal_name,
+                                )?)
+                            } else if template_data.get_inputs().contains_key(signal_name) {
+                                let idx = template_data
+                                    .get_declaration_inputs()
+                                    .iter()
+                                    .find_map(|(s, idx)| (signal_name == s).then_some(*idx))
+                                    .expect("signal in mapping but not in declaration list");
+                                let call = CallOpRef::try_from(op_result_owner(*subcmp_value)?)?;
+                                assert!(call.callee_is_struct_compute());
+                                Ok(call.operand(idx)?)
+                            } else {
+                                anyhow::bail!(
+                                    "signal {signal_name} of subcomponent {name} is internal"
+                                );
+                            }
+                        },
+                        |fc, _| {
+                            let subcmp_value = fc.block_ctx.get_named_value(name)?;
+                            let template_data = fc
+                                .subcmp_calls
+                                .get(subcmp_value)
+                                .ok_or_else(|| {
+                                    anyhow::anyhow!(
+                                        "subcomponent call for {subcmp_value} not found"
+                                    )
+                                })
+                                .and_then(|name| {
+                                    codegen.find_template_data(name).ok_or_else(|| {
+                                        anyhow::anyhow!("template {name:?} not found")
+                                    })
+                                })?;
+                            if template_data.get_outputs().contains_key(signal_name) {
+                                fc.append_op_unnamed_result(r#struct::readf(
+                                    &OpBuilder::new(codegen.context),
+                                    codegen.location_from_meta(meta),
+                                    FeltType::new(codegen.context).into(),
+                                    *subcmp_value,
+                                    signal_name,
+                                )?)
+                            } else if template_data.get_inputs().contains_key(signal_name) {
+                                let idx = template_data
+                                    .get_declaration_inputs()
+                                    .iter()
+                                    .find_map(|(s, idx)| (signal_name == s).then_some(*idx))
+                                    .expect("signal in mapping but not in declaration list");
+                                let call = get_constrain_call(*subcmp_value)?;
+                                Ok(call.operand(idx + 1)?)
+                            } else {
+                                anyhow::bail!(
+                                    "signal {signal_name} of subcomponent {name} is internal"
+                                );
+                            }
+                        },
+                    ),
+                    _ => {
+                        unreachable!()
+                    }
+                }
+            }
+            Expression::Call { meta, id, args, .. }
+                if meta.get_type_knowledge().is_component()
+                    && codegen.program.contains_template(id) =>
+            {
+                let location = codegen.location_from_meta(meta);
+                let subcmp_type = codegen.struct_type_with_concrete_dimensions(id, args)?;
+                let arg_types = std::iter::once(Type::from(subcmp_type))
+                    .chain(codegen.get_template_input_types(id)?)
+                    .collect::<Vec<_>>();
+                // Undefs have unknown locations at creation and we set it when we encounter
+                // the corresponding write.
+                let unk = Location::unknown(codegen.context);
+                let builder = OpBuilder::new(codegen.context);
+
+                // Generate here the call to @compute and @constrain.
+                // Passing undefs to the methods. These undefs get associated with the
+                // signals of the subcomponent s.t. when we encounter an assignment
+                // to one of the signals we replace the undef with the actual value,
+                // similar to how we do for variables assignment.
+                template.and_then(
+                    |fc, _| {
+                        let undefs = fc.gen_arg_undefs(&arg_types[1..], unk)?;
+                        let val = fc.append_op_unnamed_result(
+                            function::call(
+                                &builder,
+                                location,
+                                SymbolRefAttribute::new(codegen.context, id, &["compute"]),
+                                &undefs,
+                                &[subcmp_type],
+                            )?
+                            .into(),
+                        )?;
+                        fc.subcmp_calls.insert(&val, id.clone());
+                        Ok(val)
+                    },
+                    |fc, _| {
+                        let undefs = fc.gen_arg_undefs(&arg_types, unk)?;
+                        let empty_result: [Type<'ctx>; 0] = [];
+                        fc.append_op_no_result(
+                            function::call(
+                                &builder,
+                                location,
+                                SymbolRefAttribute::new(codegen.context, id, &["constrain"]),
+                                &undefs,
+                                &empty_result,
+                            )?
+                            .into(),
+                        )?;
+                        fc.subcmp_calls.insert(&undefs[0], id.clone());
+                        // Return the reference to the subcomponent to match the result of
+                        // compute.
+                        Ok(undefs[0])
+                    },
+                )
+            }
+            // Delegate any other kind of expression to the implementation in `function.rs`.
+            expr => {
+                template.and_then_same(|fc, _| {
+                    // The import is here rather than top level because it is very important that
+                    // `gen_llzk_in_function()` is not used while translating statements.
+                    use crate::function::GenerateLLZKInFunction;
+                    expr.gen_llzk_in_function(codegen, fc)
+                })
+            }
+        }
     }
+}
+
+#[inline]
+/// Tries to obtain the owner operation of a [`Value`](melior::ir::Value).
+///
+/// This function works around a lifetime issue in [`OperationResult::owner`] that
+/// is resolved in [mlir-sys/melior#784](https://github.com/mlir-rs/melior/pull/784) but that
+/// we cannot benefit from yet.
+fn op_result_owner<'ctx, 'val, 'op: 'val>(
+    value: Value<'ctx, 'val>,
+) -> Result<OperationRef<'ctx, 'op>> {
+    if !value.is_operation_result() {
+        anyhow::bail!("Value {value} is not an operation result");
+    }
+    unsafe { OperationRef::from_option_raw(mlir_sys::mlirOpResultGetOwner(value.to_raw())) }
+        .ok_or_else(|| anyhow::anyhow!("owner of {value} is not a valid operation"))
+}
+
+#[inline]
+/// Looks for a call op to a constrain function where the given value is the first argument.
+///
+/// Fails if:
+///     - The value has more than one use.
+///     - The use is not a constrain call.
+///     - The used value is not the first operand.
+fn get_constrain_call<'ctx, 'op, 'val>(
+    value: Value<'ctx, 'val>,
+) -> Result<OperationRef<'ctx, 'op>> {
+    let owner: CallOpRef<'ctx, 'op> = get_single_user(value)?.try_into()?;
+    if !owner.callee_is_constrain() {
+        anyhow::bail!("operation {owner} is not a call to a constrain function");
+    }
+
+    let fst_operand = owner.operand(0)?;
+    if fst_operand != value {
+        anyhow::bail!("first operand {fst_operand} does not match target: {value}");
+    }
+
+    Ok(owner.into())
 }

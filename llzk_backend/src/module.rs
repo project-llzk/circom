@@ -3,47 +3,31 @@
 
 use crate::function::FunctionContext;
 use crate::function::GenerateLLZKInFunction as _;
+use crate::function_ext::FunctionLike;
+use crate::program_ext::ProgramLike;
 use crate::shared::map_name_to_arg_value;
 use crate::shared::LlzkCodegen;
+use crate::subcmp::unique_instance_types;
+use crate::subcmp::SubcmpDeclInfo;
 use crate::template::GenerateLLZKInTemplate as _;
 use crate::template::TemplateContext;
+use crate::template_ext::TemplateLike;
+use anyhow::bail;
 use anyhow::Result;
-use compiler::hir::very_concrete_program::TemplateInstance;
-use compiler::hir::very_concrete_program::Wire;
-use compiler::hir::very_concrete_program::VCF;
-use compiler::hir::very_concrete_program::VCP;
 use llzk::attributes::NamedAttribute;
+use llzk::builder::OpBuilder;
 use llzk::error::Error;
-use llzk::prelude::function;
-use llzk::prelude::poly;
 use llzk::prelude::r#struct::helpers::compute_fn;
 use llzk::prelude::r#struct::helpers::constrain_fn;
-use llzk::prelude::r#struct::{self};
-use llzk::prelude::Block;
-use llzk::prelude::BlockLike as _;
-use llzk::prelude::FuncDefOpRef;
-use llzk::prelude::FuncDefOpRefMut;
-use llzk::prelude::FunctionType;
-use llzk::prelude::Location;
-use llzk::prelude::Operation;
-use llzk::prelude::OperationLike as _;
-use llzk::prelude::PublicAttribute;
-use llzk::prelude::RegionLike;
-use llzk::prelude::StructDefOpLike as _;
-use llzk::prelude::Type;
+use llzk::prelude::*;
+use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
 use program_structure::ast::SignalType;
 use program_structure::ast::Statement;
 use program_structure::ast::VariableType;
-use program_structure::file_definition::FileID;
-use program_structure::file_definition::FileLibrary;
-use program_structure::function_data::FunctionData;
-use program_structure::program_archive::ProgramArchive;
-use program_structure::template_data::TemplateData;
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::slice;
 
 /// Information needed to create an LLZK struct function parameter collected from the input signal
 /// Declaration statements within a circom template.
@@ -71,12 +55,44 @@ pub struct DeclarationInfo<'ctx> {
     struct_fields: Vec<Result<Operation<'ctx>, Error>>,
     /// Map var/signal name to its LLZK declaration Operation (usually `undef.undef`).
     decl_inits: HashMap<String, Operation<'ctx>>,
+    /// Map `component` name to its declaration information.
+    subcmp_decls: HashMap<String, SubcmpDeclInfo<'ctx>>,
 }
 
 impl<'ctx> DeclarationInfo<'ctx> {
+    /// Completes the declaration information from the information collected from the
+    /// subcomponents.
+    ///
+    /// Returns a vector with an associative list of names to the type of the declaration.
+    ///
+    /// Currently handles declaration of scalar subcomponents and array subcomponents of the same
+    /// type.
+    fn complete(&mut self) -> Vec<(String, Type<'ctx>)> {
+        let mut ops = vec![];
+        for (name, info) in &self.subcmp_decls {
+            let instances = info.instances();
+            let field_type: Type<'_> = match instances {
+                [] => todo!("Handle uninitialized component decl"),
+                [t] => (*t).into(),
+                instances => {
+                    let types = unique_instance_types(instances);
+                    if types.len() > 1 {
+                        todo!("Handle array subcomponents")
+                    }
+                    ArrayType::new(types[0].into(), info.dimensions()).into()
+                }
+            };
+            self.struct_fields.push(
+                r#struct::field(info.location(), name, field_type, false, false).map(Into::into),
+            );
+            ops.push((name.clone(), field_type));
+        }
+        ops
+    }
+
     /// Visit all statements in the body of the template and return a new [DeclarationInfo]
     /// with any declarations found.
-    fn from_template(
+    pub(crate) fn from_template(
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         template: &impl TemplateLike,
     ) -> Result<DeclarationInfo<'ctx>> {
@@ -87,7 +103,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
         Ok(declarations)
     }
 
-    /// Visit a statement and populate this [DeclarationInfo] with any declarations found.
+    /// Visit a statement and populate this `DeclarationInfo` with any declarations found.
     ///
     /// TODO: This currently visits only top-level statements within the template body. However,
     /// since circom 2.1.5, signal declarations are allowed inside of blocks and known-condition if
@@ -148,15 +164,63 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         Ok(())
                     }
                     VariableType::Component => {
-                        todo!("Handle component declaration in template")
+                        self.visit_component_decl(codegen, meta, name, dimensions)
                     }
                     VariableType::AnonymousComponent => {
                         unreachable!("removed by 'syntax_sugar_remover'")
                     }
                 }
             }
+            Statement::Substitution { var, op, rhe, .. }
+                if matches!(op, AssignOp::AssignVar) && self.subcmp_decls.contains_key(var) =>
+            {
+                let struct_type = Self::find_subcmp_ctor_call(codegen, rhe)?;
+                self.subcmp_decls.entry(var.clone()).and_modify(|info| {
+                    info.instances_mut().push(struct_type);
+                });
+
+                Ok(())
+            }
             _ => Ok(()),
         }
+    }
+
+    /// Searches in an [`Expression`] for a call to a subcomponent's constructor.
+    ///
+    /// In this context, constructor refers to `Foo(n)` in Circom, not `@Foo::@compute` in LLZK.
+    fn find_subcmp_ctor_call<'ast>(
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        expression: &'ast Expression,
+    ) -> Result<StructType<'ctx>> {
+        match expression {
+            Expression::Call { meta, id, args, .. } if meta.get_type_knowledge().is_component() => {
+                codegen.struct_type_with_concrete_dimensions(id, args)
+            }
+            _ => bail!("expected call expression for subcomponent substitution rhe"),
+        }
+    }
+
+    /// [`visit`](Self::visit) helper for component declarations.
+    fn visit_component_decl(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        meta: &Meta,
+        name: &str,
+        dimensions: &[Expression],
+    ) -> Result<()> {
+        let location = codegen.location_from_meta(meta);
+
+        if self
+            .subcmp_decls
+            .insert(
+                name.to_owned(),
+                SubcmpDeclInfo::new(codegen.try_dimensions_to_attrs(dimensions)?, location),
+            )
+            .is_some()
+        {
+            bail!("Subcomponent {name} declared twice");
+        }
+        Ok(())
     }
 
     /// `visit()` helper for Signal and Bus VariableType.
@@ -176,7 +240,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     }
 
     /// `visit()` helper for Signal and Bus VariableType.
-    fn visit_signal_or_bus_impl(
+    pub(crate) fn visit_signal_or_bus_impl(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         signal_type: &SignalType,
@@ -209,71 +273,6 @@ impl<'ctx> DeclarationInfo<'ctx> {
         codegen.new_nondet_at_location(location, decl_type).map(|op| {
             self.decl_inits.insert(name.clone(), op);
         })
-    }
-}
-
-/// A trait that allows common handling of the structs used to represent a circom
-/// function at different stages in the compilation process.
-pub trait FunctionLike {
-    /// Generate the LLZK Location for the function definition.
-    fn get_location<'ctx>(
-        &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    ) -> Location<'ctx>;
-    /// Get the name of the function.
-    fn get_name(&self) -> &str;
-    /// Get the number of parameters of the function.
-    fn get_num_of_params(&self) -> usize;
-    /// Get the names of the parameters of the function.
-    fn get_name_of_params(&self) -> Vec<String>;
-    /// Get the body statements of the function.
-    fn get_body(&self) -> &[Statement];
-}
-
-impl FunctionLike for FunctionData {
-    fn get_location<'ctx>(
-        &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    ) -> Location<'ctx> {
-        codegen.location(self.get_file_id(), self.get_param_location())
-    }
-    fn get_name(&self) -> &str {
-        self.get_name()
-    }
-    fn get_num_of_params(&self) -> usize {
-        self.get_num_of_params()
-    }
-    fn get_name_of_params(&self) -> Vec<String> {
-        self.get_name_of_params().clone()
-    }
-    fn get_body(&self) -> &[Statement] {
-        self.get_body_as_vec()
-    }
-}
-
-impl FunctionLike for VCF {
-    fn get_location<'ctx>(
-        &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    ) -> Location<'ctx> {
-        codegen.location_unknown()
-    }
-    fn get_name(&self) -> &str {
-        &self.header
-    }
-    fn get_num_of_params(&self) -> usize {
-        self.params_types.len()
-    }
-    fn get_name_of_params(&self) -> Vec<String> {
-        self.params_types.iter().map(|p| p.name.clone()).collect()
-    }
-    fn get_body(&self) -> &[Statement] {
-        // In VCF format, the function body is wrapped in a Block that conveys no additional
-        // information but will cause returns to generate `scf.yield`` instead of `function.return`.
-        match &self.body {
-            Statement::Block { stmts, .. } => return stmts,
-            b => slice::from_ref(b),
-        }
     }
 }
 
@@ -310,106 +309,14 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
     func_like.get_body().gen_llzk_in_function(codegen, &mut func_context)
 }
 
-/// A trait that allows common handling of the structs used to represent a circom
-/// template at different stages in the compilation process.
-pub trait TemplateLike: std::fmt::Debug {
-    /// Generate the LLZK Location for the template definition.
-    fn get_location<'ctx>(
-        &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    ) -> Location<'ctx>;
-    /// Get the name of the template.
-    fn get_name(&self) -> &str;
-    /// Get the names of the parameters of the template.
-    fn get_name_of_params(&self) -> &[String];
-    /// Get the body statements of the template.
-    fn get_body(&self) -> &[Statement];
-    /// Construct [DeclarationInfo] containing var and signal declarations
-    /// found in this template body.
-    fn get_declarations<'ctx>(
-        &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    ) -> Result<DeclarationInfo<'ctx>>;
-}
-
-impl TemplateLike for TemplateData {
-    fn get_location<'ctx>(
-        &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    ) -> Location<'ctx> {
-        codegen.location(self.get_file_id(), self.get_param_location())
-    }
-    fn get_name(&self) -> &str {
-        self.get_name()
-    }
-    fn get_name_of_params(&self) -> &[String] {
-        self.get_name_of_params()
-    }
-    fn get_body(&self) -> &[Statement] {
-        self.get_body_as_vec()
-    }
-    fn get_declarations<'ctx>(
-        &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    ) -> Result<DeclarationInfo<'ctx>> {
-        DeclarationInfo::from_template(codegen, self)
-    }
-}
-
-impl TemplateLike for TemplateInstance {
-    fn get_location<'ctx>(
-        &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    ) -> Location<'ctx> {
-        codegen.location_unknown()
-    }
-    fn get_name(&self) -> &str {
-        &self.template_name
-    }
-    fn get_name_of_params(&self) -> &[String] {
-        &[]
-    }
-    fn get_body(&self) -> &[Statement] {
-        slice::from_ref(&self.code)
-    }
-    fn get_declarations<'ctx>(
-        &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    ) -> Result<DeclarationInfo<'ctx>> {
-        let mut declarations = DeclarationInfo::from_template(codegen, self)?;
-        for w in &self.wires {
-            match w {
-                Wire::TSignal(signal) => declarations.visit_signal_or_bus_impl(
-                    codegen,
-                    &signal.xtype,
-                    &signal.name,
-                    self.get_location(codegen),
-                    codegen
-                        .type_from_dimension_consts(codegen.felt_type().into(), &signal.lengths)?,
-                )?,
-                Wire::TBus(bus) => declarations.visit_signal_or_bus_impl(
-                    codegen,
-                    &bus.xtype,
-                    &bus.name,
-                    self.get_location(codegen),
-                    codegen.type_from_dimension_consts(
-                        codegen.struct_type(&bus.name).into(),
-                        &bus.lengths,
-                    )?,
-                )?,
-            }
-        }
-        Ok(declarations)
-    }
-}
-
 /// Generate LLZK for a template-like construct. Helper to avoid code duplication.
 fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     template_like: &'ast T,
     codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
 ) -> Result<()> {
     // Collect declarations first to determine struct fields and function parameters.
-    let declarations = template_like.get_declarations(codegen)?;
+    let mut declarations = template_like.get_declarations(codegen)?;
+    let subcmps = declarations.complete();
 
     // Generate the struct definition, prepopulated with fields.
     let struct_loc = template_like.get_location(codegen);
@@ -480,98 +387,34 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         // Insert the declaration into the constrain function.
         constrain_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op))?;
     }
+    let op_builder = OpBuilder::new(codegen.context);
+    let subcmp_decls = declarations.subcmp_decls;
+    // Insert the Operations created from subcomponent Declaration statements and map the
+    // circom variable name to a LLZK op result Value.
+    for (name, subcmp_type) in subcmps {
+        compute_ctx.block_ctx.declare_name_if_not_present(&name, || {
+            Ok(undef::undef(Location::unknown(codegen.context), subcmp_type))
+        })?;
+
+        let self_ref = *constrain_ctx.block_ctx.get_named_value("**self**")?;
+        constrain_ctx.block_ctx.declare_name_if_not_present(&name, || {
+            Ok(r#struct::readf(
+                &op_builder,
+                subcmp_decls[&name].location(),
+                subcmp_type,
+                self_ref,
+                &name,
+            )?)
+        })?;
+    }
+
+    let subcmp_names = subcmp_decls.into_keys().collect();
 
     // Visit the body of the template and generate LLZK IR for it within the struct functions.
-    let template_context = TemplateContext::new(new_struct, compute_ctx, constrain_ctx);
-    template_like.get_body().gen_llzk_in_template(codegen, &template_context)
-}
-
-/// Helper function to sort a vector of &FunctionLike by name.
-#[inline]
-fn sort_functions_by_name<T: FunctionLike>(functions: &mut [&T]) {
-    functions.sort_by(|a, b| a.get_name().cmp(b.get_name()));
-}
-
-/// Helper function to sort a vector of &TemplateLike by name.
-#[inline]
-fn sort_templates_by_name<T: TemplateLike>(templates: &mut [&T]) {
-    templates.sort_by(|a, b| a.get_name().cmp(b.get_name()));
-}
-
-/// A trait that allows common handling of the structs used to represent a circom
-/// program at different stages in the compilation process.
-pub trait ProgramLike {
-    /// Get the file library of the program.
-    fn get_file_library(&self) -> &FileLibrary;
-    /// Get the FileID of the file containing the "main" declaration.
-    fn get_main_file_id(&self) -> &FileID;
-    /// Get the names of public inputs of the main component.
-    fn get_main_public_inputs(&self) -> &Vec<String>;
-    /// Get an iterator over all functions in the program.
-    fn get_functions(&self, sorted: bool) -> impl IntoIterator<Item = &impl FunctionLike>;
-    /// Get an iterator over all templates in the program.
-    fn get_templates(&self, sorted: bool) -> impl IntoIterator<Item = &impl TemplateLike>;
-}
-
-impl ProgramLike for ProgramArchive {
-    fn get_file_library(&self) -> &FileLibrary {
-        &self.file_library
-    }
-    fn get_main_file_id(&self) -> &FileID {
-        self.get_file_id_main()
-    }
-    fn get_main_public_inputs(&self) -> &Vec<String> {
-        self.get_public_inputs_main_component()
-    }
-    fn get_functions(&self, sorted: bool) -> impl IntoIterator<Item = &impl FunctionLike> {
-        let mut functions: Vec<_> = self.functions.values().collect();
-        if sorted {
-            sort_functions_by_name(&mut functions);
-        }
-        functions
-    }
-    fn get_templates(&self, sorted: bool) -> impl IntoIterator<Item = &impl TemplateLike> {
-        let mut templates: Vec<_> = self.templates.values().collect();
-        if sorted {
-            sort_templates_by_name(&mut templates);
-        }
-        templates
-    }
-}
-
-/// A wrapper around a VCP that also includes the public inputs for the main component.
-#[derive(Debug)]
-pub struct VCPPlus<'ctx> {
-    /// Reference to the [VCP].
-    pub vcp: &'ctx VCP,
-    /// Names of public inputs of the main component.
-    pub public_inputs: Vec<String>,
-}
-
-impl ProgramLike for VCPPlus<'_> {
-    fn get_file_library(&self) -> &FileLibrary {
-        &self.vcp.file_library
-    }
-    fn get_main_file_id(&self) -> &FileID {
-        &self.vcp.main_id
-    }
-    fn get_main_public_inputs(&self) -> &Vec<String> {
-        &self.public_inputs
-    }
-    fn get_functions(&self, sorted: bool) -> impl IntoIterator<Item = &impl FunctionLike> {
-        let mut functions: Vec<_> = self.vcp.functions.iter().collect();
-        if sorted {
-            sort_functions_by_name(&mut functions);
-        }
-        functions
-    }
-    fn get_templates(&self, sorted: bool) -> impl IntoIterator<Item = &impl TemplateLike> {
-        let mut templates: Vec<_> = self.vcp.templates.iter().collect();
-        if sorted {
-            sort_templates_by_name(&mut templates);
-        }
-        templates
-    }
+    let template_context =
+        TemplateContext::new(new_struct, compute_ctx, constrain_ctx, &subcmp_names);
+    template_like.get_body().gen_llzk_in_template(codegen, &template_context)?;
+    template_context.finalize(codegen)
 }
 
 /// A trait to generate LLZK IR for structural elements of the circom AST:
