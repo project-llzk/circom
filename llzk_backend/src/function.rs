@@ -1301,12 +1301,9 @@ where
                         llzk::dialect::array::ArrayCtor::Values(&[]),
                     ))?;
                     for (idx, val) in values.iter().enumerate() {
-                        let idx_attr = codegen.index_attr(i64::try_from(idx)?);
-                        let idx_val = function.append_op_unnamed_result(arith::constant(
-                            codegen.context,
-                            idx_attr.into(),
-                            location,
-                        ))?;
+                        let idx_val = function.append_op_unnamed_result(
+                            codegen.new_index_const_op(i64::try_from(idx)?, location),
+                        )?;
                         function.append_op_no_result(array::insert(
                             location,
                             new_arr,
@@ -1334,9 +1331,7 @@ where
                 let val = value.gen_llzk_in_function(codegen, function)?;
                 let dim = codegen.convert_dim_expr(dimension)?;
                 let const_dim = IntegerAttribute::try_from(dim);
-                let subarr_ty = ArrayType::try_from(val.r#type());
-
-                if let Ok(subarr_ty) = subarr_ty {
+                if let Ok(subarr_ty) = ArrayType::try_from(val.r#type()) {
                     let arr_ty = new_array_type(dim, &subarr_ty);
                     // The array.new constructor doesn't accept arrays as initializer values,
                     // so we instead create the array empty and use array.insert to insert values.
@@ -1348,12 +1343,9 @@ where
                     ))?;
                     if let Ok(const_dim) = const_dim {
                         for idx in 0..const_dim.value() {
-                            let idx_attr = codegen.index_attr(idx);
-                            let idx_val = function.append_op_unnamed_result(arith::constant(
-                                codegen.context,
-                                idx_attr.into(),
-                                location,
-                            ))?;
+                            let idx_val = function.append_op_unnamed_result(
+                                codegen.new_index_const_op(idx, location),
+                            )?;
                             function.append_op_no_result(array::insert(
                                 location,
                                 new_arr,

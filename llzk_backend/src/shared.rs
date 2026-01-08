@@ -234,30 +234,6 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         dimensions.iter().map(|e| self.convert_dim_expr(e)).collect()
     }
 
-    /// Create an LLZK operation that produces a boolean constant value.
-    pub fn new_bool_const_op(&self, val: bool, location: Location<'ctx>) -> Operation<'ctx> {
-        arith::constant(self.context, BoolAttribute::new(self.context, val).into(), location)
-    }
-
-    /// Generate a `felt.const` operation from a BigInt. Returns an `Err` result if unsuccessful
-    /// or if the number of bits required to represent the BigInt does not fit in 32 bits.
-    pub fn new_felt_const_op(
-        &self,
-        val: &BigInt,
-        location: Location<'ctx>,
-    ) -> Result<Operation<'ctx>> {
-        // ASSERT: The circom parser always produces non-negative constants. These can be negated
-        // via PrefixOp but negative BigInt constants are never created directly.
-        assert_ne!(val.sign(), num_bigint_dig::Sign::Minus, "Felt constants must be non-negative");
-        let attr = FeltConstAttribute::parse(
-            self.context,
-            // use required bits +1 to ensure unsigned representation
-            u32::try_from(val.bits())? + 1,
-            val.to_string().as_str(),
-        );
-        felt::constant(location, attr).map_err(Into::into)
-    }
-
     /// Create an LLZK operation that produces a nondeterministic value of the given type.
     pub fn new_nondet_at_location(
         &self,
@@ -328,6 +304,51 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         T: Into<i64>,
     {
         IntegerAttribute::new(self.index_type(), integer.into())
+    }
+
+    /// Create an LLZK operation that produces a boolean constant value.
+    #[inline]
+    pub fn new_bool_const_op(&self, val: bool, location: Location<'ctx>) -> Operation<'ctx> {
+        arith::constant(self.context, BoolAttribute::new(self.context, val).into(), location)
+    }
+
+    /// Create an LLZK operation that produces an integer constant value.
+    #[inline]
+    pub fn new_int_const_op(
+        &self,
+        ty: Type<'ctx>,
+        val: i64,
+        location: Location<'ctx>,
+    ) -> Operation<'ctx> {
+        arith::constant(self.context, IntegerAttribute::new(ty, val).into(), location)
+    }
+
+    /// Create an LLZK operation that produces an index constant value.
+    #[inline]
+    pub fn new_index_const_op<T>(&self, val: T, location: Location<'ctx>) -> Operation<'ctx>
+    where
+        T: Into<i64>,
+    {
+        arith::constant(self.context, self.index_attr(val).into(), location)
+    }
+
+    /// Generate a `felt.const` operation from a BigInt. Returns an `Err` result if unsuccessful
+    /// or if the number of bits required to represent the BigInt does not fit in 32 bits.
+    pub fn new_felt_const_op(
+        &self,
+        val: &BigInt,
+        location: Location<'ctx>,
+    ) -> Result<Operation<'ctx>> {
+        // ASSERT: The circom parser always produces non-negative constants. These can be negated
+        // via PrefixOp but negative BigInt constants are never created directly.
+        assert_ne!(val.sign(), num_bigint_dig::Sign::Minus, "Felt constants must be non-negative");
+        let attr = FeltConstAttribute::parse(
+            self.context,
+            // use required bits +1 to ensure unsigned representation
+            u32::try_from(val.bits())? + 1,
+            val.to_string().as_str(),
+        );
+        felt::constant(location, attr).map_err(Into::into)
     }
 
     /// Run cleanup passes on the generated `Module`.
