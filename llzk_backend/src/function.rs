@@ -402,7 +402,10 @@ where
 
         macro_rules! try_bool_op {
             ($op_path:path) => {{
-                try_callback_for_type!(shared::is_bool, generic_op_callback!($op_path));
+                let loc = codegen.location_from_meta(meta);
+                let lhs = self.cast_to_bool_if_needed(codegen, loc, lhs)?;
+                let rhs = self.cast_to_bool_if_needed(codegen, loc, rhs)?;
+                return self.append_op_unnamed_result($op_path(loc, lhs, rhs)?);
             }};
         }
 
