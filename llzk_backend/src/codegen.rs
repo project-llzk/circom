@@ -41,16 +41,18 @@ pub fn generate_llzk(
         eprintln!("{}", Color::Red.paint("Generated LLZK IR is invalid"));
         eprintln!("{err}");
         eprintln!("{}", codegen.module.as_operation());
-        return Err(());
+        std::process::exit(2); // force exit to avoid hang if MLIR state is inconsistent
     }
 
     // Run user-specified MLIR pass pipeline
     codegen.run_passes(pass_pipeline).map_err(|err| {
         eprintln!("{} {err}", Color::Red.paint("Failed to run pass pipeline:"));
+        std::process::exit(3); // force exit to avoid hang if MLIR state is inconsistent
     })?;
 
     // Write module to file
     codegen.write_to_file(filename).map_err(|err| {
         eprintln!("{} {err}", Color::Red.paint("Failed to write LLZK IR:"));
+        std::process::exit(4); // force exit to avoid hang if MLIR state is inconsistent
     })
 }
