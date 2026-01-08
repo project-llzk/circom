@@ -50,15 +50,16 @@ component main = Multiplier3();
 // CHECK-DAG:       struct.field @out : !felt.type {llzk.pub}
 // CHECK-DAG:       struct.field @mult2 : !struct.type<@Multiplier2<[]>>
 // CHECK-DAG:       struct.field @mult1 : !struct.type<@Multiplier2<[]>>
-// CHECK-NEXT:      function.def @compute(%[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_10:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_11:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Multiplier3<[]>> attributes {function.allow_witness} {
+// CHECK-LABEL:      function.def @compute(
+// CHECK-SAME:          %[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_10:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_11:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Multiplier3<[]>> attributes {function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = struct.new : <@Multiplier3<[]>>
 // CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = function.call @Multiplier2::@compute(%[[VAL_9]], %[[VAL_10]]) : (!felt.type, !felt.type) -> !struct.type<@Multiplier2<[]>>
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_13]][@out] : <@Multiplier2<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = function.call @Multiplier2::@compute(%[[VAL_14]], %[[VAL_11]]) : (!felt.type, !felt.type) -> !struct.type<@Multiplier2<[]>>
 // CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_15]][@out] : <@Multiplier2<[]>>, !felt.type
 // CHECK-NEXT:        struct.writef %[[VAL_12]][@out] = %[[VAL_16]] : <@Multiplier3<[]>>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_12]][@mult1] = %[[VAL_13]] : <@Multiplier3<[]>>, !struct.type<@Multiplier2<[]>>
-// CHECK-NEXT:        struct.writef %[[VAL_12]][@mult2] = %[[VAL_15]] : <@Multiplier3<[]>>, !struct.type<@Multiplier2<[]>>
+// CHECK-DAG:        struct.writef %[[VAL_12]][@mult1] = %[[VAL_13]] : <@Multiplier3<[]>>, !struct.type<@Multiplier2<[]>>
+// CHECK-DAG:        struct.writef %[[VAL_12]][@mult2] = %[[VAL_15]] : <@Multiplier3<[]>>, !struct.type<@Multiplier2<[]>>
 // CHECK-NEXT:        function.return %[[VAL_12]] : !struct.type<@Multiplier3<[]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain(
