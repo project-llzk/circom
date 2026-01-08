@@ -59,6 +59,8 @@ use llzk::prelude::ValueLike as _;
 use llzk::prelude::WalkOrder;
 use llzk::prelude::WalkResult;
 use melior::dialect::ods::math;
+use num_bigint_dig::BigInt;
+use num_traits::Zero;
 use program_structure::ast::Access;
 use program_structure::ast::Expression;
 use program_structure::ast::ExpressionInfixOpcode;
@@ -269,9 +271,23 @@ where
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
-        if !is_bool(val.r#type()) {
-            self.append_op_unnamed_result(cast::toint(location, codegen.bool_type(), val).into())
+        // The conversion to bool is simply to check `!=0` which is the same as
+        // `normalize()` in `modular_arithmetic.rs`.
+        if is_felt(val.r#type()) {
+            let zero = self
+                .append_op_unnamed_result(codegen.new_felt_const_op(&BigInt::zero(), location)?)?;
+            self.append_op_unnamed_result(bool::ne(location, val, zero)?)
+        } else if is_index(val.r#type()) {
+            let zero = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
+            self.append_op_unnamed_result(index::cmp(
+                codegen.context,
+                arith::CmpiPredicate::Ne,
+                val,
+                zero,
+                location,
+            ))
         } else {
+            assert!(is_bool(val.r#type()));
             Ok(val)
         }
     }
