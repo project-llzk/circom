@@ -1104,6 +1104,41 @@ where
     Ok(())
 }
 
+/// Generate LLZK code for a circom [Statement::While].
+fn gen_while<'ast, 'ctx, 'func, 'blk, 'val>(
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    meta: &Meta,
+    cond: &Expression,
+    body_stmt: &Box<Statement>,
+) -> Result<()>
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    // Generate the loop condition (i.e. "before") and body (i.e. "after") blocks naively.
+    let mut loop_cond_info = NestedBlockInfo::default();
+    let cond_result = function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        loop_cond_info.block,
+        |fc| cond.gen_llzk_in_function(codegen, fc),
+        &mut loop_cond_info,
+    )?;
+    let mut loop_body_info = NestedBlockInfo::default();
+    function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        loop_body_info.block,
+        |fc| body_stmt.gen_llzk_in_function(codegen, fc),
+        &mut loop_body_info,
+    )?;
+    function.gen_scf_while(
+        codegen,
+        codegen.location_from_meta(meta),
+        cond_result,
+        loop_cond_info,
+        loop_body_info,
+    )
+}
+
 impl<'ctx, 'func, 'blk, 'val> GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val> for Statement
 where
     'ctx: 'func,
@@ -1191,9 +1226,7 @@ where
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
                 gen_if_then_else(codegen, function, meta, cond, if_case, else_case)
             }
-            Statement::While { meta, cond, stmt } => {
-                todo!("Handle while statement in function")
-            }
+            Statement::While { meta, cond, stmt } => gen_while(codegen, function, meta, cond, stmt),
             Statement::Return { meta, value } => {
                 let value = value.gen_llzk_in_function(codegen, function)?;
                 let location = codegen.location_from_meta(meta);
