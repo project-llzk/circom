@@ -1,8 +1,6 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
-// XFAIL:.*
-// TODO: the calls to `@B::*` within `@Call1::*` incorrectly use `(n, undef)` instead of `(m, n)` for the inputs
 
 pragma circom 2.0.0;
 
@@ -61,7 +59,7 @@ component main = Call1();
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[V_15:[0-9a-zA-Z_\.]+]]: !struct.type<@Call1<[]>>, %[[V_16:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_17:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
 // CHECK-NEXT:        %[[V_18:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_15]][@a] : <@Call1<[]>>, !struct.type<@B<[]>>
-// CHECK-NEXT:        function.call @B::@constrain(%[[V_18]], %[[V_15]], %[[V_16]]) : (!struct.type<@B<[]>>, !felt.type, !felt.type) -> ()
+// CHECK-NEXT:        function.call @B::@constrain(%[[V_18]], %[[V_16]], %[[V_17]]) : (!struct.type<@B<[]>>, !felt.type, !felt.type) -> ()
 // CHECK-NEXT:        %[[V_20:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_18]][@x] : <@B<[]>>, !felt.type
 // CHECK-NEXT:        %[[V_21:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_15]][@y] : <@Call1<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[V_21]], %[[V_20]] : !felt.type, !felt.type
