@@ -6,6 +6,7 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![warn(redundant_imports)]
 #![deny(unused_must_use)]
+#![allow(clippy::useless_conversion)]
 
 mod codegen;
 mod function;

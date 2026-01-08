@@ -396,7 +396,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         })?;
     }
 
-    let subcmp_names = subcmp_decls.into_iter().map(|(name, _)| name).collect();
+    let subcmp_names = subcmp_decls.into_keys().collect();
 
     // Visit the body of the template and generate LLZK IR for it within the struct functions.
     let template_context =

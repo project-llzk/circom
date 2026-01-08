@@ -151,7 +151,8 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
         }
     }
 
-    /// Finalizes the context by emitting the final write operations that write subcomponent declarations to the declaring component.
+    /// Finalizes the context by emitting the final write operations that write subcomponent
+    /// declarations to the declaring component.
     pub fn finalize(self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Result<()> {
         let subcmps = self.subcmps;
         self.and_then(
@@ -1169,7 +1170,7 @@ where
                     .collect::<Vec<_>>();
                 // Undefs have unknown locations at creation and we set it when we encounter
                 // the corresponding write.
-                let unk = Location::unknown(&codegen.context);
+                let unk = Location::unknown(codegen.context);
                 let builder = OpBuilder::new(codegen.context);
 
                 // Generate here the call to @compute and @constrain.

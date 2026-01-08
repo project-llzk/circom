@@ -67,7 +67,7 @@ impl FunctionLike for VCF {
         // In VCF format, the function body is wrapped in a Block that conveys no additional
         // information but will cause returns to generate `scf.yield`` instead of `function.return`.
         match &self.body {
-            Statement::Block { stmts, .. } => return stmts,
+            Statement::Block { stmts, .. } => stmts,
             b => slice::from_ref(b),
         }
     }

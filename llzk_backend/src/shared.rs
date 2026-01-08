@@ -374,13 +374,13 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         dimensions: &[Expression],
     ) -> Result<StructType<'ctx>> {
         if dimensions.is_empty() {
-            Ok(StructType::from_str(&self.context, name))
+            Ok(StructType::from_str(self.context, name))
         } else {
             let attrs = dimensions
                 .iter()
                 .map(|e| self.convert_dim_expr(e))
                 .collect::<Result<Vec<_>, _>>()?;
-            Ok(StructType::new(FlatSymbolRefAttribute::new(&self.context, name), &attrs))
+            Ok(StructType::new(FlatSymbolRefAttribute::new(self.context, name), &attrs))
         }
     }
 
