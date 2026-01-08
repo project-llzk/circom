@@ -33,6 +33,7 @@ pub fn generate_llzk(
 
     program.gen_llzk(&codegen).map_err(|err| {
         eprintln!("{} {err}", Color::Red.paint("Failed to generate LLZK IR:"));
+        std::process::exit(1); // force exit to avoid hang if MLIR state is inconsistent
     })?;
 
     // Verify the module

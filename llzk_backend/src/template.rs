@@ -801,7 +801,7 @@ where
                                 )
                             }
                         } else {
-                            todo!("Generate array write operation in template");
+                            anyhow::bail!("Array write in template not yet supported for AssignVar: {access:?}");
                         }
                     }
                     AssignOp::AssignSignal => {
@@ -871,7 +871,7 @@ where
                                         )
                                     })
                             }
-                            _ => todo!("Generate array write operation in template: {access:?}"),
+                            _ => anyhow::bail!("Array write in template not yet supported for AssignSignal: {access:?}")
                         }
                     }
                     AssignOp::AssignConstraintSignal => {
@@ -964,7 +964,7 @@ where
                                     },
                                 )
                             }
-                            _ => todo!("Generate array write operation in template: {access:?}"),
+                            _ => anyhow::bail!("Array write in template not yet supported for AssignConstraintSignal: {access:?}")
                         }
                     }
                 }
