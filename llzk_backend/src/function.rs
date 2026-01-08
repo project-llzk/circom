@@ -17,7 +17,6 @@ use crate::shared::is_felt;
 use crate::shared::is_index;
 use crate::shared::is_scf_yield;
 use crate::shared::new_array_type;
-use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
 use crate::shared::replace_uses_with_new_block_argument;
 use crate::shared::set_operand_if_undef;
@@ -1215,7 +1214,9 @@ where
             Expression::Number(meta, big_int) => {
                 // Convert the BigInt to an LLZK `felt.const` op. The user of the Expression is
                 // responsible for converting this `felt.type` value to another type if needed.
-                function.append_op_unnamed_result(new_felt_const_op(codegen, meta, big_int)?)
+                function.append_op_unnamed_result(
+                    codegen.new_felt_const_op(big_int, codegen.location_from_meta(meta))?,
+                )
             }
             Expression::Variable { meta, name, access } => match access.as_slice() {
                 [] => {
