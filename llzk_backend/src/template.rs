@@ -294,10 +294,10 @@ trait ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r> {
     ) -> Self;
 }
 
-/// Support [Chainable::and_then] producing [GenResultSingleVal] which allows for chaining another
-/// generator function on this result.
-impl<'ctx, 'str, 'func, 'blk, 'val, 'r> ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>
-    for GenResultSingleVal<'ctx, 'str, 'func, 'blk, 'val, 'r>
+/// Support [Chainable::and_then] producing a [GenResult]. This allows for chaining another
+/// generator function on this result whose input is `ResultType`.
+impl<'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType> ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>
+    for GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType>
 where
     'ctx: 'str,
     'str: 'func,
@@ -305,14 +305,18 @@ where
     'blk: 'val,
     'val: 'r,
 {
-    type HandlerOutput = Value<'ctx, 'val>;
+    type HandlerOutput = ResultType;
 
     fn produce(
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
         compute_res: ShouldGenerate<Self::HandlerOutput>,
         constrain_res: ShouldGenerate<Self::HandlerOutput>,
     ) -> Self {
-        GenResultSingleVal { template, compute_res, constrain_res }
+        GenResult::<'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType> {
+            template,
+            compute_res,
+            constrain_res,
+        }
     }
 }
 
