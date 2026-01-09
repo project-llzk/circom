@@ -43,7 +43,9 @@ use melior::ir::Module;
 use melior::utility;
 use num_bigint_dig::BigInt;
 use num_bigint_dig::BigUint;
+use num_bigint_dig::IntoBigInt;
 use num_bigint_dig::IntoBigUint;
+use num_bigint_dig::ModInverse;
 use num_traits::cast::ToPrimitive;
 use num_traits::One;
 use num_traits::Zero;
@@ -161,6 +163,115 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         Ok(f.into())
     }
 
+    /// Try to statically compute the value of a circom [Expression] used as an array
+    /// dimension. This is computed in a separate function so that nested expressions
+    /// return BigUint results instead of IntegerAttributes.
+    ///
+    /// Returns `None` if the expression cannot be computed statically, Some(BigUint)
+    /// if the computation is successful, and an error if a conversion error occurs
+    /// along the way.
+    fn try_compute_dim_expr(&self, expr: &Expression) -> Result<Option<BigUint>> {
+        match expr {
+            Expression::Number(_,  big_int) => {
+                let v = big_int % self.prime()?.into_bigint().unwrap();
+                Ok(Some(v.into_biguint().unwrap()))
+            }
+            Expression::InfixOp { lhe, infix_op, rhe, .. } => {
+                let lhs = self.try_compute_dim_expr(lhe)?;
+                let rhs = self.try_compute_dim_expr(rhe)?;
+                match (lhs, rhs) {
+                    (Some(lhs), Some(rhs)) => {
+                        // Perform the arithmetic
+                        let m = self.prime()?;
+                        let nonzero = |x| x != BigUint::zero();
+                        let bool_to_biguint = |b| (b as i64).into_biguint().unwrap();
+                        let res = match infix_op {
+                            ExpressionInfixOpcode::Mul => (lhs * rhs) % m,
+                            ExpressionInfixOpcode::Div => {
+                                let rhs_inv = rhs.mod_inverse(&m).expect("failed to compute inverse").to_biguint().unwrap();
+                                (lhs * rhs_inv) % m
+                            },
+                            ExpressionInfixOpcode::Add => (lhs + rhs) % m,
+                            ExpressionInfixOpcode::Sub => (lhs + (&m - rhs)) % m,
+                            ExpressionInfixOpcode::Pow => lhs.modpow(&rhs, &m),
+                            ExpressionInfixOpcode::IntDiv => (lhs / rhs) % m,
+                            ExpressionInfixOpcode::Mod => lhs % rhs,
+                            ExpressionInfixOpcode::ShiftL => (lhs << rhs.to_usize().unwrap()) % m,
+                            ExpressionInfixOpcode::ShiftR => (lhs >> rhs.to_usize().unwrap()) % m,
+                            // Comparison operators are performed based on a signed interpretation
+                            // of the field elements as defined by the `relational_val` function, according
+                            // to the circom spec.
+                            ExpressionInfixOpcode::LesserEq => {
+                                let res = relational_val(&lhs, &m) <= relational_val(&rhs, &m);
+                                bool_to_biguint(res)
+                            },
+                            ExpressionInfixOpcode::GreaterEq => {
+                                let res = relational_val(&lhs, &m) >= relational_val(&rhs, &m);
+                                bool_to_biguint(res)
+                            },
+                            ExpressionInfixOpcode::Lesser => {
+                                let res = relational_val(&lhs, &m) < relational_val(&rhs, &m);
+                                bool_to_biguint(res)
+                            },
+                            ExpressionInfixOpcode::Greater => {
+                                let res = relational_val(&lhs, &m) > relational_val(&rhs, &m);
+                                bool_to_biguint(res)
+                            },
+                            ExpressionInfixOpcode::Eq => bool_to_biguint(lhs == rhs),
+                            ExpressionInfixOpcode::NotEq => bool_to_biguint(lhs != rhs),
+                            ExpressionInfixOpcode::BoolOr => bool_to_biguint(nonzero(lhs) || nonzero(rhs)),
+                            ExpressionInfixOpcode::BoolAnd => bool_to_biguint(nonzero(lhs) && nonzero(rhs)),
+                            ExpressionInfixOpcode::BitOr => (lhs | rhs) % m,
+                            ExpressionInfixOpcode::BitAnd => lhs & rhs,
+                            ExpressionInfixOpcode::BitXor => (lhs ^ rhs) % m,
+                        };
+                        Ok(Some(res))
+                    },
+                    _ => Ok(None),
+                }
+            }
+            Expression::PrefixOp { prefix_op, rhe, .. } => {
+                let rhs = self.try_compute_dim_expr(rhe)?;
+                match rhs {
+                    Some(rhs) => {
+                        // Perform the arithmetic
+                        let m = &self.prime()?;
+                        let res = match prefix_op {
+                            ExpressionPrefixOpcode::Sub => {
+                                if rhs == BigUint::zero() {
+                                    rhs
+                                } else {
+                                    m - rhs
+                                }
+                            },
+                            ExpressionPrefixOpcode::BoolNot => {
+                                if rhs == BigUint::zero() { BigUint::zero() } else { BigUint::one() }
+                            },
+                            ExpressionPrefixOpcode::Complement => {
+                                let mask = (BigUint::one() << m.bits()) - BigUint::one();
+                                mask ^ rhs
+                            }
+                        };
+                        Ok(Some(res))
+                    },
+                    _ => Ok(None)
+                }
+            }
+            Expression::InlineSwitchOp { cond, if_true, if_false, .. } => {
+                let cond = self.try_compute_dim_expr(cond)?;
+                let if_true = self.try_compute_dim_expr(if_true)?;
+                let if_false = self.try_compute_dim_expr(if_false)?;
+                match (cond, if_true, if_false) {
+                    (Some(cond), Some(if_true), Some(if_false)) => {
+                        Ok(Some(if cond != BigUint::zero() { if_true } else { if_false }))
+                    },
+                    _ => Ok(None)
+                }
+            }
+            _ => Ok(None)
+        }
+    }
+
     /// Convert a circom [Expression] used as an array dimension to an LLZK Attribute.
     ///
     /// Note: The LLZK ArrayType can only use the following Attribute types for dimensions:
@@ -168,93 +279,37 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     /// probably an identity map).
     #[allow(unused_variables)] // TODO: TEMP
     pub fn convert_dim_expr(&self, expr: &Expression) -> Result<Attribute<'ctx>> {
-        match expr {
-            Expression::Number(meta, big_int) => {
-                let int_attr = self.index_attr(
-                    big_int.to_i64().ok_or_else(|| anyhow!("Array dimension must fit in i64"))?,
-                );
-                Ok(int_attr.into())
-            }
-            Expression::Variable { meta, name, access } => {
-                // TODO: generate AffineMapAttr (with single result) or SymbolRefAttr (from param)
-                todo!("Handle Variable expression in dimension")
-            }
-            Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                let lhs = self.convert_dim_expr(lhe)?;
-                let rhs = self.convert_dim_expr(rhe)?;
-                match (IntegerAttribute::try_from(lhs), IntegerAttribute::try_from(rhs)) {
-                    (Ok(lhs), Ok(rhs)) => {
-                        // Perform the arithmetic
-                        let m = self.prime()?;
-                        let a_usize = usize::try_from(lhs.value())?;
-                        let b_usize = usize::try_from(rhs.value())?;
-                        let a: BigUint = a_usize.into();
-                        let b: BigUint = b_usize.into();
-                        let nonzero = |x| x != BigUint::zero();
-                        let bool_to_biguint = |b| (b as usize).into();
-                        let res = match infix_op {
-                            ExpressionInfixOpcode::Mul => (a * b) % m,
-                            ExpressionInfixOpcode::Div => {
-                                let b_inv = modinv(&b, &m).expect(&format!("failed to compute inverse for {b}"));
-                                (a * b_inv) % m
-                            },
-                            ExpressionInfixOpcode::Add => (a + b) % m,
-                            ExpressionInfixOpcode::Sub => modsub(&a, &b, &m),
-                            ExpressionInfixOpcode::Pow => a.modpow(&b, &m),
-                            ExpressionInfixOpcode::IntDiv => (a / b) % m,
-                            ExpressionInfixOpcode::Mod => a % b,
-                            ExpressionInfixOpcode::ShiftL => (a << b_usize) % m,
-                            ExpressionInfixOpcode::ShiftR => (a >> b_usize) % m,
-                            ExpressionInfixOpcode::LesserEq => bool_to_biguint(a <= b),
-                            ExpressionInfixOpcode::GreaterEq => bool_to_biguint(a >= b),
-                            ExpressionInfixOpcode::Lesser => bool_to_biguint(a < b),
-                            ExpressionInfixOpcode::Greater => bool_to_biguint(a > b),
-                            ExpressionInfixOpcode::Eq => bool_to_biguint(a == b),
-                            ExpressionInfixOpcode::NotEq => bool_to_biguint(a != b),
-                            ExpressionInfixOpcode::BoolOr => bool_to_biguint(nonzero(a) || nonzero(b)),
-                            ExpressionInfixOpcode::BoolAnd => bool_to_biguint(nonzero(a) && nonzero(b)),
-                            ExpressionInfixOpcode::BitOr => (a | b) % m,
-                            ExpressionInfixOpcode::BitAnd => a & b,
-                            ExpressionInfixOpcode::BitXor => (a ^ b) % m,
-                        };
-                        let integer = res.to_i64().unwrap();
-                        Ok(self.index_attr(integer).into())
-                    },
-                    _ => todo!("Handle Infix expression in dimension for non-integer attributes"),
+        // First try to compute statically
+        if let Some(integer) = self.try_compute_dim_expr(expr)? {
+            let int_attr = self.index_attr(integer.to_i64().expect("could not reduce dimension to i64"));
+            Ok(int_attr.into())
+        } else {
+            match expr {
+                Expression::Number(meta, big_int) => {
+                    unreachable!("handled by try_compute_dim_expr")
                 }
-            }
-            Expression::PrefixOp { meta, prefix_op, rhe } => {
-                let rhs = self.convert_dim_expr(rhe)?;
-                match IntegerAttribute::try_from(rhs) {
-                    Ok(rhs) => {
-                        // Perform the arithmetic
-                        let m = &self.prime()?;
-                        let a = rhs.value().into_biguint().unwrap();
-                        let res = match prefix_op {
-                            ExpressionPrefixOpcode::Sub => modneg(&a, m),
-                            ExpressionPrefixOpcode::BoolNot => if a == BigUint::zero() { BigUint::zero() } else { BigUint::one() },
-                            ExpressionPrefixOpcode::Complement => {
-                                let mask = (BigUint::one() << m.bits()) - BigUint::one();
-                                mask ^ a
-                            }
-                        };
-                        let integer = res.to_i64().unwrap();
-                        Ok(self.index_attr(integer).into())
-                    },
-                    _ => todo!("Handle Prefix expression in dimension for non-integer attributes")
+                Expression::Variable { meta, name, access } => {
+                    // TODO: generate AffineMapAttr (with single result) or SymbolRefAttr (from param)
+                    todo!("Handle Variable expression in dimension")
                 }
+                Expression::InfixOp { meta, lhe, infix_op, rhe } => {
+                    todo!("Handle Infix expression in dimension for non-integer attributes")
+                }
+                Expression::PrefixOp { meta, prefix_op, rhe } => {
+                    todo!("Handle Prefix expression in dimension for non-integer attributes")
+                }
+                Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
+                    todo!("Handle InlineSwitchOp expression in dimension for non-integer attributes")
+                }
+                Expression::Call { meta, id, args } => {
+                    todo!("Handle Call expression in dimension")
+                }
+                // The remaining cases do not produce a scalar value.
+                // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
+                // Give the same error that the circom type checker gives. The type checker ran
+                // earlier so this should technically be unreachable.
+                _ => Err(anyhow!("Array indexes and lengths must be single arithmetic expressions")),
             }
-            Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                todo!("Handle InlineSwitchOp expression in dimension")
-            }
-            Expression::Call { meta, id, args } => {
-                todo!("Handle Call expression in dimension")
-            }
-            // The remaining cases do not produce a scalar value.
-            // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
-            // Give the same error that the circom type checker gives. The type checker ran
-            // earlier so this should technically be unreachable.
-            _ => Err(anyhow!("Array indexes and lengths must be single arithmetic expressions")),
         }
     }
 
@@ -605,85 +660,18 @@ pub fn new_array_type<'c>(dim: Attribute<'c>, subarr_ty: &ArrayType<'c>) -> Arra
     ArrayType::new(subarr_ty.element_type(), &dims)
 }
 
-/// Compute `-a` modulo `m`
-pub fn modneg(a: &BigUint, m: &BigUint) -> BigUint {
-    let a = if a >= m { a % m } else { a.clone() };
-    if a == BigUint::zero() {
-        BigUint::zero()
+/// Convert unsigned field elements into relational values used for comparisons.
+///
+/// relational_val(a) = a-m  if m/2 +1 <= a < m
+/// relational_val(a) = a,    otherwise.
+///
+/// see https://docs.circom.io/circom-language/basic-operators/#relational-operators
+/// for definition.
+pub fn relational_val(a: &BigUint, m: &BigUint) -> BigInt {
+    let a = a % m;
+    if ((m / 2u32) + BigUint::zero()) <= a {
+        a.into_bigint().unwrap() - m.clone().into_bigint().unwrap()
     } else {
-        m - a
-    }
-}
-
-/// Compute `a` - `b` modulo `m`.
-pub fn modsub(a: &BigUint, b: &BigUint, m: &BigUint) -> BigUint {
-    let a = if a >= m { a % m } else { a.clone() };
-    let neg_b = modneg(b, m);
-    (a + neg_b) % m
-}
-
-/// Compute the inverse of `i` modulo `m`.
-/// Adapted from https://docs.rs/num-modular/latest/src/num_modular/bigint.rs.html#141-192
-/// for the num_bigint_dig implementation of BigUint.
-pub fn modinv(i: &BigUint, m: &BigUint) -> Option<BigUint> {
-    let x = if i >= m { i % m } else { i.clone() };
-
-    let (mut last_r, mut r) = (m.clone(), x);
-    let (mut last_t, mut t) = (BigUint::zero(), BigUint::one());
-
-    while &r > &BigUint::zero() {
-        let (quo, rem) = (&last_r / &r, &last_r % &r);
-        last_r = r;
-        r = rem;
-
-        let mul_res = (&quo * &t) % m;
-        let new_t = modsub(&last_t, &mul_res, m);
-        last_t = t;
-        t = new_t;
-    }
-
-    // if r = gcd(self, m) > 1, then inverse doesn't exist
-    if last_r > BigUint::one() {
-        None
-    } else {
-        Some(last_t)
-    }
-}
-
-
-#[cfg(test)]
-mod tests {
-    use std::sync::OnceLock;
-
-    use quickcheck_macros::quickcheck;
-    use super::*;
-
-    static MODULUS: OnceLock<BigUint> = OnceLock::new();
-
-    fn modulus() -> &'static BigUint {
-        MODULUS.get_or_init(|| {
-            "21888242871839275222246405745257275088696311157297823662689037894645226208583".parse::<BigUint>().unwrap()
-        })
-    }
-
-    /// Tests that the x - x == 0 (mod p)
-    #[quickcheck]
-    fn check_sub_identity(a: u64) -> bool {
-        let a = a.into_biguint().unwrap();
-        modsub(&a, &a, modulus()) == BigUint::zero()
-    }
-
-    /// Tests that the x * modinv(x) == 1 (mod p)
-    #[quickcheck]
-    fn check_inverse_identity(a: u64) -> bool {
-        let a = a.into_biguint().unwrap();
-        // skip checks where a == 0
-        if a == BigUint::zero() {
-            true
-        } else if let Some(a_inv) = modinv(&a, modulus()) {
-            (a * a_inv) % modulus() == BigUint::one()
-        } else {
-            false
-        }
+        a.into_bigint().unwrap()
     }
 }
