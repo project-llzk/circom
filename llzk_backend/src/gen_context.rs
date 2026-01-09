@@ -2,8 +2,8 @@
 
 use crate::function::FunctionContext;
 use crate::shared::single_result_as_value;
-use anyhow::Result;
 use anyhow::anyhow;
+use anyhow::Result;
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
@@ -294,13 +294,13 @@ where
     /// Type of the additional data passed to the overwrite handler.
     type HandlerDataType: Default;
 
-    /// Retrieve the top `NewBlock` from the [BlockContextStack].
+    /// Retrieve the top `BlockType` from the [BlockContextStack].
     fn stack_top(&self) -> Self::BlockType;
 
-    /// Push new `NewBlock` onto the [BlockContextStack].
+    /// Push new `BlockType` onto the [BlockContextStack].
     fn stack_push(&mut self, block: Self::BlockType);
 
-    /// Pop the top `NewBlock` from the [BlockContextStack].
+    /// Pop the top `BlockType` from the [BlockContextStack].
     fn stack_pop<H>(
         &mut self,
         overwrite_handler: H,
@@ -314,7 +314,7 @@ where
         ) -> Result<()>;
 
     /// Use the callback to generate code for a new circom scope/block within the given LLZK
-    /// `NewBlock`. Assignments to circom variables that are newly introduced in this context go
+    /// `BlockType`. Assignments to circom variables that are newly introduced in this context go
     /// out of scope so they are dropped after the callback but overwriting assignments to circom
     /// variables that already exist prior to this new scope are passed to the overwrite handler.
     fn gen_in_given_block_with_new_circom_scope<H, R>(
@@ -338,7 +338,7 @@ where
     }
 
     /// Use the callback to generate code for a new circom scope/block within the given LLZK
-    /// `NewBlock`. Assignments to circom variables that are newly introduced in this context go
+    /// `BlockType`. Assignments to circom variables that are newly introduced in this context go
     /// out of scope so they are dropped after the callback but overwriting assignments to circom
     /// variables that already exist prior to this new scope are cached in the `var_overwrites`
     /// field of the `NestedBlockInfo` struct.
@@ -361,7 +361,7 @@ where
     }
 
     /// Use the callback to generate code for a new circom scope/block within the given LLZK
-    /// `NewBlock`. Assignments to circom variables that are newly introduced in this context go
+    /// `BlockType`. Assignments to circom variables that are newly introduced in this context go
     /// out of scope so they are dropped after the callback but overwriting assignments to circom
     /// variables that already exist prior to this new scope are preserved and written into the
     /// existing block context.
@@ -380,7 +380,7 @@ where
     }
 
     /// Use the callback to generate code for a new circom scope/block but within the current LLZK
-    /// `NewBlock`. Assignments to circom variables that are newly introduced in this context go
+    /// `BlockType`. Assignments to circom variables that are newly introduced in this context go
     /// out of scope so they are dropped after the callback but overwriting assignments to circom
     /// variables that already exist prior to this new scope are preserved and written into the
     /// existing block context.

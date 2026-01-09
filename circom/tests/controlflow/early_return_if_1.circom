@@ -7,7 +7,7 @@ pragma circom 2.0.0;
 function earlyReturnFn(i, n) {
     if (n == 0) {
         return i;
-        assert(0 == 1); // This can be ignored because of the early return above
+        assert(0 == 1); // Unreachable because of the early return above
     }
     return 0;
 }

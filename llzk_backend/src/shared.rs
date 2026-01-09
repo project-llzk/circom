@@ -1,15 +1,26 @@
 //! Shared code generation utilities.
 
+use crate::program_ext::ProgramLike;
+use crate::template_ext::TemplateLike;
+use crate::template_ext::WireLike;
+use crate::traversal::walk_from_block;
+use crate::traversal::WalkCallbacks;
 use ansi_term::Color;
-use anyhow::Result;
 use anyhow::anyhow;
+use anyhow::Result;
+use llzk::dialect::undef;
 use llzk::operation::replace_uses_of_with;
+use llzk::prelude::felt;
+use llzk::prelude::melior_dialects::arith;
+use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::BlockLike;
 use llzk::prelude::BlockRef;
+use llzk::prelude::BoolAttribute;
 use llzk::prelude::FeltConstAttribute;
 use llzk::prelude::FeltType;
+use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOp;
 use llzk::prelude::FuncDefOpLike;
 use llzk::prelude::FuncDefOpRef;
@@ -20,6 +31,7 @@ use llzk::prelude::IntegerType;
 use llzk::prelude::LlzkContext;
 use llzk::prelude::LlzkError;
 use llzk::prelude::Location;
+use llzk::prelude::Module;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike;
 use llzk::prelude::OperationRef;
@@ -29,26 +41,29 @@ use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::StructType;
 use llzk::prelude::Type;
+use llzk::prelude::TypeAttribute;
 use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
-use llzk::prelude::ValueLike as _;
-use llzk::prelude::felt;
-use llzk::prelude::undef;
-use llzk::prelude::verify_operation_with_diags;
-use melior::dialect::arith;
-use melior::ir::Module;
-use melior::ir::attribute::BoolAttribute;
-use melior::ir::attribute::TypeAttribute;
+use llzk::prelude::ValueLike;
+use melior::ir::operation::OperationResult;
 use melior::utility;
 use num_bigint_dig::BigInt;
+use num_bigint_dig::BigUint;
+use num_bigint_dig::ModInverse;
+use num_bigint_dig::ToBigInt as _;
 use num_traits::cast::ToPrimitive;
+use num_traits::One;
+use num_traits::Zero;
 use program_structure::ast::Expression;
+use program_structure::ast::ExpressionInfixOpcode;
+use program_structure::ast::ExpressionPrefixOpcode;
 use program_structure::ast::Meta;
+use program_structure::constants::UsefulConstants;
 use program_structure::error_code::ReportCode;
 use program_structure::error_definition::Report;
 use program_structure::file_definition::FileID;
 use program_structure::file_definition::FileLocation;
-use program_structure::program_archive::ProgramArchive;
+use program_structure::wire_data::WireType;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto as _;
@@ -63,50 +78,52 @@ use std::path::Path;
 ///
 /// 'ast: lifetime of the circom AST element
 /// 'ctx: lifetime of the `LlzkContext` and generated `Module`
-pub struct LlzkCodegen<'ast, 'ctx> {
+#[derive(Debug)]
+pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     /// The circom program AST.
-    pub program_archive: &'ast ProgramArchive,
+    pub program: &'ast P,
     /// The LLZK (and MLIR) context.
     pub context: &'ctx LlzkContext,
     /// The generated LLZK `Module`.
     pub module: Module<'ctx>,
     /// The name of the prime field.
-    pub prime: &'ctx str,
+    pub prime_str: &'ctx str,
 }
 
-impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
-    /// Get the width of the prime field in bits.
-    pub fn prime_field_bits(&self) -> Result<u32> {
-        match self.prime {
-            "bn128" => Ok(254),
-            "bls12381" => Ok(381),
-            "goldilocks" => Ok(64),
-            "grumpkin" => Ok(254),
-            "pallas" => Ok(254),
-            "vesta" => Ok(255),
-            "secq256r1" => Ok(256),
-            "bls12377" => Ok(377),
-            _ => Err(anyhow!("Unsupported prime field: {}", self.prime)),
-        }
+impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
+    /// Get the width of the scalar prime field in bits.
+    pub fn prime_field_bits(&self) -> Result<usize> {
+        Ok(self.prime()?.bits())
+    }
+
+    /// Get the prime field modulus as a BigUint
+    pub fn prime(&self) -> Result<BigUint> {
+        let c = UsefulConstants::new(&self.prime_str.to_string());
+        c.get_p().to_biguint().ok_or_else(|| anyhow!("prime should be convertible to unsigned"))
     }
 
     /// Emit a circom-style warning.
     pub fn emit_circom_warning(&self, meta: &Meta, message: &str, code: ReportCode) {
         let mut report = Report::warning(String::from(message), code);
         report.add_primary(meta.file_location(), meta.get_file_id(), String::from("here"));
-        Report::print_reports(&[report], &self.program_archive.file_library);
+        Report::print_reports(&[report], self.program.get_file_library());
     }
 
     /// Emit a circom-style error.
     pub fn emit_circom_error(&self, meta: &Meta, message: &str, code: ReportCode) {
         let mut report = Report::error(String::from(message), code);
         report.add_primary(meta.file_location(), meta.get_file_id(), String::from("here"));
-        Report::print_reports(&[report], &self.program_archive.file_library);
+        Report::print_reports(&[report], self.program.get_file_library());
+    }
+
+    /// Get the unknown location.
+    pub fn location_unknown(&self) -> Location<'ctx> {
+        Location::unknown(self.context)
     }
 
     /// Convert circom location information to MLIR location.
     pub fn location(&self, file_id: FileID, file_location: FileLocation) -> Location<'ctx> {
-        let files = &self.program_archive.file_library;
+        let files = self.program.get_file_library();
         let filename = files.get_filename_or_default(&file_id);
         let line = files.get_line(file_location.start, file_id).unwrap_or(0);
         let column = files.get_column(file_location.start, file_id).unwrap_or(0);
@@ -118,7 +135,7 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         if let Some(file) = meta.file_id {
             self.location(file, meta.file_location())
         } else {
-            Location::unknown(self.context)
+            self.location_unknown()
         }
     }
 
@@ -134,6 +151,136 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         Ok(f.into())
     }
 
+    /// Try to statically compute the value of a circom [Expression] used as an array
+    /// dimension. This is computed in a separate function so that nested expressions
+    /// return BigUint results instead of IntegerAttributes.
+    ///
+    /// Returns `None` if the expression cannot be computed statically, Some(BigUint)
+    /// if the computation is successful, and an error if a conversion error occurs
+    /// along the way.
+    fn try_compute_dim_expr(&self, expr: &Expression) -> Result<Option<BigUint>> {
+        match expr {
+            Expression::Number(_, big_int) => {
+                let v = big_int.to_biguint().ok_or_else(|| anyhow!("could not convert to signed"))? % self.prime()?;
+                Ok(Some(v))
+            }
+            Expression::InfixOp { lhe, infix_op, rhe, .. } => {
+                let lhs = self.try_compute_dim_expr(lhe)?;
+                let rhs = self.try_compute_dim_expr(rhe)?;
+                match (lhs, rhs) {
+                    (Some(lhs), Some(rhs)) => {
+                        // Perform the arithmetic
+                        let p = self.prime()?;
+                        let bool_to_biguint = |b| if b { BigUint::one() } else { BigUint::zero() };
+                        let res = match infix_op {
+                            ExpressionInfixOpcode::Mul => (lhs * rhs) % p,
+                            ExpressionInfixOpcode::Div => {
+                                let rhs_inv = rhs
+                                    .mod_inverse(&p)
+                                    .ok_or_else(|| anyhow!("failed to compute inverse"))?
+                                    .to_biguint()
+                                    .ok_or_else(|| anyhow!("could not convert to BigUint"))?;
+                                (lhs * rhs_inv) % p
+                            }
+                            ExpressionInfixOpcode::Add => (lhs + rhs) % p,
+                            ExpressionInfixOpcode::Sub => (lhs + (&p - rhs)) % p,
+                            ExpressionInfixOpcode::Pow => lhs.modpow(&rhs, &p),
+                            ExpressionInfixOpcode::IntDiv => (lhs / rhs) % p,
+                            ExpressionInfixOpcode::Mod => lhs % rhs,
+                            ExpressionInfixOpcode::ShiftL => {
+                                (lhs << rhs
+                                    .to_usize()
+                                    .ok_or_else(|| anyhow!("could not convert to usize"))?)
+                                    % p
+                            }
+                            ExpressionInfixOpcode::ShiftR => {
+                                (lhs >> rhs
+                                    .to_usize()
+                                    .ok_or_else(|| anyhow!("could not convert to usize"))?)
+                                    % p
+                            }
+                            // Comparison operators are performed based on a signed interpretation
+                            // of the field elements as defined by the `relational_val` function, according
+                            // to the circom spec.
+                            ExpressionInfixOpcode::LesserEq => {
+                                let res = relational_val(&lhs, &p)? <= relational_val(&rhs, &p)?;
+                                bool_to_biguint(res)
+                            }
+                            ExpressionInfixOpcode::GreaterEq => {
+                                let res = relational_val(&lhs, &p)? >= relational_val(&rhs, &p)?;
+                                bool_to_biguint(res)
+                            }
+                            ExpressionInfixOpcode::Lesser => {
+                                let res = relational_val(&lhs, &p)? < relational_val(&rhs, &p)?;
+                                bool_to_biguint(res)
+                            }
+                            ExpressionInfixOpcode::Greater => {
+                                let res = relational_val(&lhs, &p)? > relational_val(&rhs, &p)?;
+                                bool_to_biguint(res)
+                            }
+                            ExpressionInfixOpcode::Eq => bool_to_biguint(lhs == rhs),
+                            ExpressionInfixOpcode::NotEq => bool_to_biguint(lhs != rhs),
+                            ExpressionInfixOpcode::BoolOr => {
+                                bool_to_biguint(!lhs.is_zero() || !rhs.is_zero())
+                            }
+                            ExpressionInfixOpcode::BoolAnd => {
+                                bool_to_biguint(!lhs.is_zero() && !rhs.is_zero())
+                            }
+                            ExpressionInfixOpcode::BitOr => (lhs | rhs) % p,
+                            ExpressionInfixOpcode::BitAnd => lhs & rhs,
+                            ExpressionInfixOpcode::BitXor => (lhs ^ rhs) % p,
+                        };
+                        Ok(Some(res))
+                    }
+                    _ => Ok(None),
+                }
+            }
+            Expression::PrefixOp { prefix_op, rhe, .. } => {
+                let rhs = self.try_compute_dim_expr(rhe)?;
+                match rhs {
+                    Some(rhs) => {
+                        // Perform the arithmetic
+                        let p = &self.prime()?;
+                        let res = match prefix_op {
+                            ExpressionPrefixOpcode::Sub => {
+                                if rhs.is_zero() {
+                                    rhs
+                                } else {
+                                    p - rhs
+                                }
+                            }
+                            ExpressionPrefixOpcode::BoolNot => {
+                                if rhs.is_zero() {
+                                    BigUint::one()
+                                } else {
+                                    BigUint::zero()
+                                }
+                            }
+                            ExpressionPrefixOpcode::Complement => {
+                                let mask = (BigUint::one() << p.bits()) - BigUint::one();
+                                mask ^ rhs
+                            }
+                        };
+                        Ok(Some(res))
+                    }
+                    _ => Ok(None),
+                }
+            }
+            Expression::InlineSwitchOp { cond, if_true, if_false, .. } => {
+                let cond = self.try_compute_dim_expr(cond)?;
+                let if_true = self.try_compute_dim_expr(if_true)?;
+                let if_false = self.try_compute_dim_expr(if_false)?;
+                match (cond, if_true, if_false) {
+                    (Some(cond), Some(if_true), Some(if_false)) => {
+                        Ok(Some(if !cond.is_zero() { if_true } else { if_false }))
+                    }
+                    _ => Ok(None),
+                }
+            }
+            _ => Ok(None),
+        }
+    }
+
     /// Convert a circom [Expression] used as an array dimension to an LLZK Attribute.
     ///
     /// Note: The LLZK ArrayType can only use the following Attribute types for dimensions:
@@ -141,41 +288,71 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
     /// probably an identity map).
     #[allow(unused_variables)] // TODO: TEMP
     pub fn convert_dim_expr(&self, expr: &Expression) -> Result<Attribute<'ctx>> {
-        match expr {
-            Expression::Number(meta, big_int) => {
-                let int_attr = IntegerAttribute::new(
-                    self.index_type(),
-                    big_int.to_i64().ok_or_else(|| anyhow!("Array dimension must fit in i64"))?,
-                );
-                Ok(int_attr.into())
+        // First try to compute statically, falling back to literal computation
+        // if all values are not compile-time constants or if the final result
+        // does not properly convert to i64.
+        if let Some(integer) = self.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64) {
+            let int_attr = self.index_attr(integer);
+            Ok(int_attr.into())
+        } else {
+            match expr {
+                Expression::Number(meta, big_int) => {
+                    unreachable!("handled by try_compute_dim_expr")
+                }
+                Expression::Variable { meta, name, access } => {
+                    // TODO: generate AffineMapAttr (with single result) or SymbolRefAttr (from param)
+                    todo!("Handle Variable expression in dimension")
+                }
+                Expression::InfixOp { meta, lhe, infix_op, rhe } => {
+                    todo!("Handle Infix expression in dimension for non-integer attributes")
+                }
+                Expression::PrefixOp { meta, prefix_op, rhe } => {
+                    todo!("Handle Prefix expression in dimension for non-integer attributes")
+                }
+                Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
+                    todo!(
+                        "Handle InlineSwitchOp expression in dimension for non-integer attributes"
+                    )
+                }
+                Expression::Call { meta, id, args } => {
+                    todo!("Handle Call expression in dimension")
+                }
+                // The remaining cases do not produce a scalar value.
+                // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
+                // Give the same error that the circom type checker gives. The type checker ran
+                // earlier so this should technically be unreachable.
+                _ => {
+                    Err(anyhow!("Array indexes and lengths must be single arithmetic expressions"))
+                }
             }
-            Expression::Variable { meta, name, access } => {
-                // TODO: generate AffineMapAttr (with single result) or SymbolRefAttr (from param)
-                todo!("Handle Variable expression in dimension")
-            }
-            Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                todo!("Handle InfixOp expression in dimension")
-            }
-            Expression::PrefixOp { meta, prefix_op, rhe } => {
-                todo!("Handle PrefixOp expression in dimension")
-            }
-            Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                todo!("Handle InlineSwitchOp expression in dimension")
-            }
-            Expression::Call { meta, id, args } => {
-                todo!("Handle Call expression in dimension")
-            }
-            // The remaining cases do not produce a scalar value.
-            // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
-            // Give the same error that the circom type checker gives. The type checker ran
-            // earlier so this should technically be unreachable.
-            _ => Err(anyhow!("Array indexes and lengths must be single arithmetic expressions")),
         }
     }
 
-    /// If `dimensions` is empty, return `base_type`. Otherwise, create ArrayType by converting the
-    /// dimension circom [Expressions](Expression) to LLZK Attributes.
-    pub fn type_with_dimensions(
+    /// If `dimensions` is empty, return `base_type`. Otherwise, create [ArrayType] by
+    /// converting the dimension sizes to LLZK Attributes.
+    pub fn type_from_dimension_consts(
+        &self,
+        base_type: Type<'ctx>,
+        dimensions: &[usize],
+    ) -> Result<Type<'ctx>> {
+        if dimensions.is_empty() {
+            Ok(base_type)
+        } else {
+            dimensions
+                .iter()
+                .map(|c| {
+                    i64::try_from(*c)
+                        .map_err(Into::into)
+                        .map(|c| Attribute::from(self.index_attr(c)))
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .map(|dims| ArrayType::new(base_type, &dims).into())
+        }
+    }
+
+    /// If `dimensions` is empty, return `base_type`. Otherwise, create [ArrayType] by
+    /// converting the dimension circom [Expressions](Expression) to LLZK Attributes.
+    pub fn type_from_dimension_exprs(
         &self,
         base_type: Type<'ctx>,
         dimensions: &[Expression],
@@ -191,9 +368,13 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         }
     }
 
-    /// Create an LLZK operation that produces a boolean constant value.
-    pub fn new_bool_const_op(&self, val: bool, location: Location<'ctx>) -> Operation<'ctx> {
-        arith::constant(self.context, BoolAttribute::new(self.context, val).into(), location)
+    /// Tries to convert a list of [`Expression`] to a list of [`Attribute`].
+    #[inline]
+    pub fn try_dimensions_to_attrs(
+        &self,
+        dimensions: &[Expression],
+    ) -> Result<Vec<Attribute<'ctx>>> {
+        dimensions.iter().map(|e| self.convert_dim_expr(e)).collect()
     }
 
     /// Create an LLZK operation that produces a nondeterministic value of the given type.
@@ -214,7 +395,7 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
     ) -> Result<Operation<'ctx>> {
         self.new_nondet_at_location(
             location,
-            self.type_with_dimensions(self.felt_type().into(), dimensions)?,
+            self.type_from_dimension_exprs(self.felt_type().into(), dimensions)?,
         )
     }
 
@@ -259,6 +440,60 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         StructType::from_str(self.context, name)
     }
 
+    /// Create an index attribute.
+    #[inline]
+    pub fn index_attr<T>(&self, integer: T) -> IntegerAttribute<'ctx>
+    where
+        T: Into<i64>,
+    {
+        IntegerAttribute::new(self.index_type(), integer.into())
+    }
+
+    /// Create an LLZK operation that produces a boolean constant value.
+    #[inline]
+    pub fn new_bool_const_op(&self, val: bool, location: Location<'ctx>) -> Operation<'ctx> {
+        arith::constant(self.context, BoolAttribute::new(self.context, val).into(), location)
+    }
+
+    /// Create an LLZK operation that produces an integer constant value.
+    #[inline]
+    pub fn new_int_const_op(
+        &self,
+        ty: Type<'ctx>,
+        val: i64,
+        location: Location<'ctx>,
+    ) -> Operation<'ctx> {
+        arith::constant(self.context, IntegerAttribute::new(ty, val).into(), location)
+    }
+
+    /// Create an LLZK operation that produces an index constant value.
+    #[inline]
+    pub fn new_index_const_op<T>(&self, val: T, location: Location<'ctx>) -> Operation<'ctx>
+    where
+        T: Into<i64>,
+    {
+        arith::constant(self.context, self.index_attr(val).into(), location)
+    }
+
+    /// Generate a `felt.const` operation from a BigInt. Returns an `Err` result if unsuccessful
+    /// or if the number of bits required to represent the BigInt does not fit in 32 bits.
+    pub fn new_felt_const_op(
+        &self,
+        val: &BigInt,
+        location: Location<'ctx>,
+    ) -> Result<Operation<'ctx>> {
+        // ASSERT: The circom parser always produces non-negative constants. These can be negated
+        // via PrefixOp but negative BigInt constants are never created directly.
+        assert_ne!(val.sign(), num_bigint_dig::Sign::Minus, "Felt constants must be non-negative");
+        let attr = FeltConstAttribute::parse(
+            self.context,
+            // use required bits +1 to ensure unsigned representation
+            u32::try_from(val.bits())? + 1,
+            val.to_string().as_str(),
+        );
+        felt::constant(location, attr).map_err(Into::into)
+    }
+
     /// Run cleanup passes on the generated `Module`.
     pub fn run_passes(&mut self, pass_pipeline: &str) -> Result<()> {
         if pass_pipeline.is_empty() {
@@ -296,8 +531,6 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
     }
 
     /// Write the generated `Module` to a file in bytecode format.
-    /// TODO: currently unused, silencing repeated warning via attribute.
-    #[expect(dead_code)]
     pub fn write_bytecode_to_file(self, filename: &str) -> Result<()> {
         unsafe extern "C" fn callback(string_ref: mlir_sys::MlirStringRef, user_data: *mut c_void) {
             let file = &mut *(user_data as *mut File);
@@ -316,27 +549,59 @@ impl<'ast, 'ctx> LlzkCodegen<'ast, 'ctx> {
         println!("{} {}", Color::Green.paint("Written successfully:"), filename);
         Ok(())
     }
-}
 
-/// Generate a `felt.const` operation from a BigInt. Returns an `Err` result if unsuccessful
-/// or if the number of bits required to represent the BigInt does not fit in 32 bits.
-///
-/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
-pub fn new_felt_const_op<'ctx>(
-    codegen: &LlzkCodegen<'_, 'ctx>,
-    meta: &Meta,
-    from: &BigInt,
-) -> Result<Operation<'ctx>> {
-    // ASSERT: The circom parser always produces non-negative constants. These can be negated via
-    // PrefixOp but negative BigInt constants are never created directly.
-    assert_ne!(from.sign(), num_bigint_dig::Sign::Minus, "Felt constants must be non-negative");
-    let attr = FeltConstAttribute::parse(
-        codegen.context,
-        // use required bits +1 to ensure unsigned representation
-        u32::try_from(from.bits())? + 1,
-        from.to_string().as_str(),
-    );
-    felt::constant(codegen.location_from_meta(meta), attr).map_err(Into::into)
+    /// If `dimensions` is empty, returns a [`StructType`] with just the name. Otherwise,
+    /// returns a [`StructType`] with parameters by converting the
+    /// dimension circom Expressions to LLZK Attributes.
+    pub fn struct_type_with_concrete_dimensions(
+        &self,
+        name: &str,
+        dimensions: &[Expression],
+    ) -> Result<StructType<'ctx>> {
+        if dimensions.is_empty() {
+            Ok(StructType::from_str(self.context, name))
+        } else {
+            let attrs = dimensions
+                .iter()
+                .map(|e| self.convert_dim_expr(e))
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(StructType::new(FlatSymbolRefAttribute::new(self.context, name), &attrs))
+        }
+    }
+
+    /// Returns the data for the template with that name.
+    pub fn find_template_data(
+        &self,
+        name: &'ast str,
+    ) -> Option<&'ast (impl TemplateLike + use<'ast, P>)> {
+        if self.program.contains_template(name) {
+            Some(self.program.get_template_data(name))
+        } else {
+            None
+        }
+    }
+
+    /// Returns the types of the inputs for the given template, in declaration order.
+    pub fn get_template_input_types(&self, name: &'ast str) -> Result<Vec<Type<'ctx>>> {
+        let data =
+            self.find_template_data(name).ok_or_else(|| anyhow!("Template {name} not found"))?;
+        Ok(data
+            .get_declaration_inputs()
+            .iter()
+            .map(move |(input, _)| -> Type<'ctx> {
+                let wire = data
+                    .get_input_info(input)
+                    // The name comes from `get_declaration_inputs`.
+                    // If `get_input_info` fails here with that name,
+                    // something has gone very wrong.
+                    .unwrap_or_else(|| panic!("Input {:?} not found for type {:?}", input, name));
+                match wire.get_type() {
+                    WireType::Signal => FeltType::new(self.context).into(),
+                    WireType::Bus(name) => StructType::from_str(self.context, &name).into(),
+                }
+            })
+            .collect())
+    }
 }
 
 /// Extract the single result Value from an OperationRef. Returns an `Err` result if the operation
@@ -375,13 +640,13 @@ pub fn no_results<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> Result<()> {
 #[inline]
 pub fn map_name_to_arg_value<'ctx, 'val>(
     func: FuncDefOpRefMut<'ctx, 'val>,
-    arg_names: &[String],
+    arg_names: Vec<String>,
 ) -> Result<HashMap<String, Value<'ctx, 'val>>> {
     arg_names
-        .iter()
+        .into_iter()
         .enumerate()
         .map(|(i, name)| {
-            func.deref().argument(i).map(|x| (name.clone(), Value::from(x))).map_err(Into::into)
+            func.deref().argument(i).map_err(Into::into).map(|a| (name, Value::from(a)))
         })
         .collect::<Result<HashMap<_, _>, _>>()
 }
@@ -425,7 +690,7 @@ pub fn has_uses(val: Value) -> bool {
     }
 }
 
-/// Replace all uses of `orig` within the given [Block] with `replacement`. Based on
+/// Replace all uses of `orig` within the given [BlockRef] with `replacement`. Based on
 /// `mlir::replaceAllUsesInRegionWith` which is not exposed through any CAPI.
 ///
 /// TODO: `llzk-rs` should provide this directly
@@ -446,6 +711,16 @@ pub fn replace_all_uses_in_block_with(block: BlockRef, orig: &Value, replacement
     }
 }
 
+/// Add a new argument to the given [BlockRef] with the same type as `orig` and replace all uses of
+/// `orig` within the given [BlockRef] (and within any nested blocks) with the new block argument.
+pub fn replace_uses_with_new_block_argument(block: BlockRef, orig: &Value, location: Location) {
+    let replacement = block.add_argument(orig.r#type(), location);
+    walk_from_block(
+        block,
+        WalkCallbacks::for_blocks(|b| replace_all_uses_in_block_with(b, orig, replacement)),
+    );
+}
+
 /// Erase the given operation.
 ///
 /// TODO: `llzk-rs` should provide this directly
@@ -456,12 +731,20 @@ pub fn erase_op<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) {
     }
 }
 
-/// Return `true` iff the given OperationRef is `scf.yield`.
+/// Return `true` iff the given op is `scf.yield`.
 ///
 /// TODO: `llzk-rs` should provide this directly
 #[inline]
 pub fn is_scf_yield<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> bool {
     op.name().as_string_ref().as_str() == Result::Ok("scf.yield")
+}
+
+/// Return `true` iff the given op is `struct.readf`.
+///
+/// TODO: `llzk-rs` should provide this directly via `llzkOperationIsAStructFieldReadOp`
+#[inline]
+pub fn is_struct_readf<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> bool {
+    op.name().as_string_ref().as_str() == Result::Ok("struct.readf")
 }
 
 /// Get the [FunctionType] from a [FuncDefOpLike].
@@ -474,4 +757,130 @@ pub fn get_function_type_attribute<'c: 'a, 'a>(
     let type_attr: TypeAttribute<'c> = attr.try_into()?;
     let func_type: FunctionType<'c> = type_attr.value().try_into()?;
     Ok(func_type)
+}
+
+/// Replaces all uses of the first value with the second.
+///
+/// Uses `mlir-sys` directly since that function doesn't seem to be
+/// implemented in melior.
+///
+/// TODO: `llzk-rs` should provide this directly
+pub fn replace_all_uses<'ctx>(of: Value<'ctx, '_>, with: Value<'ctx, '_>) {
+    unsafe { mlir_sys::mlirValueReplaceAllUsesOfWith(of.to_raw(), with.to_raw()) }
+}
+
+/// Sets the n-th operand of the operation to the given value if the current value is an
+/// `undef.undef` op.
+pub fn set_operand_if_undef<'ctx, 'op>(
+    op: OperationRef<'ctx, 'op>,
+    idx: usize,
+    value: impl ValueLike<'ctx>,
+) -> Result<()> {
+    if let Ok(arg) = OperationResult::try_from(op.operand(idx)?) {
+        if !undef::is_undef_op(arg.owner()) {
+            anyhow::bail!("Argument {idx} was assigned twice: {arg}");
+        }
+    }
+    unsafe { mlir_sys::mlirOperationSetOperand(op.to_raw(), idx as isize, value.to_raw()) }
+    Ok(())
+}
+
+/// Returns the one user of a value.
+///
+/// Fails if the value has more than one use or not at all.
+///
+/// TODO: `llzk-rs` should provide this directly
+pub fn get_single_user<'ctx, 'val, 'op>(
+    value: Value<'ctx, 'val>,
+) -> Result<OperationRef<'ctx, 'op>> {
+    // There is no `OpOperand` type in melior as far as I'm aware.
+    let first_use = unsafe { mlir_sys::mlirValueGetFirstUse(value.to_raw()) };
+    if first_use.ptr.is_null() {
+        anyhow::bail!("value {value} has no uses");
+    }
+    let second_use = unsafe { mlir_sys::mlirOpOperandGetNextUse(first_use) };
+    if !second_use.ptr.is_null() {
+        anyhow::bail!("value {value} can have only one use");
+    }
+    unsafe { OperationRef::from_option_raw(mlir_sys::mlirOpOperandGetOwner(first_use)) }
+        .ok_or_else(|| anyhow::anyhow!("invalid operation for user of {value}"))
+}
+
+#[inline]
+/// Moves the operation right after the reference op.
+///
+/// TODO: `llzk-rs` should provide this directly
+pub fn move_op_after<'ctx: 'op, 'op>(
+    reference: impl OperationLike<'ctx, 'op>,
+    op: impl OperationLike<'ctx, 'op>,
+) {
+    unsafe { mlir_sys::mlirOperationMoveAfter(op.to_raw(), reference.to_raw()) }
+}
+
+/// Moves the operation after the value if the value comes from another operation.
+///
+/// If the operation the value comes from is in an inner block, moves the op right after the parent
+/// op that is in the same block as the op about to be moved.
+///
+/// # Panics
+///
+/// If the parent search reaches the top, meaning that the value comes from an op in a block that
+/// is a 'parent' of the other op or that the value's op is not owned by a block.
+pub fn insert_after_if_op_result<'ctx, 'val, 'op>(
+    val: Value<'ctx, 'val>,
+    op: OperationRef<'ctx, 'op>,
+) {
+    if let Ok(binding) = OperationResult::try_from(val) {
+        let mut reference_op = binding.owner();
+        let _ = reference_op.block().expect("reference op must belong to a block");
+        if let Some(op_block) = op.block() {
+            reference_op =
+                find_parent_in_block(op_block, reference_op).expect("parent op not found");
+        };
+        move_op_after(reference_op, op);
+    }
+}
+
+/// Returns the op (or a parent op) that belongs to the block.
+fn find_parent_in_block<'ctx, 'blk, 'op>(
+    block: BlockRef<'ctx, 'blk>,
+    op: OperationRef<'ctx, 'op>,
+) -> Option<OperationRef<'ctx, 'op>> {
+    let parent_block = op.block()?;
+    if block == parent_block {
+        Some(op)
+    } else {
+        find_parent_in_block(block, parent_block.parent_operation()?)
+    }
+}
+/// Get all dimensions from an [ArrayType].
+///
+/// TODO: `llzk-rs` should provide this directly
+#[inline]
+pub fn get_dims<'c>(arr_ty: &ArrayType<'c>) -> Vec<Attribute<'c>> {
+    (0..arr_ty.num_dims()).map(|idx| arr_ty.dim(idx)).collect()
+}
+
+/// Create new array type that is an array of the given sub-array type.
+#[inline]
+pub fn new_array_type<'c>(dim: Attribute<'c>, subarr_ty: &ArrayType<'c>) -> ArrayType<'c> {
+    let dims: Vec<_> = std::iter::once(dim).chain(get_dims(subarr_ty).iter().copied()).collect();
+    ArrayType::new(subarr_ty.element_type(), &dims)
+}
+
+/// Convert unsigned field elements into relational values used for comparisons.
+///
+/// relational_val(a) = a-p  if m/2 +1 <= a < m
+/// relational_val(a) = a,    otherwise.
+///
+/// see https://docs.circom.io/circom-language/basic-operators/#relational-operators
+/// for definition.
+pub fn relational_val(a: &BigUint, p: &BigUint) -> Result<BigInt> {
+    let a = (a % p)
+        .to_bigint()
+        .ok_or_else(|| anyhow!("could not convert field element to signed int"))?;
+    let p =
+        p.to_bigint().ok_or_else(|| anyhow!("could not convert field modulus to signed int"))?;
+    let val = if ((&p / 2) + 1) <= a { a - p } else { a };
+    Ok(val)
 }
