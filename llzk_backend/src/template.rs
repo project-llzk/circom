@@ -1144,6 +1144,12 @@ where
                     }
                 }
             }
+            Expression::ParallelOp { rhe, .. } => {
+                // `parallel` is a tag used to generate parallelized code for the C++
+                // witness generator. Since LLZK currently has no such hint,
+                // we simply generate the underlying expression.
+                rhe.gen_llzk_in_template(codegen, template)
+            },
             Expression::Call { meta, id, args, .. }
                 if meta.get_type_knowledge().is_component()
                     && codegen.program.contains_template(id) =>

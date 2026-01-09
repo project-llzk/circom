@@ -1385,11 +1385,10 @@ where
 
                 function.append_op_unnamed_result(scf_if_op)
             }
-            Expression::ParallelOp { meta, rhe } => {
+            Expression::ParallelOp { rhe, .. } => {
                 // `parallel` is a tag used to generate parallelized code for the C++
                 // witness generator. Since LLZK currently has no such hint,
                 // we simply generate the underlying expression.
-                // TODO: Add a parallel hint to LLZK?
                 rhe.gen_llzk_in_function(codegen, function)
             }
             Expression::ArrayInLine { meta, values } => {

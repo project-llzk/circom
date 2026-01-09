@@ -196,6 +196,12 @@ impl<'ctx> DeclarationInfo<'ctx> {
             Expression::Call { meta, id, args, .. } if meta.get_type_knowledge().is_component() => {
                 codegen.struct_type_with_concrete_dimensions(id, args)
             }
+            Expression::ParallelOp { rhe, .. } => {
+                // `parallel` is a tag used to generate parallelized code for the C++
+                // witness generator. Since LLZK currently has no such hint,
+                // we simply generate the underlying expression.
+                Self::find_subcmp_ctor_call(codegen, rhe)
+            }
             _ => bail!("expected call expression for subcomponent substitution rhe"),
         }
     }
