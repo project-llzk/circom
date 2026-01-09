@@ -43,8 +43,6 @@ use melior::ir::Module;
 use melior::utility;
 use num_bigint_dig::BigInt;
 use num_bigint_dig::BigUint;
-use num_bigint_dig::IntoBigInt;
-use num_bigint_dig::IntoBigUint;
 use num_bigint_dig::ModInverse;
 use num_bigint_dig::ToBigInt as _;
 use num_traits::cast::ToPrimitive;
@@ -156,8 +154,8 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     fn try_compute_dim_expr(&self, expr: &Expression) -> Result<Option<BigUint>> {
         match expr {
             Expression::Number(_, big_int) => {
-                let v = big_int % self.prime()?.into_bigint().unwrap();
-                Ok(Some(v.into_biguint().unwrap()))
+                let v = big_int.to_biguint().ok_or_else(|| anyhow!("could not convert to signed"))? % self.prime()?;
+                Ok(Some(v))
             }
             Expression::InfixOp { lhe, infix_op, rhe, .. } => {
                 let lhs = self.try_compute_dim_expr(lhe)?;
@@ -286,11 +284,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         // First try to compute statically, falling back to literal computation
         // if all values are not compile-time constants or if the final result
         // does not properly convert to i64.
-        let integer = match self.try_compute_dim_expr(expr)? {
-            Some(i) => i.to_i64(),
-            None => None,
-        };
-        if let Some(integer) = integer {
+        if let Some(integer) = self.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64) {
             let int_attr = self.index_attr(integer);
             Ok(int_attr.into())
         } else {
