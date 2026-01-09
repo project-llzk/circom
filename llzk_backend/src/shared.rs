@@ -48,9 +48,17 @@ use llzk::prelude::ValueLike;
 use melior::ir::operation::OperationResult;
 use melior::utility;
 use num_bigint_dig::BigInt;
+use num_bigint_dig::BigUint;
+use num_bigint_dig::ModInverse;
+use num_bigint_dig::ToBigInt as _;
 use num_traits::cast::ToPrimitive;
+use num_traits::One;
+use num_traits::Zero;
 use program_structure::ast::Expression;
+use program_structure::ast::ExpressionInfixOpcode;
+use program_structure::ast::ExpressionPrefixOpcode;
 use program_structure::ast::Meta;
+use program_structure::constants::UsefulConstants;
 use program_structure::error_code::ReportCode;
 use program_structure::error_definition::Report;
 use program_structure::file_definition::FileID;
@@ -79,23 +87,19 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     /// The generated LLZK `Module`.
     pub module: Module<'ctx>,
     /// The name of the prime field.
-    pub prime: &'ctx str,
+    pub prime_str: &'ctx str,
 }
 
 impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
-    /// Get the width of the prime field in bits.
-    pub fn prime_field_bits(&self) -> Result<u32> {
-        match self.prime {
-            "bn128" => Ok(254),
-            "bls12381" => Ok(381),
-            "goldilocks" => Ok(64),
-            "grumpkin" => Ok(254),
-            "pallas" => Ok(254),
-            "vesta" => Ok(255),
-            "secq256r1" => Ok(256),
-            "bls12377" => Ok(377),
-            _ => Err(anyhow!("Unsupported prime field: {}", self.prime)),
-        }
+    /// Get the width of the scalar prime field in bits.
+    pub fn prime_field_bits(&self) -> Result<usize> {
+        Ok(self.prime()?.bits())
+    }
+
+    /// Get the prime field modulus as a BigUint
+    pub fn prime(&self) -> Result<BigUint> {
+        let c = UsefulConstants::new(&self.prime_str.to_string());
+        c.get_p().to_biguint().ok_or_else(|| anyhow!("prime should be convertible to unsigned"))
     }
 
     /// Emit a circom-style warning.
@@ -147,6 +151,136 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         Ok(f.into())
     }
 
+    /// Try to statically compute the value of a circom [Expression] used as an array
+    /// dimension. This is computed in a separate function so that nested expressions
+    /// return BigUint results instead of IntegerAttributes.
+    ///
+    /// Returns `None` if the expression cannot be computed statically, Some(BigUint)
+    /// if the computation is successful, and an error if a conversion error occurs
+    /// along the way.
+    fn try_compute_dim_expr(&self, expr: &Expression) -> Result<Option<BigUint>> {
+        match expr {
+            Expression::Number(_, big_int) => {
+                let v = big_int.to_biguint().ok_or_else(|| anyhow!("could not convert to signed"))? % self.prime()?;
+                Ok(Some(v))
+            }
+            Expression::InfixOp { lhe, infix_op, rhe, .. } => {
+                let lhs = self.try_compute_dim_expr(lhe)?;
+                let rhs = self.try_compute_dim_expr(rhe)?;
+                match (lhs, rhs) {
+                    (Some(lhs), Some(rhs)) => {
+                        // Perform the arithmetic
+                        let p = self.prime()?;
+                        let bool_to_biguint = |b| if b { BigUint::one() } else { BigUint::zero() };
+                        let res = match infix_op {
+                            ExpressionInfixOpcode::Mul => (lhs * rhs) % p,
+                            ExpressionInfixOpcode::Div => {
+                                let rhs_inv = rhs
+                                    .mod_inverse(&p)
+                                    .ok_or_else(|| anyhow!("failed to compute inverse"))?
+                                    .to_biguint()
+                                    .ok_or_else(|| anyhow!("could not convert to BigUint"))?;
+                                (lhs * rhs_inv) % p
+                            }
+                            ExpressionInfixOpcode::Add => (lhs + rhs) % p,
+                            ExpressionInfixOpcode::Sub => (lhs + (&p - rhs)) % p,
+                            ExpressionInfixOpcode::Pow => lhs.modpow(&rhs, &p),
+                            ExpressionInfixOpcode::IntDiv => (lhs / rhs) % p,
+                            ExpressionInfixOpcode::Mod => lhs % rhs,
+                            ExpressionInfixOpcode::ShiftL => {
+                                (lhs << rhs
+                                    .to_usize()
+                                    .ok_or_else(|| anyhow!("could not convert to usize"))?)
+                                    % p
+                            }
+                            ExpressionInfixOpcode::ShiftR => {
+                                (lhs >> rhs
+                                    .to_usize()
+                                    .ok_or_else(|| anyhow!("could not convert to usize"))?)
+                                    % p
+                            }
+                            // Comparison operators are performed based on a signed interpretation
+                            // of the field elements as defined by the `relational_val` function, according
+                            // to the circom spec.
+                            ExpressionInfixOpcode::LesserEq => {
+                                let res = relational_val(&lhs, &p)? <= relational_val(&rhs, &p)?;
+                                bool_to_biguint(res)
+                            }
+                            ExpressionInfixOpcode::GreaterEq => {
+                                let res = relational_val(&lhs, &p)? >= relational_val(&rhs, &p)?;
+                                bool_to_biguint(res)
+                            }
+                            ExpressionInfixOpcode::Lesser => {
+                                let res = relational_val(&lhs, &p)? < relational_val(&rhs, &p)?;
+                                bool_to_biguint(res)
+                            }
+                            ExpressionInfixOpcode::Greater => {
+                                let res = relational_val(&lhs, &p)? > relational_val(&rhs, &p)?;
+                                bool_to_biguint(res)
+                            }
+                            ExpressionInfixOpcode::Eq => bool_to_biguint(lhs == rhs),
+                            ExpressionInfixOpcode::NotEq => bool_to_biguint(lhs != rhs),
+                            ExpressionInfixOpcode::BoolOr => {
+                                bool_to_biguint(!lhs.is_zero() || !rhs.is_zero())
+                            }
+                            ExpressionInfixOpcode::BoolAnd => {
+                                bool_to_biguint(!lhs.is_zero() && !rhs.is_zero())
+                            }
+                            ExpressionInfixOpcode::BitOr => (lhs | rhs) % p,
+                            ExpressionInfixOpcode::BitAnd => lhs & rhs,
+                            ExpressionInfixOpcode::BitXor => (lhs ^ rhs) % p,
+                        };
+                        Ok(Some(res))
+                    }
+                    _ => Ok(None),
+                }
+            }
+            Expression::PrefixOp { prefix_op, rhe, .. } => {
+                let rhs = self.try_compute_dim_expr(rhe)?;
+                match rhs {
+                    Some(rhs) => {
+                        // Perform the arithmetic
+                        let p = &self.prime()?;
+                        let res = match prefix_op {
+                            ExpressionPrefixOpcode::Sub => {
+                                if rhs.is_zero() {
+                                    rhs
+                                } else {
+                                    p - rhs
+                                }
+                            }
+                            ExpressionPrefixOpcode::BoolNot => {
+                                if rhs.is_zero() {
+                                    BigUint::one()
+                                } else {
+                                    BigUint::zero()
+                                }
+                            }
+                            ExpressionPrefixOpcode::Complement => {
+                                let mask = (BigUint::one() << p.bits()) - BigUint::one();
+                                mask ^ rhs
+                            }
+                        };
+                        Ok(Some(res))
+                    }
+                    _ => Ok(None),
+                }
+            }
+            Expression::InlineSwitchOp { cond, if_true, if_false, .. } => {
+                let cond = self.try_compute_dim_expr(cond)?;
+                let if_true = self.try_compute_dim_expr(if_true)?;
+                let if_false = self.try_compute_dim_expr(if_false)?;
+                match (cond, if_true, if_false) {
+                    (Some(cond), Some(if_true), Some(if_false)) => {
+                        Ok(Some(if !cond.is_zero() { if_true } else { if_false }))
+                    }
+                    _ => Ok(None),
+                }
+            }
+            _ => Ok(None),
+        }
+    }
+
     /// Convert a circom [Expression] used as an array dimension to an LLZK Attribute.
     ///
     /// Note: The LLZK ArrayType can only use the following Attribute types for dimensions:
@@ -154,34 +288,43 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     /// probably an identity map).
     #[allow(unused_variables)] // TODO: TEMP
     pub fn convert_dim_expr(&self, expr: &Expression) -> Result<Attribute<'ctx>> {
-        match expr {
-            Expression::Number(meta, big_int) => {
-                let int_attr = self.index_attr(
-                    big_int.to_i64().ok_or_else(|| anyhow!("Array dimension must fit in i64"))?,
-                );
-                Ok(int_attr.into())
+        // First try to compute statically, falling back to literal computation
+        // if all values are not compile-time constants or if the final result
+        // does not properly convert to i64.
+        if let Some(integer) = self.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64) {
+            let int_attr = self.index_attr(integer);
+            Ok(int_attr.into())
+        } else {
+            match expr {
+                Expression::Number(meta, big_int) => {
+                    unreachable!("handled by try_compute_dim_expr")
+                }
+                Expression::Variable { meta, name, access } => {
+                    // TODO: generate AffineMapAttr (with single result) or SymbolRefAttr (from param)
+                    todo!("Handle Variable expression in dimension")
+                }
+                Expression::InfixOp { meta, lhe, infix_op, rhe } => {
+                    todo!("Handle Infix expression in dimension for non-integer attributes")
+                }
+                Expression::PrefixOp { meta, prefix_op, rhe } => {
+                    todo!("Handle Prefix expression in dimension for non-integer attributes")
+                }
+                Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
+                    todo!(
+                        "Handle InlineSwitchOp expression in dimension for non-integer attributes"
+                    )
+                }
+                Expression::Call { meta, id, args } => {
+                    todo!("Handle Call expression in dimension")
+                }
+                // The remaining cases do not produce a scalar value.
+                // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
+                // Give the same error that the circom type checker gives. The type checker ran
+                // earlier so this should technically be unreachable.
+                _ => {
+                    Err(anyhow!("Array indexes and lengths must be single arithmetic expressions"))
+                }
             }
-            Expression::Variable { meta, name, access } => {
-                // TODO: generate AffineMapAttr (with single result) or SymbolRefAttr (from param)
-                todo!("Handle Variable expression in dimension")
-            }
-            Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                todo!("Handle InfixOp expression in dimension")
-            }
-            Expression::PrefixOp { meta, prefix_op, rhe } => {
-                todo!("Handle PrefixOp expression in dimension")
-            }
-            Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                todo!("Handle InlineSwitchOp expression in dimension")
-            }
-            Expression::Call { meta, id, args } => {
-                todo!("Handle Call expression in dimension")
-            }
-            // The remaining cases do not produce a scalar value.
-            // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
-            // Give the same error that the circom type checker gives. The type checker ran
-            // earlier so this should technically be unreachable.
-            _ => Err(anyhow!("Array indexes and lengths must be single arithmetic expressions")),
         }
     }
 
@@ -723,4 +866,21 @@ pub fn get_dims<'c>(arr_ty: &ArrayType<'c>) -> Vec<Attribute<'c>> {
 pub fn new_array_type<'c>(dim: Attribute<'c>, subarr_ty: &ArrayType<'c>) -> ArrayType<'c> {
     let dims: Vec<_> = std::iter::once(dim).chain(get_dims(subarr_ty).iter().copied()).collect();
     ArrayType::new(subarr_ty.element_type(), &dims)
+}
+
+/// Convert unsigned field elements into relational values used for comparisons.
+///
+/// relational_val(a) = a-p  if m/2 +1 <= a < m
+/// relational_val(a) = a,    otherwise.
+///
+/// see https://docs.circom.io/circom-language/basic-operators/#relational-operators
+/// for definition.
+pub fn relational_val(a: &BigUint, p: &BigUint) -> Result<BigInt> {
+    let a = (a % p)
+        .to_bigint()
+        .ok_or_else(|| anyhow!("could not convert field element to signed int"))?;
+    let p =
+        p.to_bigint().ok_or_else(|| anyhow!("could not convert field modulus to signed int"))?;
+    let val = if ((&p / 2) + 1) <= a { a - p } else { a };
+    Ok(val)
 }
