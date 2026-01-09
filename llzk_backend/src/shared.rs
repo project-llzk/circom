@@ -102,13 +102,25 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     /// Get the prime field modulus as a BigUint
     pub fn prime(&self) -> Result<BigUint> {
         let prime_str = match self.prime {
-            "bn128" | "grumpkin" => "21888242871839275222246405745257275088696311157297823662689037894645226208583",
-            "bls12381" => "52435875175126190479447740508185965837690552500527637822603658699938581184513",
+            "bn128" | "grumpkin" => {
+                "21888242871839275222246405745257275088696311157297823662689037894645226208583"
+            }
+            "bls12381" => {
+                "52435875175126190479447740508185965837690552500527637822603658699938581184513"
+            }
             "goldilocks" => "18446744069414584321",
-            "pallas" => "28948022309329048855892746252171976963363056481941647379679742748393362948097",
-            "vesta" => "28948022309329048855892746252171976963363056481941560715954676764349967630337",
-            "secq256r1" => "115792089210356248762697446949407573529996955224135760342422259061068512044369",
-            "bls12377" => "8444461749428370424248824938781546531375899335154063827935233455917409239041",
+            "pallas" => {
+                "28948022309329048855892746252171976963363056481941647379679742748393362948097"
+            }
+            "vesta" => {
+                "28948022309329048855892746252171976963363056481941560715954676764349967630337"
+            }
+            "secq256r1" => {
+                "115792089210356248762697446949407573529996955224135760342422259061068512044369"
+            }
+            "bls12377" => {
+                "8444461749428370424248824938781546531375899335154063827935233455917409239041"
+            }
             _ => return Err(anyhow!("Unsupported prime field: {}", self.prime)),
         };
         Ok(prime_str.parse::<BigUint>()?)
@@ -172,7 +184,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     /// along the way.
     fn try_compute_dim_expr(&self, expr: &Expression) -> Result<Option<BigUint>> {
         match expr {
-            Expression::Number(_,  big_int) => {
+            Expression::Number(_, big_int) => {
                 let v = big_int % self.prime()?.into_bigint().unwrap();
                 Ok(Some(v.into_biguint().unwrap()))
             }
@@ -188,9 +200,13 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                         let res = match infix_op {
                             ExpressionInfixOpcode::Mul => (lhs * rhs) % m,
                             ExpressionInfixOpcode::Div => {
-                                let rhs_inv = rhs.mod_inverse(&m).expect("failed to compute inverse").to_biguint().unwrap();
+                                let rhs_inv = rhs
+                                    .mod_inverse(&m)
+                                    .expect("failed to compute inverse")
+                                    .to_biguint()
+                                    .unwrap();
                                 (lhs * rhs_inv) % m
-                            },
+                            }
                             ExpressionInfixOpcode::Add => (lhs + rhs) % m,
                             ExpressionInfixOpcode::Sub => (lhs + (&m - rhs)) % m,
                             ExpressionInfixOpcode::Pow => lhs.modpow(&rhs, &m),
@@ -204,29 +220,33 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                             ExpressionInfixOpcode::LesserEq => {
                                 let res = relational_val(&lhs, &m) <= relational_val(&rhs, &m);
                                 bool_to_biguint(res)
-                            },
+                            }
                             ExpressionInfixOpcode::GreaterEq => {
                                 let res = relational_val(&lhs, &m) >= relational_val(&rhs, &m);
                                 bool_to_biguint(res)
-                            },
+                            }
                             ExpressionInfixOpcode::Lesser => {
                                 let res = relational_val(&lhs, &m) < relational_val(&rhs, &m);
                                 bool_to_biguint(res)
-                            },
+                            }
                             ExpressionInfixOpcode::Greater => {
                                 let res = relational_val(&lhs, &m) > relational_val(&rhs, &m);
                                 bool_to_biguint(res)
-                            },
+                            }
                             ExpressionInfixOpcode::Eq => bool_to_biguint(lhs == rhs),
                             ExpressionInfixOpcode::NotEq => bool_to_biguint(lhs != rhs),
-                            ExpressionInfixOpcode::BoolOr => bool_to_biguint(nonzero(lhs) || nonzero(rhs)),
-                            ExpressionInfixOpcode::BoolAnd => bool_to_biguint(nonzero(lhs) && nonzero(rhs)),
+                            ExpressionInfixOpcode::BoolOr => {
+                                bool_to_biguint(nonzero(lhs) || nonzero(rhs))
+                            }
+                            ExpressionInfixOpcode::BoolAnd => {
+                                bool_to_biguint(nonzero(lhs) && nonzero(rhs))
+                            }
                             ExpressionInfixOpcode::BitOr => (lhs | rhs) % m,
                             ExpressionInfixOpcode::BitAnd => lhs & rhs,
                             ExpressionInfixOpcode::BitXor => (lhs ^ rhs) % m,
                         };
                         Ok(Some(res))
-                    },
+                    }
                     _ => Ok(None),
                 }
             }
@@ -243,18 +263,22 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                                 } else {
                                     m - rhs
                                 }
-                            },
+                            }
                             ExpressionPrefixOpcode::BoolNot => {
-                                if rhs == BigUint::zero() { BigUint::zero() } else { BigUint::one() }
-                            },
+                                if rhs == BigUint::zero() {
+                                    BigUint::zero()
+                                } else {
+                                    BigUint::one()
+                                }
+                            }
                             ExpressionPrefixOpcode::Complement => {
                                 let mask = (BigUint::one() << m.bits()) - BigUint::one();
                                 mask ^ rhs
                             }
                         };
                         Ok(Some(res))
-                    },
-                    _ => Ok(None)
+                    }
+                    _ => Ok(None),
                 }
             }
             Expression::InlineSwitchOp { cond, if_true, if_false, .. } => {
@@ -264,11 +288,11 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                 match (cond, if_true, if_false) {
                     (Some(cond), Some(if_true), Some(if_false)) => {
                         Ok(Some(if cond != BigUint::zero() { if_true } else { if_false }))
-                    },
-                    _ => Ok(None)
+                    }
+                    _ => Ok(None),
                 }
             }
-            _ => Ok(None)
+            _ => Ok(None),
         }
     }
 
@@ -281,7 +305,8 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     pub fn convert_dim_expr(&self, expr: &Expression) -> Result<Attribute<'ctx>> {
         // First try to compute statically
         if let Some(integer) = self.try_compute_dim_expr(expr)? {
-            let int_attr = self.index_attr(integer.to_i64().expect("could not reduce dimension to i64"));
+            let int_attr =
+                self.index_attr(integer.to_i64().expect("could not reduce dimension to i64"));
             Ok(int_attr.into())
         } else {
             match expr {
@@ -299,7 +324,9 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                     todo!("Handle Prefix expression in dimension for non-integer attributes")
                 }
                 Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                    todo!("Handle InlineSwitchOp expression in dimension for non-integer attributes")
+                    todo!(
+                        "Handle InlineSwitchOp expression in dimension for non-integer attributes"
+                    )
                 }
                 Expression::Call { meta, id, args } => {
                     todo!("Handle Call expression in dimension")
@@ -308,7 +335,9 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                 // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
                 // Give the same error that the circom type checker gives. The type checker ran
                 // earlier so this should technically be unreachable.
-                _ => Err(anyhow!("Array indexes and lengths must be single arithmetic expressions")),
+                _ => {
+                    Err(anyhow!("Array indexes and lengths must be single arithmetic expressions"))
+                }
             }
         }
     }
