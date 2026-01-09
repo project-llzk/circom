@@ -10,7 +10,7 @@ use std::slice;
 
 /// A trait that allows common handling of the structs used to represent a circom
 /// function at different stages in the compilation process.
-pub trait FunctionLike {
+pub trait FunctionLike: std::fmt::Debug {
     /// Generate the LLZK Location for the function definition.
     fn get_location<'ctx>(
         &self,
