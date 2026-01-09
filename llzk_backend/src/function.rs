@@ -65,6 +65,7 @@ use program_structure::ast::VariableType;
 use program_structure::error_code::ReportCode;
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::ops::Deref;
 use std::ops::DerefMut;
 
@@ -396,7 +397,7 @@ where
                     // Perform integer division by casting to integer, using arith dialect
                     // divui, then casting the quotient back to felt. Cast to an integer type
                     // with sufficient bits to hold the felts without truncation.
-                    let int_ty = codegen.int_type(codegen.prime_field_bits()?);
+                    let int_ty = codegen.int_type(codegen.prime_field_bits()?.try_into()?);
                     let loc = codegen.location_from_meta(meta);
                     let int_lhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, lhs))?;
                     let int_rhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, rhs))?;

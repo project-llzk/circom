@@ -46,6 +46,7 @@ use num_bigint_dig::BigUint;
 use num_bigint_dig::IntoBigInt;
 use num_bigint_dig::IntoBigUint;
 use num_bigint_dig::ModInverse;
+use num_bigint_dig::ToBigInt as _;
 use num_traits::cast::ToPrimitive;
 use num_traits::One;
 use num_traits::Zero;
@@ -53,6 +54,7 @@ use program_structure::ast::Expression;
 use program_structure::ast::ExpressionInfixOpcode;
 use program_structure::ast::ExpressionPrefixOpcode;
 use program_structure::ast::Meta;
+use program_structure::constants::UsefulConstants;
 use program_structure::error_code::ReportCode;
 use program_structure::error_definition::Report;
 use program_structure::file_definition::FileID;
@@ -80,50 +82,19 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     /// The generated LLZK `Module`.
     pub module: Module<'ctx>,
     /// The name of the prime field.
-    pub prime: &'ctx str,
+    pub prime_str: &'ctx str,
 }
 
 impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     /// Get the width of the scalar prime field in bits.
-    pub fn prime_field_bits(&self) -> Result<u32> {
-        match self.prime {
-            "bn128" => Ok(254),
-            "bls12381" => Ok(255),
-            "goldilocks" => Ok(64),
-            "grumpkin" => Ok(254),
-            "pallas" => Ok(254),
-            "vesta" => Ok(255),
-            "secq256r1" => Ok(256),
-            "bls12377" => Ok(377),
-            _ => Err(anyhow!("Unsupported prime field: {}", self.prime)),
-        }
+    pub fn prime_field_bits(&self) -> Result<usize> {
+        Ok(self.prime()?.bits())
     }
 
     /// Get the prime field modulus as a BigUint
     pub fn prime(&self) -> Result<BigUint> {
-        let prime_str = match self.prime {
-            "bn128" | "grumpkin" => {
-                "21888242871839275222246405745257275088696311157297823662689037894645226208583"
-            }
-            "bls12381" => {
-                "52435875175126190479447740508185965837690552500527637822603658699938581184513"
-            }
-            "goldilocks" => "18446744069414584321",
-            "pallas" => {
-                "28948022309329048855892746252171976963363056481941647379679742748393362948097"
-            }
-            "vesta" => {
-                "28948022309329048855892746252171976963363056481941560715954676764349967630337"
-            }
-            "secq256r1" => {
-                "115792089210356248762697446949407573529996955224135760342422259061068512044369"
-            }
-            "bls12377" => {
-                "8444461749428370424248824938781546531375899335154063827935233455917409239041"
-            }
-            _ => return Err(anyhow!("Unsupported prime field: {}", self.prime)),
-        };
-        Ok(prime_str.parse::<BigUint>()?)
+        let c = UsefulConstants::new(&self.prime_str.to_string());
+        c.get_p().to_biguint().ok_or_else(|| anyhow!("prime should be convertible to unsigned"))
     }
 
     /// Emit a circom-style warning.
@@ -194,56 +165,65 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                 match (lhs, rhs) {
                     (Some(lhs), Some(rhs)) => {
                         // Perform the arithmetic
-                        let m = self.prime()?;
-                        let nonzero = |x| x != BigUint::zero();
-                        let bool_to_biguint = |b| (b as i64).into_biguint().unwrap();
+                        let p = self.prime()?;
+                        let bool_to_biguint = |b| if b { BigUint::one() } else { BigUint::zero() };
                         let res = match infix_op {
-                            ExpressionInfixOpcode::Mul => (lhs * rhs) % m,
+                            ExpressionInfixOpcode::Mul => (lhs * rhs) % p,
                             ExpressionInfixOpcode::Div => {
                                 let rhs_inv = rhs
-                                    .mod_inverse(&m)
-                                    .expect("failed to compute inverse")
+                                    .mod_inverse(&p)
+                                    .ok_or_else(|| anyhow!("failed to compute inverse"))?
                                     .to_biguint()
-                                    .unwrap();
-                                (lhs * rhs_inv) % m
+                                    .ok_or_else(|| anyhow!("could not convert to BigUint"))?;
+                                (lhs * rhs_inv) % p
                             }
-                            ExpressionInfixOpcode::Add => (lhs + rhs) % m,
-                            ExpressionInfixOpcode::Sub => (lhs + (&m - rhs)) % m,
-                            ExpressionInfixOpcode::Pow => lhs.modpow(&rhs, &m),
-                            ExpressionInfixOpcode::IntDiv => (lhs / rhs) % m,
+                            ExpressionInfixOpcode::Add => (lhs + rhs) % p,
+                            ExpressionInfixOpcode::Sub => (lhs + (&p - rhs)) % p,
+                            ExpressionInfixOpcode::Pow => lhs.modpow(&rhs, &p),
+                            ExpressionInfixOpcode::IntDiv => (lhs / rhs) % p,
                             ExpressionInfixOpcode::Mod => lhs % rhs,
-                            ExpressionInfixOpcode::ShiftL => (lhs << rhs.to_usize().unwrap()) % m,
-                            ExpressionInfixOpcode::ShiftR => (lhs >> rhs.to_usize().unwrap()) % m,
+                            ExpressionInfixOpcode::ShiftL => {
+                                (lhs << rhs
+                                    .to_usize()
+                                    .ok_or_else(|| anyhow!("could not convert to usize"))?)
+                                    % p
+                            }
+                            ExpressionInfixOpcode::ShiftR => {
+                                (lhs >> rhs
+                                    .to_usize()
+                                    .ok_or_else(|| anyhow!("could not convert to usize"))?)
+                                    % p
+                            }
                             // Comparison operators are performed based on a signed interpretation
                             // of the field elements as defined by the `relational_val` function, according
                             // to the circom spec.
                             ExpressionInfixOpcode::LesserEq => {
-                                let res = relational_val(&lhs, &m) <= relational_val(&rhs, &m);
+                                let res = relational_val(&lhs, &p)? <= relational_val(&rhs, &p)?;
                                 bool_to_biguint(res)
                             }
                             ExpressionInfixOpcode::GreaterEq => {
-                                let res = relational_val(&lhs, &m) >= relational_val(&rhs, &m);
+                                let res = relational_val(&lhs, &p)? >= relational_val(&rhs, &p)?;
                                 bool_to_biguint(res)
                             }
                             ExpressionInfixOpcode::Lesser => {
-                                let res = relational_val(&lhs, &m) < relational_val(&rhs, &m);
+                                let res = relational_val(&lhs, &p)? < relational_val(&rhs, &p)?;
                                 bool_to_biguint(res)
                             }
                             ExpressionInfixOpcode::Greater => {
-                                let res = relational_val(&lhs, &m) > relational_val(&rhs, &m);
+                                let res = relational_val(&lhs, &p)? > relational_val(&rhs, &p)?;
                                 bool_to_biguint(res)
                             }
                             ExpressionInfixOpcode::Eq => bool_to_biguint(lhs == rhs),
                             ExpressionInfixOpcode::NotEq => bool_to_biguint(lhs != rhs),
                             ExpressionInfixOpcode::BoolOr => {
-                                bool_to_biguint(nonzero(lhs) || nonzero(rhs))
+                                bool_to_biguint(!lhs.is_zero() || !rhs.is_zero())
                             }
                             ExpressionInfixOpcode::BoolAnd => {
-                                bool_to_biguint(nonzero(lhs) && nonzero(rhs))
+                                bool_to_biguint(!lhs.is_zero() && !rhs.is_zero())
                             }
-                            ExpressionInfixOpcode::BitOr => (lhs | rhs) % m,
+                            ExpressionInfixOpcode::BitOr => (lhs | rhs) % p,
                             ExpressionInfixOpcode::BitAnd => lhs & rhs,
-                            ExpressionInfixOpcode::BitXor => (lhs ^ rhs) % m,
+                            ExpressionInfixOpcode::BitXor => (lhs ^ rhs) % p,
                         };
                         Ok(Some(res))
                     }
@@ -255,24 +235,24 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                 match rhs {
                     Some(rhs) => {
                         // Perform the arithmetic
-                        let m = &self.prime()?;
+                        let p = &self.prime()?;
                         let res = match prefix_op {
                             ExpressionPrefixOpcode::Sub => {
-                                if rhs == BigUint::zero() {
+                                if rhs.is_zero() {
                                     rhs
                                 } else {
-                                    m - rhs
+                                    p - rhs
                                 }
                             }
                             ExpressionPrefixOpcode::BoolNot => {
-                                if rhs == BigUint::zero() {
-                                    BigUint::zero()
-                                } else {
+                                if rhs.is_zero() {
                                     BigUint::one()
+                                } else {
+                                    BigUint::zero()
                                 }
                             }
                             ExpressionPrefixOpcode::Complement => {
-                                let mask = (BigUint::one() << m.bits()) - BigUint::one();
+                                let mask = (BigUint::one() << p.bits()) - BigUint::one();
                                 mask ^ rhs
                             }
                         };
@@ -287,7 +267,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                 let if_false = self.try_compute_dim_expr(if_false)?;
                 match (cond, if_true, if_false) {
                     (Some(cond), Some(if_true), Some(if_false)) => {
-                        Ok(Some(if cond != BigUint::zero() { if_true } else { if_false }))
+                        Ok(Some(if !cond.is_zero() { if_true } else { if_false }))
                     }
                     _ => Ok(None),
                 }
@@ -303,10 +283,15 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     /// probably an identity map).
     #[allow(unused_variables)] // TODO: TEMP
     pub fn convert_dim_expr(&self, expr: &Expression) -> Result<Attribute<'ctx>> {
-        // First try to compute statically
-        if let Some(integer) = self.try_compute_dim_expr(expr)? {
-            let int_attr =
-                self.index_attr(integer.to_i64().expect("could not reduce dimension to i64"));
+        // First try to compute statically, falling back to literal computation
+        // if all values are not compile-time constants or if the final result
+        // does not properly convert to i64.
+        let integer = match self.try_compute_dim_expr(expr)? {
+            Some(i) => i.to_i64(),
+            None => None,
+        };
+        if let Some(integer) = integer {
+            let int_attr = self.index_attr(integer);
             Ok(int_attr.into())
         } else {
             match expr {
@@ -691,16 +676,17 @@ pub fn new_array_type<'c>(dim: Attribute<'c>, subarr_ty: &ArrayType<'c>) -> Arra
 
 /// Convert unsigned field elements into relational values used for comparisons.
 ///
-/// relational_val(a) = a-m  if m/2 +1 <= a < m
+/// relational_val(a) = a-p  if m/2 +1 <= a < m
 /// relational_val(a) = a,    otherwise.
 ///
 /// see https://docs.circom.io/circom-language/basic-operators/#relational-operators
 /// for definition.
-pub fn relational_val(a: &BigUint, m: &BigUint) -> BigInt {
-    let a = a % m;
-    if ((m / 2u32) + BigUint::zero()) <= a {
-        a.into_bigint().unwrap() - m.clone().into_bigint().unwrap()
-    } else {
-        a.into_bigint().unwrap()
-    }
+pub fn relational_val(a: &BigUint, p: &BigUint) -> Result<BigInt> {
+    let a = (a % p)
+        .to_bigint()
+        .ok_or_else(|| anyhow!("could not convert field element to signed int"))?;
+    let p =
+        p.to_bigint().ok_or_else(|| anyhow!("could not convert field modulus to signed int"))?;
+    let val = if ((&p / 2) + 1) <= a { a - p } else { a };
+    Ok(val)
 }
