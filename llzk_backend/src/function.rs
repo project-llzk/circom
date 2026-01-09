@@ -1385,12 +1385,6 @@ where
 
                 function.append_op_unnamed_result(scf_if_op)
             }
-            Expression::ParallelOp { rhe, .. } => {
-                // `parallel` is a tag used to generate parallelized code for the C++
-                // witness generator. Since LLZK currently has no such hint,
-                // we simply generate the underlying expression.
-                rhe.gen_llzk_in_function(codegen, function)
-            }
             Expression::ArrayInLine { meta, values } => {
                 let location = codegen.location_from_meta(meta);
                 let builder = &OpBuilder::new(codegen.context);
@@ -1525,6 +1519,7 @@ where
             }
             Expression::AnonymousComp { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
             Expression::Tuple { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
+            Expression::ParallelOp { .. } => unreachable!("handled in templates, illegal in pure functions"),
         }
     }
 }
