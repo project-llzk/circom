@@ -19,6 +19,7 @@ mod subcmp;
 mod template;
 mod template_ext;
 mod traversal;
+mod write_chain;
 
 pub use codegen::generate_llzk;
 pub use program_ext::VCPPlus;
