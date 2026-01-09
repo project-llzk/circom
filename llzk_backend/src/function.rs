@@ -1150,7 +1150,7 @@ where
                 loop_body_info.block.append_operation(codegen.new_bool_const_op(false, location)),
             )?,
         );
-        // In the current block, initialze the `VAR_NAME_NO_RETURN` flag to `true` to capture the
+        // In the current block, initialize the `VAR_NAME_NO_RETURN` flag to `true` to capture the
         // scenario where the loop body does not execute and thus the return within does not occur.
         function.append_op_named_result(
             codegen.new_bool_const_op(true, location),
