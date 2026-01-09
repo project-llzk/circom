@@ -10,7 +10,7 @@ function earlyReturnFn(in) {
         if (i == 0) {
             return in;
         }
-        assert(0 == 1); // This can be ignored because of the early return above
+        assert(0 == 1); // Unreachable because of the early return above
     }
     return -1;
 }

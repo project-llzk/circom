@@ -8,7 +8,7 @@ pragma circom 2.0.0;
 function earlyReturnFn(in) {
     for (var i = 0; i < 6; i++) {
         return in;
-        assert(0 == 1); // This can be ignored because of the early return above
+        assert(0 == 1); // Unreachable because of the early return above
     }
     return -1;
 }

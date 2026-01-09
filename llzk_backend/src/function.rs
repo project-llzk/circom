@@ -909,8 +909,8 @@ where
         // Per `append_circom_return()`, the op generated from a circom return
         // statement has the special attribute `CIRCOM_RETURN_MARKER_ATTR`.
         if term.has_attribute(CIRCOM_RETURN_MARKER_ATTR) {
-            // ASSERT: This must be a `yield` not a `return` since it's generated within
-            // the `else` or `then` block of an `if` statement.
+            // ASSERT: This must be a `yield` not a `return` since it's generated
+            // within a nested block of an `if` or `while` statement.
             assert!(is_scf_yield(term));
             // ASSERT: Per `append_circom_return()` it has exactly one operand.
             assert_eq!(term.operand_count(), 1);
@@ -976,7 +976,7 @@ where
 }
 
 /// Generate LLZK code that follows a circom `if-then-else` statement that has an unbalanced return
-/// (i.e. one branch returns and the other does not). Generates the following LLZK code:
+/// (i.e. one branch returns and the other does not) or `while`. Generates the following LLZK code:
 /// ```llzk
 ///  VAR_NAME_RETURN_VAL = scf.if VAR_NAME_NO_RETURN {
 ///      /* Leave block context stack in this scope for remaining code */
@@ -1055,7 +1055,8 @@ where
     // already ensures `scf.yield` is used instead of `function.return` when not in the root
     // block but the `scf.if` additionally requires that both blocks yield the same number and type
     // of values. Additionally, if one block returns and the other does not (in the circom code),
-    // an additional return state must be added to the values to be yielded from both branches.
+    // an additional return state must be added to the values to be yielded from both branches and
+    // an additional `scf.if` must be added after the main `scf.if` to check the return state flag.
     let then_return_opt = get_val_of_circom_return_and_erase(then_info.block);
     let else_return_opt = get_val_of_circom_return_and_erase(else_info.block);
     if let Some(then_return) = then_return_opt {
@@ -1110,7 +1111,7 @@ fn gen_while<'ast, 'ctx, 'func, 'blk, 'val>(
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
-    body_stmt: &Box<Statement>,
+    body_stmt: &Statement,
 ) -> Result<()>
 where
     'ctx: 'func,
@@ -1130,13 +1131,58 @@ where
         |fc| body_stmt.gen_llzk_in_function(codegen, fc),
         &mut loop_body_info,
     )?;
-    function.gen_scf_while(
-        codegen,
-        codegen.location_from_meta(meta),
-        cond_result,
-        loop_cond_info,
-        loop_body_info,
-    )
+
+    let location = codegen.location_from_meta(meta);
+
+    // Check if loop body block ends with a return in circom. The `scf.while` op used in LLZK cannot
+    // have returns nested within other blocks like circom allows. Use of `append_circom_return()`
+    // already ensures `scf.yield` is used instead of `function.return` when not in the root block
+    // but the `scf.while` additionally requires that both blocks yield the same number and type
+    // of values. Additionally, if the loop body block returns (in the circom code), an additional
+    // return state must be added to the values to be yielded and an additional `scf.if` must be
+    // added after the `scf.while` to check the return state flag.
+    let early_return_opt = get_val_of_circom_return_and_erase(loop_body_info.block);
+    if let Some(early_return) = early_return_opt {
+        // Within the loop body, set `VAR_NAME_NO_RETURN` to `false` since a return occurs.
+        loop_body_info.var_overwrites.insert(
+            VAR_NAME_NO_RETURN.to_string(),
+            single_result_as_value(
+                loop_body_info.block.append_operation(codegen.new_bool_const_op(false, location)),
+            )?,
+        );
+        // In the current block, initialze the `VAR_NAME_NO_RETURN` flag to `true` to capture the
+        // scenario where the loop body does not execute and thus the return within does not occur.
+        function.append_op_named_result(
+            codegen.new_bool_const_op(true, location),
+            VAR_NAME_NO_RETURN.to_string(),
+        )?;
+
+        // Add the return value to the overwrite map of the loop body.
+        loop_body_info.var_overwrites.insert(VAR_NAME_RETURN_VAL.to_string(), early_return);
+        // In the current block, ensure the return value variable is initialized, default to nondet.
+        if function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL).is_err() {
+            function.append_op_named_result(
+                // TODO: just like `gen_function_llzk()`, this must use an array type
+                // if applicable but is currently implemented for scalar `felt.type` only.
+                // In this case, the correct solution (once nondet op is supported for any
+                // type) is to just create the nondet op using
+                // `return_val.getType()`
+                codegen.new_nondet_felt_of_dimensions_at_location(location, &[])?,
+                VAR_NAME_RETURN_VAL.to_string(),
+            )?;
+        }
+    }
+
+    // Generate the loop op.
+    function.gen_scf_while(codegen, location, cond_result, loop_cond_info, loop_body_info)?;
+
+    // Finally, if the loop body contained a return statement, the code following the `scf.while`
+    // needs to be wrapped in an `scf.if` checking `VAR_NAME_NO_RETURN` before generating more code.
+    if early_return_opt.is_some() {
+        gen_if_then_else_unbalanced_return_extra(codegen, function, location)?;
+    }
+
+    Ok(())
 }
 
 impl<'ctx, 'func, 'blk, 'val> GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val> for Statement
