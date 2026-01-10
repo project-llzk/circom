@@ -161,7 +161,9 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     fn try_compute_dim_expr(&self, expr: &Expression) -> Result<Option<BigUint>> {
         match expr {
             Expression::Number(_, big_int) => {
-                let v = big_int.to_biguint().ok_or_else(|| anyhow!("could not convert to signed"))? % self.prime()?;
+                let v =
+                    big_int.to_biguint().ok_or_else(|| anyhow!("could not convert to signed"))?
+                        % self.prime()?;
                 Ok(Some(v))
             }
             Expression::InfixOp { lhe, infix_op, rhe, .. } => {
@@ -200,8 +202,8 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                                     % p
                             }
                             // Comparison operators are performed based on a signed interpretation
-                            // of the field elements as defined by the `relational_val` function, according
-                            // to the circom spec.
+                            // of the field elements as defined by the `relational_val` function,
+                            // according to the circom spec.
                             ExpressionInfixOpcode::LesserEq => {
                                 let res = relational_val(&lhs, &p)? <= relational_val(&rhs, &p)?;
                                 bool_to_biguint(res)
@@ -300,7 +302,8 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                     unreachable!("handled by try_compute_dim_expr")
                 }
                 Expression::Variable { meta, name, access } => {
-                    // TODO: generate AffineMapAttr (with single result) or SymbolRefAttr (from param)
+                    // TODO: generate AffineMapAttr (with single result) or SymbolRefAttr (from
+                    // param)
                     todo!("Handle Variable expression in dimension")
                 }
                 Expression::InfixOp { meta, lhe, infix_op, rhe } => {
@@ -883,4 +886,36 @@ pub fn relational_val(a: &BigUint, p: &BigUint) -> Result<BigInt> {
         p.to_bigint().ok_or_else(|| anyhow!("could not convert field modulus to signed int"))?;
     let val = if ((&p / 2) + 1) <= a { a - p } else { a };
     Ok(val)
+}
+
+/// Heuristically detect a circom `for` loop (represented by a `Statement::Block` containing a
+/// `Statement::InitializationBlock` followed by a `Statement::While`). Since all values in circom
+/// are of type `felt`, we cannot (easily) generate `scf.for` which requires index-typed loop
+/// variables so this macro generates code for the `Statement::InitializationBlock` followed by an
+/// `scf.while` for the loop (and then returns "Ok" so that the caller does not fall through to the
+/// normal code generation for a Block). Additionally, if the loop bounds and step can be computed
+/// as compile-time constants, then create an LLZK `loopbounds` attribute to attach to the generated
+/// `scf.while` loop.
+#[macro_export]
+macro_rules! try_for_loop_heuristic {
+    ($codegen:expr, $gen_context:expr, $meta:expr, $stmts:expr) => {
+        if let [program_structure::ast::Statement::InitializationBlock {
+            xtype: program_structure::ast::VariableType::Var,
+            initializations,
+            ..
+        }, program_structure::ast::Statement::While { cond, stmt, .. }] = $stmts.as_slice()
+        {
+            // TODO: Analyze `initializations` and `While` loop contents to determine if loop bounds
+            // and step can be computed. The loop `cond` is probably the starting point to find the
+            // loop iteration variable and then `initializations` has the start value and the loop
+            // body `stmt` has the step.
+            // TODO: Once this is implemented, find "for" loops in all `.circom` test files to add
+            // the `loopbounds` attribute to relevant loops (because existing tests will likely not
+            // fail when this is added since the lit checks only do line prefix by default).
+            let loop_bounds = None;
+
+            gen_init_block($codegen, $gen_context, initializations)?;
+            return gen_while($codegen, $gen_context, $meta, cond, stmt, loop_bounds);
+        }
+    };
 }

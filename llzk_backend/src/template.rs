@@ -28,6 +28,7 @@ use llzk::prelude::CallOpRef;
 use llzk::prelude::FeltType;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
+use llzk::prelude::LoopBoundsAttribute;
 use llzk::prelude::OperationLike;
 use llzk::prelude::OperationRef;
 use llzk::prelude::StructDefOpRefMut;
@@ -657,6 +658,7 @@ fn gen_while<'ast, 'ctx, 'str, 'func, 'blk, 'val, 'r>(
     meta: &Meta,
     cond: &Expression,
     body_stmt: &Statement,
+    loop_bounds: Option<LoopBoundsAttribute<'ctx>>,
 ) -> Result<()>
 where
     'ctx: 'str,
@@ -711,8 +713,25 @@ where
             condition,
             loop_cond_info,
             loop_body_info,
+            loop_bounds,
         )
     })
+}
+
+/// Generate LLZK code for a circom [Statement::InitializationBlock].
+/// This is needed to support the `try_for_loop_heuristic` macro.
+#[inline]
+fn gen_init_block<'ast, 'ctx, 'str, 'func, 'blk, 'val, 'r>(
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+    initializations: &[Statement],
+) -> Result<()>
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    initializations.gen_llzk_in_template(codegen, template)
 }
 
 /// Insert cast operations as needed to make `lhs` and `rhs` have compatible types for equality
@@ -757,7 +776,7 @@ where
     {
         match self {
             Statement::InitializationBlock { initializations, .. } => {
-                initializations.gen_llzk_in_template(codegen, template)
+                gen_init_block(codegen, template, initializations)
             }
             Statement::Declaration { meta, name, dimensions, .. } => {
                 template.and_then_same(|fc, _| {
@@ -766,10 +785,14 @@ where
                     })
                 })
             }
-            Statement::Block { stmts, .. } => {
+            Statement::Block { meta, stmts } => {
                 let mut template = template; // satisfy the &mut in `GenWithCircomScopeHandling`
                 template.gen_in_current_block_with_new_circom_scope_and_merge_overwrites(
-                    |template| stmts.gen_llzk_in_template(codegen, template),
+                    |template| {
+                        try_for_loop_heuristic!(codegen, template, meta, stmts);
+                        // Fallback to standard block handling.
+                        stmts.gen_llzk_in_template(codegen, template)
+                    },
                 )
             }
             Statement::Substitution { meta, var, access, op, rhe } => {
@@ -1002,7 +1025,9 @@ where
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
                 gen_if_then_else(codegen, template, meta, cond, if_case, else_case)
             }
-            Statement::While { meta, cond, stmt } => gen_while(codegen, template, meta, cond, stmt),
+            Statement::While { meta, cond, stmt } => {
+                gen_while(codegen, template, meta, cond, stmt, None)
+            }
             Statement::Assert { meta, arg } => {
                 arg.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, val| {
                     fc.append_op_no_result(
