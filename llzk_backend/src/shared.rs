@@ -825,3 +825,41 @@ macro_rules! try_for_loop_heuristic {
         }
     };
 }
+
+/// Returns a reference to a parent operation.
+///
+/// This function provides an API that is added in a newer release of melior via
+/// [mlir-sys/melior#789](https://github.com/mlir-rs/melior/pull/789).
+pub fn parent_operation_mut<'c: 'a, 'a>(
+    op: &impl OperationLike<'c, 'a>,
+) -> Option<melior::ir::operation::OperationRefMut<'c, 'a>> {
+    unsafe {
+        melior::ir::operation::OperationRefMut::from_option_raw(
+            mlir_sys::mlirOperationGetParentOperation(op.to_raw()),
+        )
+    }
+}
+
+/// Returns a mutable reference to the next operation in the same block.
+///
+/// This function provides an API fix that is added in a newer release of melior via
+/// [mlir-sys/melior#790](https://github.com/mlir-rs/melior/pull/790).
+pub fn next_in_block_mut<'c: 'a, 'a>(
+    op: &impl melior::ir::operation::OperationLike<'c, 'a>,
+) -> Option<melior::ir::operation::OperationRefMut<'c, 'a>> {
+    unsafe {
+        melior::ir::operation::OperationRefMut::from_option_raw(
+            mlir_sys::mlirOperationGetNextInBlock(op.to_raw()),
+        )
+    }
+}
+
+/// Removes itself from a parent block and returns the owned [Operation].
+pub fn remove_from_parent<'c: 'a, 'a>(
+    op: &mut impl melior::ir::operation::OperationMutLike<'c, 'a>,
+) -> Operation<'c> {
+    unsafe {
+        mlir_sys::mlirOperationRemoveFromParent(op.to_raw());
+    }
+    unsafe { Operation::from_raw(op.to_raw()) }
+}
