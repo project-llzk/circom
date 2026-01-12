@@ -1385,9 +1385,6 @@ where
 
                 function.append_op_unnamed_result(scf_if_op)
             }
-            Expression::ParallelOp { meta, rhe } => {
-                todo!("Handle ParallelOp expression")
-            }
             Expression::ArrayInLine { meta, values } => {
                 let location = codegen.location_from_meta(meta);
                 let builder = &OpBuilder::new(codegen.context);
@@ -1522,6 +1519,7 @@ where
             }
             Expression::AnonymousComp { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
             Expression::Tuple { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
+            Expression::ParallelOp { .. } => unreachable!("handled in templates, illegal in pure functions"),
         }
     }
 }
