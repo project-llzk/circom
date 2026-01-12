@@ -83,7 +83,7 @@ use std::ops::DerefMut;
 const VAR_NAME_RETURN_VAL: &str = "**return_val**";
 /// Special variable name used to reference the status of whether or not a circom block
 /// had a `return` when translating to an LLZK block that cannot contain a `return`.
-const VAR_NAME_NO_RETURN: &str = "**no_return**";
+const VAR_NAME_HAD_RETURN: &str = "**had_return**";
 /// LLZK attribute used to mark yield/return ops generated from circom return statements.
 const CIRCOM_RETURN_MARKER_ATTR: &str = "from_circom_return";
 
@@ -129,7 +129,7 @@ where
                 assert_eq!(ty.result_count(), 1);
                 codegen.new_nondet_at_location(codegen.location_unknown(), ty.result(0)?)
             })?;
-            block_ctx.declare_name_if_not_present(VAR_NAME_NO_RETURN, || {
+            block_ctx.declare_name_if_not_present(VAR_NAME_HAD_RETURN, || {
                 codegen
                     .new_nondet_at_location(codegen.location_unknown(), codegen.bool_type().into())
             })?;
@@ -941,17 +941,17 @@ where
     'func: 'blk,
     'blk: 'val,
 {
-    // Set `VAR_NAME_NO_RETURN` in both maps: `false` in returning block, `true` in other.
+    // Set `VAR_NAME_HAD_RETURN` in both maps: `true` in returning block, `false` in other.
     returning_block_overwrites.insert(
-        VAR_NAME_NO_RETURN.to_string(),
+        VAR_NAME_HAD_RETURN.to_string(),
         single_result_as_value(
-            returning_block.append_operation(codegen.new_bool_const_op(false, location)),
+            returning_block.append_operation(codegen.new_bool_const_op(true, location)),
         )?,
     );
     nonreturning_block_overwrites.insert(
-        VAR_NAME_NO_RETURN.to_string(),
+        VAR_NAME_HAD_RETURN.to_string(),
         single_result_as_value(
-            nonreturning_block.append_operation(codegen.new_bool_const_op(true, location)),
+            nonreturning_block.append_operation(codegen.new_bool_const_op(false, location)),
         )?,
     );
 
@@ -976,10 +976,10 @@ where
 /// Generate LLZK code that follows a circom `if-then-else` statement that has an unbalanced return
 /// (i.e. one branch returns and the other does not) or `while`. Generates the following LLZK code:
 /// ```llzk
-///  VAR_NAME_RETURN_VAL = scf.if VAR_NAME_NO_RETURN {
-///      /* Leave block context stack in this scope for remaining code */
-///  } else {
+///  VAR_NAME_RETURN_VAL = scf.if VAR_NAME_HAD_RETURN {
 ///      scf.yield VAR_NAME_RETURN_VAL
+///  } else {
+///      /* Leave block context stack in this scope for remaining code */
 ///  }
 ///  function.return VAR_NAME_RETURN_VAL
 /// ```
@@ -993,15 +993,15 @@ where
     'func: 'blk,
     'blk: 'val,
 {
-    let condition = function.block_ctx.get_named_value(VAR_NAME_NO_RETURN)?;
+    let condition = function.block_ctx.get_named_value(VAR_NAME_HAD_RETURN)?;
     let ret_val = function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL)?;
 
     let then_region = Region::new();
     let then_block = then_region.append_block(Block::new(&[]));
+    no_results(then_block.append_operation(scf::r#yield(&[*ret_val], location)))?;
 
     let else_region = Region::new();
     let else_block = else_region.append_block(Block::new(&[]));
-    no_results(else_block.append_operation(scf::r#yield(&[*ret_val], location)))?;
 
     let ret_val = function.append_op_named_result(
         scf::r#if(*condition, &[ret_val.r#type()], then_region, else_region, location),
@@ -1009,9 +1009,9 @@ where
     )?;
     function.append_circom_return(codegen, location, ret_val)?;
 
-    // After adding everything above in the current block context, push the `then_block`
+    // After adding everything above in the current block context, push the `else_block`
     // so translation of the remaining circom code continues within this block.
-    function.block_ctx.push(then_block);
+    function.block_ctx.push(else_block);
     Ok(())
 }
 
@@ -1093,7 +1093,7 @@ where
 
     // Finally, if both blocks ended with a return, then add a new return here. Else, if
     // only one block returned, the code following the `scf.if` needs to be wrapped in
-    // another `scf.if` checking `VAR_NAME_NO_RETURN` before generating remaining code.
+    // another `scf.if` checking `VAR_NAME_HAD_RETURN` before generating remaining code.
     if then_return_opt.is_some() && else_return_opt.is_some() {
         let ret_val = function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL)?;
         function.append_circom_return(codegen, location, *ret_val)?;
@@ -1142,18 +1142,18 @@ where
     // added after the `scf.while` to check the return state flag.
     let early_return_opt = get_val_of_circom_return_and_erase(loop_body_info.block);
     if let Some(early_return) = early_return_opt {
-        // Within the loop body, set `VAR_NAME_NO_RETURN` to `false` since a return occurs.
+        // Within the loop body, set `VAR_NAME_HAD_RETURN` to `true` since a return occurs.
         loop_body_info.var_overwrites.insert(
-            VAR_NAME_NO_RETURN.to_string(),
+            VAR_NAME_HAD_RETURN.to_string(),
             single_result_as_value(
-                loop_body_info.block.append_operation(codegen.new_bool_const_op(false, location)),
+                loop_body_info.block.append_operation(codegen.new_bool_const_op(true, location)),
             )?,
         );
-        // In the current block, initialize the `VAR_NAME_NO_RETURN` flag to `true` to capture the
+        // In the current block, initialize the `VAR_NAME_HAD_RETURN` flag to `false` to capture the
         // scenario where the loop body does not execute and thus the return within does not occur.
         function.append_op_named_result(
-            codegen.new_bool_const_op(true, location),
-            VAR_NAME_NO_RETURN.to_string(),
+            codegen.new_bool_const_op(false, location),
+            VAR_NAME_HAD_RETURN.to_string(),
         )?;
 
         // Add the return value to the overwrite map of the loop body.
@@ -1183,7 +1183,7 @@ where
     )?;
 
     // Finally, if the loop body contained a return statement, the code following the `scf.while`
-    // needs to be wrapped in an `scf.if` checking `VAR_NAME_NO_RETURN` before generating more code.
+    // must be wrapped in an `scf.if` checking `VAR_NAME_HAD_RETURN` before generating more code.
     if early_return_opt.is_some() {
         gen_if_then_else_unbalanced_return_extra(codegen, function, location)?;
     }
