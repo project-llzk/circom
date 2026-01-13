@@ -9,7 +9,7 @@ use program_structure::program_archive::ProgramArchive;
 
 /// A trait that allows common handling of the structs used to represent a circom
 /// program at different stages in the compilation process.
-pub trait ProgramLike {
+pub trait ProgramLike: std::fmt::Debug {
     /// Get the file library of the program.
     fn get_file_library(&self) -> &FileLibrary;
     /// Get the FileID of the file containing the "main" declaration.

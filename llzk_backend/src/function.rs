@@ -17,7 +17,6 @@ use crate::shared::is_felt;
 use crate::shared::is_index;
 use crate::shared::is_scf_yield;
 use crate::shared::new_array_type;
-use crate::shared::new_felt_const_op;
 use crate::shared::no_results;
 use crate::shared::replace_uses_with_new_block_argument;
 use crate::shared::set_operand_if_undef;
@@ -34,6 +33,9 @@ use llzk::prelude::array;
 use llzk::prelude::bool;
 use llzk::prelude::felt;
 use llzk::prelude::function;
+use llzk::prelude::melior_dialects::arith;
+use llzk::prelude::melior_dialects::index;
+use llzk::prelude::melior_dialects::scf;
 use llzk::prelude::undef;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
@@ -48,18 +50,17 @@ use llzk::prelude::Operation;
 use llzk::prelude::OperationLike as _;
 use llzk::prelude::OperationMutLike;
 use llzk::prelude::OperationRef;
+use llzk::prelude::OperationRefMut;
 use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
-use melior::dialect::arith;
-use melior::dialect::index;
+use llzk::prelude::WalkOrder;
+use llzk::prelude::WalkResult;
 use melior::dialect::ods::math;
-use melior::dialect::scf;
-use melior::ir::operation::OperationRefMut;
-use melior::ir::operation::WalkOrder;
-use melior::ir::operation::WalkResult;
+use num_bigint_dig::BigInt;
+use num_traits::Zero;
 use program_structure::ast::Access;
 use program_structure::ast::Expression;
 use program_structure::ast::ExpressionInfixOpcode;
@@ -70,6 +71,7 @@ use program_structure::ast::VariableType;
 use program_structure::error_code::ReportCode;
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::ops::Deref;
 use std::ops::DerefMut;
 
@@ -170,6 +172,9 @@ where
         value: Value<'ctx, 'val>,
     ) -> Result<()> {
         let mut op = if self.block_ctx.is_only_root() {
+            // TODO: As mentioned in `gen_function_llzk()`, functions could also
+            // return array type values but that is not currently implemented.
+            let value = self.cast_to_felt_if_needed(location, value)?;
             function::r#return(location, &[value])
         } else {
             scf::r#yield(&[value], location)
@@ -248,9 +253,23 @@ where
         Err(anyhow!(err_msg))
     }
 
+    /// Create a cast to felt (field element) type if the given value is not already a felt.
+    #[inline]
+    pub fn cast_to_felt_if_needed(
+        &mut self,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        if !is_felt(val.r#type()) {
+            self.append_op_unnamed_result(cast::tofelt(location, val))
+        } else {
+            Ok(val)
+        }
+    }
+
     /// Create a cast to index type if the given value is not already an index.
     #[inline]
-    fn cast_to_index_if_needed(
+    pub fn cast_to_index_if_needed(
         &mut self,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
@@ -264,15 +283,29 @@ where
 
     /// Create a cast to bool type (i1) if the given value is not already a bool.
     #[inline]
-    fn cast_to_bool_if_needed<'ast>(
+    pub fn cast_to_bool_if_needed<'ast>(
         &mut self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
-        if !is_bool(val.r#type()) {
-            self.append_op_unnamed_result(cast::toint(location, codegen.bool_type(), val).into())
+        // The conversion to bool is simply to check `!=0` which is the same as
+        // `normalize()` in `modular_arithmetic.rs`.
+        if is_felt(val.r#type()) {
+            let zero = self
+                .append_op_unnamed_result(codegen.new_felt_const_op(&BigInt::zero(), location)?)?;
+            self.append_op_unnamed_result(bool::ne(location, val, zero)?)
+        } else if is_index(val.r#type()) {
+            let zero = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
+            self.append_op_unnamed_result(index::cmp(
+                codegen.context,
+                arith::CmpiPredicate::Ne,
+                val,
+                zero,
+                location,
+            ))
         } else {
+            assert!(is_bool(val.r#type()));
             Ok(val)
         }
     }
@@ -403,7 +436,10 @@ where
 
         macro_rules! try_bool_op {
             ($op_path:path) => {{
-                try_callback_for_type!(shared::is_bool, generic_op_callback!($op_path));
+                let loc = codegen.location_from_meta(meta);
+                let lhs = self.cast_to_bool_if_needed(codegen, loc, lhs)?;
+                let rhs = self.cast_to_bool_if_needed(codegen, loc, rhs)?;
+                return self.append_op_unnamed_result($op_path(loc, lhs, rhs)?);
             }};
         }
 
@@ -473,7 +509,7 @@ where
                     // Perform integer division by casting to integer, using arith dialect
                     // divui, then casting the quotient back to felt. Cast to an integer type
                     // with sufficient bits to hold the felts without truncation.
-                    let int_ty = codegen.int_type(codegen.prime_field_bits()?);
+                    let int_ty = codegen.int_type(codegen.prime_field_bits()?.try_into()?);
                     let loc = codegen.location_from_meta(meta);
                     let int_lhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, lhs))?;
                     let int_rhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, rhs))?;
@@ -531,7 +567,7 @@ where
         }
         let err_msg = format!(
             "Cannot generate LLZK for infix {:?} with LHS type '{}' and RHS type '{}'",
-            self,
+            op,
             lhs.r#type(),
             rhs.r#type()
         );
@@ -874,8 +910,8 @@ where
         // Per `append_circom_return()`, the op generated from a circom return
         // statement has the special attribute `CIRCOM_RETURN_MARKER_ATTR`.
         if term.has_attribute(CIRCOM_RETURN_MARKER_ATTR) {
-            // ASSERT: This must be a `yield` not a `return` since it's generated within
-            // the `else` or `then` block of an `if` statement.
+            // ASSERT: This must be a `yield` not a `return` since it's generated
+            // within a nested block of an `if` or `while` statement.
             assert!(is_scf_yield(term));
             // ASSERT: Per `append_circom_return()` it has exactly one operand.
             assert_eq!(term.operand_count(), 1);
@@ -929,7 +965,7 @@ where
         VAR_NAME_RETURN_VAL.to_string(),
         function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL).cloned().or_else(|_| {
             single_result_as_value(nonreturning_block.append_operation(
-                // TODO: just like `gen_llzk()` for `FunctionData`, this must use an array type
+                // TODO: just like `gen_function_llzk()`, this must use an array type
                 // if applicable but is currently implemented for scalar `felt.type` only.
                 // In this case, the correct solution (once nondet op is supported for any type)
                 // is to just create the nondet op using `return_val.getType()`
@@ -941,7 +977,7 @@ where
 }
 
 /// Generate LLZK code that follows a circom `if-then-else` statement that has an unbalanced return
-/// (i.e. one branch returns and the other does not). Generates the following LLZK code:
+/// (i.e. one branch returns and the other does not) or `while`. Generates the following LLZK code:
 /// ```llzk
 ///  VAR_NAME_RETURN_VAL = scf.if VAR_NAME_NO_RETURN {
 ///      /* Leave block context stack in this scope for remaining code */
@@ -1020,7 +1056,8 @@ where
     // already ensures `scf.yield` is used instead of `function.return` when not in the root
     // block but the `scf.if` additionally requires that both blocks yield the same number and type
     // of values. Additionally, if one block returns and the other does not (in the circom code),
-    // an additional return state must be added to the values to be yielded from both branches.
+    // an additional return state must be added to the values to be yielded from both branches and
+    // an additional `scf.if` must be added after the main `scf.if` to check the return state flag.
     let then_return_opt = get_val_of_circom_return_and_erase(then_info.block);
     let else_return_opt = get_val_of_circom_return_and_erase(else_info.block);
     if let Some(then_return) = then_return_opt {
@@ -1066,6 +1103,86 @@ where
     } else if then_return_opt.is_some() || else_return_opt.is_some() {
         gen_if_then_else_unbalanced_return_extra(codegen, function, location)?;
     }
+    Ok(())
+}
+
+/// Generate LLZK code for a circom [Statement::While].
+fn gen_while<'ast, 'ctx, 'func, 'blk, 'val>(
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    meta: &Meta,
+    cond: &Expression,
+    body_stmt: &Statement,
+) -> Result<()>
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    // Generate the loop condition (i.e. "before") and body (i.e. "after") blocks naively.
+    let mut loop_cond_info = NestedBlockInfo::default();
+    let cond_result = function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        loop_cond_info.block,
+        |fc| cond.gen_llzk_in_function(codegen, fc),
+        &mut loop_cond_info,
+    )?;
+    let mut loop_body_info = NestedBlockInfo::default();
+    function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        loop_body_info.block,
+        |fc| body_stmt.gen_llzk_in_function(codegen, fc),
+        &mut loop_body_info,
+    )?;
+
+    let location = codegen.location_from_meta(meta);
+
+    // Check if loop body block ends with a return in circom. The `scf.while` op used in LLZK cannot
+    // have returns nested within other blocks like circom allows. Use of `append_circom_return()`
+    // already ensures `scf.yield` is used instead of `function.return` when not in the root block
+    // but the `scf.while` additionally requires that both blocks yield the same number and type
+    // of values. Additionally, if the loop body block returns (in the circom code), an additional
+    // return state must be added to the values to be yielded and an additional `scf.if` must be
+    // added after the `scf.while` to check the return state flag.
+    let early_return_opt = get_val_of_circom_return_and_erase(loop_body_info.block);
+    if let Some(early_return) = early_return_opt {
+        // Within the loop body, set `VAR_NAME_NO_RETURN` to `false` since a return occurs.
+        loop_body_info.var_overwrites.insert(
+            VAR_NAME_NO_RETURN.to_string(),
+            single_result_as_value(
+                loop_body_info.block.append_operation(codegen.new_bool_const_op(false, location)),
+            )?,
+        );
+        // In the current block, initialize the `VAR_NAME_NO_RETURN` flag to `true` to capture the
+        // scenario where the loop body does not execute and thus the return within does not occur.
+        function.append_op_named_result(
+            codegen.new_bool_const_op(true, location),
+            VAR_NAME_NO_RETURN.to_string(),
+        )?;
+
+        // Add the return value to the overwrite map of the loop body.
+        loop_body_info.var_overwrites.insert(VAR_NAME_RETURN_VAL.to_string(), early_return);
+        // In the current block, ensure the return value variable is initialized, default to nondet.
+        if function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL).is_err() {
+            function.append_op_named_result(
+                // TODO: just like `gen_function_llzk()`, this must use an array type
+                // if applicable but is currently implemented for scalar `felt.type` only.
+                // In this case, the correct solution (once nondet op is supported for any
+                // type) is to just create the nondet op using
+                // `return_val.getType()`
+                codegen.new_nondet_felt_of_dimensions_at_location(location, &[])?,
+                VAR_NAME_RETURN_VAL.to_string(),
+            )?;
+        }
+    }
+
+    // Generate the loop op.
+    function.gen_scf_while(codegen, location, cond_result, loop_cond_info, loop_body_info)?;
+
+    // Finally, if the loop body contained a return statement, the code following the `scf.while`
+    // needs to be wrapped in an `scf.if` checking `VAR_NAME_NO_RETURN` before generating more code.
+    if early_return_opt.is_some() {
+        gen_if_then_else_unbalanced_return_extra(codegen, function, location)?;
+    }
+
     Ok(())
 }
 
@@ -1156,9 +1273,7 @@ where
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
                 gen_if_then_else(codegen, function, meta, cond, if_case, else_case)
             }
-            Statement::While { meta, cond, stmt } => {
-                todo!("Handle while statement in function")
-            }
+            Statement::While { meta, cond, stmt } => gen_while(codegen, function, meta, cond, stmt),
             Statement::Return { meta, value } => {
                 let value = value.gen_llzk_in_function(codegen, function)?;
                 let location = codegen.location_from_meta(meta);
@@ -1215,7 +1330,9 @@ where
             Expression::Number(meta, big_int) => {
                 // Convert the BigInt to an LLZK `felt.const` op. The user of the Expression is
                 // responsible for converting this `felt.type` value to another type if needed.
-                function.append_op_unnamed_result(new_felt_const_op(codegen, meta, big_int)?)
+                function.append_op_unnamed_result(
+                    codegen.new_felt_const_op(big_int, codegen.location_from_meta(meta))?,
+                )
             }
             Expression::Variable { meta, name, access } => match access.as_slice() {
                 [] => {
@@ -1268,9 +1385,6 @@ where
 
                 function.append_op_unnamed_result(scf_if_op)
             }
-            Expression::ParallelOp { meta, rhe } => {
-                todo!("Handle ParallelOp expression")
-            }
             Expression::ArrayInLine { meta, values } => {
                 let location = codegen.location_from_meta(meta);
                 let builder = &OpBuilder::new(codegen.context);
@@ -1297,12 +1411,9 @@ where
                         llzk::dialect::array::ArrayCtor::Values(&[]),
                     ))?;
                     for (idx, val) in values.iter().enumerate() {
-                        let idx_attr = codegen.index_attr(i64::try_from(idx)?);
-                        let idx_val = function.append_op_unnamed_result(arith::constant(
-                            codegen.context,
-                            idx_attr.into(),
-                            location,
-                        ))?;
+                        let idx_val = function.append_op_unnamed_result(
+                            codegen.new_index_const_op(i64::try_from(idx)?, location),
+                        )?;
                         function.append_op_no_result(array::insert(
                             location,
                             new_arr,
@@ -1330,9 +1441,7 @@ where
                 let val = value.gen_llzk_in_function(codegen, function)?;
                 let dim = codegen.convert_dim_expr(dimension)?;
                 let const_dim = IntegerAttribute::try_from(dim);
-                let subarr_ty = ArrayType::try_from(val.r#type());
-
-                if let Ok(subarr_ty) = subarr_ty {
+                if let Ok(subarr_ty) = ArrayType::try_from(val.r#type()) {
                     let arr_ty = new_array_type(dim, &subarr_ty);
                     // The array.new constructor doesn't accept arrays as initializer values,
                     // so we instead create the array empty and use array.insert to insert values.
@@ -1344,12 +1453,9 @@ where
                     ))?;
                     if let Ok(const_dim) = const_dim {
                         for idx in 0..const_dim.value() {
-                            let idx_attr = codegen.index_attr(idx);
-                            let idx_val = function.append_op_unnamed_result(arith::constant(
-                                codegen.context,
-                                idx_attr.into(),
-                                location,
-                            ))?;
+                            let idx_val = function.append_op_unnamed_result(
+                                codegen.new_index_const_op(idx, location),
+                            )?;
                             function.append_op_no_result(array::insert(
                                 location,
                                 new_arr,
@@ -1384,15 +1490,10 @@ where
                 let call_operands = args
                     .iter()
                     .map(|arg| {
-                        // TODO: As mentioned in `gen_llzk()` for `FunctionData`, functions could
-                        // also take array type parameters but that is not
-                        // currently implemented.
+                        // TODO: As mentioned in `gen_function_llzk()`, functions could
+                        // also take array type parameters but that is not currently implemented.
                         let operand_val = arg.gen_llzk_in_function(codegen, function)?;
-                        if !is_felt(operand_val.r#type()) {
-                            function.append_op_unnamed_result(cast::tofelt(location, operand_val))
-                        } else {
-                            Ok(operand_val)
-                        }
+                        function.cast_to_felt_if_needed(location, operand_val)
                     })
                     .collect::<Result<Vec<Value>>>()?;
                 // Create the CallOp in each function using the collected args.
@@ -1418,6 +1519,7 @@ where
             }
             Expression::AnonymousComp { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
             Expression::Tuple { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
+            Expression::ParallelOp { .. } => unreachable!("handled in templates, illegal in pure functions"),
         }
     }
 }

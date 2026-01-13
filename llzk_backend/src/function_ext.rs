@@ -3,14 +3,14 @@
 use crate::program_ext::ProgramLike;
 use crate::shared::LlzkCodegen;
 use compiler::hir::very_concrete_program::VCF;
-use melior::ir::Location;
+use llzk::prelude::Location;
 use program_structure::ast::Statement;
 use program_structure::function_data::FunctionData;
 use std::slice;
 
 /// A trait that allows common handling of the structs used to represent a circom
 /// function at different stages in the compilation process.
-pub trait FunctionLike {
+pub trait FunctionLike: std::fmt::Debug {
     /// Generate the LLZK Location for the function definition.
     fn get_location<'ctx>(
         &self,
@@ -65,7 +65,7 @@ impl FunctionLike for VCF {
     }
     fn get_body(&self) -> &[Statement] {
         // In VCF format, the function body is wrapped in a Block that conveys no additional
-        // information but will cause returns to generate `scf.yield`` instead of `function.return`.
+        // information but will cause returns to generate `scf.yield` instead of `function.return`.
         match &self.body {
             Statement::Block { stmts, .. } => stmts,
             b => slice::from_ref(b),

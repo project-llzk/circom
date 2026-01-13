@@ -34,13 +34,13 @@ use llzk::prelude::FeltType;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::OperationLike;
+use llzk::prelude::OperationRef;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::SymbolRefAttribute;
+use llzk::prelude::Type;
 use llzk::prelude::Value;
+use llzk::prelude::ValueLike;
 use melior::ir::operation::OperationResult;
-use melior::ir::OperationRef;
-use melior::ir::Type;
-use melior::ir::ValueLike;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
@@ -327,10 +327,10 @@ trait ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r> {
     ) -> Self;
 }
 
-/// Support [Chainable::and_then] producing [GenResultSingleVal] which allows for chaining another
-/// generator function on this result.
-impl<'ctx, 'str, 'func, 'blk, 'val, 'r> ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>
-    for GenResultSingleVal<'ctx, 'str, 'func, 'blk, 'val, 'r>
+/// Support [Chainable::and_then] producing a [GenResult]. This allows for chaining another
+/// generator function on this result whose input is `ResultType`.
+impl<'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType> ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>
+    for GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType>
 where
     'ctx: 'str,
     'str: 'func,
@@ -338,14 +338,18 @@ where
     'blk: 'val,
     'val: 'r,
 {
-    type HandlerOutput = Value<'ctx, 'val>;
+    type HandlerOutput = ResultType;
 
     fn produce(
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
         compute_res: ShouldGenerate<Self::HandlerOutput>,
         constrain_res: ShouldGenerate<Self::HandlerOutput>,
     ) -> Self {
-        GenResultSingleVal { template, compute_res, constrain_res }
+        GenResult::<'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType> {
+            template,
+            compute_res,
+            constrain_res,
+        }
     }
 }
 
@@ -877,26 +881,20 @@ where
                                 let _: () = rhe
                                     .gen_llzk_in_template(codegen, &compute_only)?
                                     .and_then_same(|fc, val| {
+                                        let location = codegen.location_from_meta(meta);
                                         // Cast value to field type if needed.
-                                        let write_val = if !is_felt(val.r#type()) {
-                                            fc.append_op_unnamed_result(
-                                                cast::tofelt(codegen.location_from_meta(meta), val)
-                                                    .into(),
-                                            )?
-                                        } else {
-                                            val
-                                        };
+                                        let value = fc.cast_to_felt_if_needed(location, val)?;
                                         // Write value to field of "self" struct.
                                         fc.append_op_no_result(
                                             r#struct::writef(
-                                                codegen.location_from_meta(meta),
+                                                location,
                                                 fc.func.self_value_of_compute()?,
                                                 var,
-                                                write_val,
+                                                value,
                                             )?
                                             .into(),
                                         )?;
-                                        fc.block_ctx.set_named_value(var.clone(), write_val)
+                                        fc.block_ctx.set_named_value(var.clone(), value)
                                     })?;
                                 // The constrain function just reads that field from "self" struct.
                                 let constrain_only = template.constrain_only();
@@ -961,26 +959,20 @@ where
                             [] => {
                                 rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                     |fc, val| {
+                                        let location = codegen.location_from_meta(meta);
                                         // Cast value to field type if needed.
-                                        let write_val = if !is_felt(val.r#type()) {
-                                            fc.append_op_unnamed_result(
-                                                cast::tofelt(codegen.location_from_meta(meta), val)
-                                                    .into(),
-                                            )?
-                                        } else {
-                                            val
-                                        };
+                                        let value = fc.cast_to_felt_if_needed(location, val)?;
                                         // Write value to field of "self" struct.
                                         fc.append_op_no_result(
                                             r#struct::writef(
-                                                codegen.location_from_meta(meta),
+                                                location,
                                                 fc.func.self_value_of_compute()?,
                                                 var,
-                                                write_val,
+                                                value,
                                             )?
                                             .into(),
                                         )?;
-                                        fc.block_ctx.set_named_value(var.clone(), write_val)
+                                        fc.block_ctx.set_named_value(var.clone(), value)
                                     },
                                     |fc, val| {
                                         // Read value of field from "self" struct and generate
@@ -1070,7 +1062,7 @@ where
                                         )
                                     },
                                     |_fc, _rhe| {
-                                        todo!("Generate array write operation in template (constrain): \n{access:?}")
+                                        anyhow::bail!("Generate array write operation in template (constrain): \n{access:?}")
                                     },
                                 )
                             }
@@ -1249,6 +1241,12 @@ where
                     }
                 }
             }
+            Expression::ParallelOp { rhe, .. } => {
+                // `parallel` is a tag used to generate parallelized code for the C++
+                // witness generator. Since LLZK currently has no such hint,
+                // we simply generate the underlying expression.
+                rhe.gen_llzk_in_template(codegen, template)
+            },
             Expression::Call { meta, id, args, .. }
                 if meta.get_type_knowledge().is_component()
                     && codegen.program.contains_template(id) =>
