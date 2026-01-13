@@ -14,3 +14,6 @@ type_analysis/target/
 # Nix package build
 /result
 /build-tools
+
+# Temporary
+scripts/update-test-cases.sh
