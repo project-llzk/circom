@@ -178,13 +178,8 @@ where
         operation: Operation<'ctx>,
         block: BlockRef<'ctx, 'blk>,
     ) -> Result<()> {
-        let stack_len = self.other_blocks.len();
-        let self_addr = self as *const Self;
-        let blocks = self.blocks_iter_mut_rev();
-        let (idx, bc) = blocks
-            .enumerate()
-            .find(|(_, bc)| bc.block == block)
-            .ok_or_else(|| block_not_in_stack(block))?;
+        let mut blocks = self.blocks_iter_mut_rev();
+        let bc = blocks.find(|bc| bc.block == block).ok_or_else(|| block_not_in_stack(block))?;
         bc.op_queue.push(operation);
         Ok(())
     }
@@ -273,22 +268,6 @@ where
         self.blocks_iter()
             .find_map(|bc| bc.declares(name).then_some(bc.block))
             .ok_or_else(|| anyhow!("Variable '{name}' was not declared in any scope"))
-    }
-
-    /// Returns true the block belongs to the stack, false otherwise.
-    fn block_in_stack(&self, block: BlockRef<'ctx, 'blk>) -> bool {
-        std::iter::once(&self.root).chain(self.other_blocks.iter()).any(|b| b.block == block)
-    }
-
-    /// Returns the context that refers to the given block.
-    fn context_of_block(
-        &self,
-        block: BlockRef<'ctx, 'blk>,
-    ) -> Result<&BlockContext<'ctx, 'blk, 'val>> {
-        std::iter::once(&self.root)
-            .chain(self.other_blocks.iter())
-            .find(|b| b.block == block)
-            .ok_or_else(|| block_not_in_stack(block))
     }
 
     /// Push a new block onto the stack to make it the current block.
@@ -480,6 +459,7 @@ where
     }
 }
 
+/// Helper function for creating an error reporting that the given block is not part of the stack.
 fn block_not_in_stack(block: BlockRef) -> anyhow::Error {
     anyhow!("Block {block:?} is not part of the stack")
 }

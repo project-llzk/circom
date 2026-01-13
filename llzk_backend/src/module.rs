@@ -274,6 +274,8 @@ impl<'ctx> DeclarationInfo<'ctx> {
         })
     }
 
+    /// Traverses the AST looking for assigments of subcomponents and collects the instances used
+    /// for them.
     fn search_component_instances(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,

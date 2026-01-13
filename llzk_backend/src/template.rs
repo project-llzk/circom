@@ -11,7 +11,6 @@ use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared::get_constrain_call;
-use crate::shared::get_single_user;
 use crate::shared::is_felt;
 use crate::shared::is_struct_readf;
 use crate::shared::op_result_owner;
@@ -41,6 +40,8 @@ use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
 use melior::ir::operation::OperationResult;
+use melior::ir::Type;
+use melior::ir::ValueLike;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
@@ -51,8 +52,6 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryFrom;
-use std::convert::TryInto as _;
-use std::iter::FromIterator;
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -163,10 +162,12 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
         }
     }
 
+    /// Returns true if we already generated a `struct.writef` op for the given signal.
     pub fn signal_already_written(&self, name: &str) -> bool {
         self.written_signals.borrow().contains(name)
     }
 
+    /// Marks the given signal as written.
     pub fn mark_signal_as_written(&self, name: String) {
         self.written_signals.borrow_mut().insert(name);
     }
@@ -1246,7 +1247,7 @@ where
                 // witness generator. Since LLZK currently has no such hint,
                 // we simply generate the underlying expression.
                 rhe.gen_llzk_in_template(codegen, template)
-            },
+            }
             Expression::Call { meta, id, args, .. }
                 if meta.get_type_knowledge().is_component()
                     && codegen.program.contains_template(id) =>

@@ -43,6 +43,7 @@ pub enum WriteTarget {
     /// The `@constrain` function of a struct.
     Constrain,
     /// A free function.
+    #[allow(dead_code)]
     Free,
 }
 
@@ -57,16 +58,31 @@ impl WriteTarget {
 #[derive(Debug)]
 pub enum WriteChain<'ast> {
     /// Root of the chain.
-    Root { var: &'ast str, op: RootWriteOp },
+    Root {
+        /// Name of the variable.
+        var: &'ast str,
+        /// Type of the variable written into.
+        op: RootWriteOp,
+    },
     /// Represents a write into an array.
-    Array { indices: Vec<&'ast Expression>, prev: Box<WriteChain<'ast>> },
-    /// Represents a write into a subcomponent signal
-    Subcmp { name: &'ast str, prev: Box<WriteChain<'ast>> },
+    Array {
+        /// List of indexing expressions.
+        indices: Vec<&'ast Expression>,
+        /// Location accessed with as an array.
+        prev: Box<WriteChain<'ast>>,
+    },
+    /// Represents a write into a subcomponent signal.
+    Subcmp {
+        /// Name of the field read with dot-notation.
+        name: &'ast str,
+        /// Location the field is read from.
+        prev: Box<WriteChain<'ast>>,
+    },
 }
 
-impl<'ast, 'ctx, 'val> WriteChain<'ast> {
+impl<'ast> WriteChain<'ast> {
     /// Creates a new write chain.
-    pub fn new<'func, 'blk>(var: &'ast str, op: RootWriteOp, access: &'ast [Access]) -> Self {
+    pub fn new(var: &'ast str, op: RootWriteOp, access: &'ast [Access]) -> Self {
         access.iter().fold(Self::Root { var, op }, |wc, access| match (wc, access) {
             (WriteChain::Array { mut indices, prev }, Access::ArrayAccess(expression)) => {
                 indices.push(expression);
@@ -80,14 +96,14 @@ impl<'ast, 'ctx, 'val> WriteChain<'ast> {
     }
 
     /// Emits the write operations.
-    pub fn write<'func, 'blk>(
+    pub fn write<'ctx, 'val>(
         self,
         val: Value<'ctx, 'val>,
         target: WriteTarget,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
-        fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
-        template: &TemplateContext<'ctx, '_, 'func, 'blk, 'val>,
+        template: &TemplateContext<'ctx, '_, '_, '_, 'val>,
     ) -> Result<()> {
         match self {
             WriteChain::Root { var, op: RootWriteOp::Signal } => {
@@ -161,15 +177,15 @@ impl<'ast, 'ctx, 'val> WriteChain<'ast> {
     /// Returns a SSA representing the op.
     ///
     /// It could be a placeholder operation at this point (usually represented with `undef.undef`).
-    fn get_value<'func, 'blk>(
+    fn get_value<'ctx, 'val>(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
-        fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
         target: WriteTarget,
     ) -> Result<Value<'ctx, 'val>> {
         match self {
-            WriteChain::Root { var, .. } => fc.block_ctx.get_named_value(*var).copied(),
+            WriteChain::Root { var, .. } => fc.block_ctx.get_named_value(var).copied(),
             WriteChain::Array { indices, prev } => {
                 let array = prev.get_value(codegen, fc, location, target)?;
                 let elt_type = ArrayType::try_from(array.r#type())?.element_type();
@@ -253,6 +269,7 @@ impl<'ast, 'ctx, 'val> WriteChain<'ast> {
     }
 }
 
+/// Creates LLZK ops for array indexing from the collection of elements.
 fn gen_index_ops<'ctx, 'func, 'blk, 'val, 'ast, E>(
     indices: impl IntoIterator<Item = &'ast E>,
     codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
@@ -322,7 +339,7 @@ impl fmt::Display for WriteChain<'_> {
 
         fn display_expr(expr: &Expression, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             match expr {
-                Expression::InfixOp { meta, lhe, infix_op, rhe } => {
+                Expression::InfixOp { meta: _, lhe, infix_op, rhe } => {
                     print_expr(lhe, f)?;
                     let op_str = match infix_op {
                         ExpressionInfixOpcode::Mul => "*",
@@ -349,7 +366,7 @@ impl fmt::Display for WriteChain<'_> {
                     write!(f, " {op_str} ",)?;
                     print_expr(rhe, f)
                 }
-                Expression::PrefixOp { meta, prefix_op, rhe } => {
+                Expression::PrefixOp { meta: _, prefix_op, rhe } => {
                     let op_str = match prefix_op {
                         ExpressionPrefixOpcode::Sub => "-",
                         ExpressionPrefixOpcode::BoolNot => "!",
@@ -358,7 +375,7 @@ impl fmt::Display for WriteChain<'_> {
                     write!(f, "{op_str}")?;
                     print_expr(rhe, f)
                 }
-                Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
+                Expression::InlineSwitchOp { meta: _, cond, if_true, if_false } => {
                     print_expr(cond, f)?;
                     write!(f, " ? ")?;
                     print_expr(if_true, f)?;
@@ -455,7 +472,7 @@ impl fmt::Display for WriteChain<'_> {
                 fmt::Display::fmt(prev.as_ref(), f)?;
                 for index in indices {
                     write!(f, "[")?;
-                    display_expr(*index, f)?;
+                    display_expr(index, f)?;
                     write!(f, "]")?;
                 }
                 Ok(())
