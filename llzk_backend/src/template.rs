@@ -173,7 +173,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
     /// declarations to the declaring component.
     pub fn finalize(self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Result<()> {
         let subcmps = self.subcmps;
-        self.and_then(
+        self.and_then::<_, _, GenResultUnit>(
             |fc, _| {
                 // Write the subcomponent declarations to self.
                 let self_value = fc.func.self_value_of_compute()?;
@@ -203,7 +203,8 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                 }
                 Ok(())
             },
-        )
+        )?
+        .and_then_same(|fc, _| fc.finalize(codegen))
     }
 }
 
@@ -308,6 +309,10 @@ type GenResultSingleVal<'ctx, 'str, 'func, 'blk, 'val, 'r> =
 /// Alias for [GenResult] containing a list of SSA Value results.
 type GenResultMultiVal<'ctx, 'str, 'func, 'blk, 'val, 'r> =
     GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, Vec<Value<'ctx, 'val>>>;
+
+/// Alias for [GenResult] containing the unit type (i.e. nothing).
+type GenResultUnit<'ctx, 'str, 'func, 'blk, 'val, 'r> =
+    GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, ()>;
 
 /// This trait abstracts over the output type of [Chainable::and_then] to allow a single
 /// implementation of that function to produce different result types depending on the callback

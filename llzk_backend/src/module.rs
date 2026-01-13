@@ -344,7 +344,8 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
 
     // Visit the body of the function and generate LLZK IR for it.
     let mut func_context = FunctionContext::new::<true>(codegen, func, name_to_value)?;
-    func_like.get_body().gen_llzk_in_function(codegen, &mut func_context)
+    func_like.get_body().gen_llzk_in_function(codegen, &mut func_context)?;
+    func_context.finalize(codegen)
 }
 
 /// Generate LLZK for a template-like construct. Helper to avoid code duplication.

@@ -773,6 +773,31 @@ where
             .try_for_each(|(name, result)| self.block_ctx.set_named_value(name, result.into()))?;
         Ok(())
     }
+
+    /// Finalizes the context.
+    /// 1. Remove any `undef.undef` ops from the function whose result value is unused. These were
+    ///    added, for example, when visiting [Statement::Declaration] but their uses were later
+    ///    replaced with actual values when visiting [Statement::Substitution] (and others).
+    /// 2. Remove any uses of the [CIRCOM_RETURN_MARKER_ATTR] attribute because it is a temporary
+    ///    marker used to properly adjust the location of return statements to match LLZK
+    ///    requirements.
+    pub fn finalize(&mut self, _: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Result<()> {
+        fn undef_has_uses(op: OperationRef) -> bool {
+            shared::has_uses(single_result_as_value(op).unwrap())
+        }
+        self.func.walk(WalkOrder::PreOrder, |op| {
+            let mut op_ref_mut = unsafe { OperationRefMut::from_raw(op.to_raw()) };
+            if llzk::dialect::undef::is_undef_op(op) && !undef_has_uses(op) {
+                OperationMutLike::remove_from_parent(op_ref_mut.deref_mut());
+                WalkResult::Skip
+            } else {
+                // Result ignored because we don't care if the attribute was there or not.
+                let _ = op_ref_mut.remove_attribute(CIRCOM_RETURN_MARKER_ATTR);
+                WalkResult::Advance
+            }
+        });
+        Ok(())
+    }
 }
 
 /// The [FunctionContext] directly accesses a single [BlockContextStack] for circom scope handling.
@@ -808,39 +833,6 @@ where
     {
         let popped = self.block_ctx.pop();
         overwrite_handler(self, overwrite_data, popped)
-    }
-}
-
-/// Implement [Drop] on [FunctionContext] to:
-///
-/// 1. Remove any `undef.undef` ops from the function whose result value is unused. These were
-///    added, for example, when visiting [Statement::Declaration] but their uses were later replaced
-///    with actual values when visiting [Statement::Substitution] (and others).
-/// 2. Remove any uses of the [CIRCOM_RETURN_MARKER_ATTR] attribute because it is a temporary marker
-///    used to properly adjust the location of return statements to match LLZK requirements.
-impl Drop for FunctionContext<'_, '_, '_, '_> {
-    fn drop(&mut self) {
-        fn undef_has_uses(op: OperationRef) -> bool {
-            shared::has_uses(single_result_as_value(op).unwrap())
-        }
-        self.func.walk(WalkOrder::PreOrder, |op| {
-            let mut op_ref_mut = unsafe { OperationRefMut::from_raw(op.to_raw()) };
-            if llzk::dialect::undef::is_undef_op(op) && !undef_has_uses(op) {
-                OperationMutLike::remove_from_parent(op_ref_mut.deref_mut());
-                WalkResult::Skip
-            } else {
-                // Result ignored because we don't care if the attribute was there or not.
-                let _ = op_ref_mut.remove_attribute(CIRCOM_RETURN_MARKER_ATTR);
-                WalkResult::Advance
-            }
-        });
-        // XXX: We may have to move this logic to a failable function since
-        // this is the point where we know if we have undefs left that may be due to an user error.
-        // For example, if a subcomponent's signal was not assigned then we need to raise a user
-        // error since that's what the compiler normally does.
-        //
-        // If we can raise issues here without having to return a `Result` then it's fine to do
-        // here. Tho I feel it may be overstretching what Drop is meant to do.
     }
 }
 
