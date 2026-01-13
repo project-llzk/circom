@@ -834,7 +834,38 @@ where
                                 )
                             }
                         } else {
-                            todo!("Generate array write operation in template");
+                            let write_op = if template.subcmps.contains(var) {
+                                RootWriteOp::Subcmp
+                            } else {
+                                RootWriteOp::Var
+                            };
+                            let location = codegen.location_from_meta(meta);
+                            rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                                |fc, val| {
+                                    let chain = WriteChain::new(var, write_op, access);
+                                    chain.write(
+                                        val,
+                                        WriteTarget::Compute,
+                                        codegen,
+                                        fc,
+                                        location,
+                                        template,
+                                    )?;
+                                    Ok(())
+                                },
+                                |fc, val| {
+                                    let chain = WriteChain::new(var, write_op, access);
+                                    chain.write(
+                                        val,
+                                        WriteTarget::Constrain,
+                                        codegen,
+                                        fc,
+                                        location,
+                                        template,
+                                    )?;
+                                    Ok(())
+                                },
+                            )
                         }
                     }
                     AssignOp::AssignSignal => {
@@ -910,7 +941,19 @@ where
                                         )
                                     })
                             }
-                            _ => todo!("Generate array write operation in template: {access:?}"),
+                            access => rhe
+                                .gen_llzk_in_template(codegen, &template.compute_only())?
+                                .and_then_same(|fc, rhe| {
+                                    let chain = WriteChain::new(var, RootWriteOp::Signal, access);
+                                    chain.write(
+                                        rhe,
+                                        WriteTarget::Compute,
+                                        codegen,
+                                        fc,
+                                        codegen.location_from_meta(meta),
+                                        template,
+                                    )
+                                }),
                         }
                     }
                     AssignOp::AssignConstraintSignal => {
@@ -1012,28 +1055,22 @@ where
                             access => {
                                 rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                     |fc, rhe| {
-                                        let location = codegen.location_from_meta(meta);
                                         let chain = WriteChain::new(
                                             var,
                                             RootWriteOp::Signal,
                                             access,
-                                            codegen,
-                                            fc,
-                                            location,
-                                        )?;
-
+                                        );
                                         chain.write(
                                             rhe,
                                             WriteTarget::Compute,
                                             codegen,
                                             fc,
-                                            location,
+                                            codegen.location_from_meta(meta),
                                             template,
                                         )
                                     },
                                     |_fc, _rhe| {
-                                        //todo!("Generate array write operation in template (constrain): \n{access:?}");
-                                        Ok(())
+                                        todo!("Generate array write operation in template (constrain): \n{access:?}")
                                     },
                                 )
                             }

@@ -1,7 +1,6 @@
 //! Handles circom var scoping and LLZK blocks stack management.
 
 use crate::function::FunctionContext;
-use crate::shared::op_result_owner;
 use crate::shared::single_result_as_value;
 use anyhow::anyhow;
 use anyhow::Result;
@@ -15,10 +14,7 @@ use llzk::prelude::OperationRef;
 use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::Value;
-use melior::ir::operation::OperationResult;
-use melior::ir::ValueLike as _;
 use std::collections::HashMap;
-use std::convert::TryFrom as _;
 
 /// Single frame in the [BlockContextStack].
 ///
@@ -162,11 +158,6 @@ where
 
     /// Append an operation to the current block (i.e. the top of the stack).
     pub fn append_current_block(&mut self, operation: Operation<'ctx>) -> OperationRef<'ctx, 'val> {
-        eprintln!(
-            "[{:?}]{}> Appending op {operation}",
-            self as *const Self,
-            "=".repeat(self.other_blocks.len()),
-        );
         let current = &self.top_mut().block;
         // Account for possible terminator in the current block. For example, the `compute_fn()`
         // and `constrain_fn()` helpers automatically add a return op at the end of the block
@@ -194,11 +185,6 @@ where
             .enumerate()
             .find(|(_, bc)| bc.block == block)
             .ok_or_else(|| block_not_in_stack(block))?;
-        eprintln!(
-            "[{self_addr:?}]{}> Enqueueing op {operation} in scope {idx} ({:?})",
-            "=".repeat(stack_len),
-            bc.block.to_raw().ptr
-        );
         bc.op_queue.push(operation);
         Ok(())
     }
@@ -313,48 +299,13 @@ where
     /// Pop the current block off the stack to return to the previous block. The vars declared in
     /// the popped frame are dropped and those which are overwrites are returned.
     pub fn pop(&mut self) -> HashMap<String, Value<'ctx, 'val>> {
-        enum BlockId {
-            Root,
-            Stack(usize),
-        }
-        impl std::fmt::Debug for BlockId {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                match self {
-                    Self::Root => write!(f, "root"),
-                    Self::Stack(0) => write!(f, "top"),
-                    Self::Stack(n) => write!(f, "top-{n}"),
-                }
-            }
-        }
         self.append_queue();
-        eprintln!(
-            "[{:?}]{}> Popping block (stack len = {}) |  stack: {:?}",
-            self as *const Self,
-            "=".repeat(self.other_blocks.len()),
-            self.other_blocks.len() + 1,
-            self.other_blocks
-                .iter()
-                .rev()
-                .enumerate()
-                .map(|(idx, bc)| (BlockId::Stack(idx), bc))
-                .chain(std::iter::once((BlockId::Root, &self.root)))
-                .map(|(id, bc)| (id, bc.block.to_raw().ptr, bc.op_queue.len()))
-                //self.blocks_iter()
-                //    .map(|bc| (bc.block.to_raw().ptr, bc.op_queue.len()))
-                .collect::<Vec<_>>()
-        );
         self.other_blocks.pop().expect("There is no block to pop!").overwriting_name_to_value
     }
 
     /// Appends the queued operations in the top of the stack.
     pub fn append_queue(&mut self) {
         let queue = std::mem::take(&mut self.top_mut().op_queue);
-        eprintln!(
-            "[{:?}]{}> Dequeueing {} operations",
-            self as *const Self,
-            "=".repeat(self.other_blocks.len()),
-            queue.len()
-        );
         for op in queue {
             self.append_current_block(op);
         }

@@ -1,6 +1,6 @@
 //! Helper type for constructing operations that write using [`Access`].
 
-use std::convert::TryFrom as _;
+use std::{cmp, convert::TryFrom as _, fmt};
 
 use anyhow::Result;
 use llzk::{
@@ -8,15 +8,17 @@ use llzk::{
     dialect::{array, cast, r#struct},
     prelude::{ArrayType, CallOpLike as _, CallOpRef, FuncDefOpLike as _, OperationLike as _},
 };
-use melior::ir::{Location, Value, ValueLike as _};
-use program_structure::ast::Access;
+use melior::ir::{operation::OperationResult, Location, Value, ValueLike as _};
+use program_structure::ast::{
+    Access, AssignOp, Expression, ExpressionInfixOpcode, ExpressionPrefixOpcode,
+};
 
 use crate::{
-    function::{FunctionContext, GenerateLLZKInFunction as _},
+    function::{FunctionContext, GenerateLLZKInFunction},
     program_ext::ProgramLike,
     shared::{
-        get_constrain_call, insert_after_if_op_result, op_result_owner, set_operand_if_undef,
-        LlzkCodegen,
+        get_constrain_call, insert_after_if_op_result, is_struct_readf, op_result_owner,
+        replace_all_uses, set_operand_if_undef, LlzkCodegen,
     },
     template::TemplateContext,
     template_ext::TemplateLike as _,
@@ -25,8 +27,12 @@ use crate::{
 /// Type of write operation performed at the root of the chain
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum RootWriteOp {
-    /// The write is done to a signal.
+    /// Write into a signal.
     Signal,
+    /// Write into a felt var.
+    Var,
+    /// Write into a subcomponent var.
+    Subcmp,
 }
 
 /// Indicates the target function the write operation is happening on.
@@ -40,47 +46,35 @@ pub enum WriteTarget {
     Free,
 }
 
-/// Helper type that defines a chain of write operations.
-#[derive(Debug)]
-pub enum WriteChain<'ast, V> {
-    /// Root of the chain.
-    Root { self_value: V, var: &'ast str, op: RootWriteOp },
-    /// Represents a write into an array.
-    Array { indices: Vec<V>, prev: Box<WriteChain<'ast, V>> },
-    /// Represents a write into a subcomponent signal
-    Subcmp { name: &'ast str, prev: Box<WriteChain<'ast, V>> },
+impl WriteTarget {
+    /// Returns true if the target is  `@compute`.
+    fn is_compute(&self) -> bool {
+        matches!(self, WriteTarget::Compute)
+    }
 }
 
-impl<'ast, 'ctx, 'val> WriteChain<'ast, Value<'ctx, 'val>> {
-    /// Creates a new write chain while lowering inside a template.
-    pub fn new<'func, 'blk>(
-        var: &'ast str,
-        op: RootWriteOp,
-        access: &'ast [Access],
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
-        fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
-        location: Location<'ctx>,
-    ) -> Result<Self> {
-        let self_value = fc.func.self_value_of_compute()?;
-        access.iter().try_fold(Self::Root { self_value, var, op }, |wc, access| {
-            match (wc, access) {
-                (WriteChain::Array { mut indices, prev }, Access::ArrayAccess(expression)) => {
-                    let expr_value = expression.gen_llzk_in_function(codegen, fc)?;
-                    indices.push(fc.append_op_unnamed_result(cast::toindex(location, expr_value))?);
-                    Ok(WriteChain::Array { indices, prev })
-                }
-                (wc, Access::ComponentAccess(name)) => {
-                    Ok(WriteChain::Subcmp { name, prev: Box::new(wc) })
-                }
-                (wc, Access::ArrayAccess(expression)) => {
-                    let expr_value = expression.gen_llzk_in_function(codegen, fc)?;
-                    Ok(WriteChain::Array {
-                        indices: vec![
-                            fc.append_op_unnamed_result(cast::toindex(location, expr_value))?
-                        ],
-                        prev: Box::new(wc),
-                    })
-                }
+/// Helper type that defines a chain of write operations.
+#[derive(Debug)]
+pub enum WriteChain<'ast> {
+    /// Root of the chain.
+    Root { var: &'ast str, op: RootWriteOp },
+    /// Represents a write into an array.
+    Array { indices: Vec<&'ast Expression>, prev: Box<WriteChain<'ast>> },
+    /// Represents a write into a subcomponent signal
+    Subcmp { name: &'ast str, prev: Box<WriteChain<'ast>> },
+}
+
+impl<'ast, 'ctx, 'val> WriteChain<'ast> {
+    /// Creates a new write chain.
+    pub fn new<'func, 'blk>(var: &'ast str, op: RootWriteOp, access: &'ast [Access]) -> Self {
+        access.iter().fold(Self::Root { var, op }, |wc, access| match (wc, access) {
+            (WriteChain::Array { mut indices, prev }, Access::ArrayAccess(expression)) => {
+                indices.push(expression);
+                WriteChain::Array { indices, prev }
+            }
+            (wc, Access::ComponentAccess(name)) => WriteChain::Subcmp { name, prev: Box::new(wc) },
+            (wc, Access::ArrayAccess(expression)) => {
+                WriteChain::Array { indices: vec![expression], prev: Box::new(wc) }
             }
         })
     }
@@ -96,10 +90,11 @@ impl<'ast, 'ctx, 'val> WriteChain<'ast, Value<'ctx, 'val>> {
         template: &TemplateContext<'ctx, '_, 'func, 'blk, 'val>,
     ) -> Result<()> {
         match self {
-            WriteChain::Root { self_value, var, op: RootWriteOp::Signal } => {
-                if !template.signal_already_written(var) {
+            WriteChain::Root { var, op: RootWriteOp::Signal } => {
+                if target.is_compute() && !template.signal_already_written(var) {
                     let block = fc.block_ctx.get_decl_block_of_value(var)?;
 
+                    let self_value = fc.func.self_value_of_compute()?;
                     // Write value to field of "self" struct.
                     fc.block_ctx.enqueue_in_block(
                         r#struct::writef(location, self_value, var, val)?.into(),
@@ -110,8 +105,40 @@ impl<'ast, 'ctx, 'val> WriteChain<'ast, Value<'ctx, 'val>> {
                 }
                 Ok(())
             }
+            WriteChain::Root { var, op: RootWriteOp::Var } => {
+                fc.block_ctx.set_named_value(var.to_string(), val)
+            }
+            WriteChain::Root { var, op: RootWriteOp::Subcmp } => {
+                match target {
+                    WriteTarget::Compute => {
+                        let current = fc.block_ctx.get_named_value(var)?;
+                        if *current != val {
+                            replace_all_uses(*current, val);
+                        }
+                        fc.subcmp_calls.update_keys(*current, val);
+                        fc.block_ctx.set_named_value(var.to_string(), val)?;
+                        Ok(())
+                    }
+                    WriteTarget::Constrain => {
+                        // Replace value
+                        let field_read = fc.block_ctx.get_named_value(var)?;
+                        // ASSERT: value comes from a `struct.readf`
+                        assert!(is_struct_readf(
+                            OperationResult::try_from(*field_read).unwrap().owner()
+                        ));
+                        if val != *field_read {
+                            replace_all_uses(val, *field_read);
+                        }
+                        fc.subcmp_calls.update_keys(val, *field_read);
+                        Ok(())
+                    }
+                    WriteTarget::Free => unreachable!(),
+                }
+            }
             WriteChain::Array { indices, prev } => {
                 let array = prev.get_value(codegen, fc, location, target)?;
+                let indices = gen_index_ops(indices, codegen, fc, location)?;
+
                 fc.append_op_no_result(array::write(location, array, &indices, val))?;
                 prev.write(array, target, codegen, fc, location, template)
             }
@@ -146,7 +173,10 @@ impl<'ast, 'ctx, 'val> WriteChain<'ast, Value<'ctx, 'val>> {
             WriteChain::Array { indices, prev } => {
                 let array = prev.get_value(codegen, fc, location, target)?;
                 let elt_type = ArrayType::try_from(array.r#type())?.element_type();
+                let indices = gen_index_ops(indices.iter().copied(), codegen, fc, location)?;
+
                 fc.append_op_unnamed_result(array::read(location, elt_type, array, &indices))
+                    .map(|v| fc.subcmp_calls.propagate(&array, v))
             }
             WriteChain::Subcmp { name: signal_name, prev } => match target {
                 WriteTarget::Compute => {
@@ -219,6 +249,221 @@ impl<'ast, 'ctx, 'val> WriteChain<'ast, Value<'ctx, 'val>> {
                 }
                 WriteTarget::Free => unreachable!(),
             },
+        }
+    }
+}
+
+fn gen_index_ops<'ctx, 'func, 'blk, 'val, 'ast, E>(
+    indices: impl IntoIterator<Item = &'ast E>,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    location: Location<'ctx>,
+) -> Result<Vec<Value<'ctx, 'val>>>
+where
+    E: GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val, Output = Value<'ctx, 'val>> + 'ast,
+{
+    indices
+        .into_iter()
+        .map(|e| {
+            let val = e.gen_llzk_in_function(codegen, fc)?;
+            fc.append_op_unnamed_result(cast::toindex(location, val))
+        })
+        .collect()
+}
+
+impl fmt::Display for WriteChain<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn print_expr(expr: &impl AsRef<Expression>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let expr = expr.as_ref();
+            let d = depth(expr);
+            if d > 1 {
+                write!(f, "(")?;
+            }
+            display_expr(expr, f)?;
+            if d > 1 {
+                write!(f, ")")?;
+            }
+            Ok(())
+        }
+
+        fn interleave<A, I, S>(
+            args: I,
+            sep: &S,
+            f: &mut fmt::Formatter<'_>,
+            print_fn: impl Fn(A, &mut fmt::Formatter<'_>) -> fmt::Result,
+        ) -> fmt::Result
+        where
+            I: IntoIterator<Item = A>,
+            I::IntoIter: DoubleEndedIterator + ExactSizeIterator,
+            S: fmt::Display + ?Sized,
+        {
+            args.into_iter().rev().enumerate().rev().try_for_each(|(rev_idx, arg)| {
+                print_fn(arg, f)?;
+                if rev_idx > 0 {
+                    write!(f, "{sep}")?;
+                }
+                Ok(())
+            })
+        }
+
+        fn print_args<A, I>(
+            args: I,
+            f: &mut fmt::Formatter<'_>,
+            print_fn: impl Fn(A, &mut fmt::Formatter<'_>) -> fmt::Result,
+        ) -> fmt::Result
+        where
+            I: IntoIterator<Item = A>,
+            I::IntoIter: DoubleEndedIterator + ExactSizeIterator,
+        {
+            write!(f, "(")?;
+            interleave(args, ", ", f, print_fn)?;
+            write!(f, ")")
+        }
+
+        fn display_expr(expr: &Expression, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match expr {
+                Expression::InfixOp { meta, lhe, infix_op, rhe } => {
+                    print_expr(lhe, f)?;
+                    let op_str = match infix_op {
+                        ExpressionInfixOpcode::Mul => "*",
+                        ExpressionInfixOpcode::Div => "/",
+                        ExpressionInfixOpcode::Add => "+",
+                        ExpressionInfixOpcode::Sub => "-",
+                        ExpressionInfixOpcode::Pow => "**",
+                        ExpressionInfixOpcode::IntDiv => "\\",
+                        ExpressionInfixOpcode::Mod => "%",
+                        ExpressionInfixOpcode::ShiftL => "<<",
+                        ExpressionInfixOpcode::ShiftR => ">>",
+                        ExpressionInfixOpcode::LesserEq => "<=",
+                        ExpressionInfixOpcode::GreaterEq => ">=",
+                        ExpressionInfixOpcode::Lesser => "<",
+                        ExpressionInfixOpcode::Greater => ">",
+                        ExpressionInfixOpcode::Eq => "==",
+                        ExpressionInfixOpcode::NotEq => "!=",
+                        ExpressionInfixOpcode::BoolOr => "||",
+                        ExpressionInfixOpcode::BoolAnd => "&&",
+                        ExpressionInfixOpcode::BitOr => "|",
+                        ExpressionInfixOpcode::BitAnd => "&",
+                        ExpressionInfixOpcode::BitXor => "^",
+                    };
+                    write!(f, " {op_str} ",)?;
+                    print_expr(rhe, f)
+                }
+                Expression::PrefixOp { meta, prefix_op, rhe } => {
+                    let op_str = match prefix_op {
+                        ExpressionPrefixOpcode::Sub => "-",
+                        ExpressionPrefixOpcode::BoolNot => "!",
+                        ExpressionPrefixOpcode::Complement => "~",
+                    };
+                    write!(f, "{op_str}")?;
+                    print_expr(rhe, f)
+                }
+                Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
+                    print_expr(cond, f)?;
+                    write!(f, " ? ")?;
+                    print_expr(if_true, f)?;
+                    write!(f, " : ")?;
+                    print_expr(if_false, f)
+                }
+                Expression::ParallelOp { meta: _, rhe } => {
+                    write!(f, "parallel ")?;
+                    print_expr(rhe, f)
+                }
+                Expression::Variable { meta: _, name, access } => {
+                    write!(f, "{name}")?;
+                    for a in access {
+                        match a {
+                            Access::ComponentAccess(name) => write!(f, ".{name}"),
+                            Access::ArrayAccess(expression) => display_expr(expression, f),
+                        }?;
+                    }
+                    Ok(())
+                }
+                Expression::Number(_, big_int) => write!(f, "{big_int}"),
+                Expression::BusCall { meta: _, id, args }
+                | Expression::Call { meta: _, id, args } => {
+                    write!(f, "{id}(")?;
+                    print_args(args, f, display_expr)?;
+                    write!(f, ")")
+                }
+                Expression::AnonymousComp { meta: _, id, is_parallel, params, signals, names } => {
+                    if *is_parallel {
+                        write!(f, "parallel ")?;
+                    }
+                    write!(f, "{id}")?;
+                    print_args(params, f, display_expr)?;
+                    match names {
+                        Some(names) => print_args(
+                            std::iter::zip(names, signals),
+                            f,
+                            |((op, name), signal), f| {
+                                let op_str = match op {
+                                    AssignOp::AssignSignal => "<==",
+                                    AssignOp::AssignConstraintSignal => "<--",
+                                    AssignOp::AssignVar => unreachable!(),
+                                };
+                                write!(f, "{name} {op_str} ")?;
+                                display_expr(signal, f)
+                            },
+                        ),
+                        None => print_args(signals, f, display_expr),
+                    }
+                }
+                Expression::ArrayInLine { meta: _, values } => {
+                    write!(f, "[")?;
+                    interleave(values, ", ", f, display_expr)?;
+                    write!(f, "]")
+                }
+                Expression::Tuple { meta: _, values } => print_args(values, f, display_expr),
+                Expression::UniformArray { meta: _, value, dimension } => {
+                    write!(f, "[")?;
+                    display_expr(value, f)?;
+                    write!(f, "; ")?;
+                    display_expr(dimension, f)?;
+                    write!(f, "]")
+                }
+            }
+        }
+
+        fn depth(expr: &Expression) -> usize {
+            match expr {
+                Expression::InfixOp { meta: _, lhe, infix_op: _, rhe } => {
+                    1 + cmp::max(depth(lhe), depth(rhe))
+                }
+                Expression::PrefixOp { meta: _, prefix_op: _, rhe } => depth(rhe),
+                Expression::InlineSwitchOp { meta: _, cond, if_true, if_false } => {
+                    1 + cmp::max(cmp::max(depth(cond), depth(if_true)), depth(if_false))
+                }
+                Expression::ParallelOp { meta: _, rhe } => depth(rhe),
+                _ => 1,
+            }
+        }
+
+        match self {
+            WriteChain::Root { var, op } => {
+                write!(
+                    f,
+                    "{}:{var}",
+                    match op {
+                        RootWriteOp::Signal => "Signal",
+                        RootWriteOp::Var => "Var",
+                        RootWriteOp::Subcmp => "Subcmp",
+                    }
+                )
+            }
+            WriteChain::Array { indices, prev } => {
+                fmt::Display::fmt(prev.as_ref(), f)?;
+                for index in indices {
+                    write!(f, "[")?;
+                    display_expr(*index, f)?;
+                    write!(f, "]")?;
+                }
+                Ok(())
+            }
+            WriteChain::Subcmp { name, prev } => {
+                fmt::Display::fmt(prev.as_ref(), f)?;
+                write!(f, ".{name}")
+            }
         }
     }
 }
