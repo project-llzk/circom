@@ -37,8 +37,7 @@ where
     /// Value stored for that variable. These are preserved when the block is popped because they
     /// overwrite the value of existing variables in outer scopes.
     overwriting_name_to_value: HashMap<String, Value<'ctx, 'val>>,
-    /// Queue of operations that need to be appended next time this context becomes the top of the
-    /// stack
+    /// Queue of operations that need to be appended before the context goes out of scope.
     op_queue: Vec<Operation<'ctx>>,
 }
 
