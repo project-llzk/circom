@@ -15,5 +15,3 @@ type_analysis/target/
 /result
 /build-tools
 
-# Temporary
-scripts/update-test-cases.sh
