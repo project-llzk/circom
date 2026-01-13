@@ -233,12 +233,14 @@ where
         self.other_blocks.iter().rev().chain(std::iter::once(&self.root))
     }
 
-    /// Returns an iterator of mutable references to the blocks in stack order (from the top to the bottom).
+    /// Returns an iterator of mutable references to the blocks in stack order (from the top to the
+    /// bottom).
     fn blocks_iter_mut(&mut self) -> impl Iterator<Item = &mut BlockContext<'ctx, 'blk, 'val>> {
         self.other_blocks.iter_mut().rev().chain(std::iter::once(&mut self.root))
     }
 
-    /// Returns an iterator of mutable references to the blocks in reverse stack order (from the bottom to the top).
+    /// Returns an iterator of mutable references to the blocks in reverse stack order (from the
+    /// bottom to the top).
     fn blocks_iter_mut_rev(&mut self) -> impl Iterator<Item = &mut BlockContext<'ctx, 'blk, 'val>> {
         std::iter::once(&mut self.root).chain(self.other_blocks.iter_mut())
     }

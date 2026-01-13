@@ -1511,7 +1511,9 @@ where
             }
             Expression::AnonymousComp { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
             Expression::Tuple { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
-            Expression::ParallelOp { .. } => unreachable!("handled in templates, illegal in pure functions"),
+            Expression::ParallelOp { .. } => {
+                unreachable!("handled in templates, illegal in pure functions")
+            }
         }
     }
 }

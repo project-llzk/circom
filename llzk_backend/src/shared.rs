@@ -204,8 +204,8 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                                     % p
                             }
                             // Comparison operators are performed based on a signed interpretation
-                            // of the field elements as defined by the `relational_val` function, according
-                            // to the circom spec.
+                            // of the field elements as defined by the `relational_val` function,
+                            // according to the circom spec.
                             ExpressionInfixOpcode::LesserEq => {
                                 let res = relational_val(&lhs, &p)? <= relational_val(&rhs, &p)?;
                                 bool_to_biguint(res)
@@ -304,7 +304,8 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                     unreachable!("handled by try_compute_dim_expr")
                 }
                 Expression::Variable { meta, name, access } => {
-                    // TODO: generate AffineMapAttr (with single result) or SymbolRefAttr (from param)
+                    // TODO: generate AffineMapAttr (with single result) or SymbolRefAttr (from
+                    // param)
                     todo!("Handle Variable expression in dimension")
                 }
                 Expression::InfixOp { meta, lhe, infix_op, rhe } => {
