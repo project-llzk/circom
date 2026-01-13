@@ -17,9 +17,9 @@ use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::BlockLike;
 use llzk::prelude::BlockRef;
+use llzk::prelude::BoolAttribute;
 use llzk::prelude::CallOpLike as _;
 use llzk::prelude::CallOpRef;
-use llzk::prelude::BoolAttribute;
 use llzk::prelude::FeltConstAttribute;
 use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
@@ -163,7 +163,9 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     fn try_compute_dim_expr(&self, expr: &Expression) -> Result<Option<BigUint>> {
         match expr {
             Expression::Number(_, big_int) => {
-                let v = big_int.to_biguint().ok_or_else(|| anyhow!("could not convert to signed"))? % self.prime()?;
+                let v =
+                    big_int.to_biguint().ok_or_else(|| anyhow!("could not convert to signed"))?
+                        % self.prime()?;
                 Ok(Some(v))
             }
             Expression::InfixOp { lhe, infix_op, rhe, .. } => {
@@ -907,6 +909,8 @@ pub fn get_constrain_call<'ctx, 'op, 'val>(
     }
 
     Ok(owner.into())
+}
+
 /// Convert unsigned field elements into relational values used for comparisons.
 ///
 /// relational_val(a) = a-p  if m/2 +1 <= a < m
