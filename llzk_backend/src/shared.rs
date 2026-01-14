@@ -782,7 +782,7 @@ pub fn set_operand_if_undef<'ctx, 'op>(
     value: impl ValueLike<'ctx>,
 ) -> Result<()> {
     if let Ok(arg) = OperationResult::try_from(op.operand(idx)?) {
-        if !undef::is_undef_op(arg.owner()) {
+        if !undef::is_undef_op(&arg.owner()) {
             anyhow::bail!("Argument {idx} was assigned twice: {arg}");
         }
     }
