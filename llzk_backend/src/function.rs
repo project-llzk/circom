@@ -21,6 +21,7 @@ use crate::shared::no_results;
 use crate::shared::replace_uses_with_new_block_argument;
 use crate::shared::set_operand_if_undef;
 use crate::shared::single_result_as_value;
+use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
 use crate::shared::{self};
 use crate::subcmp::SubcmpCallsMap;
@@ -60,6 +61,8 @@ use llzk::prelude::WalkOrder;
 use llzk::prelude::WalkResult;
 use melior::dialect::ods::math;
 use num_bigint_dig::BigInt;
+use num_bigint_dig::BigUint;
+use num_traits::ToPrimitive;
 use num_traits::Zero;
 use program_structure::ast::Access;
 use program_structure::ast::Expression;
@@ -772,6 +775,61 @@ where
             .zip(scf_op.results())
             .try_for_each(|(name, result)| self.block_ctx.set_named_value(name, result.into()))?;
         Ok(())
+    }
+}
+
+impl<'ast, 'ctx, 'func, 'blk, 'val> DimExprConverter<'ctx, 'ast>
+    for FunctionContext<'ctx, 'func, 'blk, 'val>
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    #[allow(unused_variables)] // TODO: TEMP
+    fn convert_dim_expr(&self, codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>, expr: &Expression) -> Result<Attribute<'ctx>> {
+        // First try to compute statically, falling back to literal computation
+        // if all values are not compile-time constants or if the final result
+        // does not properly convert to i64.
+        if let Some(integer) = codegen.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64) {
+            let int_attr = codegen.index_attr(integer);
+            Ok(int_attr.into())
+        } else {
+            match expr {
+                Expression::Number(meta, big_int) => unreachable!("handled by try_compute_dim_expr"),
+                Expression::Variable { meta, name, access } => {
+                    match access.as_slice() {
+                        [] => {
+                            println!("got {name} for var dim");
+                            todo!("complete me")
+                        }
+                        a => {
+                            todo!("resolve")
+                        }
+                    }
+                }
+                Expression::InfixOp { meta, lhe, infix_op, rhe } => {
+                    todo!("Handle Infix expression in dimension for non-integer attributes")
+                }
+                Expression::PrefixOp { meta, prefix_op, rhe } => {
+                    todo!("Handle Prefix expression in dimension for non-integer attributes")
+                }
+                Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
+                    todo!(
+                        "Handle InlineSwitchOp expression in dimension for non-integer attributes"
+                    )
+                }
+                Expression::Call { meta, id, args } => {
+                    todo!("Handle Call expression in dimension")
+                }
+                // The remaining cases do not produce a scalar value.
+                // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
+                // Give the same error that the circom type checker gives. The type checker ran
+                // earlier so this should technically be unreachable.
+                _ => {
+                    Err(anyhow!("Array indexes and lengths must be single arithmetic expressions"))
+                }
+            }
+        }
     }
 }
 
