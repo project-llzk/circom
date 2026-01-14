@@ -10,6 +10,7 @@ use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::program_ext::ProgramLike;
+use crate::shared;
 use crate::shared::insert_after_if_op_result;
 use crate::shared::is_bool;
 use crate::shared::is_index;
@@ -19,9 +20,9 @@ use crate::shared::replace_uses_with_new_block_argument;
 use crate::shared::set_operand_if_undef;
 use crate::shared::single_result_as_value;
 use crate::shared::LlzkCodegen;
-use crate::shared::{self};
 use crate::subcmp::SubcmpCallsMap;
 use crate::template_ext::TemplateLike as _;
+use crate::try_for_loop_heuristic;
 use anyhow::anyhow;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
@@ -47,6 +48,7 @@ use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::IntegerAttribute;
 use llzk::prelude::Location;
+use llzk::prelude::LoopBoundsAttribute;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike as _;
 use llzk::prelude::OperationMutLike;
@@ -706,6 +708,7 @@ where
         condition: Value<'ctx, 'val>,
         loop_cond_info: NestedBlockInfo<'ctx, 'blk, 'val>,
         loop_body_info: NestedBlockInfo<'ctx, 'blk, 'val>,
+        loop_bounds: Option<LoopBoundsAttribute<'ctx>>,
     ) -> Result<()> {
         // ASSERT: loop condition was a single Expression so there are no variable overwrites.
         assert!(loop_cond_info.var_overwrites.is_empty());
@@ -758,14 +761,19 @@ where
             .map(|name| self.block_ctx.get_named_value(name).cloned())
             .collect::<Result<Vec<_>, _>>()?;
 
-        // Generate the `scf.while` op for the circom `While` statement.
-        let scf_op = self.append_op(scf::r#while(
+        // Generate the `scf.while` op for the circom `While` statement, adding `loopbounds`
+        // attribute if given, and append it to the current block.
+        let mut scf_op = scf::r#while(
             &initial_values,
             &loop_carried_types,
             loop_cond_info.region,
             loop_body_info.region,
             location,
-        ));
+        );
+        if let Some(loop_bounds) = loop_bounds {
+            scf_op.set_attribute("llzk.loopbounds", loop_bounds.into());
+        }
+        let scf_op = self.append_op(scf_op);
 
         // Update the current block context with results from the `scf.while` op.
         loop_carried_var_names
@@ -1102,6 +1110,7 @@ fn gen_while<'ast, 'ctx, 'func, 'blk, 'val>(
     meta: &Meta,
     cond: &Expression,
     body_stmt: &Statement,
+    loop_bounds: Option<LoopBoundsAttribute<'ctx>>,
 ) -> Result<()>
 where
     'ctx: 'func,
@@ -1164,7 +1173,14 @@ where
     }
 
     // Generate the loop op.
-    function.gen_scf_while(codegen, location, cond_result, loop_cond_info, loop_body_info)?;
+    function.gen_scf_while(
+        codegen,
+        location,
+        cond_result,
+        loop_cond_info,
+        loop_body_info,
+        loop_bounds,
+    )?;
 
     // Finally, if the loop body contained a return statement, the code following the `scf.while`
     // needs to be wrapped in an `scf.if` checking `VAR_NAME_NO_RETURN` before generating more code.
@@ -1173,6 +1189,22 @@ where
     }
 
     Ok(())
+}
+
+/// Generate LLZK code for a circom [Statement::InitializationBlock].
+/// This is needed to support the `try_for_loop_heuristic` macro.
+#[inline]
+fn gen_init_block<'ast, 'ctx, 'func, 'blk, 'val>(
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    initializations: &[Statement],
+) -> Result<()>
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    initializations.gen_llzk_in_function(codegen, function)
 }
 
 impl<'ctx, 'func, 'blk, 'val> GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val> for Statement
@@ -1195,7 +1227,7 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Template elements declared inside the function")
                 }
-                initializations.gen_llzk_in_function(codegen, function)
+                gen_init_block(codegen, function, initializations)
             }
             Statement::Declaration { meta, xtype, name, dimensions, .. } => {
                 if VariableType::Var != *xtype {
@@ -1206,10 +1238,15 @@ where
                     codegen.new_nondet_felt_of_dimensions(meta, dimensions)
                 })
             }
-            Statement::Block { stmts, .. } => function
-                .gen_in_current_block_with_new_circom_scope_and_merge_overwrites(|function| {
-                    stmts.gen_llzk_in_function(codegen, function)
-                }),
+            Statement::Block { meta, stmts } => {
+                function.gen_in_current_block_with_new_circom_scope_and_merge_overwrites(
+                    |function| {
+                        try_for_loop_heuristic!(codegen, function, meta, stmts);
+                        // Fallback to standard block handling.
+                        stmts.gen_llzk_in_function(codegen, function)
+                    },
+                )
+            }
             Statement::Substitution { meta, var, access, op, rhe } => {
                 if op.is_signal_operator() {
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
@@ -1262,7 +1299,9 @@ where
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
                 gen_if_then_else(codegen, function, meta, cond, if_case, else_case)
             }
-            Statement::While { meta, cond, stmt } => gen_while(codegen, function, meta, cond, stmt),
+            Statement::While { meta, cond, stmt } => {
+                gen_while(codegen, function, meta, cond, stmt, None)
+            }
             Statement::Return { meta, value } => {
                 let value = value.gen_llzk_in_function(codegen, function)?;
                 let location = codegen.location_from_meta(meta);

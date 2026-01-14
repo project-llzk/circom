@@ -14,6 +14,7 @@ mod function_ext;
 mod gen_context;
 mod module;
 mod program_ext;
+#[macro_use]
 mod shared;
 mod subcmp;
 mod template;
