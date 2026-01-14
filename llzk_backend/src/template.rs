@@ -11,10 +11,7 @@ use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared::get_constrain_call;
-use crate::shared::is_felt;
-use crate::shared::is_struct_readf;
 use crate::shared::op_result_owner;
-use crate::shared::replace_all_uses;
 use crate::shared::LlzkCodegen;
 use crate::template_ext::TemplateLike as _;
 use crate::write_chain::RootWriteOp;
@@ -25,7 +22,9 @@ use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
 use llzk::prelude::constrain;
 use llzk::prelude::function;
+use llzk::prelude::is_felt_type;
 use llzk::prelude::r#struct;
+use llzk::prelude::r#struct::is_struct_readf;
 use llzk::prelude::BlockRef;
 use llzk::prelude::CallOpLike as _;
 use llzk::prelude::CallOpRef;
@@ -33,12 +32,13 @@ use llzk::prelude::FeltType;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::OperationLike;
+use llzk::prelude::OperationResult;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
-use melior::ir::operation::OperationResult;
+use llzk::value_ext::replace_all_uses;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
@@ -764,8 +764,8 @@ fn unify_constrain_eq_types<'ctx, 'func, 'blk, 'val>(
         |val: Value<'ctx, 'val>| fc.append_op_unnamed_result(cast::tofelt(location, val).into());
 
     match (lhs.r#type(), rhs.r#type()) {
-        (t0, t1) if is_felt(t0) && !is_felt(t1) => Ok((lhs, to_felt(rhs)?)),
-        (t0, t1) if !is_felt(t0) && is_felt(t1) => Ok((to_felt(lhs)?, rhs)),
+        (t0, t1) if is_felt_type(t0) && !is_felt_type(t1) => Ok((lhs, to_felt(rhs)?)),
+        (t0, t1) if !is_felt_type(t0) && is_felt_type(t1) => Ok((to_felt(lhs)?, rhs)),
         _ => Ok((lhs, rhs)),
     }
 }
@@ -828,7 +828,9 @@ where
                                         let field_read = fc.block_ctx.get_named_value(var)?;
                                         // ASSERT: value comes from a `struct.readf`
                                         assert!(is_struct_readf(
-                                            OperationResult::try_from(*field_read).unwrap().owner()
+                                            &OperationResult::try_from(*field_read)
+                                                .unwrap()
+                                                .owner()
                                         ));
                                         replace_all_uses(rhe, *field_read);
                                         fc.subcmp_calls.update_keys(rhe, *field_read);
