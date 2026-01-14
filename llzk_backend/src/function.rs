@@ -787,7 +787,7 @@ where
         }
         self.func.walk(WalkOrder::PreOrder, |op| {
             let mut op_ref_mut = unsafe { OperationRefMut::from_raw(op.to_raw()) };
-            if llzk::dialect::undef::is_undef_op(op) && !undef_has_uses(op) {
+            if llzk::dialect::undef::is_undef_op(&op) && !undef_has_uses(op) {
                 OperationMutLike::remove_from_parent(op_ref_mut.deref_mut());
                 WalkResult::Skip
             } else {
