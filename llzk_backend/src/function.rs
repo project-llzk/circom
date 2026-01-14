@@ -10,6 +10,7 @@ use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::program_ext::ProgramLike;
+use crate::shared;
 use crate::shared::insert_after_if_op_result;
 use crate::shared::is_bool;
 use crate::shared::is_index;
