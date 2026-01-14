@@ -1,41 +1,39 @@
 //! Helper type for constructing operations that write using [`Access`].
 
-use std::cmp;
-use std::convert::TryFrom as _;
-use std::fmt;
-
-use anyhow::Result;
-use llzk::builder::OpBuilder;
-use llzk::dialect::array;
-use llzk::dialect::cast;
-use llzk::dialect::r#struct;
-use llzk::prelude::ArrayType;
-use llzk::prelude::CallOpLike as _;
-use llzk::prelude::CallOpRef;
-use llzk::prelude::FuncDefOpLike as _;
-use llzk::prelude::OperationLike as _;
-use melior::ir::operation::OperationResult;
-use melior::ir::Location;
-use melior::ir::Value;
-use melior::ir::ValueLike as _;
-use program_structure::ast::Access;
-use program_structure::ast::AssignOp;
-use program_structure::ast::Expression;
-use program_structure::ast::ExpressionInfixOpcode;
-use program_structure::ast::ExpressionPrefixOpcode;
-
 use crate::function::FunctionContext;
 use crate::function::GenerateLLZKInFunction;
 use crate::program_ext::ProgramLike;
 use crate::shared::get_constrain_call;
 use crate::shared::insert_after_if_op_result;
-use crate::shared::is_struct_readf;
 use crate::shared::op_result_owner;
-use crate::shared::replace_all_uses;
 use crate::shared::set_operand_if_undef;
 use crate::shared::LlzkCodegen;
 use crate::template::TemplateContext;
 use crate::template_ext::TemplateLike as _;
+use anyhow::Result;
+use llzk::builder::OpBuilder;
+use llzk::dialect::array;
+use llzk::dialect::cast;
+use llzk::dialect::r#struct;
+use llzk::prelude::r#struct::is_struct_readf;
+use llzk::prelude::ArrayType;
+use llzk::prelude::CallOpLike as _;
+use llzk::prelude::CallOpRef;
+use llzk::prelude::FuncDefOpLike as _;
+use llzk::prelude::Location;
+use llzk::prelude::OperationLike as _;
+use llzk::prelude::OperationResult;
+use llzk::prelude::Value;
+use llzk::prelude::ValueLike as _;
+use llzk::value_ext::replace_all_uses;
+use program_structure::ast::Access;
+use program_structure::ast::AssignOp;
+use program_structure::ast::Expression;
+use program_structure::ast::ExpressionInfixOpcode;
+use program_structure::ast::ExpressionPrefixOpcode;
+use std::cmp;
+use std::convert::TryFrom as _;
+use std::fmt;
 
 /// Type of write operation performed at the root of the chain
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -153,7 +151,7 @@ impl<'ast> WriteChain<'ast> {
                         let field_read = fc.block_ctx.get_named_value(var)?;
                         // ASSERT: value comes from a `struct.readf`
                         assert!(is_struct_readf(
-                            OperationResult::try_from(*field_read).unwrap().owner()
+                            &OperationResult::try_from(*field_read).unwrap().owner()
                         ));
                         if val != *field_read {
                             replace_all_uses(val, *field_read);
