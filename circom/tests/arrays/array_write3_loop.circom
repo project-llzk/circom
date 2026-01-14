@@ -5,16 +5,21 @@
 
 pragma circom 2.0.0;
 
-// Scalar copy version of `array_copy1_vec.circom` test. Output is identical except for basic blocks.
+template Foo() {
+  signal input a;
+  signal output b;
+
+  b <== a;
+}
+
 template Array1() {
-    signal output out[5][2];
+    signal output out[5];
+    component foo[5];
 
     for (var i = 0; i < 5; i++) {
-      out[i][0] <== i;
-    }
-
-    for (var i = 0; i < 5; i++) {
-      out[i][1] <== i;
+      foo[i] = Foo();
+      foo[i].a <== i;
+      out[i] <== foo[i].b;
     }
 }
 
