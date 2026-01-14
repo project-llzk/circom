@@ -37,6 +37,8 @@ where
     /// Value stored for that variable. These are preserved when the block is popped because they
     /// overwrite the value of existing variables in outer scopes.
     overwriting_name_to_value: HashMap<String, Value<'ctx, 'val>>,
+    /// Queue of operations that need to be appended before the context goes out of scope.
+    op_queue: Vec<Operation<'ctx>>,
 }
 
 impl<'ctx, 'blk, 'val> BlockContext<'ctx, 'blk, 'val>
@@ -50,6 +52,7 @@ where
             block,
             scope_local_name_to_value: Default::default(),
             overwriting_name_to_value: Default::default(),
+            op_queue: Default::default(),
         }
     }
 
@@ -63,6 +66,7 @@ where
             block,
             scope_local_name_to_value: param_name_to_value,
             overwriting_name_to_value: Default::default(),
+            op_queue: Default::default(),
         }
     }
 
@@ -163,6 +167,22 @@ where
         }
     }
 
+    /// Queues an operation to the given block that will get appended before it goes out of scope.
+    ///
+    /// If the block is scoped in multiple contexts picks the deepest one.
+    ///
+    /// Fails if the block is not part of the stack.
+    pub fn enqueue_in_block(
+        &mut self,
+        operation: Operation<'ctx>,
+        block: BlockRef<'ctx, 'blk>,
+    ) -> Result<()> {
+        let mut blocks = self.blocks_iter_mut_rev();
+        let bc = blocks.find(|bc| bc.block == block).ok_or_else(|| block_not_in_stack(block))?;
+        bc.op_queue.push(operation);
+        Ok(())
+    }
+
     /// If the given name is not already declared in the current scope, declare it by producing an
     /// [Operation] via the callback, inserting that into the current block, and using its result.
     /// The only scenario where a declaration would already be present is when the same Declaration
@@ -194,6 +214,37 @@ where
         Ok(())
     }
 
+    /// Set the LLZK IR SSA Value for the given circom var name at the declaration scope.
+    pub fn set_named_value_at_declaration(
+        &mut self,
+        name: String,
+        value: Value<'ctx, 'val>,
+    ) -> Result<()> {
+        let scope = self
+            .blocks_iter_mut()
+            .find(|bc| bc.declares(&name))
+            .ok_or_else(|| anyhow!("Variable '{name}' was not declared in any scope"))?;
+        scope.insert(name, value);
+        Ok(())
+    }
+
+    /// Returns an iterator of the blocks in stack order (from the top to the bottom).
+    fn blocks_iter(&self) -> impl Iterator<Item = &BlockContext<'ctx, 'blk, 'val>> {
+        self.other_blocks.iter().rev().chain(std::iter::once(&self.root))
+    }
+
+    /// Returns an iterator of mutable references to the blocks in stack order (from the top to the
+    /// bottom).
+    fn blocks_iter_mut(&mut self) -> impl Iterator<Item = &mut BlockContext<'ctx, 'blk, 'val>> {
+        self.other_blocks.iter_mut().rev().chain(std::iter::once(&mut self.root))
+    }
+
+    /// Returns an iterator of mutable references to the blocks in reverse stack order (from the
+    /// bottom to the top).
+    fn blocks_iter_mut_rev(&mut self) -> impl Iterator<Item = &mut BlockContext<'ctx, 'blk, 'val>> {
+        std::iter::once(&mut self.root).chain(self.other_blocks.iter_mut())
+    }
+
     /// In the top block context, set multiple LLZK IR SSA Values for the given circom var names.
     pub fn set_named_values(
         &mut self,
@@ -208,12 +259,16 @@ where
     /// Get the LLZK IR SSA Value for the given circom var name, checking the top block context
     /// and then proceeding down the stack until found (if at all).
     pub fn get_named_value(&self, name: &str) -> Result<&Value<'ctx, 'val>> {
-        self.other_blocks
-            .iter()
-            .rev()
+        self.blocks_iter()
             .find_map(|bc| bc.get(name))
-            .or_else(|| self.root.get(name))
             .ok_or_else(|| anyhow!("variable '{name}' not found"))
+    }
+
+    /// Get the block that declared the given circom var name.
+    pub fn get_decl_block_of_value(&self, name: &str) -> Result<BlockRef<'ctx, 'blk>> {
+        self.blocks_iter()
+            .find_map(|bc| bc.declares(name).then_some(bc.block))
+            .ok_or_else(|| anyhow!("Variable '{name}' was not declared in any scope"))
     }
 
     /// Push a new block onto the stack to make it the current block.
@@ -224,7 +279,16 @@ where
     /// Pop the current block off the stack to return to the previous block. The vars declared in
     /// the popped frame are dropped and those which are overwrites are returned.
     pub fn pop(&mut self) -> HashMap<String, Value<'ctx, 'val>> {
+        self.append_queue();
         self.other_blocks.pop().expect("There is no block to pop!").overwriting_name_to_value
+    }
+
+    /// Appends the queued operations in the top of the stack.
+    pub fn append_queue(&mut self) {
+        let queue = std::mem::take(&mut self.top_mut().op_queue);
+        for op in queue {
+            self.append_current_block(op);
+        }
     }
 }
 
@@ -394,4 +458,9 @@ where
             generator,
         )
     }
+}
+
+/// Helper function for creating an error reporting that the given block is not part of the stack.
+fn block_not_in_stack(block: BlockRef) -> anyhow::Error {
+    anyhow!("Block {block:?} is not part of the stack")
 }

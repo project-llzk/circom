@@ -9,7 +9,7 @@ use ansi_term::Color;
 use anyhow::anyhow;
 use anyhow::Result;
 use llzk::dialect::undef;
-use llzk::operation::replace_uses_of_with;
+use llzk::operation::move_op_after;
 use llzk::prelude::felt;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::verify_operation_with_diags;
@@ -18,6 +18,8 @@ use llzk::prelude::Attribute;
 use llzk::prelude::BlockLike;
 use llzk::prelude::BlockRef;
 use llzk::prelude::BoolAttribute;
+use llzk::prelude::CallOpLike as _;
+use llzk::prelude::CallOpRef;
 use llzk::prelude::FeltConstAttribute;
 use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
@@ -25,7 +27,6 @@ use llzk::prelude::FuncDefOp;
 use llzk::prelude::FuncDefOpLike;
 use llzk::prelude::FuncDefOpRef;
 use llzk::prelude::FuncDefOpRefMut;
-use llzk::prelude::FunctionType;
 use llzk::prelude::IntegerAttribute;
 use llzk::prelude::IntegerType;
 use llzk::prelude::LlzkContext;
@@ -35,17 +36,18 @@ use llzk::prelude::Module;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike;
 use llzk::prelude::OperationRef;
+use llzk::prelude::OperationResult;
 use llzk::prelude::PassManager;
 use llzk::prelude::StructDefOp;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::StructType;
 use llzk::prelude::Type;
-use llzk::prelude::TypeAttribute;
 use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
-use melior::ir::operation::OperationResult;
+use llzk::value_ext::get_single_user;
+use llzk::value_ext::replace_all_uses_in_block_with;
 use melior::utility;
 use num_bigint_dig::BigInt;
 use num_bigint_dig::BigUint;
@@ -610,8 +612,8 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
 /// Extract the single result Value from an OperationRef. Returns an `Err` result if the operation
 /// does not have exactly one result.
 ///
-/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
-/// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
+/// 'c: lifetime of the `LlzkContext` and generated `Module`
+/// 'a: lifetime of the generated `Value` or `Operation` instances within blocks
 #[inline]
 pub fn single_result_as_value<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> Result<Value<'c, 'a>> {
     if op.result_count() != 1 {
@@ -625,8 +627,8 @@ pub fn single_result_as_value<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> Res
 
 /// Ensures the given OperationRef has 0 result Values, else returns an `Err` result.
 ///
-/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
-/// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
+/// 'c: lifetime of the `LlzkContext` and generated `Module`
+/// 'a: lifetime of the generated `Value` or `Operation` instances within blocks
 #[inline]
 pub fn no_results<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> Result<()> {
     if op.result_count() != 0 {
@@ -654,16 +656,6 @@ pub fn map_name_to_arg_value<'ctx, 'val>(
         .collect::<Result<HashMap<_, _>, _>>()
 }
 
-/// Replicates MLIR `isa` functionality for Rust types using `TryFrom`.
-pub trait IsA: Sized {
-    /// Like MLIR `isa`, check if `self` can be converted to type `Out`.
-    #[inline]
-    fn isa<Out: TryFrom<Self>>(self) -> bool {
-        Out::try_from(self).is_ok()
-    }
-}
-impl<T> IsA for T {}
-
 /// Return `true` iff the given Type is an `IndexType`.
 #[inline]
 pub fn is_index(t: Type) -> bool {
@@ -676,100 +668,14 @@ pub fn is_bool(t: Type) -> bool {
     t.is_integer() && IntegerType::try_from(t).is_ok_and(|it| it.width() == 1)
 }
 
-/// Return `true` iff the given Type is a `FeltType`.
-#[inline]
-pub fn is_felt(t: Type) -> bool {
-    t.isa::<llzk::prelude::FeltType>()
-}
-
-/// Return `true` iff the given Value has any uses.
-///
-/// TODO: `llzk-rs` should provide this directly
-#[inline]
-pub fn has_uses(val: Value) -> bool {
-    unsafe {
-        let first_use = mlir_sys::mlirValueGetFirstUse(val.to_raw());
-        !mlir_sys::mlirOpOperandIsNull(first_use)
-    }
-}
-
-/// Replace all uses of `orig` within the given [BlockRef] with `replacement`. Based on
-/// `mlir::replaceAllUsesInRegionWith` which is not exposed through any CAPI.
-///
-/// TODO: `llzk-rs` should provide this directly
-pub fn replace_all_uses_in_block_with(block: BlockRef, orig: &Value, replacement: Value) {
-    unsafe {
-        let mut op_use = mlir_sys::mlirValueGetFirstUse(orig.to_raw());
-        while !op_use.ptr.is_null() {
-            // Save next use *before* mutating (early-inc behavior)
-            let next = mlir_sys::mlirOpOperandGetNextUse(op_use);
-            // If the use is within the given block, replace it
-            let owner = mlir_sys::mlirOpOperandGetOwner(op_use);
-            if mlir_sys::mlirBlockEqual(mlir_sys::mlirOperationGetBlock(owner), block.to_raw()) {
-                replace_uses_of_with(&OperationRef::from_raw(owner), *orig, replacement);
-            }
-            // increment to next use
-            op_use = next;
-        }
-    }
-}
-
 /// Add a new argument to the given [BlockRef] with the same type as `orig` and replace all uses of
 /// `orig` within the given [BlockRef] (and within any nested blocks) with the new block argument.
 pub fn replace_uses_with_new_block_argument(block: BlockRef, orig: &Value, location: Location) {
     let replacement = block.add_argument(orig.r#type(), location);
     walk_from_block(
         block,
-        WalkCallbacks::for_blocks(|b| replace_all_uses_in_block_with(b, orig, replacement)),
+        WalkCallbacks::for_blocks(|b| replace_all_uses_in_block_with(b, *orig, replacement)),
     );
-}
-
-/// Erase the given operation.
-///
-/// TODO: `llzk-rs` should provide this directly
-#[inline]
-pub fn erase_op<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) {
-    unsafe {
-        mlir_sys::mlirOperationDestroy(op.to_raw());
-    }
-}
-
-/// Return `true` iff the given op is `scf.yield`.
-///
-/// TODO: `llzk-rs` should provide this directly
-#[inline]
-pub fn is_scf_yield<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> bool {
-    op.name().as_string_ref().as_str() == Result::Ok("scf.yield")
-}
-
-/// Return `true` iff the given op is `struct.readf`.
-///
-/// TODO: `llzk-rs` should provide this directly via `llzkOperationIsAStructFieldReadOp`
-#[inline]
-pub fn is_struct_readf<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> bool {
-    op.name().as_string_ref().as_str() == Result::Ok("struct.readf")
-}
-
-/// Get the [FunctionType] from a [FuncDefOpLike].
-///
-/// TODO: `llzk-rs` should provide this directly
-pub fn get_function_type_attribute<'c: 'a, 'a>(
-    func: impl FuncDefOpLike<'c, 'a>,
-) -> Result<FunctionType<'c>> {
-    let attr = func.attribute("function_type")?;
-    let type_attr: TypeAttribute<'c> = attr.try_into()?;
-    let func_type: FunctionType<'c> = type_attr.value().try_into()?;
-    Ok(func_type)
-}
-
-/// Replaces all uses of the first value with the second.
-///
-/// Uses `mlir-sys` directly since that function doesn't seem to be
-/// implemented in melior.
-///
-/// TODO: `llzk-rs` should provide this directly
-pub fn replace_all_uses<'ctx>(of: Value<'ctx, '_>, with: Value<'ctx, '_>) {
-    unsafe { mlir_sys::mlirValueReplaceAllUsesOfWith(of.to_raw(), with.to_raw()) }
 }
 
 /// Sets the n-th operand of the operation to the given value if the current value is an
@@ -780,44 +686,12 @@ pub fn set_operand_if_undef<'ctx, 'op>(
     value: impl ValueLike<'ctx>,
 ) -> Result<()> {
     if let Ok(arg) = OperationResult::try_from(op.operand(idx)?) {
-        if !undef::is_undef_op(arg.owner()) {
+        if !undef::is_undef_op(&arg.owner()) {
             anyhow::bail!("Argument {idx} was assigned twice: {arg}");
         }
     }
     unsafe { mlir_sys::mlirOperationSetOperand(op.to_raw(), idx as isize, value.to_raw()) }
     Ok(())
-}
-
-/// Returns the one user of a value.
-///
-/// Fails if the value has more than one use or not at all.
-///
-/// TODO: `llzk-rs` should provide this directly
-pub fn get_single_user<'ctx, 'val, 'op>(
-    value: Value<'ctx, 'val>,
-) -> Result<OperationRef<'ctx, 'op>> {
-    // There is no `OpOperand` type in melior as far as I'm aware.
-    let first_use = unsafe { mlir_sys::mlirValueGetFirstUse(value.to_raw()) };
-    if first_use.ptr.is_null() {
-        anyhow::bail!("value {value} has no uses");
-    }
-    let second_use = unsafe { mlir_sys::mlirOpOperandGetNextUse(first_use) };
-    if !second_use.ptr.is_null() {
-        anyhow::bail!("value {value} can have only one use");
-    }
-    unsafe { OperationRef::from_option_raw(mlir_sys::mlirOpOperandGetOwner(first_use)) }
-        .ok_or_else(|| anyhow::anyhow!("invalid operation for user of {value}"))
-}
-
-#[inline]
-/// Moves the operation right after the reference op.
-///
-/// TODO: `llzk-rs` should provide this directly
-pub fn move_op_after<'ctx: 'op, 'op>(
-    reference: impl OperationLike<'ctx, 'op>,
-    op: impl OperationLike<'ctx, 'op>,
-) {
-    unsafe { mlir_sys::mlirOperationMoveAfter(op.to_raw(), reference.to_raw()) }
 }
 
 /// Moves the operation after the value if the value comes from another operation.
@@ -840,7 +714,7 @@ pub fn insert_after_if_op_result<'ctx, 'val, 'op>(
             reference_op =
                 find_parent_in_block(op_block, reference_op).expect("parent op not found");
         };
-        move_op_after(reference_op, op);
+        move_op_after(&reference_op, &op);
     }
 }
 
@@ -856,19 +730,51 @@ fn find_parent_in_block<'ctx, 'blk, 'op>(
         find_parent_in_block(block, parent_block.parent_operation()?)
     }
 }
-/// Get all dimensions from an [ArrayType].
-///
-/// TODO: `llzk-rs` should provide this directly
-#[inline]
-pub fn get_dims<'c>(arr_ty: &ArrayType<'c>) -> Vec<Attribute<'c>> {
-    (0..arr_ty.num_dims()).map(|idx| arr_ty.dim(idx)).collect()
-}
 
 /// Create new array type that is an array of the given sub-array type.
 #[inline]
 pub fn new_array_type<'c>(dim: Attribute<'c>, subarr_ty: &ArrayType<'c>) -> ArrayType<'c> {
-    let dims: Vec<_> = std::iter::once(dim).chain(get_dims(subarr_ty).iter().copied()).collect();
+    let dims: Vec<_> = std::iter::once(dim).chain(subarr_ty.dims().iter().copied()).collect();
     ArrayType::new(subarr_ty.element_type(), &dims)
+}
+
+/// Tries to obtain the owner operation of a [`Value`](melior::ir::Value).
+///
+/// This function works around a lifetime issue in [`OperationResult::owner`] that
+/// is resolved in [mlir-sys/melior#784](https://github.com/mlir-rs/melior/pull/784) but that
+/// we cannot benefit from yet.
+#[inline]
+pub fn op_result_owner<'ctx, 'val, 'op: 'val>(
+    value: Value<'ctx, 'val>,
+) -> Result<OperationRef<'ctx, 'op>> {
+    if !value.is_operation_result() {
+        anyhow::bail!("Value {value} is not an operation result");
+    }
+    unsafe { OperationRef::from_option_raw(mlir_sys::mlirOpResultGetOwner(value.to_raw())) }
+        .ok_or_else(|| anyhow::anyhow!("owner of {value} is not a valid operation"))
+}
+
+/// Looks for a call op to a constrain function where the given value is the first argument.
+///
+/// Fails if:
+///     - The value has more than one use.
+///     - The use is not a constrain call.
+///     - The used value is not the first operand.
+#[inline]
+pub fn get_constrain_call<'ctx, 'op, 'val>(
+    value: Value<'ctx, 'val>,
+) -> Result<OperationRef<'ctx, 'op>> {
+    let owner: CallOpRef<'ctx, 'op> = get_single_user(value)?.try_into()?;
+    if !owner.callee_is_constrain() {
+        anyhow::bail!("operation {owner} is not a call to a constrain function");
+    }
+
+    let fst_operand = owner.operand(0)?;
+    if fst_operand != value {
+        anyhow::bail!("first operand {fst_operand} does not match target: {value}");
+    }
+
+    Ok(owner.into())
 }
 
 /// Convert unsigned field elements into relational values used for comparisons.

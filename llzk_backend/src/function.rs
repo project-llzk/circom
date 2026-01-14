@@ -5,18 +5,14 @@
 //! [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
 //! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes.
 
+use crate::function::felt::is_felt_type;
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::program_ext::ProgramLike;
-use crate::shared;
-use crate::shared::erase_op;
-use crate::shared::get_function_type_attribute;
 use crate::shared::insert_after_if_op_result;
 use crate::shared::is_bool;
-use crate::shared::is_felt;
 use crate::shared::is_index;
-use crate::shared::is_scf_yield;
 use crate::shared::new_array_type;
 use crate::shared::no_results;
 use crate::shared::replace_uses_with_new_block_argument;
@@ -30,6 +26,9 @@ use anyhow::anyhow;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
+use llzk::dialect::undef;
+use llzk::operation::erase_op;
+use llzk::operation::WalkOperationMutLike;
 use llzk::prelude::array;
 use llzk::prelude::bool;
 use llzk::prelude::felt;
@@ -37,13 +36,14 @@ use llzk::prelude::function;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::melior_dialects::index;
 use llzk::prelude::melior_dialects::scf;
-use llzk::prelude::undef;
+use llzk::prelude::melior_dialects::scf::is_scf_yield;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FlatSymbolRefAttribute;
+use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::IntegerAttribute;
 use llzk::prelude::Location;
@@ -52,7 +52,6 @@ use llzk::prelude::Operation;
 use llzk::prelude::OperationLike as _;
 use llzk::prelude::OperationMutLike;
 use llzk::prelude::OperationRef;
-use llzk::prelude::OperationRefMut;
 use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::Type;
@@ -60,6 +59,7 @@ use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use llzk::prelude::WalkOrder;
 use llzk::prelude::WalkResult;
+use llzk::value_ext::has_uses;
 use melior::dialect::ods::math;
 use num_bigint_dig::BigInt;
 use num_traits::Zero;
@@ -124,7 +124,7 @@ where
             // Ensure the specially-named values are declared in free functions.
             block_ctx.declare_name_if_not_present(VAR_NAME_RETURN_VAL, || {
                 // Get the result type from the free function. It supports exactly 1.
-                let ty = get_function_type_attribute(func)?;
+                let ty = func.get_function_type_attribute()?;
                 assert_eq!(ty.result_count(), 1);
                 codegen.new_nondet_at_location(codegen.location_unknown(), ty.result(0)?)
             })?;
@@ -203,7 +203,7 @@ where
         };
         match op {
             ExpressionPrefixOpcode::Sub => {
-                if shared::is_felt(rhs.r#type()) {
+                if is_felt_type(rhs.r#type()) {
                     return self.append_op_unnamed_result(felt::neg(
                         codegen.location_from_meta(meta),
                         rhs,
@@ -223,7 +223,7 @@ where
                 }
             }
             ExpressionPrefixOpcode::Complement => {
-                if shared::is_felt(rhs.r#type()) {
+                if is_felt_type(rhs.r#type()) {
                     return self.append_op_unnamed_result(felt::bit_not(
                         codegen.location_from_meta(meta),
                         rhs,
@@ -262,7 +262,7 @@ where
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
-        if !is_felt(val.r#type()) {
+        if !is_felt_type(val.r#type()) {
             self.append_op_unnamed_result(cast::tofelt(location, val))
         } else {
             Ok(val)
@@ -293,7 +293,7 @@ where
     ) -> Result<Value<'ctx, 'val>> {
         // The conversion to bool is simply to check `!=0` which is the same as
         // `normalize()` in `modular_arithmetic.rs`.
-        if is_felt(val.r#type()) {
+        if is_felt_type(val.r#type()) {
             let zero = self
                 .append_op_unnamed_result(codegen.new_felt_const_op(&BigInt::zero(), location)?)?;
             self.append_op_unnamed_result(bool::ne(location, val, zero)?)
@@ -432,7 +432,7 @@ where
 
         macro_rules! try_felt_op {
             ($op_path:path) => {{
-                try_callback_for_type!(shared::is_felt, generic_op_callback!($op_path));
+                try_callback_for_type!(is_felt_type, generic_op_callback!($op_path));
             }};
         }
 
@@ -507,7 +507,7 @@ where
             ExpressionInfixOpcode::IntDiv => {
                 // Need `this` to append required preceding ops. The final
                 // result is appended via the macro.
-                try_callback_for_type!(shared::is_felt, |this| {
+                try_callback_for_type!(is_felt_type, |this| {
                     // Perform integer division by casting to integer, using arith dialect
                     // divui, then casting the quotient back to felt. Cast to an integer type
                     // with sufficient bits to hold the felts without truncation.
@@ -781,6 +781,27 @@ where
             .try_for_each(|(name, result)| self.block_ctx.set_named_value(name, result.into()))?;
         Ok(())
     }
+
+    /// Finalizes the context.
+    /// 1. Remove any `undef.undef` ops from the function whose result value is unused. These were
+    ///    added, for example, when visiting [Statement::Declaration] but their uses were later
+    ///    replaced with actual values when visiting [Statement::Substitution] (and others).
+    /// 2. Remove any uses of the [CIRCOM_RETURN_MARKER_ATTR] attribute because it is a temporary
+    ///    marker used to properly adjust the location of return statements to match LLZK
+    ///    requirements.
+    pub fn finalize(&mut self, _: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Result<()> {
+        self.func.walk_mut(WalkOrder::PreOrder, |mut op| {
+            if undef::is_undef_op(&op) && !has_uses(single_result_as_value(op).unwrap()) {
+                OperationMutLike::remove_from_parent(op.deref_mut());
+                WalkResult::Skip
+            } else {
+                // Result ignored because we don't care if the attribute was there or not.
+                let _ = op.remove_attribute(CIRCOM_RETURN_MARKER_ATTR);
+                WalkResult::Advance
+            }
+        });
+        Ok(())
+    }
 }
 
 /// The [FunctionContext] directly accesses a single [BlockContextStack] for circom scope handling.
@@ -816,39 +837,6 @@ where
     {
         let popped = self.block_ctx.pop();
         overwrite_handler(self, overwrite_data, popped)
-    }
-}
-
-/// Implement [Drop] on [FunctionContext] to:
-///
-/// 1. Remove any `undef.undef` ops from the function whose result value is unused. These were
-///    added, for example, when visiting [Statement::Declaration] but their uses were later replaced
-///    with actual values when visiting [Statement::Substitution] (and others).
-/// 2. Remove any uses of the [CIRCOM_RETURN_MARKER_ATTR] attribute because it is a temporary marker
-///    used to properly adjust the location of return statements to match LLZK requirements.
-impl Drop for FunctionContext<'_, '_, '_, '_> {
-    fn drop(&mut self) {
-        fn undef_has_uses(op: OperationRef) -> bool {
-            shared::has_uses(single_result_as_value(op).unwrap())
-        }
-        self.func.walk(WalkOrder::PreOrder, |op| {
-            let mut op_ref_mut = unsafe { OperationRefMut::from_raw(op.to_raw()) };
-            if llzk::dialect::undef::is_undef_op(op) && !undef_has_uses(op) {
-                OperationMutLike::remove_from_parent(op_ref_mut.deref_mut());
-                WalkResult::Skip
-            } else {
-                // Result ignored because we don't care if the attribute was there or not.
-                let _ = op_ref_mut.remove_attribute(CIRCOM_RETURN_MARKER_ATTR);
-                WalkResult::Advance
-            }
-        });
-        // XXX: We may have to move this logic to a failable function since
-        // this is the point where we know if we have undefs left that may be due to an user error.
-        // For example, if a subcomponent's signal was not assigned then we need to raise a user
-        // error since that's what the compiler normally does.
-        //
-        // If we can raise issues here without having to return a `Result` then it's fine to do
-        // here. Tho I feel it may be overstretching what Drop is meant to do.
     }
 }
 
@@ -920,7 +908,7 @@ where
         if term.has_attribute(CIRCOM_RETURN_MARKER_ATTR) {
             // ASSERT: This must be a `yield` not a `return` since it's generated
             // within a nested block of an `if` or `while` statement.
-            assert!(is_scf_yield(term));
+            assert!(is_scf_yield(&term));
             // ASSERT: Per `append_circom_return()` it has exactly one operand.
             assert_eq!(term.operand_count(), 1);
             let result = term.operand(0).unwrap();
@@ -1558,7 +1546,9 @@ where
             }
             Expression::AnonymousComp { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
             Expression::Tuple { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
-            Expression::ParallelOp { .. } => unreachable!("handled in templates, illegal in pure functions"),
+            Expression::ParallelOp { .. } => {
+                unreachable!("handled in templates, illegal in pure functions")
+            }
         }
     }
 }

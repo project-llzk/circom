@@ -109,6 +109,19 @@ impl<'ctx> SubcmpCallsMap<'ctx> {
             self.insert(&new, name)
         }
     }
+
+    /// If the left value exists in the map, adds the right value with the same name.
+    ///
+    /// Returns the right value.
+    pub fn propagate<V>(&mut self, lhs: &impl ValueLike<'ctx>, rhs: V) -> V
+    where
+        V: ValueLike<'ctx>,
+    {
+        if let Some(name) = self.get(lhs) {
+            self.insert(&rhs, name.to_string())
+        }
+        rhs
+    }
 }
 
 impl Default for SubcmpCallsMap<'_> {
