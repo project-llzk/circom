@@ -214,7 +214,7 @@ where
         Ok(())
     }
 
-    /// Set the LLZK IS SSA Value for the given circom var name at the declaration scope.
+    /// Set the LLZK IR SSA Value for the given circom var name at the declaration scope.
     pub fn set_named_value_at_declaration(
         &mut self,
         name: String,

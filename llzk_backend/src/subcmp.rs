@@ -110,7 +110,7 @@ impl<'ctx> SubcmpCallsMap<'ctx> {
         }
     }
 
-    /// If the left value exists in the map adds the right value with the same name.
+    /// If the left value exists in the map, adds the right value with the same name.
     ///
     /// Returns the right value.
     pub fn propagate<V>(&mut self, lhs: &impl ValueLike<'ctx>, rhs: V) -> V
