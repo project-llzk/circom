@@ -18,6 +18,8 @@ use llzk::prelude::Attribute;
 use llzk::prelude::BlockLike;
 use llzk::prelude::BlockRef;
 use llzk::prelude::BoolAttribute;
+use llzk::prelude::CallOpLike as _;
+use llzk::prelude::CallOpRef;
 use llzk::prelude::FeltConstAttribute;
 use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
@@ -161,7 +163,9 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     fn try_compute_dim_expr(&self, expr: &Expression) -> Result<Option<BigUint>> {
         match expr {
             Expression::Number(_, big_int) => {
-                let v = big_int.to_biguint().ok_or_else(|| anyhow!("could not convert to signed"))? % self.prime()?;
+                let v =
+                    big_int.to_biguint().ok_or_else(|| anyhow!("could not convert to signed"))?
+                        % self.prime()?;
                 Ok(Some(v))
             }
             Expression::InfixOp { lhe, infix_op, rhe, .. } => {
@@ -200,8 +204,8 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                                     % p
                             }
                             // Comparison operators are performed based on a signed interpretation
-                            // of the field elements as defined by the `relational_val` function, according
-                            // to the circom spec.
+                            // of the field elements as defined by the `relational_val` function,
+                            // according to the circom spec.
                             ExpressionInfixOpcode::LesserEq => {
                                 let res = relational_val(&lhs, &p)? <= relational_val(&rhs, &p)?;
                                 bool_to_biguint(res)
@@ -300,7 +304,8 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                     unreachable!("handled by try_compute_dim_expr")
                 }
                 Expression::Variable { meta, name, access } => {
-                    // TODO: generate AffineMapAttr (with single result) or SymbolRefAttr (from param)
+                    // TODO: generate AffineMapAttr (with single result) or SymbolRefAttr (from
+                    // param)
                     todo!("Handle Variable expression in dimension")
                 }
                 Expression::InfixOp { meta, lhe, infix_op, rhe } => {
@@ -866,6 +871,45 @@ pub fn get_dims<'c>(arr_ty: &ArrayType<'c>) -> Vec<Attribute<'c>> {
 pub fn new_array_type<'c>(dim: Attribute<'c>, subarr_ty: &ArrayType<'c>) -> ArrayType<'c> {
     let dims: Vec<_> = std::iter::once(dim).chain(get_dims(subarr_ty).iter().copied()).collect();
     ArrayType::new(subarr_ty.element_type(), &dims)
+}
+
+#[inline]
+/// Tries to obtain the owner operation of a [`Value`](melior::ir::Value).
+///
+/// This function works around a lifetime issue in [`OperationResult::owner`] that
+/// is resolved in [mlir-sys/melior#784](https://github.com/mlir-rs/melior/pull/784) but that
+/// we cannot benefit from yet.
+pub fn op_result_owner<'ctx, 'val, 'op: 'val>(
+    value: Value<'ctx, 'val>,
+) -> Result<OperationRef<'ctx, 'op>> {
+    if !value.is_operation_result() {
+        anyhow::bail!("Value {value} is not an operation result");
+    }
+    unsafe { OperationRef::from_option_raw(mlir_sys::mlirOpResultGetOwner(value.to_raw())) }
+        .ok_or_else(|| anyhow::anyhow!("owner of {value} is not a valid operation"))
+}
+
+#[inline]
+/// Looks for a call op to a constrain function where the given value is the first argument.
+///
+/// Fails if:
+///     - The value has more than one use.
+///     - The use is not a constrain call.
+///     - The used value is not the first operand.
+pub fn get_constrain_call<'ctx, 'op, 'val>(
+    value: Value<'ctx, 'val>,
+) -> Result<OperationRef<'ctx, 'op>> {
+    let owner: CallOpRef<'ctx, 'op> = get_single_user(value)?.try_into()?;
+    if !owner.callee_is_constrain() {
+        anyhow::bail!("operation {owner} is not a call to a constrain function");
+    }
+
+    let fst_operand = owner.operand(0)?;
+    if fst_operand != value {
+        anyhow::bail!("first operand {fst_operand} does not match target: {value}");
+    }
+
+    Ok(owner.into())
 }
 
 /// Convert unsigned field elements into relational values used for comparisons.

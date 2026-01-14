@@ -10,12 +10,16 @@ use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::program_ext::ProgramLike;
-use crate::shared::get_single_user;
+use crate::shared::get_constrain_call;
 use crate::shared::is_felt;
 use crate::shared::is_struct_readf;
+use crate::shared::op_result_owner;
 use crate::shared::replace_all_uses;
 use crate::shared::LlzkCodegen;
 use crate::template_ext::TemplateLike as _;
+use crate::write_chain::RootWriteOp;
+use crate::write_chain::WriteChain;
+use crate::write_chain::WriteTarget;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
@@ -29,7 +33,6 @@ use llzk::prelude::FeltType;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::OperationLike;
-use llzk::prelude::OperationRef;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Type;
@@ -46,7 +49,6 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryFrom;
-use std::convert::TryInto as _;
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -111,6 +113,8 @@ where
     constrain: ShouldGenerate<Rc<RefCell<FunctionContext<'ctx, 'func, 'blk, 'val>>>>,
     /// Set of subcomponent names.
     subcmps: &'str HashSet<String>,
+    /// Tracks for what component signals we have created their `struct.writef` op already.
+    written_signals: Rc<RefCell<HashSet<String>>>,
 }
 
 impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'val> {
@@ -127,6 +131,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
             compute: Some(Rc::new(RefCell::new(compute))),
             constrain: Some(Rc::new(RefCell::new(constrain))),
             subcmps,
+            written_signals: Default::default(),
         }
     }
 
@@ -138,6 +143,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
             compute: self.compute.as_ref().map(Rc::clone),
             constrain: None,
             subcmps: self.subcmps,
+            written_signals: self.written_signals.clone(),
         }
     }
 
@@ -149,7 +155,18 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
             compute: None,
             constrain: self.constrain.as_ref().map(Rc::clone),
             subcmps: self.subcmps,
+            written_signals: self.written_signals.clone(),
         }
+    }
+
+    /// Returns true if we already generated a `struct.writef` op for the given signal.
+    pub fn signal_already_written(&self, name: &str) -> bool {
+        self.written_signals.borrow().contains(name)
+    }
+
+    /// Marks the given signal as written.
+    pub fn mark_signal_as_written(&self, name: String) {
+        self.written_signals.borrow_mut().insert(name);
     }
 
     /// Finalizes the context by emitting the final write operations that write subcomponent
@@ -169,9 +186,23 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                         *val,
                     )?)?;
                 }
+                if !fc.block_ctx.is_only_root() {
+                    anyhow::bail!(
+                        "Template generation reached final step with more than one scope"
+                    );
+                }
+                fc.block_ctx.append_queue();
                 Ok(())
             },
-            |_, _| Ok(()),
+            |fc, _| {
+                fc.block_ctx.append_queue();
+                if !fc.block_ctx.is_only_root() {
+                    anyhow::bail!(
+                        "Template generation reached final step with more than one scope"
+                    );
+                }
+                Ok(())
+            },
         )?
         .and_then_same(|fc, _| fc.finalize(codegen))
     }
@@ -810,7 +841,38 @@ where
                                 )
                             }
                         } else {
-                            anyhow::bail!("Array write in template not yet supported for AssignVar: {access:?}");
+                            let write_op = if template.subcmps.contains(var) {
+                                RootWriteOp::Subcmp
+                            } else {
+                                RootWriteOp::Var
+                            };
+                            let location = codegen.location_from_meta(meta);
+                            rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                                |fc, val| {
+                                    let chain = WriteChain::new(var, write_op, access);
+                                    chain.write(
+                                        val,
+                                        WriteTarget::Compute,
+                                        codegen,
+                                        fc,
+                                        location,
+                                        template,
+                                    )?;
+                                    Ok(())
+                                },
+                                |fc, val| {
+                                    let chain = WriteChain::new(var, write_op, access);
+                                    chain.write(
+                                        val,
+                                        WriteTarget::Constrain,
+                                        codegen,
+                                        fc,
+                                        location,
+                                        template,
+                                    )?;
+                                    Ok(())
+                                },
+                            )
                         }
                     }
                     AssignOp::AssignSignal => {
@@ -880,7 +942,19 @@ where
                                         )
                                     })
                             }
-                            _ => anyhow::bail!("Array write in template not yet supported for AssignSignal: {access:?}")
+                            access => rhe
+                                .gen_llzk_in_template(codegen, &template.compute_only())?
+                                .and_then_same(|fc, rhe| {
+                                    let chain = WriteChain::new(var, RootWriteOp::Signal, access);
+                                    chain.write(
+                                        rhe,
+                                        WriteTarget::Compute,
+                                        codegen,
+                                        fc,
+                                        codegen.location_from_meta(meta),
+                                        template,
+                                    )
+                                }),
                         }
                     }
                     AssignOp::AssignConstraintSignal => {
@@ -973,7 +1047,28 @@ where
                                     },
                                 )
                             }
-                            _ => anyhow::bail!("Array write in template not yet supported for AssignConstraintSignal: {access:?}")
+                            access => {
+                                rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                                    |fc, rhe| {
+                                        let chain = WriteChain::new(
+                                            var,
+                                            RootWriteOp::Signal,
+                                            access,
+                                        );
+                                        chain.write(
+                                            rhe,
+                                            WriteTarget::Compute,
+                                            codegen,
+                                            fc,
+                                            codegen.location_from_meta(meta),
+                                            template,
+                                        )
+                                    },
+                                    |_fc, _rhe| {
+                                        anyhow::bail!("Generate array write operation in template (constrain): \n{access:?}")
+                                    },
+                                )
+                            }
                         }
                     }
                 }
@@ -1221,43 +1316,4 @@ where
             }
         }
     }
-}
-
-#[inline]
-/// Tries to obtain the owner operation of a [`Value`](llzk::prelude::Value).
-///
-/// This function works around a lifetime issue in [`OperationResult::owner`] that
-/// is resolved in [mlir-sys/melior#784](https://github.com/mlir-rs/melior/pull/784) but that
-/// we cannot benefit from yet.
-fn op_result_owner<'ctx, 'val, 'op: 'val>(
-    value: Value<'ctx, 'val>,
-) -> Result<OperationRef<'ctx, 'op>> {
-    if !value.is_operation_result() {
-        anyhow::bail!("Value {value} is not an operation result");
-    }
-    unsafe { OperationRef::from_option_raw(mlir_sys::mlirOpResultGetOwner(value.to_raw())) }
-        .ok_or_else(|| anyhow::anyhow!("owner of {value} is not a valid operation"))
-}
-
-#[inline]
-/// Looks for a call op to a constrain function where the given value is the first argument.
-///
-/// Fails if:
-///     - The value has more than one use.
-///     - The use is not a constrain call.
-///     - The used value is not the first operand.
-fn get_constrain_call<'ctx, 'op, 'val>(
-    value: Value<'ctx, 'val>,
-) -> Result<OperationRef<'ctx, 'op>> {
-    let owner: CallOpRef<'ctx, 'op> = get_single_user(value)?.try_into()?;
-    if !owner.callee_is_constrain() {
-        anyhow::bail!("operation {owner} is not a call to a constrain function");
-    }
-
-    let fst_operand = owner.operand(0)?;
-    if fst_operand != value {
-        anyhow::bail!("first operand {fst_operand} does not match target: {value}");
-    }
-
-    Ok(owner.into())
 }

@@ -16,6 +16,7 @@ use anyhow::bail;
 use anyhow::Result;
 use llzk::attributes::NamedAttribute;
 use llzk::builder::OpBuilder;
+use llzk::dialect::array::ArrayCtor::MapDimSlice;
 use llzk::error::Error;
 use llzk::prelude::r#struct::helpers::compute_fn;
 use llzk::prelude::r#struct::helpers::constrain_fn;
@@ -73,13 +74,15 @@ impl<'ctx> DeclarationInfo<'ctx> {
             let instances = info.instances();
             let field_type: Type<'_> = match instances {
                 [] => todo!("Handle uninitialized component decl"),
-                [t] => (*t).into(),
                 instances => {
                     let types = unique_instance_types(instances);
                     if types.len() > 1 {
-                        todo!("Handle array subcomponents")
+                        todo!("Handle subcomponents with different instantiations")
                     }
-                    ArrayType::new(types[0].into(), info.dimensions()).into()
+                    match info.dimensions() {
+                        [] => types[0].into(),
+                        dims => ArrayType::new(types[0].into(), dims).into(),
+                    }
                 }
             };
             self.struct_fields.push(
@@ -171,17 +174,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                     }
                 }
             }
-            Statement::Substitution { var, op, rhe, .. }
-                if matches!(op, AssignOp::AssignVar) && self.subcmp_decls.contains_key(var) =>
-            {
-                let struct_type = Self::find_subcmp_ctor_call(codegen, rhe)?;
-                self.subcmp_decls.entry(var.clone()).and_modify(|info| {
-                    info.instances_mut().push(struct_type);
-                });
-
-                Ok(())
-            }
-            _ => Ok(()),
+            stmt => self.search_component_instances(codegen, stmt),
         }
     }
 
@@ -279,6 +272,45 @@ impl<'ctx> DeclarationInfo<'ctx> {
         codegen.new_nondet_at_location(location, decl_type).map(|op| {
             self.decl_inits.insert(name.clone(), op);
         })
+    }
+
+    /// Traverses the AST looking for assigments of subcomponents and collects the instances used
+    /// for them.
+    fn search_component_instances(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        stmt: &Statement,
+    ) -> Result<()> {
+        match stmt {
+            Statement::Substitution { var, op, rhe, .. }
+                if matches!(op, AssignOp::AssignVar) && self.subcmp_decls.contains_key(var) =>
+            {
+                let struct_type = Self::find_subcmp_ctor_call(codegen, rhe)?;
+                self.subcmp_decls.entry(var.clone()).and_modify(|info| {
+                    info.instances_mut().push(struct_type);
+                });
+
+                Ok(())
+            }
+            Statement::IfThenElse { if_case, else_case, .. } => {
+                self.search_component_instances(codegen, if_case.as_ref())?;
+                if let Some(else_case) = else_case.as_deref() {
+                    self.search_component_instances(codegen, else_case)?;
+                }
+                Ok(())
+            }
+            Statement::While { stmt, .. } => {
+                self.search_component_instances(codegen, stmt.as_ref())
+            }
+            Statement::InitializationBlock { initializations: stmts, .. }
+            | Statement::Block { stmts, .. } => {
+                for stmt in stmts {
+                    self.search_component_instances(codegen, stmt)?;
+                }
+                Ok(())
+            }
+            _ => Ok(()),
+        }
     }
 }
 
@@ -400,10 +432,19 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     // circom variable name to a LLZK op result Value.
     for (name, subcmp_type) in subcmps {
         compute_ctx.block_ctx.declare_name_if_not_present(&name, || {
-            Ok(undef::undef(Location::unknown(codegen.context), subcmp_type))
+            ArrayType::try_from(subcmp_type)
+                .map(|subcmp_type| {
+                    array::new(
+                        &op_builder,
+                        codegen.location_unknown(),
+                        subcmp_type,
+                        MapDimSlice(&[], &[]),
+                    )
+                })
+                .or_else(|_| Ok(undef::undef(codegen.location_unknown(), subcmp_type)))
         })?;
 
-        let self_ref = *constrain_ctx.block_ctx.get_named_value("**self**")?;
+        let self_ref = constrain_ctx.func.self_value_of_constrain()?;
         constrain_ctx.block_ctx.declare_name_if_not_present(&name, || {
             Ok(r#struct::readf(
                 &op_builder,
