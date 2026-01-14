@@ -1,7 +1,7 @@
 [package]
 name = "llzk_backend"
 version = "0.1.0"
-authors = ["Veridise"]
+authors = ["Veridise", "project-llzk"]
 edition = "2018"
 
 [dependencies]
@@ -14,4 +14,4 @@ num-traits = "0.2.6"
 mlir-sys = "0.5.0"
 melior = { version = "0.25", features = ["ods-dialects"] }
 melior-macro = "0.18"
-llzk = { git = "https://github.com/Veridise/llzk-rs", package = "llzk" }
+llzk = { git = "https://github.com/project-llzk/llzk-rs", package = "llzk" }
