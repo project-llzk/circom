@@ -14,7 +14,7 @@ function earlyReturnFn(in) {
     } else {
         return in + 3;
     }
-    return -1; // Unreachable because all branches above return
+    return -1; // Syntactically unreachable because all branches above return
 }
 
 template EarlyReturn() {
