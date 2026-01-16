@@ -22,7 +22,6 @@ use llzk::prelude::CallOpRef;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::OperationLike as _;
-use llzk::prelude::OperationResult;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use llzk::value_ext::replace_all_uses;
@@ -150,9 +149,7 @@ impl<'ast> WriteChain<'ast> {
                         // Replace value
                         let field_read = fc.block_ctx.get_named_value(var)?;
                         // ASSERT: value comes from a `struct.readf`
-                        assert!(is_struct_readf(
-                            &OperationResult::try_from(*field_read).unwrap().owner()
-                        ));
+                        assert!(is_struct_readf(&op_result_owner(*field_read).unwrap()));
                         if val != *field_read {
                             replace_all_uses(val, *field_read);
                         }
