@@ -39,18 +39,18 @@ component main = C();
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = felt.const  2
 // CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.const  4
-// CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = arith.constant true
+// CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = arith.constant false
 // CHECK-NEXT:        scf.yield %[[VAL_11]], %[[VAL_1]], %[[VAL_8]], %[[VAL_9]], %[[VAL_10]] : i1, !felt.type, !felt.type, !felt.type, !felt.type
 // CHECK-NEXT:      } else {
-// CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = arith.constant false
+// CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = arith.constant true
 // CHECK-NEXT:        scf.yield %[[VAL_12]], %[[VAL_0]], %[[VAL_2]], %[[VAL_3]], %[[VAL_4]] : i1, !felt.type, !felt.type, !felt.type, !felt.type
 // CHECK-NEXT:      }
 // CHECK-NEXT:      %[[VAL_13:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_7]]#0 -> (!felt.type) {
+// CHECK-NEXT:        scf.yield %[[VAL_7]]#1 : !felt.type
+// CHECK-NEXT:      } else {
 // CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_7]]#2, %[[VAL_7]]#3 : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_15]], %[[VAL_7]]#4 : !felt.type, !felt.type
 // CHECK-NEXT:        scf.yield %[[VAL_16]] : !felt.type
-// CHECK-NEXT:      } else {
-// CHECK-NEXT:        scf.yield %[[VAL_7]]#1 : !felt.type
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.return %[[VAL_13]] : !felt.type
 // CHECK-NEXT:    }
