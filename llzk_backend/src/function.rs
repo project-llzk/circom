@@ -867,32 +867,10 @@ where
     ) -> Result<Self::Output>;
 }
 
-impl<'ctx, 'func, 'blk, 'val> GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val> for [Statement]
-where
-    'ctx: 'func,
-    'func: 'blk,
-    'blk: 'val,
-{
-    type Output = ();
-
-    fn gen_llzk_in_function<'ast>(
-        &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
-        function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
-    ) -> Result<Self::Output> {
-        for s in self {
-            s.gen_llzk_in_function(codegen, function)?;
-            // circom allows unreachable code after a return but it is not processed
-            // (e.g. `assert(1 == 0)` after a return does not cause an error as it normally
-            // would) so replicate the same behavior here by stopping processing after a
-            // return (which is also what MLIR expects, no code after a terminator op).
-            if matches!(s, Statement::Return { .. }) {
-                break;
-            }
-        }
-        Ok(())
-    }
-}
+/// Output type of [GenerateLLZKInFunction] implemented for [Statement] indicating whether the
+/// current statement causes abrupt termination of the current block (in other words, whether
+/// the remaining statements in the same block should be skipped).
+type SkipRestOfBlock = bool;
 
 /// Within a nested (i.e. non-root) block, get the Value wrapped within an `scf.yield` op that was
 /// created from a circom return op.
@@ -926,7 +904,7 @@ where
 /// Helper for [gen_if_then_else] to mangage the special return-related variables needed
 /// when a circom [Statement::IfThenElse] contains a return statement.
 #[allow(clippy::too_many_arguments)]
-fn handle_early_return<'ast, 'ctx, 'func, 'blk, 'val>(
+fn handle_unbalanced_return<'ast, 'ctx, 'func, 'blk, 'val>(
     codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     location: Location<'ctx>,
@@ -1023,7 +1001,7 @@ fn gen_if_then_else<'ast, 'ctx, 'func, 'blk, 'val>(
     cond: &Expression,
     if_case: &Statement,
     else_case: &Option<Box<Statement>>,
-) -> Result<()>
+) -> Result<SkipRestOfBlock>
 where
     'ctx: 'func,
     'func: 'blk,
@@ -1064,7 +1042,7 @@ where
             else_info.var_overwrites.insert(VAR_NAME_RETURN_VAL.to_string(), else_return);
         } else {
             // Return in `then` block but not `else` block.
-            handle_early_return(
+            handle_unbalanced_return(
                 codegen,
                 function,
                 location,
@@ -1077,7 +1055,7 @@ where
         }
     } else if let Some(else_return) = else_return_opt {
         // Return in `else` block but not `then` block.
-        handle_early_return(
+        handle_unbalanced_return(
             codegen,
             function,
             location,
@@ -1097,10 +1075,12 @@ where
     if then_return_opt.is_some() && else_return_opt.is_some() {
         let ret_val = function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL)?;
         function.append_circom_return(codegen, location, *ret_val)?;
+        // Since we added a return/yield here, the rest of current block is unreachable.
+        return Ok(true);
     } else if then_return_opt.is_some() || else_return_opt.is_some() {
         gen_if_then_else_unbalanced_return_extra(codegen, function, location)?;
     }
-    Ok(())
+    Ok(false)
 }
 
 /// Generate LLZK code for a circom [Statement::While].
@@ -1111,7 +1091,7 @@ fn gen_while<'ast, 'ctx, 'func, 'blk, 'val>(
     cond: &Expression,
     body_stmt: &Statement,
     loop_bounds: Option<LoopBoundsAttribute<'ctx>>,
-) -> Result<()>
+) -> Result<SkipRestOfBlock>
 where
     'ctx: 'func,
     'func: 'blk,
@@ -1187,8 +1167,7 @@ where
     if early_return_opt.is_some() {
         gen_if_then_else_unbalanced_return_extra(codegen, function, location)?;
     }
-
-    Ok(())
+    Ok(false)
 }
 
 /// Generate LLZK code for a circom [Statement::InitializationBlock].
@@ -1213,7 +1192,7 @@ where
     'func: 'blk,
     'blk: 'val,
 {
-    type Output = ();
+    type Output = SkipRestOfBlock;
 
     #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_function<'ast>(
@@ -1227,7 +1206,8 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Template elements declared inside the function")
                 }
-                gen_init_block(codegen, function, initializations)
+                gen_init_block(codegen, function, initializations)?;
+                Ok(false)
             }
             Statement::Declaration { meta, xtype, name, dimensions, .. } => {
                 if VariableType::Var != *xtype {
@@ -1236,16 +1216,19 @@ where
                 }
                 function.block_ctx.declare_name_if_not_present(name, || {
                     codegen.new_nondet_felt_of_dimensions(meta, dimensions)
-                })
+                })?;
+                Ok(false)
             }
             Statement::Block { meta, stmts } => {
                 function.gen_in_current_block_with_new_circom_scope_and_merge_overwrites(
                     |function| {
                         try_for_loop_heuristic!(codegen, function, meta, stmts);
                         // Fallback to standard block handling.
-                        stmts.gen_llzk_in_function(codegen, function)
+                        stmts.gen_llzk_in_function(codegen, function)?;
+                        Ok(false)
                     },
-                )
+                )?;
+                Ok(false)
             }
             Statement::Substitution { meta, var, access, op, rhe } => {
                 if op.is_signal_operator() {
@@ -1257,7 +1240,7 @@ where
                     [] => {
                         // Since there's no simple assignment in LLZK, just update the mapped Value
                         // which essentially propagates the assignment.
-                        function.block_ctx.set_named_value(var.clone(), rvalue)
+                        function.block_ctx.set_named_value(var.clone(), rvalue)?;
                     }
                     a => {
                         let location = codegen.location_from_meta(meta);
@@ -1284,9 +1267,10 @@ where
                         } else {
                             array::write(location, *arr_ref, indices, rvalue)
                         };
-                        no_results(function.append_op(write_op))
+                        no_results(function.append_op(write_op))?;
                     }
                 }
+                Ok(false)
             }
             Statement::UnderscoreSubstitution { meta, op, rhe } => {
                 if op.is_signal_operator() {
@@ -1294,7 +1278,8 @@ where
                     unreachable!("Function uses template operators");
                 }
                 // Just visit and drop the resulting Value since it's unused.
-                rhe.gen_llzk_in_function(codegen, function).map(drop)
+                rhe.gen_llzk_in_function(codegen, function).map(drop)?;
+                Ok(false)
             }
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
                 gen_if_then_else(codegen, function, meta, cond, if_case, else_case)
@@ -1305,7 +1290,12 @@ where
             Statement::Return { meta, value } => {
                 let value = value.gen_llzk_in_function(codegen, function)?;
                 let location = codegen.location_from_meta(meta);
-                function.append_circom_return(codegen, location, value)
+                function.append_circom_return(codegen, location, value)?;
+                // circom allows unreachable code after a return but it is not processed
+                // (e.g. `assert(1 == 0)` after a return does not cause an error as it normally
+                // would) so replicate the same behavior here by stopping processing after a
+                // return (which is also what MLIR expects, no code after a terminator op).
+                Ok(true)
             }
             Statement::Assert { meta, arg } => {
                 let value = arg.gen_llzk_in_function(codegen, function)?;
@@ -1314,7 +1304,8 @@ where
                     location,
                     value,
                     Some("assertion failed"),
-                )?)
+                )?)?;
+                Ok(false)
             }
             Statement::LogCall { meta, .. } => {
                 codegen.emit_circom_warning(
@@ -1322,7 +1313,7 @@ where
                     "log calls are not currently supported in LLZK",
                     ReportCode::NotAllowedOperation,
                 );
-                Ok(())
+                Ok(false)
             }
             Statement::MultSubstitution { .. } => {
                 unreachable!("removed by 'syntax_sugar_remover'")
@@ -1551,5 +1542,28 @@ where
                 unreachable!("handled in templates, illegal in pure functions")
             }
         }
+    }
+}
+
+impl<'ctx, 'func, 'blk, 'val> GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val> for [Statement]
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    type Output = ();
+
+    fn gen_llzk_in_function<'ast>(
+        &'ast self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    ) -> Result<Self::Output> {
+        for s in self {
+            let skip_rest_of_block = s.gen_llzk_in_function(codegen, function)?;
+            if skip_rest_of_block {
+                break;
+            }
+        }
+        Ok(())
     }
 }
