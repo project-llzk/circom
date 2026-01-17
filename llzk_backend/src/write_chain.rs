@@ -175,7 +175,7 @@ impl<'ast> WriteChain<'ast> {
                     WriteTarget::Free => unreachable!(),
                 };
                 set_operand_if_undef(call_op, arg_idx + arg_offset, val)?;
-                insert_after_if_op_result(val, call_op);
+                insert_after_if_op_result(val, call_op)?;
 
                 prev.write(subcmp_value, target, codegen, fc, location, template)
             }

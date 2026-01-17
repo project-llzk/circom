@@ -397,9 +397,7 @@ where
 
         let call_op = get_call(*subcmp_value)?;
         set_operand_if_undef(call_op, arg_idx + arg_offset, rhe)?;
-        insert_after_if_op_result(rhe, call_op);
-
-        Ok(())
+        insert_after_if_op_result(rhe, call_op)
     }
 
     /// Generate LLZK code in the current function for an infix operation.
