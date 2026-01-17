@@ -706,16 +706,15 @@ pub fn set_operand_if_undef<'ctx, 'op>(
 pub fn insert_after_if_op_result<'ctx, 'val, 'op>(
     val: Value<'ctx, 'val>,
     op: OperationRef<'ctx, 'op>,
-) {
-    if let Ok(binding) = OperationResult::try_from(val) {
-        let mut reference_op = binding.owner();
-        let _ = reference_op.block().expect("reference op must belong to a block");
+) -> Result<()> {
+    if let Ok(mut owner) = op_result_owner(val) {
+        anyhow::ensure!(owner.block().is_some(), "reference op must belong to a block");
         if let Some(op_block) = op.block() {
-            reference_op =
-                find_parent_in_block(op_block, reference_op).expect("parent op not found");
+            owner = find_parent_in_block(op_block, owner).expect("parent op not found");
         };
-        move_op_after(&reference_op, &op);
+        move_op_after(&owner, &op);
     }
+    Ok(())
 }
 
 /// Returns the op (or a parent op) that belongs to the block.
