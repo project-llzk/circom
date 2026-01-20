@@ -3,6 +3,7 @@ use std::path::PathBuf;
 pub struct Input {
     pub input_program: PathBuf,
     pub out_dump_parse: PathBuf,
+    pub out_dump_vcp: PathBuf,
     pub out_r1cs: PathBuf,
     pub out_json_constraints: PathBuf,
     pub out_json_substitutions: PathBuf,
@@ -18,6 +19,7 @@ pub struct Input {
     pub out_sym: PathBuf,
     //pub field: &'static str,
     pub dump_parse_flag: bool,
+    pub dump_vcp_flag: bool,
     pub c_flag: bool,
     pub llzk_flag: Option<String>,
     pub wasm_flag: bool,
@@ -80,7 +82,8 @@ impl Input {
         Result::Ok(Input {
             //field: P_BN128,
             input_program: input,
-            out_dump_parse: Input::build_output(&output_path, &file_name, "txt"),
+            out_dump_parse: Input::build_output(&output_path, &file_name, "parse.txt"),
+            out_dump_vcp: Input::build_output(&output_path, &file_name, "vcp.txt"),
             out_r1cs: Input::build_output(&output_path, &file_name, R1CS),
             out_wat_code: Input::build_output(&output_js_path, &file_name, WAT),
             out_wasm_code: Input::build_output(&output_js_path, &file_name, WASM),
@@ -103,6 +106,7 @@ impl Input {
                 JSON,
             ),
             dump_parse_flag: input_processing::get_dump_parse(&matches),
+            dump_vcp_flag: input_processing::get_dump_vcp(&matches),
             wat_flag:input_processing::get_wat(&matches),
             wasm_flag: input_processing::get_wasm(&matches),
             c_flag: c_flag,
@@ -178,6 +182,9 @@ impl Input {
     pub fn dump_parse_file(&self) -> &str {
         self.out_dump_parse.to_str().unwrap()
     }
+    pub fn dump_vcp_file(&self) -> &str {
+        self.out_dump_vcp.to_str().unwrap()
+    }
     pub fn c_file(&self) -> &str {
         self.out_c_code.to_str().unwrap()
     }
@@ -195,6 +202,9 @@ impl Input {
     }
     pub fn dump_parse_flag(&self) -> bool {
         self.dump_parse_flag
+    }
+    pub fn dump_vcp_flag(&self) -> bool {
+        self.dump_vcp_flag
     }
     pub fn wasm_flag(&self) -> bool {
         self.wasm_flag
@@ -342,6 +352,10 @@ mod input_processing {
 
     pub fn get_dump_parse(matches: &ArgMatches) -> bool {
         matches.is_present("print_dump_parse")
+    }
+
+    pub fn get_dump_vcp(matches: &ArgMatches) -> bool {
+        matches.is_present("print_dump_vcp")
     }
 
     pub fn get_c(matches: &ArgMatches) -> bool {
@@ -552,6 +566,14 @@ mod input_processing {
                     .takes_value(false)
                     .display_order(10)
                     .help("Parses the circuit and dumps the program archive"),
+            )
+            .arg(
+                Arg::with_name("print_dump_vcp")
+                    .long("dump_vcp")
+                    .takes_value(false)
+                    .display_order(11)
+                    .help("Parses the circuit and dumps the VCP (very concrete program)")
+                    .long_help("Parses the circuit and dumps the VCP (very concrete program). This may take a while for very large circuits."),
             )
             .arg(
                 Arg::with_name("print_c")
