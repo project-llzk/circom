@@ -361,7 +361,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
 
     /// Create an affine_map attribute from a string definition.
     pub fn affine_map_attr(&self, definition: &str) -> Result<Attribute<'ctx>> {
-        Attribute::parse(&self.context, definition)
+        Attribute::parse(self.context, definition)
             .ok_or_else(|| anyhow!("could not parse affine_map definition"))
     }
 
@@ -722,8 +722,9 @@ macro_rules! try_for_loop_heuristic {
 /// with symbols.
 #[derive(Debug)]
 pub struct ArrayDimension<'ctx, 'val> {
+    /// The attribute to use as the dimension; could be a constant, a symbol, or an affine map.
     attr: Attribute<'ctx>,
-    // The symbols to be passed to the affine map, if attr is an AffineMapAttr
+    /// The symbols to be passed to the affine map, if attr is an AffineMapAttr
     symbols: Option<OwningValueRange<'ctx, 'val>>,
 }
 
@@ -780,7 +781,7 @@ impl<'ctx, 'val> TryFrom<&ArrayDimension<'ctx, 'val>> for IntegerAttribute<'ctx>
 #[derive(Debug)]
 pub struct ArrayDimensions<'ctx, 'val>(Vec<ArrayDimension<'ctx, 'val>>);
 
-impl<'ast, 'ctx, 'val> ArrayDimensions<'ctx, 'val> {
+impl<'ctx, 'val> ArrayDimensions<'ctx, 'val> {
     /// Get all contained attributes.
     pub fn attrs(&self) -> Vec<Attribute<'ctx>> {
         self.0.iter().map(|d| *d.attr()).collect::<Vec<_>>()
@@ -840,10 +841,7 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         dimensions: &[Expression],
     ) -> Result<Vec<Attribute<'ctx>>> {
-        dimensions
-            .iter()
-            .map(|e| self.convert_dim_expr(codegen, e).and_then(|d| Ok(*d.attr())))
-            .collect()
+        dimensions.iter().map(|e| self.convert_dim_expr(codegen, e).map(|d| *d.attr())).collect()
     }
 
     /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given

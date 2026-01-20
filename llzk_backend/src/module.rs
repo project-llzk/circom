@@ -353,13 +353,13 @@ where
                     [] => {
                         if self.template_params.contains(name) {
                             let template_param_attr =
-                                FlatSymbolRefAttribute::new(&codegen.context, name);
+                                FlatSymbolRefAttribute::new(codegen.context, name);
                             ArrayDimension::new(template_param_attr.into(), &[])
                         } else if let Some(op) = self.decl_inits.get(name) {
                             let id_map = codegen.affine_map_attr("affine_map<()[i] -> (i)>")?;
                             let value_range = op
                                 .results()
-                                .map(|r| Into::<Value<'ctx, 'val>>::into(r))
+                                .map(Into::<Value<'ctx, 'val>>::into)
                                 .collect::<Vec<_>>();
                             ArrayDimension::new(id_map, &value_range)
                         } else {
