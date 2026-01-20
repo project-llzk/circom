@@ -790,6 +790,7 @@ impl<'ast, 'ctx, 'val> ArrayDimensions<'ctx, 'val> {
         ArrayType::new(*element_type, self.attrs().as_slice())
     }
     /// Get the non-empty symbol values for affine map instantiation.
+    #[allow(dead_code)] // TODO: temporary, pending more support for computing array dimensions
     pub fn symbol_vals(&self) -> Result<Vec<ValueRange<'ctx, '_, 'val>>> {
         let optional_vec = self.0.iter().map(|d| d.value_range()).collect::<Result<Vec<_>>>()?;
         Ok(optional_vec.into_iter().flatten().collect::<Vec<_>>())
