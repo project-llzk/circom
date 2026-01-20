@@ -7,18 +7,21 @@ use crate::traversal::walk_from_block;
 use crate::traversal::WalkCallbacks;
 use ansi_term::Color;
 use anyhow::anyhow;
+use anyhow::ensure;
 use anyhow::Result;
-use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::undef;
-use llzk::operation::replace_uses_of_with;
+use llzk::operation::move_op_after;
 use llzk::prelude::felt;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
+use llzk::prelude::AttributeLike;
 use llzk::prelude::BlockLike;
 use llzk::prelude::BlockRef;
 use llzk::prelude::BoolAttribute;
+use llzk::prelude::CallOpLike as _;
+use llzk::prelude::CallOpRef;
 use llzk::prelude::FeltConstAttribute;
 use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
@@ -26,7 +29,6 @@ use llzk::prelude::FuncDefOp;
 use llzk::prelude::FuncDefOpLike;
 use llzk::prelude::FuncDefOpRef;
 use llzk::prelude::FuncDefOpRefMut;
-use llzk::prelude::FunctionType;
 use llzk::prelude::IntegerAttribute;
 use llzk::prelude::IntegerType;
 use llzk::prelude::LlzkContext;
@@ -36,19 +38,20 @@ use llzk::prelude::Module;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike;
 use llzk::prelude::OperationRef;
+use llzk::prelude::OperationResult;
 use llzk::prelude::PassManager;
 use llzk::prelude::StructDefOp;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::StructType;
 use llzk::prelude::Type;
-use llzk::prelude::TypeAttribute;
 use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
-use llzk::value_range::ValueRange;
-use melior::ir::operation::OperationResult;
-use melior::ir::AffineMap;
+use llzk::value_ext::get_single_user;
+use llzk::value_ext::replace_all_uses_in_block_with;
+use llzk::value_ext::OwningValueRange;
+use llzk::value_ext::ValueRange;
 use melior::utility;
 use num_bigint_dig::BigInt;
 use num_bigint_dig::BigUint;
@@ -164,7 +167,9 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     pub fn try_compute_dim_expr(&self, expr: &Expression) -> Result<Option<BigUint>> {
         match expr {
             Expression::Number(_, big_int) => {
-                let v = big_int.to_biguint().ok_or_else(|| anyhow!("could not convert to signed"))? % self.prime()?;
+                let v =
+                    big_int.to_biguint().ok_or_else(|| anyhow!("could not convert to signed"))?
+                        % self.prime()?;
                 Ok(Some(v))
             }
             Expression::InfixOp { lhe, infix_op, rhe, .. } => {
@@ -203,8 +208,8 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                                     % p
                             }
                             // Comparison operators are performed based on a signed interpretation
-                            // of the field elements as defined by the `relational_val` function, according
-                            // to the circom spec.
+                            // of the field elements as defined by the `relational_val` function,
+                            // according to the circom spec.
                             ExpressionInfixOpcode::LesserEq => {
                                 let res = relational_val(&lhs, &p)? <= relational_val(&rhs, &p)?;
                                 bool_to_biguint(res)
@@ -315,30 +320,6 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         Ok(undef::undef(location, result_type))
     }
 
-    /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
-    /// `dimensions` (non-array scalar if empty).
-    pub fn new_nondet_felt_of_dimensions_at_location(
-        &self,
-        location: Location<'ctx>,
-        dimensions: &[Expression],
-    ) -> Result<Operation<'ctx>> {
-        self.new_nondet_at_location(
-            location,
-            self.type_from_dimension_exprs(self.felt_type().into(), dimensions)?,
-        )
-    }
-
-    /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
-    /// `dimensions` (non-array scalar if empty).
-    #[inline]
-    pub fn new_nondet_felt_of_dimensions(
-        &self,
-        meta: &Meta,
-        dimensions: &[Expression],
-    ) -> Result<Operation<'ctx>> {
-        self.new_nondet_felt_of_dimensions_at_location(self.location_from_meta(meta), dimensions)
-    }
-
     /// Get the integer type of the given bitwidth.
     #[inline]
     pub fn int_type(&self, bits: u32) -> IntegerType<'ctx> {
@@ -376,6 +357,11 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         T: Into<i64>,
     {
         IntegerAttribute::new(self.index_type(), integer.into())
+    }
+
+    /// Create an affine_map attribute from a string definition.
+    pub fn affine_map_attr(&self, definition: &str) -> Result<Attribute<'ctx>> {
+        Attribute::parse(&self.context, definition).ok_or_else(|| anyhow!("could not parse affine_map definition"))
     }
 
     /// Create an LLZK operation that produces a boolean constant value.
@@ -479,25 +465,6 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         Ok(())
     }
 
-    /// If `dimensions` is empty, returns a [`StructType`] with just the name. Otherwise,
-    /// returns a [`StructType`] with parameters by converting the
-    /// dimension circom Expressions to LLZK Attributes.
-    pub fn struct_type_with_concrete_dimensions(
-        &self,
-        name: &str,
-        dimensions: &[Expression],
-    ) -> Result<StructType<'ctx>> {
-        if dimensions.is_empty() {
-            Ok(StructType::from_str(self.context, name))
-        } else {
-            let attrs = dimensions
-                .iter()
-                .map(|e| self.convert_dim_expr(e))
-                .collect::<Result<Vec<_>, _>>()?;
-            Ok(StructType::new(FlatSymbolRefAttribute::new(self.context, name), &attrs))
-        }
-    }
-
     /// Returns the data for the template with that name.
     pub fn find_template_data(
         &self,
@@ -536,8 +503,8 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
 /// Extract the single result Value from an OperationRef. Returns an `Err` result if the operation
 /// does not have exactly one result.
 ///
-/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
-/// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
+/// 'c: lifetime of the `LlzkContext` and generated `Module`
+/// 'a: lifetime of the generated `Value` or `Operation` instances within blocks
 #[inline]
 pub fn single_result_as_value<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> Result<Value<'c, 'a>> {
     if op.result_count() != 1 {
@@ -551,8 +518,8 @@ pub fn single_result_as_value<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> Res
 
 /// Ensures the given OperationRef has 0 result Values, else returns an `Err` result.
 ///
-/// 'ctx: lifetime of the `LlzkContext` and generated `Module`
-/// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
+/// 'c: lifetime of the `LlzkContext` and generated `Module`
+/// 'a: lifetime of the generated `Value` or `Operation` instances within blocks
 #[inline]
 pub fn no_results<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> Result<()> {
     if op.result_count() != 0 {
@@ -580,16 +547,6 @@ pub fn map_name_to_arg_value<'ctx, 'val>(
         .collect::<Result<HashMap<_, _>, _>>()
 }
 
-/// Replicates MLIR `isa` functionality for Rust types using `TryFrom`.
-pub trait IsA: Sized {
-    /// Like MLIR `isa`, check if `self` can be converted to type `Out`.
-    #[inline]
-    fn isa<Out: TryFrom<Self>>(self) -> bool {
-        Out::try_from(self).is_ok()
-    }
-}
-impl<T> IsA for T {}
-
 /// Return `true` iff the given Type is an `IndexType`.
 #[inline]
 pub fn is_index(t: Type) -> bool {
@@ -602,100 +559,14 @@ pub fn is_bool(t: Type) -> bool {
     t.is_integer() && IntegerType::try_from(t).is_ok_and(|it| it.width() == 1)
 }
 
-/// Return `true` iff the given Type is a `FeltType`.
-#[inline]
-pub fn is_felt(t: Type) -> bool {
-    t.isa::<llzk::prelude::FeltType>()
-}
-
-/// Return `true` iff the given Value has any uses.
-///
-/// TODO: `llzk-rs` should provide this directly
-#[inline]
-pub fn has_uses(val: Value) -> bool {
-    unsafe {
-        let first_use = mlir_sys::mlirValueGetFirstUse(val.to_raw());
-        !mlir_sys::mlirOpOperandIsNull(first_use)
-    }
-}
-
-/// Replace all uses of `orig` within the given [BlockRef] with `replacement`. Based on
-/// `mlir::replaceAllUsesInRegionWith` which is not exposed through any CAPI.
-///
-/// TODO: `llzk-rs` should provide this directly
-pub fn replace_all_uses_in_block_with(block: BlockRef, orig: &Value, replacement: Value) {
-    unsafe {
-        let mut op_use = mlir_sys::mlirValueGetFirstUse(orig.to_raw());
-        while !op_use.ptr.is_null() {
-            // Save next use *before* mutating (early-inc behavior)
-            let next = mlir_sys::mlirOpOperandGetNextUse(op_use);
-            // If the use is within the given block, replace it
-            let owner = mlir_sys::mlirOpOperandGetOwner(op_use);
-            if mlir_sys::mlirBlockEqual(mlir_sys::mlirOperationGetBlock(owner), block.to_raw()) {
-                replace_uses_of_with(&OperationRef::from_raw(owner), *orig, replacement);
-            }
-            // increment to next use
-            op_use = next;
-        }
-    }
-}
-
 /// Add a new argument to the given [BlockRef] with the same type as `orig` and replace all uses of
 /// `orig` within the given [BlockRef] (and within any nested blocks) with the new block argument.
 pub fn replace_uses_with_new_block_argument(block: BlockRef, orig: &Value, location: Location) {
     let replacement = block.add_argument(orig.r#type(), location);
     walk_from_block(
         block,
-        WalkCallbacks::for_blocks(|b| replace_all_uses_in_block_with(b, orig, replacement)),
+        WalkCallbacks::for_blocks(|b| replace_all_uses_in_block_with(b, *orig, replacement)),
     );
-}
-
-/// Erase the given operation.
-///
-/// TODO: `llzk-rs` should provide this directly
-#[inline]
-pub fn erase_op<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) {
-    unsafe {
-        mlir_sys::mlirOperationDestroy(op.to_raw());
-    }
-}
-
-/// Return `true` iff the given op is `scf.yield`.
-///
-/// TODO: `llzk-rs` should provide this directly
-#[inline]
-pub fn is_scf_yield<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> bool {
-    op.name().as_string_ref().as_str() == Result::Ok("scf.yield")
-}
-
-/// Return `true` iff the given op is `struct.readf`.
-///
-/// TODO: `llzk-rs` should provide this directly via `llzkOperationIsAStructFieldReadOp`
-#[inline]
-pub fn is_struct_readf<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) -> bool {
-    op.name().as_string_ref().as_str() == Result::Ok("struct.readf")
-}
-
-/// Get the [FunctionType] from a [FuncDefOpLike].
-///
-/// TODO: `llzk-rs` should provide this directly
-pub fn get_function_type_attribute<'c: 'a, 'a>(
-    func: impl FuncDefOpLike<'c, 'a>,
-) -> Result<FunctionType<'c>> {
-    let attr = func.attribute("function_type")?;
-    let type_attr: TypeAttribute<'c> = attr.try_into()?;
-    let func_type: FunctionType<'c> = type_attr.value().try_into()?;
-    Ok(func_type)
-}
-
-/// Replaces all uses of the first value with the second.
-///
-/// Uses `mlir-sys` directly since that function doesn't seem to be
-/// implemented in melior.
-///
-/// TODO: `llzk-rs` should provide this directly
-pub fn replace_all_uses<'ctx>(of: Value<'ctx, '_>, with: Value<'ctx, '_>) {
-    unsafe { mlir_sys::mlirValueReplaceAllUsesOfWith(of.to_raw(), with.to_raw()) }
 }
 
 /// Sets the n-th operand of the operation to the given value if the current value is an
@@ -706,44 +577,12 @@ pub fn set_operand_if_undef<'ctx, 'op>(
     value: impl ValueLike<'ctx>,
 ) -> Result<()> {
     if let Ok(arg) = OperationResult::try_from(op.operand(idx)?) {
-        if !undef::is_undef_op(arg.owner()) {
+        if !undef::is_undef_op(&arg.owner()) {
             anyhow::bail!("Argument {idx} was assigned twice: {arg}");
         }
     }
     unsafe { mlir_sys::mlirOperationSetOperand(op.to_raw(), idx as isize, value.to_raw()) }
     Ok(())
-}
-
-/// Returns the one user of a value.
-///
-/// Fails if the value has more than one use or not at all.
-///
-/// TODO: `llzk-rs` should provide this directly
-pub fn get_single_user<'ctx, 'val, 'op>(
-    value: Value<'ctx, 'val>,
-) -> Result<OperationRef<'ctx, 'op>> {
-    // There is no `OpOperand` type in melior as far as I'm aware.
-    let first_use = unsafe { mlir_sys::mlirValueGetFirstUse(value.to_raw()) };
-    if first_use.ptr.is_null() {
-        anyhow::bail!("value {value} has no uses");
-    }
-    let second_use = unsafe { mlir_sys::mlirOpOperandGetNextUse(first_use) };
-    if !second_use.ptr.is_null() {
-        anyhow::bail!("value {value} can have only one use");
-    }
-    unsafe { OperationRef::from_option_raw(mlir_sys::mlirOpOperandGetOwner(first_use)) }
-        .ok_or_else(|| anyhow::anyhow!("invalid operation for user of {value}"))
-}
-
-#[inline]
-/// Moves the operation right after the reference op.
-///
-/// TODO: `llzk-rs` should provide this directly
-pub fn move_op_after<'ctx: 'op, 'op>(
-    reference: impl OperationLike<'ctx, 'op>,
-    op: impl OperationLike<'ctx, 'op>,
-) {
-    unsafe { mlir_sys::mlirOperationMoveAfter(op.to_raw(), reference.to_raw()) }
 }
 
 /// Moves the operation after the value if the value comes from another operation.
@@ -766,7 +605,7 @@ pub fn insert_after_if_op_result<'ctx, 'val, 'op>(
             reference_op =
                 find_parent_in_block(op_block, reference_op).expect("parent op not found");
         };
-        move_op_after(reference_op, op);
+        move_op_after(&reference_op, &op);
     }
 }
 
@@ -782,19 +621,51 @@ fn find_parent_in_block<'ctx, 'blk, 'op>(
         find_parent_in_block(block, parent_block.parent_operation()?)
     }
 }
-/// Get all dimensions from an [ArrayType].
-///
-/// TODO: `llzk-rs` should provide this directly
-#[inline]
-pub fn get_dims<'c>(arr_ty: &ArrayType<'c>) -> Vec<Attribute<'c>> {
-    (0..arr_ty.num_dims()).map(|idx| arr_ty.dim(idx)).collect()
-}
 
 /// Create new array type that is an array of the given sub-array type.
 #[inline]
 pub fn new_array_type<'c>(dim: Attribute<'c>, subarr_ty: &ArrayType<'c>) -> ArrayType<'c> {
-    let dims: Vec<_> = std::iter::once(dim).chain(get_dims(subarr_ty).iter().copied()).collect();
+    let dims: Vec<_> = std::iter::once(dim).chain(subarr_ty.dims().iter().copied()).collect();
     ArrayType::new(subarr_ty.element_type(), &dims)
+}
+
+/// Tries to obtain the owner operation of a [`Value`](melior::ir::Value).
+///
+/// This function works around a lifetime issue in [`OperationResult::owner`] that
+/// is resolved in [mlir-sys/melior#784](https://github.com/mlir-rs/melior/pull/784) but that
+/// we cannot benefit from yet.
+#[inline]
+pub fn op_result_owner<'ctx, 'val, 'op: 'val>(
+    value: Value<'ctx, 'val>,
+) -> Result<OperationRef<'ctx, 'op>> {
+    if !value.is_operation_result() {
+        anyhow::bail!("Value {value} is not an operation result");
+    }
+    unsafe { OperationRef::from_option_raw(mlir_sys::mlirOpResultGetOwner(value.to_raw())) }
+        .ok_or_else(|| anyhow::anyhow!("owner of {value} is not a valid operation"))
+}
+
+/// Looks for a call op to a constrain function where the given value is the first argument.
+///
+/// Fails if:
+///     - The value has more than one use.
+///     - The use is not a constrain call.
+///     - The used value is not the first operand.
+#[inline]
+pub fn get_constrain_call<'ctx, 'op, 'val>(
+    value: Value<'ctx, 'val>,
+) -> Result<OperationRef<'ctx, 'op>> {
+    let owner: CallOpRef<'ctx, 'op> = get_single_user(value)?.try_into()?;
+    if !owner.callee_is_constrain() {
+        anyhow::bail!("operation {owner} is not a call to a constrain function");
+    }
+
+    let fst_operand = owner.operand(0)?;
+    if fst_operand != value {
+        anyhow::bail!("first operand {fst_operand} does not match target: {value}");
+    }
+
+    Ok(owner.into())
 }
 
 /// Convert unsigned field elements into relational values used for comparisons.
@@ -814,68 +685,116 @@ pub fn relational_val(a: &BigUint, p: &BigUint) -> Result<BigInt> {
     Ok(val)
 }
 
+/// Heuristically detect a circom `for` loop (represented by a `Statement::Block` containing a
+/// `Statement::InitializationBlock` followed by a `Statement::While`). Since all values in circom
+/// are of type `felt`, we cannot (easily) generate `scf.for` which requires index-typed loop
+/// variables so this macro generates code for the `Statement::InitializationBlock` followed by an
+/// `scf.while` for the loop (and then returns "Ok" so that the caller does not fall through to the
+/// normal code generation for a Block). Additionally, if the loop bounds and step can be computed
+/// as compile-time constants, then create an LLZK `loopbounds` attribute to attach to the generated
+/// `scf.while` loop.
+#[macro_export]
+macro_rules! try_for_loop_heuristic {
+    ($codegen:expr, $gen_context:expr, $meta:expr, $stmts:expr) => {
+        if let [program_structure::ast::Statement::InitializationBlock {
+            xtype: program_structure::ast::VariableType::Var,
+            initializations,
+            ..
+        }, program_structure::ast::Statement::While { cond, stmt, .. }] = $stmts.as_slice()
+        {
+            // TODO: Analyze `initializations` and `While` loop contents to determine if loop bounds
+            // and step can be computed. The loop `cond` is probably the starting point to find the
+            // loop iteration variable and then `initializations` has the start value and the loop
+            // body `stmt` has the step.
+            // TODO: Once this is implemented, find "for" loops in all `.circom` test files to add
+            // the `loopbounds` attribute to relevant loops (because existing tests will likely not
+            // fail when this is added since the lit checks only do line prefix by default).
+            let loop_bounds = None;
+
+            gen_init_block($codegen, $gen_context, initializations)?;
+            return gen_while($codegen, $gen_context, $meta, cond, stmt, loop_bounds);
+        }
+    };
+}
+
 /// Information needed to create a new LLZK array type with the given dimension
 /// and to instantiate that array if the dimension attribute is an affine_map
 /// with symbols.
+#[derive(Debug)]
 pub struct ArrayDimension<'ctx, 'val> {
-    /// The dimension attribute.
     attr: Attribute<'ctx>,
-    /// The symbols to be passed to the dimension to instantiate the array dimension.
-    symbols: Vec<Value<'ctx, 'val>>,
+    // The symbols to be passed to the affine map, if attr is an AffineMapAttr
+    symbols: Option<OwningValueRange<'ctx, 'val>>,
 }
 
 impl<'ctx, 'val> ArrayDimension<'ctx, 'val> {
-    /// Create a new dimension from the given attribute.
-    /// `attr` must not be an [AffineMap].
-    pub fn new(attr: &Attribute<'ctx>) -> Result<Self> {
-        if attr.isa::<AffineMap>() {
-            anyhow!("Attribute must not be an AffineMap")
-        }
-        Ok(Self { attr, symbols: () })
-    }
-    /// Create a new dimension from the given attribute and affine map symbol bindings.
-    /// `attr` must be an AffineMapAttr.
-    pub fn new(attr: &Attribute<'ctx>, symbols: Vec<Value<'ctx, 'val>>) -> Result<Self> {
-        if !attr.isa::<AffineMap>() {
-            anyhow!("Attribute must be an AffineMap")
-        }
-        Ok(Self { attr, symbols })
-    }
-    /// Get the symbol values as a [ValueRange]
-    pub fn symbol_value_range(&self) -> Result<ValueRange> {
-        ValueRange::try_from(self.symbols.as_slice())
+    /// Construct a new ArrayDimension.
+    /// If attr is not an affine map, then symbol_vals should be empty.
+    pub fn new(attr: Attribute<'ctx>, symbol_vals: &[Value<'ctx, 'val>]) -> Result<Self> {
+        ensure!(attr.is_affine_map() || symbol_vals.is_empty(), "if attribute is not an affine map, no symbols should be provided");
+        Ok(Self {
+            attr, symbols: (!symbol_vals.is_empty()).then(|| OwningValueRange::from(symbol_vals))
+        })
     }
     /// Access the inner attribute.
     pub fn attr(&self) -> &Attribute<'ctx> {
         &self.attr
     }
-    /// Access the inner symbols.
-    pub fn symbols(&self) -> &Vec<Value<'ctx, 'val>> {
-        &self.symbols
+    /// Access the inner symbols, if present, as a [ValueRange].
+    pub fn value_range(&self) -> Result<Option<ValueRange<'ctx, '_, 'val>>> {
+        let range = match &self.symbols {
+            None => None,
+            Some(s) => Some(ValueRange::try_from(s)?)
+        };
+        Ok(range)
+    }
+    /// Create a new [ArrayType] with the given dimension.
+    pub fn new_array_type(&self, element_type: &Type<'ctx>) -> ArrayType<'ctx> {
+        if let Ok(subarr_ty) = ArrayType::try_from(*element_type) {
+            let dims: Vec<_> = std::iter::once(self.attr).chain(subarr_ty.dims()).collect();
+            ArrayType::new(subarr_ty.element_type(), &dims)
+        } else {
+            ArrayType::new(*element_type, &[self.attr])
+        }
+
+    }
+}
+
+impl<'ctx, 'val> TryFrom<&ArrayDimension<'ctx, 'val>> for IntegerAttribute<'ctx> {
+    type Error = anyhow::Error;
+
+    fn try_from(dim: &ArrayDimension<'ctx, 'val>) -> std::result::Result<Self, Self::Error> {
+        ensure!(dim.value_range()?.is_none(), "const dimension should have no symbols");
+        if let Ok(d) = IntegerAttribute::try_from(*dim.attr()) {
+            Ok(d)
+        } else {
+            Err(anyhow!("could not convert to IntegerAttribute"))
+        }
     }
 }
 
 /// Information needed to create a new LLZK array type with the given dimensions.
-pub struct ArrayDimensions<'ctx, 'val>(Vec<ArrayDimensions<'ctx, 'val>>);
+#[derive(Debug)]
+pub struct ArrayDimensions<'ctx, 'val>(Vec<ArrayDimension<'ctx, 'val>>);
 
-impl<'ctx, 'val> ArrayDimensions<'ctx, 'val> {
+impl<'ast, 'ctx, 'val> ArrayDimensions<'ctx, 'val> {
+    /// Get all contained attributes.
+    pub fn attrs(&self) -> Vec<Attribute<'ctx>> {
+        self.0.iter().map(|d| *d.attr()).collect::<Vec<_>>()
+    }
     /// Create a new [ArrayType] with the given dimensions.
     pub fn new_array_type(&self, element_type: &Type<'ctx>) -> ArrayType<'ctx> {
-        let dims = self.0.iter().map(|d| d.attr()).collect();
-        ArrayType::new(element_type, dims)
+        ArrayType::new(*element_type, self.attrs().as_slice())
     }
-
-    /// Create the constructor for a `array.new` op that creates an array with
-    /// the given dimensions and affine_map parameters.
-    pub fn new_array_ctor(&self) -> Result<Operation<'ctx>> {
-        let symbol_vals = self.0.iter().map(|d| d.symbol_value_range()).collect()?;
-        let dim_sizes = [0] * symbol_vals.size();
-        Ok(ArrayCtor::MapDimSlice(symbol_vals, dim_sizes))
+    /// Get the non-empty symbol values for affine map instantiation.
+    pub fn symbol_vals(&self) -> Result<Vec<ValueRange<'ctx, '_, 'val>>> {
+        let optional_vec = self.0.iter().map(|d| d.value_range()).collect::<Result<Vec<_>>>()?;
+        Ok(optional_vec.into_iter().flatten().collect::<Vec<_>>())
     }
 }
 
 /// A trait to generate array dimensions from the given dimension expressions.
-pub trait DimExprConverter<'ctx, 'ast> {
+pub trait DimExprConverter<'ctx, 'ast, 'val> {
     /// Convert a circom [Expression] used as an array dimension to an LLZK Attribute.
     ///
     /// Note: The LLZK ArrayType can only use the following Attribute types for dimensions:
@@ -883,11 +802,11 @@ pub trait DimExprConverter<'ctx, 'ast> {
     /// To simplify the implementation, template parameters are read using `poly.read_const`
     /// and passed to an affine map rather than trying to use a symbol attribute as the
     /// dimension (which would only work for bare template parameters without computation anyways).
-    pub fn convert_dim_expr<'ast>(&self, codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>, expr: &Expression) -> Result<Attribute<'ctx>>;
+    fn convert_dim_expr(&self, codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>, expr: &Expression) -> Result<ArrayDimension<'ctx, 'val>>;
 
     /// If `dimensions` is empty, return `base_type`. Otherwise, create [ArrayType] by
     /// converting the dimension circom [Expressions](Expression) to LLZK Attributes.
-    pub fn type_from_dimension_exprs<'ast>(
+    fn type_from_dimension_exprs(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         base_type: Type<'ctx>,
@@ -896,22 +815,67 @@ pub trait DimExprConverter<'ctx, 'ast> {
         if dimensions.is_empty() {
             Ok(base_type)
         } else {
-            dimensions
+            let array_dims = ArrayDimensions(dimensions
                 .iter()
-                .map(|e| self.convert_dim_expr(e))
-                .collect::<Result<Vec<_>, _>>()
-                .map(|dims| ArrayType::new(base_type, &dims).into())
+                .map(|e| self.convert_dim_expr(codegen, e))
+                .collect::<Result<Vec<_>, _>>()?);
+            Ok(array_dims.new_array_type(&base_type).into())
         }
     }
 
     /// Tries to convert a list of [`Expression`] to a list of [`Attribute`].
     #[inline]
-    pub fn try_dimensions_to_attrs<'ast>(
+    fn try_dimensions_to_attrs(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         dimensions: &[Expression],
     ) -> Result<Vec<Attribute<'ctx>>> {
-        dimensions.iter().map(|e| self.convert_dim_expr(e)).collect()
+        dimensions.iter().map(|e| self.convert_dim_expr(codegen, e).and_then(|d| Ok(*d.attr()))).collect()
+    }
+
+    /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
+    /// `dimensions` (non-array scalar if empty).
+    fn new_nondet_felt_of_dimensions_at_location(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        dimensions: &[Expression],
+    ) -> Result<Operation<'ctx>> {
+        codegen.new_nondet_at_location(
+            location,
+            self.type_from_dimension_exprs(codegen, codegen.felt_type().into(), dimensions)?,
+        )
+    }
+
+    /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
+    /// `dimensions` (non-array scalar if empty).
+    #[inline]
+    fn new_nondet_felt_of_dimensions(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        meta: &Meta,
+        dimensions: &[Expression],
+    ) -> Result<Operation<'ctx>> {
+        self.new_nondet_felt_of_dimensions_at_location(codegen, codegen.location_from_meta(meta), dimensions)
+    }
+
+    /// If `dimensions` is empty, returns a [`StructType`] with just the name. Otherwise,
+    /// returns a [`StructType`] with parameters by converting the
+    /// dimension circom Expressions to LLZK Attributes.
+    fn struct_type_with_concrete_dimensions(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        name: &str,
+        dimensions: &[Expression],
+    ) -> Result<StructType<'ctx>> {
+        if dimensions.is_empty() {
+            Ok(StructType::from_str(codegen.context, name))
+        } else {
+            let dims = ArrayDimensions(dimensions
+                .iter()
+                .map(|e| self.convert_dim_expr(codegen, e))
+                .collect::<Result<Vec<_>, _>>()?);
+            Ok(StructType::new(FlatSymbolRefAttribute::new(codegen.context, name), &dims.attrs()))
+        }
     }
 }
-

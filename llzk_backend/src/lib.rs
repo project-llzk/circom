@@ -14,11 +14,13 @@ mod function_ext;
 mod gen_context;
 mod module;
 mod program_ext;
+#[macro_use]
 mod shared;
 mod subcmp;
 mod template;
 mod template_ext;
 mod traversal;
+mod write_chain;
 
 pub use codegen::generate_llzk;
 pub use program_ext::VCPPlus;

@@ -33,15 +33,15 @@
         "release-helpers": "release-helpers"
       },
       "locked": {
-        "lastModified": 1767745439,
-        "narHash": "sha256-LIRKmUieP5QMcNv0zrQ0qGp53v8sSGEZTJoypiKjTRY=",
-        "owner": "Veridise",
+        "lastModified": 1768513488,
+        "narHash": "sha256-XRiDNiUbdqH1PSMKqaisjMpumzalboRkD2pqH8aTiZA=",
+        "owner": "project-llzk",
         "repo": "llzk-lib",
-        "rev": "da99cfcf1803b7730e04d0f6ff9799ad11d78225",
+        "rev": "9af2a939272b5a5c1fa48e83863238184baab10a",
         "type": "github"
       },
       "original": {
-        "owner": "Veridise",
+        "owner": "project-llzk",
         "repo": "llzk-lib",
         "type": "github"
       }
@@ -52,15 +52,15 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1759260436,
-        "narHash": "sha256-5+s6xkcEwDsgTq25s2JdeDqspvu0TF7MUS3ZU3VC5KE=",
-        "owner": "Veridise",
+        "lastModified": 1768329036,
+        "narHash": "sha256-aScxpJJ7VMDETL4hi+6Pojxb4VwKucW0VwOPCZDt53Q=",
+        "owner": "project-llzk",
         "repo": "llzk-nix-pkgs",
-        "rev": "1b823ab142612a5c8b03e4b99dfebdf0ad35c887",
+        "rev": "830b084608fe510c2bd2612bf66def7cdabf7cf7",
         "type": "github"
       },
       "original": {
-        "owner": "Veridise",
+        "owner": "project-llzk",
         "repo": "llzk-nix-pkgs",
         "type": "github"
       }
@@ -88,32 +88,33 @@
         ]
       },
       "locked": {
-        "lastModified": 1767799385,
-        "narHash": "sha256-u9p52Kd+slznrHcjynuDsng85wzPPwdMWW3GUvHfZjQ=",
+        "lastModified": 1768515544,
+        "narHash": "sha256-KTjTJI5Fe7V+T6lhffQchP8u5ebUv+FMnkN8CW5awkU=",
         "ref": "refs/heads/main",
-        "rev": "4dc11b8492d757ef8b3f9476e4123b12293a9b31",
-        "revCount": 306,
+        "rev": "a61e8190761f06df0c6f5f4a2dc03027913540d0",
+        "revCount": 314,
         "submodules": true,
         "type": "git",
-        "url": "https://github.com/Veridise/llzk-rs"
+        "url": "https://github.com/project-llzk/llzk-rs"
       },
       "original": {
         "submodules": true,
         "type": "git",
-        "url": "https://github.com/Veridise/llzk-rs"
+        "url": "https://github.com/project-llzk/llzk-rs"
       }
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1758917213,
-        "narHash": "sha256-1oA6zZxSl8F1yCKEWnw8EdE1TGoifTWlwGdfUlAQ5Hs=",
+        "lastModified": 1768302833,
+        "narHash": "sha256-h5bRFy9bco+8QcK7rGoOiqMxMbmn21moTACofNLRMP4=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "1fb3d0b78eb00961e57bf274d980120dd8a48f82",
+        "rev": "61db79b0c6b838d9894923920b612048e1201926",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
         "repo": "nixpkgs",
         "type": "github"
       }
@@ -169,13 +170,13 @@
       "locked": {
         "lastModified": 1747068965,
         "narHash": "sha256-px7s7IVHnR3SiShc7FKCUiL6vfqew5AM6jnkH7qO03I=",
-        "owner": "Veridise",
+        "owner": "project-llzk",
         "repo": "open-source-release-helpers",
         "rev": "c3d1ab6082cc62b167927d074f2836f290b9e3b7",
         "type": "github"
       },
       "original": {
-        "owner": "Veridise",
+        "owner": "project-llzk",
         "repo": "open-source-release-helpers",
         "type": "github"
       }
