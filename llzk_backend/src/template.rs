@@ -36,7 +36,6 @@ use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::LoopBoundsAttribute;
 use llzk::prelude::OperationLike;
-use llzk::prelude::OperationResult;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Type;
@@ -915,9 +914,7 @@ where
                                         let field_read = fc.block_ctx.get_named_value(var)?;
                                         // ASSERT: value comes from a `struct.readf`
                                         assert!(is_struct_readf(
-                                            &OperationResult::try_from(*field_read)
-                                                .unwrap()
-                                                .owner()
+                                            &op_result_owner(*field_read).unwrap()
                                         ));
                                         replace_all_uses(rhe, *field_read);
                                         fc.subcmp_calls.update_keys(rhe, *field_read);
