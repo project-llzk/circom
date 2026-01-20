@@ -319,6 +319,9 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
     func_like: &'ast F,
     codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
 ) -> Result<()> {
+    if codegen.verbose {
+        println!("Generating LLZK for function {}", func_like.get_name());
+    }
     let location = func_like.get_location(codegen);
     let felt_type = codegen.felt_type().into();
     // TODO: This just uses `felt.type` for param and return types but those must actually be
@@ -353,6 +356,9 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     template_like: &'ast T,
     codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
 ) -> Result<()> {
+    if codegen.verbose {
+        println!("Generating LLZK for template {}", template_like.get_name());
+    }
     // Collect declarations first to determine struct fields and function parameters.
     let mut declarations = template_like.get_declarations(codegen)?;
     let subcmps = declarations.complete();

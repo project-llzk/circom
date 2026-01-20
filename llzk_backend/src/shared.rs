@@ -90,6 +90,8 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     pub module: Module<'ctx>,
     /// The name of the prime field.
     pub prime_str: &'ctx str,
+    /// State of the `--verbose` flag.
+    pub verbose: bool,
 }
 
 impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
