@@ -361,7 +361,8 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
 
     /// Create an affine_map attribute from a string definition.
     pub fn affine_map_attr(&self, definition: &str) -> Result<Attribute<'ctx>> {
-        Attribute::parse(&self.context, definition).ok_or_else(|| anyhow!("could not parse affine_map definition"))
+        Attribute::parse(&self.context, definition)
+            .ok_or_else(|| anyhow!("could not parse affine_map definition"))
     }
 
     /// Create an LLZK operation that produces a boolean constant value.
@@ -730,9 +731,13 @@ impl<'ctx, 'val> ArrayDimension<'ctx, 'val> {
     /// Construct a new ArrayDimension.
     /// If attr is not an affine map, then symbol_vals should be empty.
     pub fn new(attr: Attribute<'ctx>, symbol_vals: &[Value<'ctx, 'val>]) -> Result<Self> {
-        ensure!(attr.is_affine_map() || symbol_vals.is_empty(), "if attribute is not an affine map, no symbols should be provided");
+        ensure!(
+            attr.is_affine_map() || symbol_vals.is_empty(),
+            "if attribute is not an affine map, no symbols should be provided"
+        );
         Ok(Self {
-            attr, symbols: (!symbol_vals.is_empty()).then(|| OwningValueRange::from(symbol_vals))
+            attr,
+            symbols: (!symbol_vals.is_empty()).then(|| OwningValueRange::from(symbol_vals)),
         })
     }
     /// Access the inner attribute.
@@ -743,7 +748,7 @@ impl<'ctx, 'val> ArrayDimension<'ctx, 'val> {
     pub fn value_range(&self) -> Result<Option<ValueRange<'ctx, '_, 'val>>> {
         let range = match &self.symbols {
             None => None,
-            Some(s) => Some(ValueRange::try_from(s)?)
+            Some(s) => Some(ValueRange::try_from(s)?),
         };
         Ok(range)
     }
@@ -755,7 +760,6 @@ impl<'ctx, 'val> ArrayDimension<'ctx, 'val> {
         } else {
             ArrayType::new(*element_type, &[self.attr])
         }
-
     }
 }
 
@@ -801,7 +805,11 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
     /// To simplify the implementation, template parameters are read using `poly.read_const`
     /// and passed to an affine map rather than trying to use a symbol attribute as the
     /// dimension (which would only work for bare template parameters without computation anyways).
-    fn convert_dim_expr(&self, codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>, expr: &Expression) -> Result<ArrayDimension<'ctx, 'val>>;
+    fn convert_dim_expr(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        expr: &Expression,
+    ) -> Result<ArrayDimension<'ctx, 'val>>;
 
     /// If `dimensions` is empty, return `base_type`. Otherwise, create [ArrayType] by
     /// converting the dimension circom [Expressions](Expression) to LLZK Attributes.
@@ -814,10 +822,12 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
         if dimensions.is_empty() {
             Ok(base_type)
         } else {
-            let array_dims = ArrayDimensions(dimensions
-                .iter()
-                .map(|e| self.convert_dim_expr(codegen, e))
-                .collect::<Result<Vec<_>, _>>()?);
+            let array_dims = ArrayDimensions(
+                dimensions
+                    .iter()
+                    .map(|e| self.convert_dim_expr(codegen, e))
+                    .collect::<Result<Vec<_>, _>>()?,
+            );
             Ok(array_dims.new_array_type(&base_type).into())
         }
     }
@@ -829,7 +839,10 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         dimensions: &[Expression],
     ) -> Result<Vec<Attribute<'ctx>>> {
-        dimensions.iter().map(|e| self.convert_dim_expr(codegen, e).and_then(|d| Ok(*d.attr()))).collect()
+        dimensions
+            .iter()
+            .map(|e| self.convert_dim_expr(codegen, e).and_then(|d| Ok(*d.attr())))
+            .collect()
     }
 
     /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
@@ -855,7 +868,11 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
         meta: &Meta,
         dimensions: &[Expression],
     ) -> Result<Operation<'ctx>> {
-        self.new_nondet_felt_of_dimensions_at_location(codegen, codegen.location_from_meta(meta), dimensions)
+        self.new_nondet_felt_of_dimensions_at_location(
+            codegen,
+            codegen.location_from_meta(meta),
+            dimensions,
+        )
     }
 
     /// If `dimensions` is empty, returns a [`StructType`] with just the name. Otherwise,
@@ -870,10 +887,12 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
         if dimensions.is_empty() {
             Ok(StructType::from_str(codegen.context, name))
         } else {
-            let dims = ArrayDimensions(dimensions
-                .iter()
-                .map(|e| self.convert_dim_expr(codegen, e))
-                .collect::<Result<Vec<_>, _>>()?);
+            let dims = ArrayDimensions(
+                dimensions
+                    .iter()
+                    .map(|e| self.convert_dim_expr(codegen, e))
+                    .collect::<Result<Vec<_>, _>>()?,
+            );
             Ok(StructType::new(FlatSymbolRefAttribute::new(codegen.context, name), &dims.attrs()))
         }
     }

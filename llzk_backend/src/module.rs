@@ -65,7 +65,7 @@ pub struct DeclarationInfo<'ctx> {
     /// Map `component` name to its declaration information.
     subcmp_decls: HashMap<String, SubcmpDeclInfo<'ctx>>,
     /// The template params that may be used to instantiate array dimensions.
-    template_params: HashSet<String>
+    template_params: HashSet<String>,
 }
 
 impl<'ctx> DeclarationInfo<'ctx> {
@@ -108,7 +108,8 @@ impl<'ctx> DeclarationInfo<'ctx> {
         template: &impl TemplateLike,
     ) -> Result<DeclarationInfo<'ctx>> {
         let mut declarations = DeclarationInfo {
-            template_params: template.get_name_of_params().iter().cloned().collect(), ..DeclarationInfo::default()
+            template_params: template.get_name_of_params().iter().cloned().collect(),
+            ..DeclarationInfo::default()
         };
         for s in template.get_body() {
             declarations.visit(codegen, s)?;
@@ -325,30 +326,41 @@ impl<'ctx> DeclarationInfo<'ctx> {
     }
 }
 
-impl<'ast, 'ctx, 'val> DimExprConverter<'ctx, 'ast, 'val>
-    for DeclarationInfo<'ctx>
-    where
-    'ctx: 'val
+impl<'ast, 'ctx, 'val> DimExprConverter<'ctx, 'ast, 'val> for DeclarationInfo<'ctx>
+where
+    'ctx: 'val,
 {
     #[allow(unused_variables)] // TODO: TEMP
-    fn convert_dim_expr(&self, codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>, expr: &Expression) -> Result<ArrayDimension<'ctx, 'val>> {
+    fn convert_dim_expr(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        expr: &Expression,
+    ) -> Result<ArrayDimension<'ctx, 'val>> {
         // First try to compute statically, falling back to literal computation
         // if all values are not compile-time constants or if the final result
         // does not properly convert to i64.
-        if let Some(integer) = codegen.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64) {
+        if let Some(integer) =
+            codegen.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64)
+        {
             let int_attr = codegen.index_attr(integer);
             ArrayDimension::new(int_attr.into(), &[])
         } else {
             match expr {
-                Expression::Number(meta, big_int) => unreachable!("handled by try_compute_dim_expr"),
+                Expression::Number(meta, big_int) => {
+                    unreachable!("handled by try_compute_dim_expr")
+                }
                 Expression::Variable { meta, name, access } => match access.as_slice() {
                     [] => {
                         if self.template_params.contains(name) {
-                            let template_param_attr = FlatSymbolRefAttribute::new(&codegen.context, name);
+                            let template_param_attr =
+                                FlatSymbolRefAttribute::new(&codegen.context, name);
                             ArrayDimension::new(template_param_attr.into(), &[])
                         } else if let Some(op) = self.decl_inits.get(name) {
                             let id_map = codegen.affine_map_attr("affine_map<()[i] -> (i)>")?;
-                            let value_range = op.results().map(|r| Into::<Value<'ctx, 'val>>::into(r)).collect::<Vec<_>>();
+                            let value_range = op
+                                .results()
+                                .map(|r| Into::<Value<'ctx, 'val>>::into(r))
+                                .collect::<Vec<_>>();
                             ArrayDimension::new(id_map, &value_range)
                         } else {
                             todo!("Handle Variable expression in dimension for non-integer, non-template parameter attributes in DeclarationInfo")
@@ -357,7 +369,7 @@ impl<'ast, 'ctx, 'val> DimExprConverter<'ctx, 'ast, 'val>
                     a => {
                         todo!("Handle Variable expression with accesses in DeclarationInfo")
                     }
-                }
+                },
                 Expression::InfixOp { meta, lhe, infix_op, rhe } => {
                     todo!("Handle Infix expression in dimension for non-integer attributes in DeclarationInfo")
                 }

@@ -573,27 +573,33 @@ where
     'blk: 'val,
 {
     #[allow(unused_variables)] // TODO: TEMP
-    fn convert_dim_expr(&self, codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>, expr: &Expression) -> Result<ArrayDimension<'ctx, 'val>> {
+    fn convert_dim_expr(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        expr: &Expression,
+    ) -> Result<ArrayDimension<'ctx, 'val>> {
         // First try to compute statically, falling back to literal computation
         // if all values are not compile-time constants or if the final result
         // does not properly convert to i64.
-        if let Some(integer) = codegen.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64) {
+        if let Some(integer) =
+            codegen.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64)
+        {
             let int_attr = codegen.index_attr(integer);
             ArrayDimension::new(int_attr.into(), &[])
         } else {
             match expr {
-                Expression::Number(meta, big_int) => unreachable!("handled by try_compute_dim_expr"),
-                Expression::Variable { meta, name, access } => {
-                    match access.as_slice() {
-                        [] => {
-                            println!("got {name} for var dim");
-                            todo!("complete me")
-                        }
-                        a => {
-                            todo!("resolve")
-                        }
-                    }
+                Expression::Number(meta, big_int) => {
+                    unreachable!("handled by try_compute_dim_expr")
                 }
+                Expression::Variable { meta, name, access } => match access.as_slice() {
+                    [] => {
+                        println!("got {name} for var dim");
+                        todo!("complete me")
+                    }
+                    a => {
+                        todo!("resolve")
+                    }
+                },
                 Expression::InfixOp { meta, lhe, infix_op, rhe } => {
                     todo!("Handle Infix expression in dimension for non-integer attributes")
                 }
@@ -1343,7 +1349,8 @@ where
                     && codegen.program.contains_template(id) =>
             {
                 let location = codegen.location_from_meta(meta);
-                let subcmp_type = template.struct_type_with_concrete_dimensions(codegen, id, args)?;
+                let subcmp_type =
+                    template.struct_type_with_concrete_dimensions(codegen, id, args)?;
                 let arg_types = std::iter::once(Type::from(subcmp_type))
                     .chain(codegen.get_template_input_types(id)?)
                     .collect::<Vec<_>>();

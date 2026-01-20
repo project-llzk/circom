@@ -193,10 +193,7 @@ where
     }
 
     /// Check if the given name is already declared in the current scope.
-    pub fn is_name_present(
-        &self,
-        name: &str,
-    ) -> bool {
+    pub fn is_name_present(&self, name: &str) -> bool {
         self.top().scope_local_name_to_value.contains_key(name)
     }
 
