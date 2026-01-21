@@ -1,7 +1,9 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
-// TODO: the field is not instantiated, so it's not clear what the array size is.
+// COM: The `@outp` field is not instantiated, so it's not clear what the array size is.
+// COM: This can be refined when https://github.com/project-llzk/circom/issues/320
+// COM: is implemented.
 
 pragma circom 2.0.0;
 
