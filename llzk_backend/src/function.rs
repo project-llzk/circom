@@ -17,7 +17,6 @@ use crate::shared::is_index;
 use crate::shared::new_array_type;
 use crate::shared::next_in_block_mut;
 use crate::shared::no_results;
-use crate::shared::op_result_owner;
 use crate::shared::parent_operation_mut;
 use crate::shared::remove_from_parent;
 use crate::shared::replace_uses_with_new_block_argument;
@@ -755,7 +754,7 @@ where
         loop_cond_info: NestedBlockInfo<'ctx, 'blk, 'val>,
         loop_body_info: NestedBlockInfo<'ctx, 'blk, 'val>,
         loop_bounds: Option<LoopBoundsAttribute<'ctx>>,
-    ) -> Result<OperationRef<'ctx, 'val>> {
+    ) -> Result<bool> {
         // ASSERT: loop condition was a single Expression so there are no variable overwrites.
         assert!(loop_cond_info.var_overwrites.is_empty());
 
@@ -782,17 +781,35 @@ where
         // replace uses of the overwritten variables in both blocks with references to the new
         // BlockArguments Values.
         let mut loop_carried_types = Vec::new();
+        // Additionally, track if `VAR_NAME_HAD_RETURN` is among the loop-carried variables
+        // (indicating there was a return somewhere within the loop body) to later update the
+        // loop condition to ensure iteration stops when a return occurs.
+        let mut return_flag: Option<Value> = None;
         for name in loop_carried_var_names.iter() {
             let orig_val = self.block_ctx.get_named_value(name).unwrap();
             loop_carried_types.push(orig_val.r#type());
-            replace_uses_with_new_block_argument(loop_cond_info.block, orig_val, location);
             replace_uses_with_new_block_argument(loop_body_info.block, orig_val, location);
+            let f = replace_uses_with_new_block_argument(loop_cond_info.block, orig_val, location);
+            if name == VAR_NAME_HAD_RETURN {
+                return_flag = Some(f);
+            }
         }
 
         // In the loop condition block, ensure the condition has bool type and generate an
         // `scf.condition` op with the condition value and the loop-carried variables.
         {
-            let condition = self.cast_to_bool_if_needed(codegen, location, condition)?;
+            let mut condition = self.cast_to_bool_if_needed(codegen, location, condition)?;
+            // If there is a return within the loop, add prefix "!<VAR_NAME_HAD_RETURN> &&" to the
+            // loop condition to ensure the loop terminates when the return occurs.
+            if let Some(flag) = return_flag {
+                let not_return_flag = single_result_as_value(
+                    loop_cond_info.block.append_operation(bool::r#not(location, flag)?.into()),
+                )?;
+                condition =
+                    single_result_as_value(loop_cond_info.block.append_operation(
+                        bool::and(location, not_return_flag, condition)?.into(),
+                    ))?;
+            }
             // Pass the block arguments as the initial values to the condition op.
             let block_arg_values = (0..loop_cond_info.block.argument_count())
                 .map(|i| loop_cond_info.block.argument(i).map_err(Into::into).map(Value::from))
@@ -830,7 +847,8 @@ where
             .into_iter()
             .zip(scf_op.results())
             .try_for_each(|(name, result)| self.block_ctx.set_named_value(name, result.into()))?;
-        Ok(scf_op)
+
+        Ok(return_flag.is_some())
     }
 
     /// Finalizes the context.
@@ -1374,8 +1392,7 @@ where
     // of values. Additionally, if the loop body block returns (in the circom code), an additional
     // return state must be added to the values to be yielded and an additional `scf.if` must be
     // added after the `scf.while` to check the return state flag.
-    let early_return_opt = get_val_of_circom_return_and_erase(loop_body_info.block);
-    if let Some(early_return) = early_return_opt {
+    if let Some(early_return) = get_val_of_circom_return_and_erase(loop_body_info.block) {
         // Within the loop body, set `VAR_NAME_HAD_RETURN` to `true` since a return occurs.
         loop_body_info.var_overwrites.insert(
             VAR_NAME_HAD_RETURN.to_string(),
@@ -1407,7 +1424,7 @@ where
     }
 
     // Generate the loop op.
-    let new_while_op = function.gen_scf_while(
+    let had_return = function.gen_scf_while(
         codegen,
         location,
         cond_result,
@@ -1417,15 +1434,7 @@ where
     )?;
 
     // Finally, if the loop body contained a return statement, gen additional code to handle it.
-    // It's not sufficent to just check `early_return_opt` because that only captures the case where
-    // the return is a direct child of the loop body. Must also check the context name mapping to
-    // see if there was a return located deeper within the loop body.
-    if early_return_opt.is_some()
-        || function
-            .block_ctx
-            .get_named_value(VAR_NAME_HAD_RETURN)
-            .is_ok_and(|v| matches!(op_result_owner(*v), Ok(owner) if owner == new_while_op))
-    {
+    if had_return {
         gen_unbalanced_return_extra(codegen, function, location)?;
     }
     Ok(false)

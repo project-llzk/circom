@@ -817,7 +817,7 @@ where
             loop_body_info,
             loop_bounds,
         )
-        .map(drop) // ignore the OperationRef result
+        .map(drop) // ignore the bool result
     })
 }
 

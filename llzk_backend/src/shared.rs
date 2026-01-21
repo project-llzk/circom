@@ -564,12 +564,17 @@ pub fn is_bool(t: Type) -> bool {
 
 /// Add a new argument to the given [BlockRef] with the same type as `orig` and replace all uses of
 /// `orig` within the given [BlockRef] (and within any nested blocks) with the new block argument.
-pub fn replace_uses_with_new_block_argument(block: BlockRef, orig: &Value, location: Location) {
+pub fn replace_uses_with_new_block_argument<'ctx, 'val>(
+    block: BlockRef<'ctx, 'val>,
+    orig: &Value<'ctx, 'val>,
+    location: Location<'ctx>,
+) -> Value<'ctx, 'val> {
     let replacement = block.add_argument(orig.r#type(), location);
     walk_from_block(
         block,
         WalkCallbacks::for_blocks(|b| replace_all_uses_in_block_with(b, *orig, replacement)),
     );
+    replacement
 }
 
 /// Sets the n-th operand of the operation to the given value if the current value is an
