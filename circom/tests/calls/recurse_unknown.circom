@@ -1,10 +1,6 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
-// XFAIL:.*
-// COM: error: 'bool.or' op only valid within a 'function.def' with 'function.allow_witness' attribute
-// COM: This op comes from "||" and is not legal in "@constrain" but is legal in "@compute".
-//      See `circom/tests/type_conversions/bool_2.circom` for more details.
 
 pragma circom 2.0.0;
 
@@ -22,3 +18,43 @@ template Caller() {
 component main = Caller();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-NEXT:    function.def @factorial(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type {
+// CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
+// CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_0]], %[[VAL_2]])
+// CHECK-NEXT:      %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:      %[[VAL_5:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_0]], %[[VAL_4]])
+// CHECK-NEXT:      %[[VAL_6:[0-9a-zA-Z_\.]+]] = bool.or %[[VAL_3]], %[[VAL_5]] : i1, i1
+// CHECK-NEXT:      %[[VAL_7:[0-9a-zA-Z_\.]+]]:2 = scf.if %[[VAL_6]] -> (i1, !felt.type) {
+// CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = arith.constant true
+// CHECK-NEXT:        scf.yield %[[VAL_9]], %[[VAL_8]] : i1, !felt.type
+// CHECK-NEXT:      } else {
+// CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = arith.constant false
+// CHECK-NEXT:        scf.yield %[[VAL_10]], %[[VAL_1]] : i1, !felt.type
+// CHECK-NEXT:      }
+// CHECK-NEXT:      %[[VAL_11:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_7]]#0 -> (!felt.type) {
+// CHECK-NEXT:        scf.yield %[[VAL_7]]#1 : !felt.type
+// CHECK-NEXT:      } else {
+// CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.sub %[[VAL_0]], %[[VAL_12]] : !felt.type, !felt.type
+// CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = function.call @factorial(%[[VAL_13]]) : (!felt.type) -> !felt.type
+// CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_0]], %[[VAL_14]] : !felt.type, !felt.type
+// CHECK-NEXT:        scf.yield %[[VAL_15]] : !felt.type
+// CHECK-NEXT:      }
+// CHECK-NEXT:      function.return %[[VAL_11]] : !felt.type
+// CHECK-NEXT:    }
+// CHECK-NEXT:    struct.def @Caller<[]> {
+// CHECK-NEXT:      struct.field @outp : !felt.type {llzk.pub}
+// CHECK-NEXT:      function.def @compute(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Caller<[]>> attributes {function.allow_witness} {
+// CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = struct.new : <@Caller<[]>>
+// CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = function.call @factorial(%[[VAL_16]]) : (!felt.type) -> !felt.type
+// CHECK-NEXT:        struct.writef %[[VAL_17]][@outp] = %[[VAL_18]] : <@Caller<[]>>, !felt.type
+// CHECK-NEXT:        function.return %[[VAL_17]] : !struct.type<@Caller<[]>>
+// CHECK-NEXT:      }
+// CHECK-NEXT:      function.def @constrain(%[[VAL_19:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller<[]>>, %[[VAL_20:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_19]][@outp] : <@Caller<[]>>, !felt.type
+// CHECK-NEXT:        function.return
+// CHECK-NEXT:      }
+// CHECK-NEXT:    }
+// CHECK-NEXT:  }
