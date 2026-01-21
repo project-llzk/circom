@@ -1646,7 +1646,8 @@ where
                         })
                         .collect::<Result<Vec<Value<'_, '_>>>>()?;
                     let v = function.block_ctx.get_named_value(name)?;
-                    let arr_ty = ArrayType::try_from(v.r#type())?;
+                    let arr_ty = ArrayType::try_from(v.r#type())
+                        .with_context(|| format!("Conflicting types for '{name}' at {location}"))?;
                     let array_get_op = array::read(location, arr_ty.element_type(), *v, &indices);
                     function.append_op_unnamed_result(array_get_op)
                 }
