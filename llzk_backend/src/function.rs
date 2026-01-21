@@ -831,7 +831,7 @@ where
             ArrayDimension::new(int_attr.into(), &[])
         } else {
             match expr {
-                Expression::Number(meta, big_int) => {
+                Expression::Number(_, _) => {
                     unreachable!("handled by try_compute_dim_expr")
                 }
                 Expression::Variable { meta, name, access } => match access.as_slice() {
