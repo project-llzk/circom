@@ -564,12 +564,17 @@ pub fn is_bool(t: Type) -> bool {
 
 /// Add a new argument to the given [BlockRef] with the same type as `orig` and replace all uses of
 /// `orig` within the given [BlockRef] (and within any nested blocks) with the new block argument.
-pub fn replace_uses_with_new_block_argument(block: BlockRef, orig: &Value, location: Location) {
+pub fn replace_uses_with_new_block_argument<'ctx, 'val>(
+    block: BlockRef<'ctx, 'val>,
+    orig: &Value<'ctx, 'val>,
+    location: Location<'ctx>,
+) -> Value<'ctx, 'val> {
     let replacement = block.add_argument(orig.r#type(), location);
     walk_from_block(
         block,
         WalkCallbacks::for_blocks(|b| replace_all_uses_in_block_with(b, *orig, replacement)),
     );
+    replacement
 }
 
 /// Sets the n-th operand of the operation to the given value if the current value is an
@@ -717,6 +722,44 @@ macro_rules! try_for_loop_heuristic {
             return gen_while($codegen, $gen_context, $meta, cond, stmt, loop_bounds);
         }
     };
+}
+
+/// Returns a reference to a parent operation.
+///
+/// This function provides an API that is added in a newer release of melior via
+/// [mlir-sys/melior#789](https://github.com/mlir-rs/melior/pull/789).
+pub fn parent_operation_mut<'c: 'a, 'a>(
+    op: &impl OperationLike<'c, 'a>,
+) -> Option<melior::ir::operation::OperationRefMut<'c, 'a>> {
+    unsafe {
+        melior::ir::operation::OperationRefMut::from_option_raw(
+            mlir_sys::mlirOperationGetParentOperation(op.to_raw()),
+        )
+    }
+}
+
+/// Returns a mutable reference to the next operation in the same block.
+///
+/// This function provides an API fix that is added in a newer release of melior via
+/// [mlir-sys/melior#790](https://github.com/mlir-rs/melior/pull/790).
+pub fn next_in_block_mut<'c: 'a, 'a>(
+    op: &impl melior::ir::operation::OperationLike<'c, 'a>,
+) -> Option<melior::ir::operation::OperationRefMut<'c, 'a>> {
+    unsafe {
+        melior::ir::operation::OperationRefMut::from_option_raw(
+            mlir_sys::mlirOperationGetNextInBlock(op.to_raw()),
+        )
+    }
+}
+
+/// Removes itself from a parent block and returns the owned [Operation].
+pub fn remove_from_parent<'c: 'a, 'a>(
+    op: &mut impl melior::ir::operation::OperationMutLike<'c, 'a>,
+) -> Operation<'c> {
+    unsafe {
+        mlir_sys::mlirOperationRemoveFromParent(op.to_raw());
+    }
+    unsafe { Operation::from_raw(op.to_raw()) }
 }
 
 /// Information needed to create a new LLZK array type with the given dimension

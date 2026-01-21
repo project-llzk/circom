@@ -8,6 +8,7 @@ pragma circom 2.0.0;
 function earlyReturnFn(inp, n, m, k, a) {
     if (n == 0) {
         return inp;
+        // Everything below is unreachable because of the return above
         var dividend[5];
         for (var i = m; i >= 0; i--) {
             if (i == m) {
