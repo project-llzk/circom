@@ -625,7 +625,7 @@ fn find_parent_in_block<'ctx, 'blk, 'op>(
 /// Create new array type that is an array of the given sub-array type.
 #[inline]
 pub fn new_array_type<'c>(dim: Attribute<'c>, subarr_ty: &ArrayType<'c>) -> ArrayType<'c> {
-    let dims: Vec<_> = std::iter::once(dim).chain(subarr_ty.dims().iter().copied()).collect();
+    let dims: Vec<_> = std::iter::once(dim).chain(subarr_ty.dims()).collect();
     ArrayType::new(subarr_ty.element_type(), &dims)
 }
 
@@ -756,8 +756,7 @@ impl<'ctx, 'val> ArrayDimension<'ctx, 'val> {
     /// Create a new [ArrayType] with the given dimension.
     pub fn new_array_type(&self, element_type: &Type<'ctx>) -> ArrayType<'ctx> {
         if let Ok(subarr_ty) = ArrayType::try_from(*element_type) {
-            let dims: Vec<_> = std::iter::once(self.attr).chain(subarr_ty.dims()).collect();
-            ArrayType::new(subarr_ty.element_type(), &dims)
+            new_array_type(self.attr, &subarr_ty)
         } else {
             ArrayType::new(*element_type, &[self.attr])
         }
@@ -767,7 +766,7 @@ impl<'ctx, 'val> ArrayDimension<'ctx, 'val> {
 impl<'ctx, 'val> TryFrom<&ArrayDimension<'ctx, 'val>> for IntegerAttribute<'ctx> {
     type Error = anyhow::Error;
 
-    fn try_from(dim: &ArrayDimension<'ctx, 'val>) -> std::result::Result<Self, Self::Error> {
+    fn try_from(dim: &ArrayDimension<'ctx, 'val>) -> Result<Self> {
         ensure!(dim.value_range()?.is_none(), "const dimension should have no symbols");
         if let Ok(d) = IntegerAttribute::try_from(*dim.attr()) {
             Ok(d)
@@ -784,7 +783,7 @@ pub struct ArrayDimensions<'ctx, 'val>(Vec<ArrayDimension<'ctx, 'val>>);
 impl<'ctx, 'val> ArrayDimensions<'ctx, 'val> {
     /// Get all contained attributes.
     pub fn attrs(&self) -> Vec<Attribute<'ctx>> {
-        self.0.iter().map(|d| *d.attr()).collect::<Vec<_>>()
+        self.0.iter().map(|d| *d.attr()).collect()
     }
     /// Create a new [ArrayType] with the given dimensions.
     pub fn new_array_type(&self, element_type: &Type<'ctx>) -> ArrayType<'ctx> {
@@ -794,7 +793,7 @@ impl<'ctx, 'val> ArrayDimensions<'ctx, 'val> {
     #[allow(dead_code)] // TODO: temporary, pending more support for computing array dimensions
     pub fn symbol_vals(&self) -> Result<Vec<ValueRange<'ctx, '_, 'val>>> {
         let optional_vec = self.0.iter().map(|d| d.value_range()).collect::<Result<Vec<_>>>()?;
-        Ok(optional_vec.into_iter().flatten().collect::<Vec<_>>())
+        Ok(optional_vec.into_iter().flatten().collect())
     }
 }
 
@@ -828,7 +827,7 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
                 dimensions
                     .iter()
                     .map(|e| self.convert_dim_expr(codegen, e))
-                    .collect::<Result<Vec<_>, _>>()?,
+                    .collect::<Result<Vec<_>>>()?,
             );
             Ok(array_dims.new_array_type(&base_type).into())
         }
