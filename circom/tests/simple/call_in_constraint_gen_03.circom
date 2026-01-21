@@ -17,6 +17,8 @@ template T() {
     signal output outp;
 
     // error[T3001]: Non quadratic constraints are not allowed!
+    // This error does not occur when producing LLZK IR because it is only detected
+    // during the execution phase, which occurs after emitting LLZK IR.
     outp <== f(inp);
 }
 

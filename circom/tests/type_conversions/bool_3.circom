@@ -12,6 +12,8 @@ template A(x) {
   if (in || x) {
     z = 1;
   }
+  // Cannot use `<==` here because it creates a non quadratic constraint
+  // due to `||` in the condition above.
   out <-- z;
 }
 

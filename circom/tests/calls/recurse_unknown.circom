@@ -12,6 +12,8 @@ function factorial(x) {
 template Caller() {
     signal input inp;
     signal output outp;
+    // Cannot use `<==` here because it creates a non quadratic constraint
+    // due to `||` in the function.
     outp <-- factorial(inp);
 }
 

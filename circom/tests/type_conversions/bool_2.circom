@@ -18,6 +18,8 @@ template A(x) {
   } else {
     temp = 0;
   }
+  // Cannot use `<==` here because it creates a non quadratic constraint
+  // due to `||` in the function.
   out <-- temp;
 
   //Essentially equivalent code:
