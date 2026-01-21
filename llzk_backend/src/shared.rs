@@ -7,6 +7,7 @@ use crate::traversal::walk_from_block;
 use crate::traversal::WalkCallbacks;
 use ansi_term::Color;
 use anyhow::anyhow;
+use anyhow::ensure;
 use anyhow::Result;
 use llzk::dialect::undef;
 use llzk::operation::move_op_after;
@@ -15,6 +16,7 @@ use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
+use llzk::prelude::AttributeLike;
 use llzk::prelude::BlockLike;
 use llzk::prelude::BlockRef;
 use llzk::prelude::BoolAttribute;
@@ -48,6 +50,8 @@ use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
 use llzk::value_ext::get_single_user;
 use llzk::value_ext::replace_all_uses_in_block_with;
+use llzk::value_ext::OwningValueRange;
+use llzk::value_ext::ValueRange;
 use melior::utility;
 use num_bigint_dig::BigInt;
 use num_bigint_dig::BigUint;
@@ -162,7 +166,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     /// Returns `None` if the expression cannot be computed statically, Some(BigUint)
     /// if the computation is successful, and an error if a conversion error occurs
     /// along the way.
-    fn try_compute_dim_expr(&self, expr: &Expression) -> Result<Option<BigUint>> {
+    pub fn try_compute_dim_expr(&self, expr: &Expression) -> Result<Option<BigUint>> {
         match expr {
             Expression::Number(_, big_int) => {
                 let v =
@@ -287,54 +291,6 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         }
     }
 
-    /// Convert a circom [Expression] used as an array dimension to an LLZK Attribute.
-    ///
-    /// Note: The LLZK ArrayType can only use the following Attribute types for dimensions:
-    /// IntegerAttr (`index` or `i1`), SymbolRefAttr, or AffineMapAttr (with single result,
-    /// probably an identity map).
-    #[allow(unused_variables)] // TODO: TEMP
-    pub fn convert_dim_expr(&self, expr: &Expression) -> Result<Attribute<'ctx>> {
-        // First try to compute statically, falling back to literal computation
-        // if all values are not compile-time constants or if the final result
-        // does not properly convert to i64.
-        if let Some(integer) = self.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64) {
-            let int_attr = self.index_attr(integer);
-            Ok(int_attr.into())
-        } else {
-            match expr {
-                Expression::Number(meta, big_int) => {
-                    unreachable!("handled by try_compute_dim_expr")
-                }
-                Expression::Variable { meta, name, access } => {
-                    // TODO: generate AffineMapAttr (with single result) or SymbolRefAttr (from
-                    // param)
-                    todo!("Handle Variable expression in dimension")
-                }
-                Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                    todo!("Handle Infix expression in dimension for non-integer attributes")
-                }
-                Expression::PrefixOp { meta, prefix_op, rhe } => {
-                    todo!("Handle Prefix expression in dimension for non-integer attributes")
-                }
-                Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                    todo!(
-                        "Handle InlineSwitchOp expression in dimension for non-integer attributes"
-                    )
-                }
-                Expression::Call { meta, id, args } => {
-                    todo!("Handle Call expression in dimension")
-                }
-                // The remaining cases do not produce a scalar value.
-                // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
-                // Give the same error that the circom type checker gives. The type checker ran
-                // earlier so this should technically be unreachable.
-                _ => {
-                    Err(anyhow!("Array indexes and lengths must be single arithmetic expressions"))
-                }
-            }
-        }
-    }
-
     /// If `dimensions` is empty, return `base_type`. Otherwise, create [ArrayType] by
     /// converting the dimension sizes to LLZK Attributes.
     pub fn type_from_dimension_consts(
@@ -357,33 +313,6 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         }
     }
 
-    /// If `dimensions` is empty, return `base_type`. Otherwise, create [ArrayType] by
-    /// converting the dimension circom [Expressions](Expression) to LLZK Attributes.
-    pub fn type_from_dimension_exprs(
-        &self,
-        base_type: Type<'ctx>,
-        dimensions: &[Expression],
-    ) -> Result<Type<'ctx>> {
-        if dimensions.is_empty() {
-            Ok(base_type)
-        } else {
-            dimensions
-                .iter()
-                .map(|e| self.convert_dim_expr(e))
-                .collect::<Result<Vec<_>, _>>()
-                .map(|dims| ArrayType::new(base_type, &dims).into())
-        }
-    }
-
-    /// Tries to convert a list of [`Expression`] to a list of [`Attribute`].
-    #[inline]
-    pub fn try_dimensions_to_attrs(
-        &self,
-        dimensions: &[Expression],
-    ) -> Result<Vec<Attribute<'ctx>>> {
-        dimensions.iter().map(|e| self.convert_dim_expr(e)).collect()
-    }
-
     /// Create an LLZK operation that produces a nondeterministic value of the given type.
     pub fn new_nondet_at_location(
         &self,
@@ -391,30 +320,6 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         result_type: Type<'ctx>,
     ) -> Result<Operation<'ctx>> {
         Ok(undef::undef(location, result_type))
-    }
-
-    /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
-    /// `dimensions` (non-array scalar if empty).
-    pub fn new_nondet_felt_of_dimensions_at_location(
-        &self,
-        location: Location<'ctx>,
-        dimensions: &[Expression],
-    ) -> Result<Operation<'ctx>> {
-        self.new_nondet_at_location(
-            location,
-            self.type_from_dimension_exprs(self.felt_type().into(), dimensions)?,
-        )
-    }
-
-    /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
-    /// `dimensions` (non-array scalar if empty).
-    #[inline]
-    pub fn new_nondet_felt_of_dimensions(
-        &self,
-        meta: &Meta,
-        dimensions: &[Expression],
-    ) -> Result<Operation<'ctx>> {
-        self.new_nondet_felt_of_dimensions_at_location(self.location_from_meta(meta), dimensions)
     }
 
     /// Get the integer type of the given bitwidth.
@@ -454,6 +359,12 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         T: Into<i64>,
     {
         IntegerAttribute::new(self.index_type(), integer.into())
+    }
+
+    /// Create an affine_map attribute from a string definition.
+    pub fn affine_map_attr(&self, definition: &str) -> Result<Attribute<'ctx>> {
+        Attribute::parse(self.context, definition)
+            .ok_or_else(|| anyhow!("could not parse affine_map definition"))
     }
 
     /// Create an LLZK operation that produces a boolean constant value.
@@ -555,25 +466,6 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         }
         println!("{} {}", Color::Green.paint("Written successfully:"), filename);
         Ok(())
-    }
-
-    /// If `dimensions` is empty, returns a [`StructType`] with just the name. Otherwise,
-    /// returns a [`StructType`] with parameters by converting the
-    /// dimension circom Expressions to LLZK Attributes.
-    pub fn struct_type_with_concrete_dimensions(
-        &self,
-        name: &str,
-        dimensions: &[Expression],
-    ) -> Result<StructType<'ctx>> {
-        if dimensions.is_empty() {
-            Ok(StructType::from_str(self.context, name))
-        } else {
-            let attrs = dimensions
-                .iter()
-                .map(|e| self.convert_dim_expr(e))
-                .collect::<Result<Vec<_>, _>>()?;
-            Ok(StructType::new(FlatSymbolRefAttribute::new(self.context, name), &attrs))
-        }
     }
 
     /// Returns the data for the template with that name.
@@ -735,7 +627,7 @@ fn find_parent_in_block<'ctx, 'blk, 'op>(
 /// Create new array type that is an array of the given sub-array type.
 #[inline]
 pub fn new_array_type<'c>(dim: Attribute<'c>, subarr_ty: &ArrayType<'c>) -> ArrayType<'c> {
-    let dims: Vec<_> = std::iter::once(dim).chain(subarr_ty.dims().iter().copied()).collect();
+    let dims: Vec<_> = std::iter::once(dim).chain(subarr_ty.dims()).collect();
     ArrayType::new(subarr_ty.element_type(), &dims)
 }
 
@@ -825,4 +717,183 @@ macro_rules! try_for_loop_heuristic {
             return gen_while($codegen, $gen_context, $meta, cond, stmt, loop_bounds);
         }
     };
+}
+
+/// Information needed to create a new LLZK array type with the given dimension
+/// and to instantiate that array if the dimension attribute is an affine_map
+/// with symbols.
+#[derive(Debug)]
+pub struct ArrayDimension<'ctx, 'val> {
+    /// The attribute to use as the dimension; could be a constant, a symbol, or an affine map.
+    attr: Attribute<'ctx>,
+    /// The symbols to be passed to the affine map, if attr is an AffineMapAttr
+    symbols: Option<OwningValueRange<'ctx, 'val>>,
+}
+
+impl<'ctx, 'val> ArrayDimension<'ctx, 'val> {
+    /// Construct a new ArrayDimension.
+    /// If attr is not an affine map, then symbol_vals should be empty.
+    pub fn new(attr: Attribute<'ctx>, symbol_vals: &[Value<'ctx, 'val>]) -> Result<Self> {
+        ensure!(
+            attr.is_affine_map() || symbol_vals.is_empty(),
+            "if attribute is not an affine map, no symbols should be provided"
+        );
+        Ok(Self {
+            attr,
+            symbols: (!symbol_vals.is_empty()).then(|| OwningValueRange::from(symbol_vals)),
+        })
+    }
+    /// Access the inner attribute.
+    pub fn attr(&self) -> &Attribute<'ctx> {
+        &self.attr
+    }
+    /// Access the inner symbols, if present, as a [ValueRange].
+    pub fn value_range(&self) -> Result<Option<ValueRange<'ctx, '_, 'val>>> {
+        let range = match &self.symbols {
+            None => None,
+            Some(s) => Some(ValueRange::try_from(s)?),
+        };
+        Ok(range)
+    }
+    /// Create a new [ArrayType] with the given dimension.
+    pub fn new_array_type(&self, element_type: &Type<'ctx>) -> ArrayType<'ctx> {
+        if let Ok(subarr_ty) = ArrayType::try_from(*element_type) {
+            new_array_type(self.attr, &subarr_ty)
+        } else {
+            ArrayType::new(*element_type, &[self.attr])
+        }
+    }
+}
+
+impl<'ctx, 'val> TryFrom<&ArrayDimension<'ctx, 'val>> for IntegerAttribute<'ctx> {
+    type Error = anyhow::Error;
+
+    fn try_from(dim: &ArrayDimension<'ctx, 'val>) -> Result<Self> {
+        ensure!(dim.value_range()?.is_none(), "const dimension should have no symbols");
+        if let Ok(d) = IntegerAttribute::try_from(*dim.attr()) {
+            Ok(d)
+        } else {
+            Err(anyhow!("could not convert to IntegerAttribute"))
+        }
+    }
+}
+
+/// Information needed to create a new LLZK array type with the given dimensions.
+#[derive(Debug)]
+pub struct ArrayDimensions<'ctx, 'val>(Vec<ArrayDimension<'ctx, 'val>>);
+
+impl<'ctx, 'val> ArrayDimensions<'ctx, 'val> {
+    /// Get all contained attributes.
+    pub fn attrs(&self) -> Vec<Attribute<'ctx>> {
+        self.0.iter().map(|d| *d.attr()).collect()
+    }
+    /// Create a new [ArrayType] with the given dimensions.
+    pub fn new_array_type(&self, element_type: &Type<'ctx>) -> ArrayType<'ctx> {
+        ArrayType::new(*element_type, self.attrs().as_slice())
+    }
+    /// Get the non-empty symbol values for affine map instantiation.
+    #[allow(dead_code)] // TODO: temporary, pending more support for computing array dimensions
+    pub fn symbol_vals(&self) -> Result<Vec<ValueRange<'ctx, '_, 'val>>> {
+        let optional_vec = self.0.iter().map(|d| d.value_range()).collect::<Result<Vec<_>>>()?;
+        Ok(optional_vec.into_iter().flatten().collect())
+    }
+}
+
+/// A trait to generate array dimensions from the given dimension expressions.
+pub trait DimExprConverter<'ctx, 'ast, 'val> {
+    /// Convert a circom [Expression] used as an array dimension to an LLZK Attribute.
+    ///
+    /// Note: The LLZK ArrayType can only use the following Attribute types for dimensions:
+    /// IntegerAttr (`index` or `i1`) or AffineMapAttr (with single result).
+    /// To simplify the implementation, template parameters are read using `poly.read_const`
+    /// and passed to an affine map rather than trying to use a symbol attribute as the
+    /// dimension (which would only work for bare template parameters without computation anyways).
+    fn convert_dim_expr(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        expr: &Expression,
+    ) -> Result<ArrayDimension<'ctx, 'val>>;
+
+    /// If `dimensions` is empty, return `base_type`. Otherwise, create [ArrayType] by
+    /// converting the dimension circom [Expressions](Expression) to LLZK Attributes.
+    fn type_from_dimension_exprs(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        base_type: Type<'ctx>,
+        dimensions: &[Expression],
+    ) -> Result<Type<'ctx>> {
+        if dimensions.is_empty() {
+            Ok(base_type)
+        } else {
+            let array_dims = ArrayDimensions(
+                dimensions
+                    .iter()
+                    .map(|e| self.convert_dim_expr(codegen, e))
+                    .collect::<Result<Vec<_>>>()?,
+            );
+            Ok(array_dims.new_array_type(&base_type).into())
+        }
+    }
+
+    /// Tries to convert a list of [`Expression`] to a list of [`Attribute`].
+    #[inline]
+    fn try_dimensions_to_attrs(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        dimensions: &[Expression],
+    ) -> Result<Vec<Attribute<'ctx>>> {
+        dimensions.iter().map(|e| self.convert_dim_expr(codegen, e).map(|d| *d.attr())).collect()
+    }
+
+    /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
+    /// `dimensions` (non-array scalar if empty).
+    fn new_nondet_felt_of_dimensions_at_location(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        dimensions: &[Expression],
+    ) -> Result<Operation<'ctx>> {
+        codegen.new_nondet_at_location(
+            location,
+            self.type_from_dimension_exprs(codegen, codegen.felt_type().into(), dimensions)?,
+        )
+    }
+
+    /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
+    /// `dimensions` (non-array scalar if empty).
+    #[inline]
+    fn new_nondet_felt_of_dimensions(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        meta: &Meta,
+        dimensions: &[Expression],
+    ) -> Result<Operation<'ctx>> {
+        self.new_nondet_felt_of_dimensions_at_location(
+            codegen,
+            codegen.location_from_meta(meta),
+            dimensions,
+        )
+    }
+
+    /// If `dimensions` is empty, returns a [`StructType`] with just the name. Otherwise,
+    /// returns a [`StructType`] with parameters by converting the
+    /// dimension circom Expressions to LLZK Attributes.
+    fn struct_type_with_concrete_dimensions(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        name: &str,
+        dimensions: &[Expression],
+    ) -> Result<StructType<'ctx>> {
+        if dimensions.is_empty() {
+            Ok(StructType::from_str(codegen.context, name))
+        } else {
+            let dims = ArrayDimensions(
+                dimensions
+                    .iter()
+                    .map(|e| self.convert_dim_expr(codegen, e))
+                    .collect::<Result<Vec<_>, _>>()?,
+            );
+            Ok(StructType::new(FlatSymbolRefAttribute::new(codegen.context, name), &dims.attrs()))
+        }
+    }
 }

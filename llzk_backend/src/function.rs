@@ -19,6 +19,8 @@ use crate::shared::no_results;
 use crate::shared::replace_uses_with_new_block_argument;
 use crate::shared::set_operand_if_undef;
 use crate::shared::single_result_as_value;
+use crate::shared::ArrayDimension;
+use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::SubcmpCallsMap;
 use crate::template_ext::TemplateLike as _;
@@ -26,6 +28,7 @@ use crate::try_for_loop_heuristic;
 use anyhow::anyhow;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
+use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::cast;
 use llzk::dialect::undef;
 use llzk::operation::erase_op;
@@ -63,6 +66,8 @@ use llzk::prelude::WalkResult;
 use llzk::value_ext::has_uses;
 use melior::dialect::ods::math;
 use num_bigint_dig::BigInt;
+use num_bigint_dig::BigUint;
+use num_traits::ToPrimitive;
 use num_traits::Zero;
 use program_structure::ast::Access;
 use program_structure::ast::Expression;
@@ -803,6 +808,71 @@ where
     }
 }
 
+impl<'ast, 'ctx, 'func, 'blk, 'val> DimExprConverter<'ctx, 'ast, 'val>
+    for FunctionContext<'ctx, 'func, 'blk, 'val>
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    #[allow(unused_variables)] // TODO: TEMP
+    fn convert_dim_expr(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        expr: &Expression,
+    ) -> Result<ArrayDimension<'ctx, 'val>> {
+        // First try to compute statically, falling back to literal computation
+        // if all values are not compile-time constants or if the final result
+        // does not properly convert to i64.
+        if let Some(integer) =
+            codegen.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64)
+        {
+            let int_attr = codegen.index_attr(integer);
+            ArrayDimension::new(int_attr.into(), &[])
+        } else {
+            match expr {
+                Expression::Number(_, _) => {
+                    unreachable!("handled by try_compute_dim_expr")
+                }
+                Expression::Variable { meta, name, access } => match access.as_slice() {
+                    [] => {
+                        if let Ok(v) = self.block_ctx.get_named_value(name) {
+                            let id_map = codegen.affine_map_attr("affine_map<()[i] -> (i)>")?;
+                            ArrayDimension::new(id_map, &[*v])
+                        } else {
+                            todo!("Handle Variable expression in dimension for non-integer, non-template parameter attributes in FunctionContext")
+                        }
+                    }
+                    a => {
+                        todo!("Handle Variable expression with accesses in FunctionContext")
+                    }
+                },
+                Expression::InfixOp { meta, lhe, infix_op, rhe } => {
+                    todo!("Handle Infix expression in dimension for non-integer attributes")
+                }
+                Expression::PrefixOp { meta, prefix_op, rhe } => {
+                    todo!("Handle Prefix expression in dimension for non-integer attributes")
+                }
+                Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
+                    todo!(
+                        "Handle InlineSwitchOp expression in dimension for non-integer attributes"
+                    )
+                }
+                Expression::Call { meta, id, args } => {
+                    todo!("Handle Call expression in dimension")
+                }
+                // The remaining cases do not produce a scalar value.
+                // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
+                // Give the same error that the circom type checker gives. The type checker ran
+                // earlier so this should technically be unreachable.
+                _ => {
+                    Err(anyhow!("Array indexes and lengths must be single arithmetic expressions"))
+                }
+            }
+        }
+    }
+}
+
 /// The [FunctionContext] directly accesses a single [BlockContextStack] for circom scope handling.
 impl<'ctx, 'func, 'blk, 'val> GenWithCircomScopeHandling<'ctx, 'func, 'blk, 'val>
     for FunctionContext<'ctx, 'func, 'blk, 'val>
@@ -942,7 +1012,7 @@ where
                 // if applicable but is currently implemented for scalar `felt.type` only.
                 // In this case, the correct solution (once nondet op is supported for any type)
                 // is to just create the nondet op using `return_val.getType()`
-                codegen.new_nondet_felt_of_dimensions_at_location(location, &[])?,
+                function.new_nondet_felt_of_dimensions_at_location(codegen, location, &[])?,
             ))
         })?,
     );
@@ -1144,7 +1214,7 @@ where
                 // In this case, the correct solution (once nondet op is supported for any
                 // type) is to just create the nondet op using
                 // `return_val.getType()`
-                codegen.new_nondet_felt_of_dimensions_at_location(location, &[])?,
+                function.new_nondet_felt_of_dimensions_at_location(codegen, location, &[])?,
                 VAR_NAME_RETURN_VAL.to_string(),
             )?;
         }
@@ -1212,9 +1282,10 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Template elements declared inside the function")
                 }
-                function.block_ctx.declare_name_if_not_present(name, || {
-                    codegen.new_nondet_felt_of_dimensions(meta, dimensions)
-                })?;
+                if !function.block_ctx.is_name_present(name) {
+                    let op = function.new_nondet_felt_of_dimensions(codegen, meta, dimensions)?;
+                    function.block_ctx.declare_name_ensure_not_present(name, op)?;
+                }
                 Ok(false)
             }
             Statement::Block { meta, stmts } => {
@@ -1456,17 +1527,22 @@ where
                 let location = codegen.location_from_meta(meta);
                 // Multi-dimensional arrays are made up of array values as their elements
                 let val = value.gen_llzk_in_function(codegen, function)?;
-                let dim = codegen.convert_dim_expr(dimension)?;
-                let const_dim = IntegerAttribute::try_from(dim);
+                let dim = function.convert_dim_expr(codegen, dimension)?;
+                let const_dim = IntegerAttribute::try_from(&dim);
                 if let Ok(subarr_ty) = ArrayType::try_from(val.r#type()) {
-                    let arr_ty = new_array_type(dim, &subarr_ty);
+                    let arr_ty = dim.new_array_type(&subarr_ty.into());
                     // The array.new constructor doesn't accept arrays as initializer values,
                     // so we instead create the array empty and use array.insert to insert values.
+                    let ctor = if let Some(symbols) = dim.value_range()? {
+                        ArrayCtor::MapDimSlice(&[symbols], &[0])
+                    } else {
+                        ArrayCtor::Values(&[])
+                    };
                     let new_arr = function.append_op_unnamed_result(array::new(
                         &OpBuilder::new(codegen.context),
                         codegen.location_from_meta(meta),
                         arr_ty,
-                        llzk::dialect::array::ArrayCtor::Values(&[]),
+                        ctor,
                     ))?;
                     if let Ok(const_dim) = const_dim {
                         for idx in 0..const_dim.value() {
@@ -1481,23 +1557,28 @@ where
                             ))?;
                         }
                     } else {
-                        todo!("Handle template parameter array lengths")
+                        todo!(
+                            "Handle template parameter array lengths for multi-dimensional arrays"
+                        )
                     };
                     // Output value is still the newly created array
                     Ok(new_arr)
                 } else {
-                    let arr_ty = ArrayType::new(val.r#type(), &[dim]);
-                    let init_vals = if let Ok(const_dim) = const_dim {
-                        vec![val; usize::try_from(const_dim.value())?]
+                    let arr_ty = dim.new_array_type(&val.r#type());
+                    if let Ok(const_dim) = const_dim {
+                        let ctor =
+                            ArrayCtor::Values(&vec![val; usize::try_from(const_dim.value())?]);
+                        function.append_op_unnamed_result(array::new(
+                            &OpBuilder::new(codegen.context),
+                            location,
+                            arr_ty,
+                            ctor,
+                        ))
                     } else {
-                        todo!("Handle template parameter array lengths")
-                    };
-                    function.append_op_unnamed_result(array::new(
-                        &OpBuilder::new(codegen.context),
-                        codegen.location_from_meta(meta),
-                        arr_ty,
-                        llzk::dialect::array::ArrayCtor::Values(&init_vals),
-                    ))
+                        todo!(
+                            "Handle template parameter array lengths for single-dimensional arrays"
+                        )
+                    }
                 }
             }
             Expression::Call { meta, id, args } => {

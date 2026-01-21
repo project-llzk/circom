@@ -6,12 +6,15 @@ use crate::function::GenerateLLZKInFunction as _;
 use crate::function_ext::FunctionLike;
 use crate::program_ext::ProgramLike;
 use crate::shared::map_name_to_arg_value;
+use crate::shared::ArrayDimension;
+use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::unique_instance_types;
 use crate::subcmp::SubcmpDeclInfo;
 use crate::template::GenerateLLZKInTemplate as _;
 use crate::template::TemplateContext;
 use crate::template_ext::TemplateLike;
+use anyhow::anyhow;
 use anyhow::bail;
 use anyhow::Result;
 use llzk::attributes::NamedAttribute;
@@ -21,6 +24,8 @@ use llzk::error::Error;
 use llzk::prelude::r#struct::helpers::compute_fn;
 use llzk::prelude::r#struct::helpers::constrain_fn;
 use llzk::prelude::*;
+use num_bigint_dig::BigUint;
+use num_traits::ToPrimitive as _;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -28,6 +33,7 @@ use program_structure::ast::SignalType;
 use program_structure::ast::Statement;
 use program_structure::ast::VariableType;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::convert::TryFrom;
 
 /// Information needed to create an LLZK struct function parameter collected from the input signal
@@ -58,6 +64,8 @@ pub struct DeclarationInfo<'ctx> {
     decl_inits: HashMap<String, Operation<'ctx>>,
     /// Map `component` name to its declaration information.
     subcmp_decls: HashMap<String, SubcmpDeclInfo<'ctx>>,
+    /// The template params that may be used to instantiate array dimensions.
+    template_params: HashSet<String>,
 }
 
 impl<'ctx> DeclarationInfo<'ctx> {
@@ -99,7 +107,10 @@ impl<'ctx> DeclarationInfo<'ctx> {
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         template: &impl TemplateLike,
     ) -> Result<DeclarationInfo<'ctx>> {
-        let mut declarations = DeclarationInfo::default();
+        let mut declarations = DeclarationInfo {
+            template_params: template.get_name_of_params().iter().cloned().collect(),
+            ..DeclarationInfo::default()
+        };
         for s in template.get_body() {
             declarations.visit(codegen, s)?;
         }
@@ -162,7 +173,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         // processed later, this is replaced with the appropriate value.
                         self.decl_inits.insert(
                             name.clone(),
-                            codegen.new_nondet_felt_of_dimensions(meta, dimensions)?,
+                            self.new_nondet_felt_of_dimensions(codegen, meta, dimensions)?,
                         );
                         Ok(())
                     }
@@ -182,18 +193,19 @@ impl<'ctx> DeclarationInfo<'ctx> {
     ///
     /// In this context, constructor refers to `Foo(n)` in Circom, not `@Foo::@compute` in LLZK.
     fn find_subcmp_ctor_call<'ast>(
+        &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         expression: &'ast Expression,
     ) -> Result<StructType<'ctx>> {
         match expression {
             Expression::Call { meta, id, args, .. } if meta.get_type_knowledge().is_component() => {
-                codegen.struct_type_with_concrete_dimensions(id, args)
+                self.struct_type_with_concrete_dimensions(codegen, id, args)
             }
             Expression::ParallelOp { rhe, .. } => {
                 // `parallel` is a tag used to generate parallelized code for the C++
                 // witness generator. Since LLZK currently has no such hint,
                 // we simply generate the underlying expression.
-                Self::find_subcmp_ctor_call(codegen, rhe)
+                self.find_subcmp_ctor_call(codegen, rhe)
             }
             _ => bail!("expected call expression for subcomponent substitution rhe"),
         }
@@ -213,7 +225,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
             .subcmp_decls
             .insert(
                 name.to_owned(),
-                SubcmpDeclInfo::new(codegen.try_dimensions_to_attrs(dimensions)?, location),
+                SubcmpDeclInfo::new(self.try_dimensions_to_attrs(codegen, dimensions)?, location),
             )
             .is_some()
         {
@@ -234,7 +246,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
         base_type: Type<'ctx>,
     ) -> Result<()> {
         let location = codegen.location_from_meta(meta);
-        let decl_type = codegen.type_from_dimension_exprs(base_type, dimensions)?;
+        let decl_type = self.type_from_dimension_exprs(codegen, base_type, dimensions)?;
         self.visit_signal_or_bus_impl(codegen, signal_type, name, location, decl_type)
     }
 
@@ -285,7 +297,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
             Statement::Substitution { var, op, rhe, .. }
                 if matches!(op, AssignOp::AssignVar) && self.subcmp_decls.contains_key(var) =>
             {
-                let struct_type = Self::find_subcmp_ctor_call(codegen, rhe)?;
+                let struct_type = self.find_subcmp_ctor_call(codegen, rhe)?;
                 self.subcmp_decls.entry(var.clone()).and_modify(|info| {
                     info.instances_mut().push(struct_type);
                 });
@@ -310,6 +322,76 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 Ok(())
             }
             _ => Ok(()),
+        }
+    }
+}
+
+impl<'ast, 'ctx, 'val> DimExprConverter<'ctx, 'ast, 'val> for DeclarationInfo<'ctx>
+where
+    'ctx: 'val,
+{
+    #[allow(unused_variables)] // TODO: TEMP
+    fn convert_dim_expr(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        expr: &Expression,
+    ) -> Result<ArrayDimension<'ctx, 'val>> {
+        // First try to compute statically, falling back to literal computation
+        // if all values are not compile-time constants or if the final result
+        // does not properly convert to i64.
+        if let Some(integer) =
+            codegen.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64)
+        {
+            let int_attr = codegen.index_attr(integer);
+            ArrayDimension::new(int_attr.into(), &[])
+        } else {
+            match expr {
+                Expression::Number(_, _) => {
+                    unreachable!("handled by try_compute_dim_expr")
+                }
+                Expression::Variable { meta, name, access } => match access.as_slice() {
+                    [] => {
+                        if self.template_params.contains(name) {
+                            let template_param_attr =
+                                FlatSymbolRefAttribute::new(codegen.context, name);
+                            ArrayDimension::new(template_param_attr.into(), &[])
+                        } else if let Some(op) = self.decl_inits.get(name) {
+                            let id_map = codegen.affine_map_attr("affine_map<()[i] -> (i)>")?;
+                            let value_range = op
+                                .results()
+                                .map(Into::<Value<'ctx, 'val>>::into)
+                                .collect::<Vec<_>>();
+                            ArrayDimension::new(id_map, &value_range)
+                        } else {
+                            todo!("Handle Variable expression in dimension for non-integer, non-template parameter attributes in DeclarationInfo")
+                        }
+                    }
+                    a => {
+                        todo!("Handle Variable expression with accesses in DeclarationInfo")
+                    }
+                },
+                Expression::InfixOp { meta, lhe, infix_op, rhe } => {
+                    todo!("Handle Infix expression in dimension for non-integer attributes in DeclarationInfo")
+                }
+                Expression::PrefixOp { meta, prefix_op, rhe } => {
+                    todo!("Handle Prefix expression in dimension for non-integer attributes in DeclarationInfo")
+                }
+                Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
+                    todo!(
+                        "Handle InlineSwitchOp expression in dimension for non-integer attributes in DeclarationInfo"
+                    )
+                }
+                Expression::Call { meta, id, args } => {
+                    todo!("Handle Call expression in dimension")
+                }
+                // The remaining cases do not produce a scalar value.
+                // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
+                // Give the same error that the circom type checker gives. The type checker ran
+                // earlier so this should technically be unreachable.
+                _ => {
+                    Err(anyhow!("Array indexes and lengths must be single arithmetic expressions"))
+                }
+            }
         }
     }
 }
