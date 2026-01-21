@@ -33,7 +33,9 @@ component main = EarlyReturn();
 // CHECK-NEXT:      %[[V_4:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[V_E1:[0-9a-zA-Z_\.]+]] = %[[V_E0]], %[[V_R1:[0-9a-zA-Z_\.]+]] = %[[V_R0]]) : (i1, !felt.type) -> (i1, !felt.type) {
 // CHECK-NEXT:        %[[V_7:[0-9a-zA-Z_\.]+]] = felt.const  6
 // CHECK-NEXT:        %[[V_8:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[V_I0]], %[[V_7]])
-// CHECK-NEXT:        scf.condition(%[[V_8]]) %[[V_E1]], %[[V_R1]] : i1, !felt.type
+// CHECK-NEXT:        %[[V_9:[0-9a-zA-Z_\.]+]] = bool.not %[[V_E1]] : i1
+// CHECK-NEXT:        %[[V_10:[0-9a-zA-Z_\.]+]] = bool.and %[[V_9]], %[[V_8]] : i1, i1
+// CHECK-NEXT:        scf.condition(%[[V_10]]) %[[V_E1]], %[[V_R1]] : i1, !felt.type
 // CHECK-NEXT:      } do {
 // CHECK-NEXT:      ^bb0(%[[V_E2:[0-9a-zA-Z_\.]+]]: i1, %[[V_R2:[0-9a-zA-Z_\.]+]]: !felt.type):
 // CHECK-NEXT:        %[[V_E3:[0-9a-zA-Z_\.]+]] = arith.constant true
