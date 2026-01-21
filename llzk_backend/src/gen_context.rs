@@ -3,6 +3,7 @@
 use crate::function::FunctionContext;
 use crate::shared::single_result_as_value;
 use anyhow::anyhow;
+use anyhow::ensure;
 use anyhow::Result;
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
@@ -148,6 +149,14 @@ where
     }
 
     /// Ref to the current block context (i.e. the top of the stack).
+    fn top(&self) -> &BlockContext<'ctx, 'blk, 'val> {
+        match self.other_blocks.last() {
+            Some(bc) => bc,
+            None => &self.root,
+        }
+    }
+
+    /// Mutable ref to the current block context (i.e. the top of the stack).
     fn top_mut(&mut self) -> &mut BlockContext<'ctx, 'blk, 'val> {
         match self.other_blocks.last_mut() {
             Some(bc) => bc,
@@ -183,6 +192,28 @@ where
         Ok(())
     }
 
+    /// Check if the given name is already declared in the current scope.
+    pub fn is_name_present(&self, name: &str) -> bool {
+        self.top().scope_local_name_to_value.contains_key(name)
+    }
+
+    /// Ensure the given name is not already declared in the current scope, then declare it by producing an
+    /// [Operation] via the callback, inserting that into the current block, and using its result.
+    /// The only scenario where a declaration would already be present is when the same Declaration
+    /// statements are visited that were used to produce the parameters of the current function.
+    /// Otherwise, the checks performed earlier in the circom parser pipeline will produce an error
+    /// if a symbol is declared more than once in the same scope.
+    pub fn declare_name_ensure_not_present(
+        &mut self,
+        name: &str,
+        op: Operation<'ctx>,
+    ) -> Result<()> {
+        ensure!(!self.is_name_present(name), format!("name {name} is already present"));
+        let value = single_result_as_value(self.append_current_block(op))?;
+        self.top_mut().scope_local_name_to_value.insert(name.to_string(), value);
+        Ok(())
+    }
+
     /// If the given name is not already declared in the current scope, declare it by producing an
     /// [Operation] via the callback, inserting that into the current block, and using its result.
     /// The only scenario where a declaration would already be present is when the same Declaration
@@ -194,7 +225,7 @@ where
         name: &str,
         uninit_value: impl FnOnce() -> Result<Operation<'ctx>>,
     ) -> Result<()> {
-        if !self.top_mut().scope_local_name_to_value.contains_key(name) {
+        if !self.is_name_present(name) {
             let op = uninit_value()?;
             let value = single_result_as_value(self.append_current_block(op))?;
             self.top_mut().scope_local_name_to_value.insert(name.to_string(), value);

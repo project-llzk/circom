@@ -39,6 +39,7 @@ fn start() -> Result<(), ()> {
             user_input.llzk_file(),
             &user_input.llzk_pass_pipeline(),
             &user_input.prime(),
+            user_input.flag_verbose(),
         );
     }
 
@@ -69,6 +70,13 @@ fn start() -> Result<(), ()> {
 
     let circuit = execution_user::execute_project(program_archive, config)?;
 
+    // Dump the VCP if requested
+    if user_input.dump_vcp_flag() {
+        println!("Dumping VCP to: {}", user_input.dump_vcp_file());
+        println!("{}", Colour::Yellow.paint("Dumping VCP may take a while for large circuits."));
+        write_to_file(format!("{:#?}", circuit), user_input.dump_vcp_file())?;
+    }
+
     // If requested, generate LLZK IR output after templates have been made concrete
     if let Some(public_inputs) = public_inputs {
         let vcp_plus = llzk_backend::VCPPlus { vcp: &circuit, public_inputs };
@@ -77,6 +85,7 @@ fn start() -> Result<(), ()> {
             user_input.llzk_file(),
             &user_input.llzk_pass_pipeline(),
             &user_input.prime(),
+            user_input.flag_verbose(),
         );
     }
 

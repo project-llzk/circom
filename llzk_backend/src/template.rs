@@ -12,11 +12,14 @@ use crate::gen_context::NestedBlockInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared::get_constrain_call;
 use crate::shared::op_result_owner;
+use crate::shared::ArrayDimension;
+use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
 use crate::template_ext::TemplateLike as _;
 use crate::write_chain::RootWriteOp;
 use crate::write_chain::WriteChain;
 use crate::write_chain::WriteTarget;
+use anyhow::anyhow;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
@@ -33,13 +36,14 @@ use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::LoopBoundsAttribute;
 use llzk::prelude::OperationLike;
-use llzk::prelude::OperationResult;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
 use llzk::value_ext::replace_all_uses;
+use num_bigint_dig::BigUint;
+use num_traits::ToPrimitive;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
@@ -560,6 +564,68 @@ where
     }
 }
 
+impl<'ast, 'ctx, 'func, 'blk, 'val, 'str> DimExprConverter<'ctx, 'ast, 'val>
+    for TemplateContext<'ctx, 'str, 'func, 'blk, 'val>
+where
+    'ctx: 'str,
+    'str: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    #[allow(unused_variables)] // TODO: TEMP
+    fn convert_dim_expr(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        expr: &Expression,
+    ) -> Result<ArrayDimension<'ctx, 'val>> {
+        // First try to compute statically, falling back to literal computation
+        // if all values are not compile-time constants or if the final result
+        // does not properly convert to i64.
+        if let Some(integer) =
+            codegen.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64)
+        {
+            let int_attr = codegen.index_attr(integer);
+            ArrayDimension::new(int_attr.into(), &[])
+        } else {
+            match expr {
+                Expression::Number(_, _) => {
+                    unreachable!("handled by try_compute_dim_expr")
+                }
+                Expression::Variable { meta, name, access } => match access.as_slice() {
+                    [] => {
+                        println!("got {name} for var dim");
+                        todo!("complete me")
+                    }
+                    a => {
+                        todo!("resolve")
+                    }
+                },
+                Expression::InfixOp { meta, lhe, infix_op, rhe } => {
+                    todo!("Handle Infix expression in dimension for non-integer attributes")
+                }
+                Expression::PrefixOp { meta, prefix_op, rhe } => {
+                    todo!("Handle Prefix expression in dimension for non-integer attributes")
+                }
+                Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
+                    todo!(
+                        "Handle InlineSwitchOp expression in dimension for non-integer attributes"
+                    )
+                }
+                Expression::Call { meta, id, args } => {
+                    todo!("Handle Call expression in dimension")
+                }
+                // The remaining cases do not produce a scalar value.
+                // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
+                // Give the same error that the circom type checker gives. The type checker ran
+                // earlier so this should technically be unreachable.
+                _ => {
+                    Err(anyhow!("Array indexes and lengths must be single arithmetic expressions"))
+                }
+            }
+        }
+    }
+}
+
 /// A trait to generate LLZK IR from the body of a circom template.
 ///
 /// 'ctx: lifetime of the `LlzkContext` and generated `Module`
@@ -817,9 +883,12 @@ where
             }
             Statement::Declaration { meta, name, dimensions, .. } => {
                 template.and_then_same(|fc, _| {
-                    fc.block_ctx.declare_name_if_not_present(name, || {
-                        codegen.new_nondet_felt_of_dimensions(meta, dimensions)
-                    })
+                    if !fc.block_ctx.is_name_present(name) {
+                        let op = fc.new_nondet_felt_of_dimensions(codegen, meta, dimensions)?;
+                        fc.block_ctx.declare_name_ensure_not_present(name, op)
+                    } else {
+                        Ok(())
+                    }
                 })
             }
             Statement::Block { meta, stmts } => {
@@ -852,9 +921,7 @@ where
                                         let field_read = fc.block_ctx.get_named_value(var)?;
                                         // ASSERT: value comes from a `struct.readf`
                                         assert!(is_struct_readf(
-                                            &OperationResult::try_from(*field_read)
-                                                .unwrap()
-                                                .owner()
+                                            &op_result_owner(*field_read).unwrap()
                                         ));
                                         replace_all_uses(rhe, *field_read);
                                         fc.subcmp_calls.update_keys(rhe, *field_read);
@@ -1283,7 +1350,8 @@ where
                     && codegen.program.contains_template(id) =>
             {
                 let location = codegen.location_from_meta(meta);
-                let subcmp_type = codegen.struct_type_with_concrete_dimensions(id, args)?;
+                let subcmp_type =
+                    template.struct_type_with_concrete_dimensions(codegen, id, args)?;
                 let arg_types = std::iter::once(Type::from(subcmp_type))
                     .chain(codegen.get_template_input_types(id)?)
                     .collect::<Vec<_>>();

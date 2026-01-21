@@ -26,33 +26,50 @@ pub fn generate_llzk(
     filename: &str,
     pass_pipeline: &str,
     prime: &str,
+    verbose: bool,
 ) -> Result<(), ()> {
     let ctx = LlzkContext::new();
     let module = new_llzk_module(&ctx, program);
-    let mut codegen = LlzkCodegen { program, context: &ctx, module, prime_str: prime };
+    let mut codegen = LlzkCodegen { program, context: &ctx, module, prime_str: prime, verbose };
 
     program.gen_llzk(&codegen).map_err(|err| {
-        eprintln!("{} {err}", Color::Red.paint("Failed to generate LLZK IR:"));
+        if verbose {
+            eprintln!("{} {err:?}", Color::Red.paint("Failed to generate LLZK IR:"));
+        } else {
+            eprintln!("{} {err}", Color::Red.paint("Failed to generate LLZK IR:"));
+        }
         std::process::exit(1); // force exit to avoid hang if MLIR state is inconsistent
     })?;
 
     // Verify the module
     if let Err(err) = codegen.verify() {
         eprintln!("{}", Color::Red.paint("Generated LLZK IR is invalid"));
-        eprintln!("{err}");
+        if verbose {
+            eprintln!("{err:?}");
+        } else {
+            eprintln!("{err}");
+        }
         eprintln!("{}", codegen.module.as_operation());
         std::process::exit(2); // force exit to avoid hang if MLIR state is inconsistent
     }
 
     // Run user-specified MLIR pass pipeline
     codegen.run_passes(pass_pipeline).map_err(|err| {
-        eprintln!("{} {err}", Color::Red.paint("Failed to run pass pipeline:"));
+        if verbose {
+            eprintln!("{} {err:?}", Color::Red.paint("Failed to run pass pipeline:"));
+        } else {
+            eprintln!("{} {err}", Color::Red.paint("Failed to run pass pipeline:"));
+        }
         std::process::exit(3); // force exit to avoid hang if MLIR state is inconsistent
     })?;
 
     // Write module to file
     codegen.write_to_file(filename).map_err(|err| {
-        eprintln!("{} {err}", Color::Red.paint("Failed to write LLZK IR:"));
+        if verbose {
+            eprintln!("{} {err:?}", Color::Red.paint("Failed to write LLZK IR:"));
+        } else {
+            eprintln!("{} {err}", Color::Red.paint("Failed to write LLZK IR:"));
+        }
         std::process::exit(4); // force exit to avoid hang if MLIR state is inconsistent
     })
 }
