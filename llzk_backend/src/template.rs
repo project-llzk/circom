@@ -32,10 +32,12 @@ use llzk::prelude::BlockRef;
 use llzk::prelude::CallOpLike as _;
 use llzk::prelude::CallOpRef;
 use llzk::prelude::FeltType;
+use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::LoopBoundsAttribute;
 use llzk::prelude::OperationLike;
+use llzk::prelude::StructDefOpLike;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Type;
@@ -593,11 +595,15 @@ where
                 }
                 Expression::Variable { meta, name, access } => match access.as_slice() {
                     [] => {
-                        println!("got {name} for var dim");
-                        todo!("complete me")
+                        // Grab the parameter name if it exists, else, defer to function generation.
+                        if self.struct_def.has_param_name(name) {
+                            ArrayDimension::new(FlatSymbolRefAttribute::new(&codegen.context, &name).into(), &[])
+                        } else {
+                            Err(anyhow!("other variables are unsupported, defer to function context"))
+                        }
                     }
                     a => {
-                        todo!("resolve")
+                        todo!("Handle Variable expression in dimension for non-integer attributes")
                     }
                 },
                 Expression::InfixOp { meta, lhe, infix_op, rhe } => {
@@ -1400,6 +1406,15 @@ where
                         Ok(undefs[0])
                     },
                 )
+            }
+            Expression::UniformArray { meta, value, dimension } => {
+                let location = codegen.location_from_meta(meta);
+                let value = value.gen_llzk_in_template(codegen, template)?;
+                value.and_then_same(|fc, value| {
+                    // Try to convert in template first, or defer to function context if unsuccessful.
+                    let dimension = template.convert_dim_expr(codegen, dimension).or_else(|_| fc.convert_dim_expr(codegen, dimension))?;
+                    fc.generate_uniform_array(codegen, location, value, dimension)
+                })
             }
             // Delegate any other kind of expression to the implementation in `function.rs`.
             expr => {
