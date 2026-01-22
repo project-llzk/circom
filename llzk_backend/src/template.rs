@@ -597,9 +597,14 @@ where
                     [] => {
                         // Grab the parameter name if it exists, else, defer to function generation.
                         if self.struct_def.has_param_name(name) {
-                            ArrayDimension::new(FlatSymbolRefAttribute::new(&codegen.context, &name).into(), &[])
+                            ArrayDimension::new(
+                                FlatSymbolRefAttribute::new(codegen.context, name).into(),
+                                &[],
+                            )
                         } else {
-                            Err(anyhow!("other variables are unsupported, defer to function context"))
+                            Err(anyhow!(
+                                "other variables are unsupported, defer to function context"
+                            ))
                         }
                     }
                     a => {
@@ -1418,7 +1423,7 @@ where
                     } else {
                         &fc.convert_dim_expr(codegen, dimension)?
                     };
-                    fc.generate_uniform_array(codegen, location, value, &final_dim)
+                    fc.generate_uniform_array(codegen, location, value, final_dim)
                 })
             }
             // Delegate any other kind of expression to the implementation in `function.rs`.

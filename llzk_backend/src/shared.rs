@@ -788,16 +788,23 @@ impl<'ctx, 'val> ArrayDimension<'ctx, 'val> {
     }
     /// Transform the array dimension using the given function that converts
     /// values into new values (e.g., casting operations to index).
-    pub fn transform(&self, map_fn: impl Fn(Value<'ctx, 'val>) -> Result<Value<'ctx, 'val>>) -> Result<Self> {
+    pub fn transform(
+        &self,
+        map_fn: impl Fn(Value<'ctx, 'val>) -> Result<Value<'ctx, 'val>>,
+    ) -> Result<Self> {
         Ok(Self {
             attr: self.attr,
             symbols: match &self.symbols {
                 None => None,
                 Some(ovr) => {
-                    let translated_vals = ovr.values().iter().map(|v| map_fn( unsafe { Value::from_raw(*v) })).collect::<Result<Vec<_>>>()?;
+                    let translated_vals = ovr
+                        .values()
+                        .iter()
+                        .map(|v| map_fn(unsafe { Value::from_raw(*v) }))
+                        .collect::<Result<Vec<_>>>()?;
                     Some(OwningValueRange::from(translated_vals.as_slice()))
                 }
-            }
+            },
         })
     }
     /// Access the inner attribute.
