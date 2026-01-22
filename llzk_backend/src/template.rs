@@ -1409,11 +1409,16 @@ where
             }
             Expression::UniformArray { meta, value, dimension } => {
                 let location = codegen.location_from_meta(meta);
+                let template_dim_res = template.convert_dim_expr(codegen, dimension);
                 let value = value.gen_llzk_in_template(codegen, template)?;
                 value.and_then_same(|fc, value| {
                     // Try to convert in template first, or defer to function context if unsuccessful.
-                    let dimension = template.convert_dim_expr(codegen, dimension).or_else(|_| fc.convert_dim_expr(codegen, dimension))?;
-                    fc.generate_uniform_array(codegen, location, value, dimension)
+                    let final_dim = if let Ok(d) = &template_dim_res {
+                        d
+                    } else {
+                        &fc.convert_dim_expr(codegen, dimension)?
+                    };
+                    fc.generate_uniform_array(codegen, location, value, &final_dim)
                 })
             }
             // Delegate any other kind of expression to the implementation in `function.rs`.

@@ -789,9 +789,9 @@ where
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         value: Value<'ctx, 'val>,
-        dimension: ArrayDimension<'ctx, 'val>
+        dimension: &ArrayDimension<'ctx, 'val>
     ) -> Result<Value<'ctx, 'val>> {
-        let const_dim = IntegerAttribute::try_from(&dimension);
+        let const_dim = IntegerAttribute::try_from(dimension);
         if let Ok(subarr_ty) = ArrayType::try_from(value.r#type()) {
             let arr_ty = dimension.new_array_type(&subarr_ty.into());
             // The array.new constructor doesn't accept arrays as initializer values,
@@ -1854,7 +1854,7 @@ where
                 // Multi-dimensional arrays are made up of array values as their elements
                 let value = value.gen_llzk_in_function(codegen, function)?;
                 let dimension = function.convert_dim_expr(codegen, dimension)?;
-                function.generate_uniform_array(codegen, location, value, dimension)
+                function.generate_uniform_array(codegen, location, value, &dimension)
             }
             Expression::Call { meta, id, args } => {
                 let builder = OpBuilder::new(codegen.context.deref());

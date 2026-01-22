@@ -765,7 +765,7 @@ pub fn remove_from_parent<'c: 'a, 'a>(
 /// Information needed to create a new LLZK array type with the given dimension
 /// and to instantiate that array if the dimension attribute is an affine_map
 /// with symbols.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ArrayDimension<'ctx, 'val> {
     /// The attribute to use as the dimension; could be a constant, a symbol, or an affine map.
     attr: Attribute<'ctx>,

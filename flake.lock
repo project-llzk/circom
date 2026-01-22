@@ -88,11 +88,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1769018304,
-        "narHash": "sha256-M2Qsw9z2lH80GsbRW4dr1DUqxAU4lvLbFIdaxt2ll0E=",
+        "lastModified": 1769047368,
+        "narHash": "sha256-ldSkrUgMzFwAYFgOgOF1F9TIwmBlKX+ML6VnUNARTz4=",
         "ref": "refs/heads/main",
-        "rev": "30be0c62b12188ebf11f59677bb16de21b492307",
-        "revCount": 317,
+        "rev": "1fab594b7c7c451d86f8c0bd038adf0fe621f17e",
+        "revCount": 318,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/project-llzk/llzk-rs"
