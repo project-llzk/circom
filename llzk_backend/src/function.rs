@@ -1646,8 +1646,26 @@ where
                         })
                         .collect::<Result<Vec<Value<'_, '_>>>>()?;
                     let v = function.block_ctx.get_named_value(name)?;
-                    let arr_ty = ArrayType::try_from(v.r#type())?;
-                    let array_get_op = array::read(location, arr_ty.element_type(), *v, &indices);
+                    let arr_ty = ArrayType::try_from(v.r#type())
+                        .with_context(|| format!("Conflicting types for '{name}' at {location}"))?;
+                    let arr_ty_dims = arr_ty.dims();
+                    let array_get_op = match indices.len().cmp(&arr_ty_dims.len()) {
+                        std::cmp::Ordering::Equal => {
+                            // Indexing all dimensions requires an `array.read`
+                            array::read(location, arr_ty.element_type(), *v, &indices)
+                        }
+                        std::cmp::Ordering::Less => {
+                            // Indexing a subset of dimensions requires an `array.extract`
+                            let reduced_dims: Vec<_> =
+                                arr_ty_dims.iter().skip(indices.len()).copied().collect();
+                            let reduced_type =
+                                ArrayType::new(arr_ty.element_type().into(), &reduced_dims);
+                            array::extract(location, reduced_type.into(), *v, &indices)
+                        }
+                        std::cmp::Ordering::Greater => {
+                            anyhow::bail!("Too many indices to access array '{}'", name);
+                        }
+                    };
                     function.append_op_unnamed_result(array_get_op)
                 }
             },
