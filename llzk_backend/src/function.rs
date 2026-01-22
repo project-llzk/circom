@@ -23,6 +23,8 @@ use crate::shared::replace_uses_with_new_block_argument;
 use crate::shared::set_operand_if_undef;
 use crate::shared::single_result_as_value;
 use crate::shared::ArrayDimension;
+use crate::shared::ArrayDimensionResult;
+use crate::shared::ArrayDimensions;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::SubcmpCallsMap;
@@ -791,6 +793,8 @@ where
         value: Value<'ctx, 'val>,
         dimension: &ArrayDimension<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
+        // Ensure all symbols are of index type
+        let dimension = &self.transform_symbols_to_index(location, dimension)?;
         let const_dim = IntegerAttribute::try_from(dimension);
         if let Ok(subarr_ty) = ArrayType::try_from(value.r#type()) {
             let arr_ty = dimension.new_array_type(&subarr_ty.into());
@@ -1140,6 +1144,17 @@ where
 
         Ok(())
     }
+
+    /// Cast all symbols passed to affine_maps into index types, which is required
+    /// for affine_map usage.
+    #[inline]
+    fn transform_symbols_to_index(
+        &mut self,
+        location: Location<'ctx>,
+        dimension: &ArrayDimension<'ctx, 'val>,
+    ) -> Result<ArrayDimension<'ctx, 'val>> {
+        dimension.transform(|val| self.cast_to_index_if_needed(location, val))
+    }
 }
 
 impl<'ast, 'ctx, 'func, 'blk, 'val> DimExprConverter<'ctx, 'ast, 'val>
@@ -1154,7 +1169,7 @@ where
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         expr: &Expression,
-    ) -> Result<ArrayDimension<'ctx, 'val>> {
+    ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
         // First try to compute statically, falling back to literal computation
         // if all values are not compile-time constants or if the final result
         // does not properly convert to i64.
@@ -1162,7 +1177,7 @@ where
             codegen.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64)
         {
             let int_attr = codegen.index_attr(integer);
-            ArrayDimension::new(int_attr.into(), &[])
+            ArrayDimensionResult::new(int_attr.into(), &[])
         } else {
             match expr {
                 Expression::Number(_, _) => {
@@ -1172,7 +1187,7 @@ where
                     [] => {
                         if let Ok(v) = self.block_ctx.get_named_value(name) {
                             let id_map = codegen.affine_map_attr("affine_map<()[i] -> (i)>")?;
-                            ArrayDimension::new(id_map, &[*v])
+                            ArrayDimensionResult::new(id_map, &[*v])
                         } else {
                             todo!("Handle Variable expression in dimension for non-integer, non-template parameter attributes in FunctionContext")
                         }
@@ -1200,7 +1215,7 @@ where
                 // Give the same error that the circom type checker gives. The type checker ran
                 // earlier so this should technically be unreachable.
                 _ => {
-                    Err(anyhow!("Array indexes and lengths must be single arithmetic expressions"))
+                    unreachable!("Array indexes and lengths must be single arithmetic expressions")
                 }
             }
         }
@@ -1341,13 +1356,16 @@ where
     nonreturning_block_overwrites.insert(
         VAR_NAME_RETURN_VAL.to_string(),
         function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL).cloned().or_else(|_| {
-            single_result_as_value(nonreturning_block.append_operation(
-                // TODO: just like `gen_function_llzk()`, this must use an array type
-                // if applicable but is currently implemented for scalar `felt.type` only.
-                // In this case, the correct solution (once nondet op is supported for any type)
-                // is to just create the nondet op using `return_val.getType()`
-                function.new_nondet_felt_of_dimensions_at_location(codegen, location, &[])?,
-            ))
+            single_result_as_value(
+                nonreturning_block.append_operation(
+                    // TODO: just like `gen_function_llzk()`, this must use an array type
+                    // if applicable but is currently implemented for scalar `felt.type` only.
+                    // In this case, the correct solution (once nondet op is supported for any type)
+                    // is to just create the nondet op using `return_val.getType()`
+                    ArrayDimensions::new_empty()
+                        .new_nondet_felt_of_dimensions_at_location(codegen, location)?,
+                ),
+            )
         })?,
     );
     Ok(())
@@ -1537,7 +1555,8 @@ where
                 // In this case, the correct solution (once nondet op is supported for any
                 // type) is to just create the nondet op using
                 // `return_val.getType()`
-                function.new_nondet_felt_of_dimensions_at_location(codegen, location, &[])?,
+                ArrayDimensions::new_empty()
+                    .new_nondet_felt_of_dimensions_at_location(codegen, location)?,
                 VAR_NAME_RETURN_VAL.to_string(),
             )?;
         }
@@ -1605,7 +1624,8 @@ where
                     unreachable!("Template elements declared inside the function")
                 }
                 if !function.block_ctx.is_name_present(name) {
-                    let op = function.new_nondet_felt_of_dimensions(codegen, meta, dimensions)?;
+                    let dims = function.get_dimensions(codegen, dimensions)?;
+                    let op = dims.new_nondet_felt_of_dimensions(codegen, meta)?;
                     function.block_ctx.declare_name_ensure_not_present(name, op)?;
                 }
                 Ok(false)
@@ -1849,8 +1869,10 @@ where
                 let location = codegen.location_from_meta(meta);
                 // Multi-dimensional arrays are made up of array values as their elements
                 let value = value.gen_llzk_in_function(codegen, function)?;
-                let dimension = function.convert_dim_expr(codegen, dimension)?;
-                function.generate_uniform_array(codegen, location, value, &dimension)
+                let dim_result = function.convert_dim_expr(codegen, dimension)?;
+                let dim = Option::from(dim_result)
+                    .ok_or_else(|| anyhow!("unable to convert dimension in function context"))?;
+                function.generate_uniform_array(codegen, location, value, &dim)
             }
             Expression::Call { meta, id, args } => {
                 let builder = OpBuilder::new(codegen.context.deref());
