@@ -35,138 +35,140 @@ component main = InnerConditional9(4);
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @InnerConditional9<[@N]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
-// CHECK-NEXT:      function.def @compute() -> !struct.type<@InnerConditional9<[@N]>> attributes {function.allow_witness} {
-// CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerConditional9<[@N]>>
-// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = array.new  : <@N x !felt.type>
-// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = array.len %[[VAL_3]], %[[VAL_4]] : <@N x !felt.type>
-// CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:        scf.for %[[VAL_8:[0-9a-zA-Z_\.]+]] = %[[VAL_6]] to %[[VAL_5]] step %[[VAL_7]] {
-// CHECK-NEXT:          array.write %[[VAL_3]]{{\[}}%[[VAL_8]]] = %[[VAL_2]] : <@N x !felt.type>, !felt.type
+// CHECK-LABEL:     function.def @compute
+// CHECK-SAME:      () -> !struct.type<@InnerConditional9<[@N]>> attributes {function.allow_witness} {
+// CHECK-NEXT:        %[[V_0:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerConditional9<[@N]>>
+// CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
+// CHECK-NEXT:        %[[V_2:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[V_3:[0-9a-zA-Z_\.]+]] = array.new  : <@N x !felt.type>
+// CHECK-NEXT:        %[[V_4:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
+// CHECK-NEXT:        %[[V_5:[0-9a-zA-Z_\.]+]] = array.len %[[V_3]], %[[V_4]] : <@N x !felt.type>
+// CHECK-NEXT:        %[[V_6:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
+// CHECK-NEXT:        %[[V_7:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
+// CHECK-NEXT:        scf.for %[[V_8:[0-9a-zA-Z_\.]+]] = %[[V_6]] to %[[V_5]] step %[[V_7]] {
+// CHECK-NEXT:          array.write %[[V_3]]{{\[}}%[[V_8]]] = %[[V_2]] : <@N x !felt.type>, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_11:[0-9a-zA-Z_\.]+]] = %[[VAL_3]], %[[VAL_12:[0-9a-zA-Z_\.]+]] = %[[VAL_9]]) : (!array.type<@N x !felt.type>, !felt.type) -> (!array.type<@N x !felt.type>, !felt.type) {
-// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_12]], %[[VAL_1]])
-// CHECK-NEXT:          scf.condition(%[[VAL_13]]) %[[VAL_11]], %[[VAL_12]] : !array.type<@N x !felt.type>, !felt.type
+// CHECK-NEXT:        %[[V_9:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[V_10:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[V_11:[0-9a-zA-Z_\.]+]] = %[[V_3]], %[[V_12:[0-9a-zA-Z_\.]+]] = %[[V_9]]) : (!array.type<@N x !felt.type>, !felt.type) -> (!array.type<@N x !felt.type>, !felt.type) {
+// CHECK-NEXT:          %[[V_13:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[V_12]], %[[V_N]])
+// CHECK-NEXT:          scf.condition(%[[V_13]]) %[[V_11]], %[[V_12]] : !array.type<@N x !felt.type>, !felt.type
 // CHECK-NEXT:        } do {
-// CHECK-NEXT:        ^bb0(%[[VAL_14:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>, %[[VAL_15:[0-9a-zA-Z_\.]+]]: !felt.type):
-// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.const  2
-// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_15]], %[[VAL_16]])
-// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_17]] -> (!array.type<@N x !felt.type>) {
-// CHECK-NEXT:            %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:            %[[VAL_20:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_21:[0-9a-zA-Z_\.]+]] = %[[VAL_14]], %[[VAL_22:[0-9a-zA-Z_\.]+]] = %[[VAL_19]]) : (!array.type<@N x !felt.type>, !felt.type) -> (!array.type<@N x !felt.type>, !felt.type) {
-// CHECK-NEXT:              %[[VAL_23:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_22]], %[[VAL_1]])
-// CHECK-NEXT:              scf.condition(%[[VAL_23]]) %[[VAL_21]], %[[VAL_22]] : !array.type<@N x !felt.type>, !felt.type
+// CHECK-NEXT:        ^bb0(%[[V_14:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>, %[[V_15:[0-9a-zA-Z_\.]+]]: !felt.type):
+// CHECK-NEXT:          %[[V_16:[0-9a-zA-Z_\.]+]] = felt.const  2
+// CHECK-NEXT:          %[[V_17:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[V_15]], %[[V_16]])
+// CHECK-NEXT:          %[[V_18:[0-9a-zA-Z_\.]+]] = scf.if %[[V_17]] -> (!array.type<@N x !felt.type>) {
+// CHECK-NEXT:            %[[V_19:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:            %[[V_20:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[V_21:[0-9a-zA-Z_\.]+]] = %[[V_14]], %[[V_22:[0-9a-zA-Z_\.]+]] = %[[V_19]]) : (!array.type<@N x !felt.type>, !felt.type) -> (!array.type<@N x !felt.type>, !felt.type) {
+// CHECK-NEXT:              %[[V_23:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[V_22]], %[[V_N]])
+// CHECK-NEXT:              scf.condition(%[[V_23]]) %[[V_21]], %[[V_22]] : !array.type<@N x !felt.type>, !felt.type
 // CHECK-NEXT:            } do {
-// CHECK-NEXT:            ^bb0(%[[VAL_24:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>, %[[VAL_25:[0-9a-zA-Z_\.]+]]: !felt.type):
-// CHECK-NEXT:              %[[VAL_26:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_15]]
-// CHECK-NEXT:              %[[VAL_27:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_24]]{{\[}}%[[VAL_26]]] : <@N x !felt.type>, !felt.type
-// CHECK-NEXT:              %[[VAL_28:[0-9a-zA-Z_\.]+]] = felt.const  999
-// CHECK-NEXT:              %[[VAL_29:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_27]], %[[VAL_28]] : !felt.type, !felt.type
-// CHECK-NEXT:              %[[VAL_30:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_15]]
-// CHECK-NEXT:              array.write %[[VAL_24]]{{\[}}%[[VAL_30]]] = %[[VAL_29]] : <@N x !felt.type>, !felt.type
-// CHECK-NEXT:              %[[VAL_31:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:              %[[VAL_32:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_25]], %[[VAL_31]] : !felt.type, !felt.type
-// CHECK-NEXT:              scf.yield %[[VAL_24]], %[[VAL_32]] : !array.type<@N x !felt.type>, !felt.type
+// CHECK-NEXT:            ^bb0(%[[V_24:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>, %[[V_25:[0-9a-zA-Z_\.]+]]: !felt.type):
+// CHECK-NEXT:              %[[V_26:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_15]]
+// CHECK-NEXT:              %[[V_27:[0-9a-zA-Z_\.]+]] = array.read %[[V_24]]{{\[}}%[[V_26]]] : <@N x !felt.type>, !felt.type
+// CHECK-NEXT:              %[[V_28:[0-9a-zA-Z_\.]+]] = felt.const  999
+// CHECK-NEXT:              %[[V_29:[0-9a-zA-Z_\.]+]] = felt.add %[[V_27]], %[[V_28]] : !felt.type, !felt.type
+// CHECK-NEXT:              %[[V_30:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_15]]
+// CHECK-NEXT:              array.write %[[V_24]]{{\[}}%[[V_30]]] = %[[V_29]] : <@N x !felt.type>, !felt.type
+// CHECK-NEXT:              %[[V_31:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:              %[[V_32:[0-9a-zA-Z_\.]+]] = felt.add %[[V_25]], %[[V_31]] : !felt.type, !felt.type
+// CHECK-NEXT:              scf.yield %[[V_24]], %[[V_32]] : !array.type<@N x !felt.type>, !felt.type
 // CHECK-NEXT:            }
-// CHECK-NEXT:            scf.yield %[[VAL_20]]#0 : !array.type<@N x !felt.type>
+// CHECK-NEXT:            scf.yield %[[V_20]]#0 : !array.type<@N x !felt.type>
 // CHECK-NEXT:          } else {
-// CHECK-NEXT:            %[[VAL_33:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:            %[[VAL_34:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_35:[0-9a-zA-Z_\.]+]] = %[[VAL_14]], %[[VAL_36:[0-9a-zA-Z_\.]+]] = %[[VAL_33]]) : (!array.type<@N x !felt.type>, !felt.type) -> (!array.type<@N x !felt.type>, !felt.type) {
-// CHECK-NEXT:              %[[VAL_37:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_36]], %[[VAL_1]])
-// CHECK-NEXT:              scf.condition(%[[VAL_37]]) %[[VAL_35]], %[[VAL_36]] : !array.type<@N x !felt.type>, !felt.type
+// CHECK-NEXT:            %[[V_33:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:            %[[V_34:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[V_35:[0-9a-zA-Z_\.]+]] = %[[V_14]], %[[V_36:[0-9a-zA-Z_\.]+]] = %[[V_33]]) : (!array.type<@N x !felt.type>, !felt.type) -> (!array.type<@N x !felt.type>, !felt.type) {
+// CHECK-NEXT:              %[[V_37:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[V_36]], %[[V_N]])
+// CHECK-NEXT:              scf.condition(%[[V_37]]) %[[V_35]], %[[V_36]] : !array.type<@N x !felt.type>, !felt.type
 // CHECK-NEXT:            } do {
-// CHECK-NEXT:            ^bb0(%[[VAL_38:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>, %[[VAL_39:[0-9a-zA-Z_\.]+]]: !felt.type):
-// CHECK-NEXT:              %[[VAL_40:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_15]]
-// CHECK-NEXT:              %[[VAL_41:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_38]]{{\[}}%[[VAL_40]]] : <@N x !felt.type>, !felt.type
-// CHECK-NEXT:              %[[VAL_42:[0-9a-zA-Z_\.]+]] = felt.const  888
-// CHECK-NEXT:              %[[VAL_43:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_41]], %[[VAL_42]] : !felt.type, !felt.type
-// CHECK-NEXT:              %[[VAL_44:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_15]]
-// CHECK-NEXT:              array.write %[[VAL_38]]{{\[}}%[[VAL_44]]] = %[[VAL_43]] : <@N x !felt.type>, !felt.type
-// CHECK-NEXT:              %[[VAL_45:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:              %[[VAL_46:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_39]], %[[VAL_45]] : !felt.type, !felt.type
-// CHECK-NEXT:              scf.yield %[[VAL_38]], %[[VAL_46]] : !array.type<@N x !felt.type>, !felt.type
+// CHECK-NEXT:            ^bb0(%[[V_38:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>, %[[V_39:[0-9a-zA-Z_\.]+]]: !felt.type):
+// CHECK-NEXT:              %[[V_40:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_15]]
+// CHECK-NEXT:              %[[V_41:[0-9a-zA-Z_\.]+]] = array.read %[[V_38]]{{\[}}%[[V_40]]] : <@N x !felt.type>, !felt.type
+// CHECK-NEXT:              %[[V_42:[0-9a-zA-Z_\.]+]] = felt.const  888
+// CHECK-NEXT:              %[[V_43:[0-9a-zA-Z_\.]+]] = felt.add %[[V_41]], %[[V_42]] : !felt.type, !felt.type
+// CHECK-NEXT:              %[[V_44:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_15]]
+// CHECK-NEXT:              array.write %[[V_38]]{{\[}}%[[V_44]]] = %[[V_43]] : <@N x !felt.type>, !felt.type
+// CHECK-NEXT:              %[[V_45:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:              %[[V_46:[0-9a-zA-Z_\.]+]] = felt.add %[[V_39]], %[[V_45]] : !felt.type, !felt.type
+// CHECK-NEXT:              scf.yield %[[V_38]], %[[V_46]] : !array.type<@N x !felt.type>, !felt.type
 // CHECK-NEXT:            }
-// CHECK-NEXT:            scf.yield %[[VAL_34]]#0 : !array.type<@N x !felt.type>
+// CHECK-NEXT:            scf.yield %[[V_34]]#0 : !array.type<@N x !felt.type>
 // CHECK-NEXT:          }
-// CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_15]], %[[VAL_47]] : !felt.type, !felt.type
-// CHECK-NEXT:          scf.yield %[[VAL_18]], %[[VAL_48]] : !array.type<@N x !felt.type>, !felt.type
+// CHECK-NEXT:          %[[V_47:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:          %[[V_48:[0-9a-zA-Z_\.]+]] = felt.add %[[V_15]], %[[V_47]] : !felt.type, !felt.type
+// CHECK-NEXT:          scf.yield %[[V_18]], %[[V_48]] : !array.type<@N x !felt.type>, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_49:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:        %[[VAL_50:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_49]]
-// CHECK-NEXT:        %[[VAL_51:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_10]]#0{{\[}}%[[VAL_50]]] : <@N x !felt.type>, !felt.type
-// CHECK-NEXT:        %[[VAL_52:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:        %[[VAL_53:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_52]]
-// CHECK-NEXT:        %[[VAL_54:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_10]]#0{{\[}}%[[VAL_53]]] : <@N x !felt.type>, !felt.type
-// CHECK-NEXT:        %[[VAL_55:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_51]], %[[VAL_54]] : !felt.type, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_0]][@out] = %[[VAL_55]] : <@InnerConditional9<[@N]>>, !felt.type
-// CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@InnerConditional9<[@N]>>
+// CHECK-NEXT:        %[[V_49:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[V_50:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_49]]
+// CHECK-NEXT:        %[[V_51:[0-9a-zA-Z_\.]+]] = array.read %[[V_10]]#0{{\[}}%[[V_50]]] : <@N x !felt.type>, !felt.type
+// CHECK-NEXT:        %[[V_52:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:        %[[V_53:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_52]]
+// CHECK-NEXT:        %[[V_54:[0-9a-zA-Z_\.]+]] = array.read %[[V_10]]#0{{\[}}%[[V_53]]] : <@N x !felt.type>, !felt.type
+// CHECK-NEXT:        %[[V_55:[0-9a-zA-Z_\.]+]] = felt.add %[[V_51]], %[[V_54]] : !felt.type, !felt.type
+// CHECK-NEXT:        struct.writef %[[V_0]][@out] = %[[V_55]] : <@InnerConditional9<[@N]>>, !felt.type
+// CHECK-NEXT:        function.return %[[V_0]] : !struct.type<@InnerConditional9<[@N]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_56:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerConditional9<[@N]>>) attributes {function.allow_constraint} {
-// CHECK-NEXT:        %[[VAL_57:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %[[VAL_58:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:        %[[VAL_59:[0-9a-zA-Z_\.]+]] = array.new  : <@N x !felt.type>
-// CHECK-NEXT:        %[[VAL_60:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:        %[[VAL_61:[0-9a-zA-Z_\.]+]] = array.len %[[VAL_59]], %[[VAL_60]] : <@N x !felt.type>
-// CHECK-NEXT:        %[[VAL_62:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:        %[[VAL_63:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:        scf.for %[[VAL_64:[0-9a-zA-Z_\.]+]] = %[[VAL_62]] to %[[VAL_61]] step %[[VAL_63]] {
-// CHECK-NEXT:          array.write %[[VAL_59]]{{\[}}%[[VAL_64]]] = %[[VAL_58]] : <@N x !felt.type>, !felt.type
+// CHECK-LABEL:     function.def @constrain
+// CHECK-SAME:      (%[[V_56:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerConditional9<[@N]>>) attributes {function.allow_constraint} {
+// CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
+// CHECK-NEXT:        %[[V_58:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[V_A:[0-9a-zA-Z_\.]+]] = array.new  : <@N x !felt.type>
+// CHECK-NEXT:        %[[V_60:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
+// CHECK-NEXT:        %[[V_61:[0-9a-zA-Z_\.]+]] = array.len %[[V_A]], %[[V_60]] : <@N x !felt.type>
+// CHECK-NEXT:        %[[V_62:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
+// CHECK-NEXT:        %[[V_63:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
+// CHECK-NEXT:        scf.for %[[V_64:[0-9a-zA-Z_\.]+]] = %[[V_62]] to %[[V_61]] step %[[V_63]] {
+// CHECK-NEXT:          array.write %[[V_A]]{{\[}}%[[V_64]]] = %[[V_58]] : <@N x !felt.type>, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_65:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:        %[[VAL_66:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_67:[0-9a-zA-Z_\.]+]] = %[[VAL_59]], %[[VAL_68:[0-9a-zA-Z_\.]+]] = %[[VAL_65]]) : (!array.type<@N x !felt.type>, !felt.type) -> (!array.type<@N x !felt.type>, !felt.type) {
-// CHECK-NEXT:          %[[VAL_69:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_68]], %[[VAL_57]])
-// CHECK-NEXT:          scf.condition(%[[VAL_69]]) %[[VAL_67]], %[[VAL_68]] : !array.type<@N x !felt.type>, !felt.type
+// CHECK-NEXT:        %[[V_65:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[V_66:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[V_67:[0-9a-zA-Z_\.]+]] = %[[V_A]], %[[V_68:[0-9a-zA-Z_\.]+]] = %[[V_65]]) : (!array.type<@N x !felt.type>, !felt.type) -> (!array.type<@N x !felt.type>, !felt.type) {
+// CHECK-NEXT:          %[[V_69:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[V_68]], %[[V_N]])
+// CHECK-NEXT:          scf.condition(%[[V_69]]) %[[V_67]], %[[V_68]] : !array.type<@N x !felt.type>, !felt.type
 // CHECK-NEXT:        } do {
-// CHECK-NEXT:        ^bb0(%[[VAL_70:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>, %[[VAL_71:[0-9a-zA-Z_\.]+]]: !felt.type):
-// CHECK-NEXT:          %[[VAL_72:[0-9a-zA-Z_\.]+]] = felt.const  2
-// CHECK-NEXT:          %[[VAL_73:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_71]], %[[VAL_72]])
-// CHECK-NEXT:          %[[VAL_74:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_73]] -> (!array.type<@N x !felt.type>) {
-// CHECK-NEXT:            %[[VAL_75:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:            %[[VAL_76:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_77:[0-9a-zA-Z_\.]+]] = %[[VAL_70]], %[[VAL_78:[0-9a-zA-Z_\.]+]] = %[[VAL_75]]) : (!array.type<@N x !felt.type>, !felt.type) -> (!array.type<@N x !felt.type>, !felt.type) {
-// CHECK-NEXT:              %[[VAL_79:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_78]], %[[VAL_57]])
-// CHECK-NEXT:              scf.condition(%[[VAL_79]]) %[[VAL_77]], %[[VAL_78]] : !array.type<@N x !felt.type>, !felt.type
+// CHECK-NEXT:        ^bb0(%[[V_70:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>, %[[V_71:[0-9a-zA-Z_\.]+]]: !felt.type):
+// CHECK-NEXT:          %[[V_72:[0-9a-zA-Z_\.]+]] = felt.const  2
+// CHECK-NEXT:          %[[V_73:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[V_71]], %[[V_72]])
+// CHECK-NEXT:          %[[V_74:[0-9a-zA-Z_\.]+]] = scf.if %[[V_73]] -> (!array.type<@N x !felt.type>) {
+// CHECK-NEXT:            %[[V_75:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:            %[[V_76:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[V_77:[0-9a-zA-Z_\.]+]] = %[[V_70]], %[[V_78:[0-9a-zA-Z_\.]+]] = %[[V_75]]) : (!array.type<@N x !felt.type>, !felt.type) -> (!array.type<@N x !felt.type>, !felt.type) {
+// CHECK-NEXT:              %[[V_79:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[V_78]], %[[V_N]])
+// CHECK-NEXT:              scf.condition(%[[V_79]]) %[[V_77]], %[[V_78]] : !array.type<@N x !felt.type>, !felt.type
 // CHECK-NEXT:            } do {
-// CHECK-NEXT:            ^bb0(%[[VAL_80:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>, %[[VAL_81:[0-9a-zA-Z_\.]+]]: !felt.type):
-// CHECK-NEXT:              %[[VAL_82:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_71]]
-// CHECK-NEXT:              %[[VAL_83:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_80]]{{\[}}%[[VAL_82]]] : <@N x !felt.type>, !felt.type
-// CHECK-NEXT:              %[[VAL_84:[0-9a-zA-Z_\.]+]] = felt.const  999
-// CHECK-NEXT:              %[[VAL_85:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_83]], %[[VAL_84]] : !felt.type, !felt.type
-// CHECK-NEXT:              %[[VAL_86:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_71]]
-// CHECK-NEXT:              array.write %[[VAL_80]]{{\[}}%[[VAL_86]]] = %[[VAL_85]] : <@N x !felt.type>, !felt.type
-// CHECK-NEXT:              %[[VAL_87:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:              %[[VAL_88:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_81]], %[[VAL_87]] : !felt.type, !felt.type
-// CHECK-NEXT:              scf.yield %[[VAL_80]], %[[VAL_88]] : !array.type<@N x !felt.type>, !felt.type
+// CHECK-NEXT:            ^bb0(%[[V_80:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>, %[[V_81:[0-9a-zA-Z_\.]+]]: !felt.type):
+// CHECK-NEXT:              %[[V_82:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_71]]
+// CHECK-NEXT:              %[[V_83:[0-9a-zA-Z_\.]+]] = array.read %[[V_80]]{{\[}}%[[V_82]]] : <@N x !felt.type>, !felt.type
+// CHECK-NEXT:              %[[V_84:[0-9a-zA-Z_\.]+]] = felt.const  999
+// CHECK-NEXT:              %[[V_85:[0-9a-zA-Z_\.]+]] = felt.add %[[V_83]], %[[V_84]] : !felt.type, !felt.type
+// CHECK-NEXT:              %[[V_86:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_71]]
+// CHECK-NEXT:              array.write %[[V_80]]{{\[}}%[[V_86]]] = %[[V_85]] : <@N x !felt.type>, !felt.type
+// CHECK-NEXT:              %[[V_87:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:              %[[V_88:[0-9a-zA-Z_\.]+]] = felt.add %[[V_81]], %[[V_87]] : !felt.type, !felt.type
+// CHECK-NEXT:              scf.yield %[[V_80]], %[[V_88]] : !array.type<@N x !felt.type>, !felt.type
 // CHECK-NEXT:            }
-// CHECK-NEXT:            scf.yield %[[VAL_76]]#0 : !array.type<@N x !felt.type>
+// CHECK-NEXT:            scf.yield %[[V_76]]#0 : !array.type<@N x !felt.type>
 // CHECK-NEXT:          } else {
-// CHECK-NEXT:            %[[VAL_89:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:            %[[VAL_90:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_91:[0-9a-zA-Z_\.]+]] = %[[VAL_70]], %[[VAL_92:[0-9a-zA-Z_\.]+]] = %[[VAL_89]]) : (!array.type<@N x !felt.type>, !felt.type) -> (!array.type<@N x !felt.type>, !felt.type) {
-// CHECK-NEXT:              %[[VAL_93:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_92]], %[[VAL_57]])
-// CHECK-NEXT:              scf.condition(%[[VAL_93]]) %[[VAL_91]], %[[VAL_92]] : !array.type<@N x !felt.type>, !felt.type
+// CHECK-NEXT:            %[[V_89:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:            %[[V_90:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[V_91:[0-9a-zA-Z_\.]+]] = %[[V_70]], %[[V_92:[0-9a-zA-Z_\.]+]] = %[[V_89]]) : (!array.type<@N x !felt.type>, !felt.type) -> (!array.type<@N x !felt.type>, !felt.type) {
+// CHECK-NEXT:              %[[V_93:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[V_92]], %[[V_N]])
+// CHECK-NEXT:              scf.condition(%[[V_93]]) %[[V_91]], %[[V_92]] : !array.type<@N x !felt.type>, !felt.type
 // CHECK-NEXT:            } do {
-// CHECK-NEXT:            ^bb0(%[[VAL_94:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>, %[[VAL_95:[0-9a-zA-Z_\.]+]]: !felt.type):
-// CHECK-NEXT:              %[[VAL_96:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_71]]
-// CHECK-NEXT:              %[[VAL_97:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_94]]{{\[}}%[[VAL_96]]] : <@N x !felt.type>, !felt.type
-// CHECK-NEXT:              %[[VAL_98:[0-9a-zA-Z_\.]+]] = felt.const  888
-// CHECK-NEXT:              %[[VAL_99:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_97]], %[[VAL_98]] : !felt.type, !felt.type
-// CHECK-NEXT:              %[[VAL_100:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_71]]
-// CHECK-NEXT:              array.write %[[VAL_94]]{{\[}}%[[VAL_100]]] = %[[VAL_99]] : <@N x !felt.type>, !felt.type
-// CHECK-NEXT:              %[[VAL_101:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:              %[[VAL_102:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_95]], %[[VAL_101]] : !felt.type, !felt.type
-// CHECK-NEXT:              scf.yield %[[VAL_94]], %[[VAL_102]] : !array.type<@N x !felt.type>, !felt.type
+// CHECK-NEXT:            ^bb0(%[[V_94:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>, %[[V_95:[0-9a-zA-Z_\.]+]]: !felt.type):
+// CHECK-NEXT:              %[[V_96:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_71]]
+// CHECK-NEXT:              %[[V_97:[0-9a-zA-Z_\.]+]] = array.read %[[V_94]]{{\[}}%[[V_96]]] : <@N x !felt.type>, !felt.type
+// CHECK-NEXT:              %[[V_98:[0-9a-zA-Z_\.]+]] = felt.const  888
+// CHECK-NEXT:              %[[V_99:[0-9a-zA-Z_\.]+]] = felt.add %[[V_97]], %[[V_98]] : !felt.type, !felt.type
+// CHECK-NEXT:              %[[V_100:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_71]]
+// CHECK-NEXT:              array.write %[[V_94]]{{\[}}%[[V_100]]] = %[[V_99]] : <@N x !felt.type>, !felt.type
+// CHECK-NEXT:              %[[V_101:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:              %[[V_102:[0-9a-zA-Z_\.]+]] = felt.add %[[V_95]], %[[V_101]] : !felt.type, !felt.type
+// CHECK-NEXT:              scf.yield %[[V_94]], %[[V_102]] : !array.type<@N x !felt.type>, !felt.type
 // CHECK-NEXT:            }
-// CHECK-NEXT:            scf.yield %[[VAL_90]]#0 : !array.type<@N x !felt.type>
+// CHECK-NEXT:            scf.yield %[[V_90]]#0 : !array.type<@N x !felt.type>
 // CHECK-NEXT:          }
-// CHECK-NEXT:          %[[VAL_103:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:          %[[VAL_104:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_71]], %[[VAL_103]] : !felt.type, !felt.type
-// CHECK-NEXT:          scf.yield %[[VAL_74]], %[[VAL_104]] : !array.type<@N x !felt.type>, !felt.type
+// CHECK-NEXT:          %[[V_103:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:          %[[V_104:[0-9a-zA-Z_\.]+]] = felt.add %[[V_71]], %[[V_103]] : !felt.type, !felt.type
+// CHECK-NEXT:          scf.yield %[[V_74]], %[[V_104]] : !array.type<@N x !felt.type>, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_105:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_56]][@out] : <@InnerConditional9<[@N]>>, !felt.type
+// CHECK-NEXT:        %[[V_105:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_56]][@out] : <@InnerConditional9<[@N]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
