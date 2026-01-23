@@ -205,6 +205,131 @@ where
         self.append_op_no_result(op)
     }
 
+    /// Create a cast to felt (field element) type if the given value is not already a felt.
+    #[inline]
+    pub fn cast_to_felt_if_needed(
+        &mut self,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        if !is_felt_type(val.r#type()) {
+            self.append_op_unnamed_result(cast::tofelt(location, val))
+        } else {
+            Ok(val)
+        }
+    }
+
+    /// Create a cast to index type if the given value is not already an index.
+    #[inline]
+    pub fn cast_to_index_if_needed(
+        &mut self,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        if !is_index(val.r#type()) {
+            self.append_op_unnamed_result(cast::toindex(location, val).into())
+        } else {
+            Ok(val)
+        }
+    }
+
+    /// Create a cast to bool type (i1) if the given value is not already a bool.
+    #[inline]
+    pub fn cast_to_bool_if_needed<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        // The conversion to bool is simply to check `!=0` which is the same as
+        // `normalize()` in `modular_arithmetic.rs`.
+        if is_felt_type(val.r#type()) {
+            let zero = self
+                .append_op_unnamed_result(codegen.new_felt_const_op(&BigInt::zero(), location)?)?;
+            self.append_op_unnamed_result(bool::ne(location, val, zero)?)
+        } else if is_index(val.r#type()) {
+            let zero = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
+            self.append_op_unnamed_result(index::cmp(
+                codegen.context,
+                arith::CmpiPredicate::Ne,
+                val,
+                zero,
+                location,
+            ))
+        } else {
+            assert!(is_bool(val.r#type()));
+            Ok(val)
+        }
+    }
+
+    /// Generates a list of undef ops inside the given function context.
+    #[inline]
+    pub fn gen_arg_undefs(
+        &mut self,
+        args: &[Type<'ctx>],
+        loc: Location<'ctx>,
+    ) -> Result<Vec<Value<'ctx, 'val>>> {
+        args.iter().copied().map(|t| self.append_op_unnamed_result(undef::undef(loc, t))).collect()
+    }
+
+    /// Searches for the argument index of a subcomponent's signal.
+    pub fn lookup_arg_idx(
+        &self,
+        subcmp_signal: &str,
+        subcmp_value: &Value<'ctx, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Result<usize> {
+        let name = self.subcmp_calls.get(subcmp_value).ok_or_else(|| {
+            anyhow::anyhow!(
+                "template constructed by {subcmp_value}@{:?} not found (map: {:?})",
+                subcmp_value.to_raw().ptr,
+                self.subcmp_calls
+            )
+        })?;
+        let template_data = codegen.find_template_data(name).ok_or_else(|| {
+            anyhow::anyhow!("template with name {name:?} constructed by {subcmp_value} not found")
+        })?;
+        template_data
+            .get_declaration_inputs()
+            .iter()
+            .enumerate()
+            .find_map(|(idx, (signal, _))| (subcmp_signal == signal).then_some(idx))
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "template '{}' has no input signal '{subcmp_signal}'",
+                    template_data.get_name()
+                )
+            })
+    }
+
+    /// Assigns the `rhe` value to the given subcomponent signal.
+    ///
+    /// The subcomponent is determined by
+    /// `var`, which must correspond to a named value in the current scope.
+    /// Since the subcomponent's call is different depending on the current function the
+    /// `get_call` callback needs to return the operation representing the call from the value
+    /// representing the subcomponent.
+    pub fn assign_subcmp<'op>(
+        &mut self,
+        rhe: Value<'ctx, 'val>,
+        var: &str,
+        subcmp_signal: &str,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        arg_offset: usize,
+        get_call: impl FnOnce(Value<'ctx, 'val>) -> Result<OperationRef<'ctx, 'op>>,
+    ) -> Result<()>
+    where
+        'ctx: 'op,
+    {
+        let subcmp_value = self.block_ctx.get_named_value(var)?;
+
+        let arg_idx = self.lookup_arg_idx(subcmp_signal, subcmp_value, codegen)?;
+
+        let call_op = get_call(*subcmp_value)?;
+        set_operand_if_undef(call_op, arg_idx + arg_offset, rhe)?;
+        insert_after_if_op_result(rhe, call_op)
+    }
+
     /// Generate LLZK code in the current function for a circom prefix operation.
     pub fn gen_prefix_op<'ast>(
         &mut self,
@@ -275,63 +400,6 @@ where
         Err(anyhow!(err_msg))
     }
 
-    /// Create a cast to felt (field element) type if the given value is not already a felt.
-    #[inline]
-    pub fn cast_to_felt_if_needed(
-        &mut self,
-        location: Location<'ctx>,
-        val: Value<'ctx, 'val>,
-    ) -> Result<Value<'ctx, 'val>> {
-        if !is_felt_type(val.r#type()) {
-            self.append_op_unnamed_result(cast::tofelt(location, val))
-        } else {
-            Ok(val)
-        }
-    }
-
-    /// Create a cast to index type if the given value is not already an index.
-    #[inline]
-    pub fn cast_to_index_if_needed(
-        &mut self,
-        location: Location<'ctx>,
-        val: Value<'ctx, 'val>,
-    ) -> Result<Value<'ctx, 'val>> {
-        if !is_index(val.r#type()) {
-            self.append_op_unnamed_result(cast::toindex(location, val).into())
-        } else {
-            Ok(val)
-        }
-    }
-
-    /// Create a cast to bool type (i1) if the given value is not already a bool.
-    #[inline]
-    pub fn cast_to_bool_if_needed<'ast>(
-        &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
-        location: Location<'ctx>,
-        val: Value<'ctx, 'val>,
-    ) -> Result<Value<'ctx, 'val>> {
-        // The conversion to bool is simply to check `!=0` which is the same as
-        // `normalize()` in `modular_arithmetic.rs`.
-        if is_felt_type(val.r#type()) {
-            let zero = self
-                .append_op_unnamed_result(codegen.new_felt_const_op(&BigInt::zero(), location)?)?;
-            self.append_op_unnamed_result(bool::ne(location, val, zero)?)
-        } else if is_index(val.r#type()) {
-            let zero = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
-            self.append_op_unnamed_result(index::cmp(
-                codegen.context,
-                arith::CmpiPredicate::Ne,
-                val,
-                zero,
-                location,
-            ))
-        } else {
-            assert!(is_bool(val.r#type()));
-            Ok(val)
-        }
-    }
-
     /// If both operands have types that match the respective filter predicates, generate the
     /// operation using the provided generator function and return the result, otherwise None.
     #[inline]
@@ -349,74 +417,6 @@ where
         } else {
             Ok(None)
         }
-    }
-
-    #[inline]
-    /// Generates a list of undef ops inside the given function context.
-    pub fn gen_arg_undefs(
-        &mut self,
-        args: &[Type<'ctx>],
-        loc: Location<'ctx>,
-    ) -> Result<Vec<Value<'ctx, 'val>>> {
-        args.iter().copied().map(|t| self.append_op_unnamed_result(undef::undef(loc, t))).collect()
-    }
-
-    /// Searches for the argument index of a subcomponent's signal.
-    pub fn lookup_arg_idx(
-        &self,
-        subcmp_signal: &str,
-        subcmp_value: &Value<'ctx, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    ) -> Result<usize> {
-        let name = self.subcmp_calls.get(subcmp_value).ok_or_else(|| {
-            anyhow::anyhow!(
-                "template constructed by {subcmp_value}@{:?} not found (map: {:?})",
-                subcmp_value.to_raw().ptr,
-                self.subcmp_calls
-            )
-        })?;
-        let template_data = codegen.find_template_data(name).ok_or_else(|| {
-            anyhow::anyhow!("template with name {name:?} constructed by {subcmp_value} not found")
-        })?;
-        template_data
-            .get_declaration_inputs()
-            .iter()
-            .enumerate()
-            .find_map(|(idx, (signal, _))| (subcmp_signal == signal).then_some(idx))
-            .ok_or_else(|| {
-                anyhow::anyhow!(
-                    "template '{}' has no input signal '{subcmp_signal}'",
-                    template_data.get_name()
-                )
-            })
-    }
-
-    /// Assigns the `rhe` value to the given subcomponent signal.
-    ///
-    /// The subcomponent is determined by
-    /// `var`, which must correspond to a named value in the current scope.
-    /// Since the subcomponent's call is different depending on the current function the
-    /// `get_call` callback needs to return the operation representing the call from the value
-    /// representing the subcomponent.
-    pub fn assign_subcmp<'op>(
-        &mut self,
-        rhe: Value<'ctx, 'val>,
-        var: &str,
-        subcmp_signal: &str,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        arg_offset: usize,
-        get_call: impl FnOnce(Value<'ctx, 'val>) -> Result<OperationRef<'ctx, 'op>>,
-    ) -> Result<()>
-    where
-        'ctx: 'op,
-    {
-        let subcmp_value = self.block_ctx.get_named_value(var)?;
-
-        let arg_idx = self.lookup_arg_idx(subcmp_signal, subcmp_value, codegen)?;
-
-        let call_op = get_call(*subcmp_value)?;
-        set_operand_if_undef(call_op, arg_idx + arg_offset, rhe)?;
-        insert_after_if_op_result(rhe, call_op)
     }
 
     /// Generate LLZK code in the current function for an infix operation.
