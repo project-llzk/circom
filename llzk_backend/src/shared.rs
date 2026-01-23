@@ -829,7 +829,7 @@ impl<'ctx, 'val> ArrayDimension<'ctx, 'val> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Conveys information about array dimension computation.
 pub enum ArrayDimensionResult<'ctx, 'val> {
     /// Indicates that the computing context had
