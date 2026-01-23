@@ -44,11 +44,7 @@ pub fn generate_llzk(
     // Verify the module
     if let Err(err) = codegen.verify() {
         eprintln!("{}", Color::Red.paint("Generated LLZK IR is invalid"));
-        if verbose {
-            eprintln!("{err:?}");
-        } else {
-            eprintln!("{err}");
-        }
+        eprintln!("{err}");
         eprintln!("{}", codegen.module.as_operation());
         std::process::exit(2); // force exit to avoid hang if MLIR state is inconsistent
     }

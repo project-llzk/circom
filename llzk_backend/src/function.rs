@@ -1155,6 +1155,35 @@ where
     ) -> Result<ArrayDimension<'ctx, 'val>> {
         dimension.transform(|val| self.cast_to_index_if_needed(location, val))
     }
+
+    /// Handle a [Statement::Declaration] by generating a nondet felt value with the given
+    /// dimensions and declaring it in the current block context.
+    pub fn gen_declaration(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        meta: &Meta,
+        name: &str,
+        dimensions: &[Expression],
+    ) -> Result<()> {
+        if self.block_ctx.is_name_present(name) {
+            return Ok(());
+        }
+        // If generating from VCP, there are cases where the `sugar_cleaner` added new
+        // declarations that only have `MemoryKnowledge` but not `dimensions` in the AST. So
+        // check `MemoryKnowledge` first (if not generating from VCP, this will always be
+        // empty so `dimensions` will be used).
+        let mk = meta.get_memory_knowledge();
+        let dims = if mk.has_concrete_dimensions() {
+            (mk.get_concrete_dimensions(), codegen).try_into()?
+        } else {
+            self.get_dimensions(codegen, dimensions)?
+        };
+        if codegen.verbose {
+            println!("Declaring variable '{name}' with dimensions {dims:?}");
+        }
+        let op = dims.new_nondet_felt_of_dimensions(codegen, meta)?;
+        self.block_ctx.declare_name_ensure_not_present(name, op)
+    }
 }
 
 impl<'ast, 'ctx, 'func, 'blk, 'val> DimExprConverter<'ctx, 'ast, 'val>
@@ -1360,9 +1389,9 @@ where
                 nonreturning_block.append_operation(
                     // TODO: just like `gen_function_llzk()`, this must use an array type
                     // if applicable but is currently implemented for scalar `felt.type` only.
-                    // In this case, the correct solution (once nondet op is supported for any type)
-                    // is to just create the nondet op using `return_val.getType()`
-                    ArrayDimensions::new_empty()
+                    // In this case, the correct solution (once nondet op is supported for any
+                    // type) is to just create the nondet op using `return_val.getType()`
+                    ArrayDimensions::default()
                         .new_nondet_felt_of_dimensions_at_location(codegen, location)?,
                 ),
             )
@@ -1555,7 +1584,7 @@ where
                 // In this case, the correct solution (once nondet op is supported for any
                 // type) is to just create the nondet op using
                 // `return_val.getType()`
-                ArrayDimensions::new_empty()
+                ArrayDimensions::default()
                     .new_nondet_felt_of_dimensions_at_location(codegen, location)?,
                 VAR_NAME_RETURN_VAL.to_string(),
             )?;
@@ -1623,11 +1652,7 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Template elements declared inside the function")
                 }
-                if !function.block_ctx.is_name_present(name) {
-                    let dims = function.get_dimensions(codegen, dimensions)?;
-                    let op = dims.new_nondet_felt_of_dimensions(codegen, meta)?;
-                    function.block_ctx.declare_name_ensure_not_present(name, op)?;
-                }
+                function.gen_declaration(codegen, meta, name, dimensions)?;
                 Ok(false)
             }
             Statement::Block { meta, stmts } => {
@@ -1670,13 +1695,22 @@ where
                             })
                             .collect::<Result<Vec<Value<'_, '_>>>>()?;
                         let arr_ref = function.block_ctx.get_named_value(var)?;
-                        let arr_ty = ArrayType::try_from(arr_ref.r#type())?;
-                        let arr_dims = arr_ty.num_dims() as usize;
-                        assert!(arr_dims >= indices.len());
-                        let write_op = if arr_dims > indices.len() {
-                            array::insert(location, *arr_ref, indices, rvalue)
-                        } else {
-                            array::write(location, *arr_ref, indices, rvalue)
+                        let arr_ty = ArrayType::try_from(arr_ref.r#type()).with_context(|| {
+                            format!("Conflicting types to write '{var}' at {location}")
+                        })?;
+                        let arr_ty_dims = arr_ty.dims();
+                        let write_op = match indices.len().cmp(&arr_ty_dims.len()) {
+                            std::cmp::Ordering::Equal => {
+                                // Indexing all dimensions requires an `array.write`
+                                array::write(location, *arr_ref, indices, rvalue)
+                            }
+                            std::cmp::Ordering::Less => {
+                                // Indexing a subset of dimensions requires an `array.insert`
+                                array::insert(location, *arr_ref, indices, rvalue)
+                            }
+                            std::cmp::Ordering::Greater => {
+                                anyhow::bail!("Too many indices to write array '{}'", var);
+                            }
                         };
                         no_results(function.append_op(write_op))?;
                     }
@@ -1786,8 +1820,9 @@ where
                         })
                         .collect::<Result<Vec<Value<'_, '_>>>>()?;
                     let v = function.block_ctx.get_named_value(name)?;
-                    let arr_ty = ArrayType::try_from(v.r#type())
-                        .with_context(|| format!("Conflicting types for '{name}' at {location}"))?;
+                    let arr_ty = ArrayType::try_from(v.r#type()).with_context(|| {
+                        format!("Conflicting types to read '{name}' at {location}")
+                    })?;
                     let arr_ty_dims = arr_ty.dims();
                     let array_get_op = match indices.len().cmp(&arr_ty_dims.len()) {
                         std::cmp::Ordering::Equal => {
@@ -1803,7 +1838,7 @@ where
                             array::extract(location, reduced_type.into(), *v, &indices)
                         }
                         std::cmp::Ordering::Greater => {
-                            anyhow::bail!("Too many indices to access array '{}'", name);
+                            anyhow::bail!("Too many indices to read array '{}'", name);
                         }
                     };
                     function.append_op_unnamed_result(array_get_op)
@@ -1847,8 +1882,7 @@ where
                     values.iter().all(|&v| v.r#type() == value_ty),
                     "All array elements must have the same type"
                 );
-                let subarr_ty = ArrayType::try_from(value_ty);
-                if let Ok(subarr_ty) = subarr_ty {
+                if let Ok(subarr_ty) = ArrayType::try_from(value_ty) {
                     // For subarrays, we need to create a new array then insert the values
                     let dim = codegen.index_attr(i64::try_from(values.len())?);
                     let arr_ty = new_array_type(dim.into(), &subarr_ty);

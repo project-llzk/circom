@@ -876,26 +876,10 @@ impl<'ctx, 'val> TryFrom<&ArrayDimension<'ctx, 'val>> for IntegerAttribute<'ctx>
 }
 
 /// Information needed to create a new LLZK array type with the given dimensions.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ArrayDimensions<'ctx, 'val>(Vec<ArrayDimension<'ctx, 'val>>);
 
 impl<'ast, 'ctx, 'val> ArrayDimensions<'ctx, 'val> {
-    /// Constructs a new [ArrayDimensions] if all `dim_results` are [ArrayDimensionResult::Computed],
-    /// [None] otherwise.
-    pub fn from_results(dim_results: &[ArrayDimensionResult<'ctx, 'val>]) -> Option<Self> {
-        let dims = dim_results
-            .iter()
-            .cloned()
-            .map(Option::from)
-            .filter_map(|mut x| Option::take(&mut x))
-            .collect::<Vec<_>>();
-
-        (dims.len() == dim_results.len()).then(|| ArrayDimensions(dims))
-    }
-    /// Constructs a new empty list of dimensions.
-    pub fn new_empty() -> Self {
-        ArrayDimensions(vec![])
-    }
     /// Check if the number of dimensions is non-zero.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
@@ -927,6 +911,7 @@ impl<'ast, 'ctx, 'val> ArrayDimensions<'ctx, 'val> {
 
     /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
     /// `dimensions` (non-array scalar if empty).
+    #[inline]
     pub fn new_nondet_felt_of_dimensions_at_location(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
@@ -965,6 +950,42 @@ impl<'ast, 'ctx, 'val> ArrayDimensions<'ctx, 'val> {
     }
 }
 
+/// Constructs a new [ArrayDimensions] if all input [ArrayDimensionResult] are
+/// [ArrayDimensionResult::Computed], returns [Err] otherwise.
+impl<'ctx, 'val> TryFrom<&[ArrayDimensionResult<'ctx, 'val>]> for ArrayDimensions<'ctx, 'val> {
+    type Error = ();
+
+    fn try_from(dim_results: &[ArrayDimensionResult<'ctx, 'val>]) -> Result<Self, Self::Error> {
+        let dims = dim_results
+            .iter()
+            .cloned()
+            .map(Option::from)
+            .filter_map(|mut x| Option::take(&mut x))
+            .collect::<Vec<_>>();
+        if dims.len() == dim_results.len() {
+            Ok(ArrayDimensions(dims))
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl<'ctx, 'val, P: ProgramLike> TryFrom<(&[usize], &LlzkCodegen<'_, 'ctx, P>)>
+    for ArrayDimensions<'ctx, 'val>
+{
+    type Error = anyhow::Error;
+
+    fn try_from(
+        (dim_sizes, codegen): (&[usize], &LlzkCodegen<'_, 'ctx, P>),
+    ) -> Result<Self, Self::Error> {
+        dim_sizes
+            .iter()
+            .map(|size| ArrayDimension::new(codegen.index_attr(i64::try_from(*size)?).into(), &[]))
+            .collect::<Result<Vec<_>>>()
+            .map(ArrayDimensions)
+    }
+}
+
 /// A trait to generate array dimensions from the given dimension expressions.
 pub trait DimExprConverter<'ctx, 'ast, 'val> {
     /// Convert a circom [Expression] used as an array dimension to an LLZK Attribute.
@@ -989,7 +1010,8 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
 
     /// Computes the [ArrayDimensions] from the given `dimension_exprs`, returning:
     /// - An error if one of the underlying [Expression]s generated an error,
-    /// - [None] if one of the underling [Expression]s generated a [ArrayDimensionResult::InsufficientData]
+    /// - [None] if one of the underling [Expression]s generated a
+    ///   [ArrayDimensionResult::InsufficientData]
     /// - [Some] otherwise
     fn get_dimensions_if_able(
         &self,
@@ -1000,7 +1022,7 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
             .iter()
             .map(|e| self.convert_dim_expr(codegen, e))
             .collect::<Result<Vec<_>>>()?;
-        Ok(ArrayDimensions::from_results(dim_result_vec.as_slice()))
+        Ok(ArrayDimensions::try_from(dim_result_vec.as_slice()).ok())
     }
 
     /// Same as [DimExprConverter::get_dimensions_if_able], but converts [None]

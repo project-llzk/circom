@@ -892,15 +892,7 @@ where
                 gen_init_block(codegen, template, initializations)
             }
             Statement::Declaration { meta, name, dimensions, .. } => {
-                template.and_then_same(|fc, _| {
-                    if !fc.block_ctx.is_name_present(name) {
-                        let dimensions = fc.get_dimensions(codegen, dimensions)?;
-                        let op = dimensions.new_nondet_felt_of_dimensions(codegen, meta)?;
-                        fc.block_ctx.declare_name_ensure_not_present(name, op)
-                    } else {
-                        Ok(())
-                    }
-                })
+                template.and_then_same(|fc, _| fc.gen_declaration(codegen, meta, name, dimensions))
             }
             Statement::Block { meta, stmts } => {
                 let mut template = template; // satisfy the &mut in `GenWithCircomScopeHandling`
