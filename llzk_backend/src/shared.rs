@@ -765,7 +765,7 @@ pub fn remove_from_parent<'c: 'a, 'a>(
 /// Information needed to create a new LLZK array type with the given dimension
 /// and to instantiate that array if the dimension attribute is an affine_map
 /// with symbols.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ArrayDimension<'ctx, 'val> {
     /// The attribute to use as the dimension; could be a constant, a symbol, or an affine map.
     attr: Attribute<'ctx>,
@@ -806,6 +806,60 @@ impl<'ctx, 'val> ArrayDimension<'ctx, 'val> {
             ArrayType::new(*element_type, &[self.attr])
         }
     }
+    /// Transform the array dimension using the given function that converts
+    /// values into new values (e.g., casting operations to index).
+    pub fn transform(
+        &self,
+        mut map_fn: impl FnMut(Value<'ctx, 'val>) -> Result<Value<'ctx, 'val>>,
+    ) -> Result<Self> {
+        Ok(Self {
+            attr: self.attr,
+            symbols: match &self.symbols {
+                None => None,
+                Some(ovr) => {
+                    let translated_vals = ovr
+                        .values()
+                        .iter()
+                        .map(|v| map_fn(unsafe { Value::from_raw(*v) }))
+                        .collect::<Result<Vec<_>>>()?;
+                    Some(OwningValueRange::from(translated_vals.as_slice()))
+                }
+            },
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+/// Conveys information about array dimension computation.
+pub enum ArrayDimensionResult<'ctx, 'val> {
+    /// Indicates that the computing context had
+    /// sufficient information to compute the array and computed it successfully.
+    Computed(ArrayDimension<'ctx, 'val>),
+    /// Indicates that the computing context
+    /// was missing information (e.g., variables defined within the function not accessible
+    /// at template level).
+    InsufficientData,
+}
+
+impl<'ctx, 'val> ArrayDimensionResult<'ctx, 'val> {
+    /// Construct a new [ArrayDimensionResult::Computed].
+    pub fn new(attr: Attribute<'ctx>, symbol_vals: &[Value<'ctx, 'val>]) -> Result<Self> {
+        Ok(Self::Computed(ArrayDimension::new(attr, symbol_vals)?))
+    }
+    /// Construct a [ArrayDimensionResult::InsufficientData].
+    /// A convenience method for cases needing a return value of [Result<ArrayDimensionResult>]
+    pub fn insufficient_data_result() -> Result<Self> {
+        Ok(Self::InsufficientData)
+    }
+}
+
+impl<'ctx, 'val> From<ArrayDimensionResult<'ctx, 'val>> for Option<ArrayDimension<'ctx, 'val>> {
+    fn from(value: ArrayDimensionResult<'ctx, 'val>) -> Self {
+        match value {
+            ArrayDimensionResult::Computed(array_dimension) => Some(array_dimension),
+            ArrayDimensionResult::InsufficientData => None,
+        }
+    }
 }
 
 impl<'ctx, 'val> TryFrom<&ArrayDimension<'ctx, 'val>> for IntegerAttribute<'ctx> {
@@ -825,7 +879,27 @@ impl<'ctx, 'val> TryFrom<&ArrayDimension<'ctx, 'val>> for IntegerAttribute<'ctx>
 #[derive(Debug)]
 pub struct ArrayDimensions<'ctx, 'val>(Vec<ArrayDimension<'ctx, 'val>>);
 
-impl<'ctx, 'val> ArrayDimensions<'ctx, 'val> {
+impl<'ast, 'ctx, 'val> ArrayDimensions<'ctx, 'val> {
+    /// Constructs a new [ArrayDimensions] if all `dim_results` are [ArrayDimensionResult::Computed],
+    /// [None] otherwise.
+    pub fn from_results(dim_results: &[ArrayDimensionResult<'ctx, 'val>]) -> Option<Self> {
+        let dims = dim_results
+            .iter()
+            .cloned()
+            .map(Option::from)
+            .filter_map(|mut x| Option::take(&mut x))
+            .collect::<Vec<_>>();
+
+        (dims.len() == dim_results.len()).then(|| ArrayDimensions(dims))
+    }
+    /// Constructs a new empty list of dimensions.
+    pub fn new_empty() -> Self {
+        ArrayDimensions(vec![])
+    }
+    /// Check if the number of dimensions is non-zero.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
     /// Get all contained attributes.
     pub fn attrs(&self) -> Vec<Attribute<'ctx>> {
         self.0.iter().map(|d| *d.attr()).collect()
@@ -840,11 +914,67 @@ impl<'ctx, 'val> ArrayDimensions<'ctx, 'val> {
         let optional_vec = self.0.iter().map(|d| d.value_range()).collect::<Result<Vec<_>>>()?;
         Ok(optional_vec.into_iter().flatten().collect())
     }
+
+    /// If `self` is empty, return `base_type`. Otherwise, create [ArrayType] by
+    /// converting the dimension circom [Expressions](Expression) to LLZK Attributes.
+    pub fn type_from_dimension_exprs(&self, base_type: Type<'ctx>) -> Type<'ctx> {
+        if self.is_empty() {
+            base_type
+        } else {
+            self.new_array_type(&base_type).into()
+        }
+    }
+
+    /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
+    /// `dimensions` (non-array scalar if empty).
+    pub fn new_nondet_felt_of_dimensions_at_location(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+    ) -> Result<Operation<'ctx>> {
+        codegen.new_nondet_at_location(
+            location,
+            self.type_from_dimension_exprs(codegen.felt_type().into()),
+        )
+    }
+
+    /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
+    /// `dimensions` (non-array scalar if empty).
+    #[inline]
+    pub fn new_nondet_felt_of_dimensions(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        meta: &Meta,
+    ) -> Result<Operation<'ctx>> {
+        self.new_nondet_felt_of_dimensions_at_location(codegen, codegen.location_from_meta(meta))
+    }
+
+    /// If `dimensions` is empty, returns a [`StructType`] with just the name. Otherwise,
+    /// returns a [`StructType`] with parameters by converting the
+    /// dimension circom Expressions to LLZK Attributes.
+    pub fn struct_type_with_concrete_dimensions(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        name: &str,
+    ) -> StructType<'ctx> {
+        if self.is_empty() {
+            StructType::from_str(codegen.context, name)
+        } else {
+            StructType::new(FlatSymbolRefAttribute::new(codegen.context, name), &self.attrs())
+        }
+    }
 }
 
 /// A trait to generate array dimensions from the given dimension expressions.
 pub trait DimExprConverter<'ctx, 'ast, 'val> {
     /// Convert a circom [Expression] used as an array dimension to an LLZK Attribute.
+    /// Returns an error if there was an error converting a dimension that should
+    /// be convertible.
+    /// Returns [ArrayDimensionResult::InsufficientData] if a dimension is not
+    /// convertible due to lack of information in the implementer.
+    /// Users can then attempt to resolve the dimension in a different
+    /// context, or throw an error if all available contexts are unable to convert
+    /// the dimension.
     ///
     /// Note: The LLZK ArrayType can only use the following Attribute types for dimensions:
     /// IntegerAttr (`index` or `i1`) or AffineMapAttr (with single result).
@@ -855,88 +985,34 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         expr: &Expression,
-    ) -> Result<ArrayDimension<'ctx, 'val>>;
+    ) -> Result<ArrayDimensionResult<'ctx, 'val>>;
 
-    /// If `dimensions` is empty, return `base_type`. Otherwise, create [ArrayType] by
-    /// converting the dimension circom [Expressions](Expression) to LLZK Attributes.
-    fn type_from_dimension_exprs(
+    /// Computes the [ArrayDimensions] from the given `dimension_exprs`, returning:
+    /// - An error if one of the underlying [Expression]s generated an error,
+    /// - [None] if one of the underling [Expression]s generated a [ArrayDimensionResult::InsufficientData]
+    /// - [Some] otherwise
+    fn get_dimensions_if_able(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
-        base_type: Type<'ctx>,
-        dimensions: &[Expression],
-    ) -> Result<Type<'ctx>> {
-        if dimensions.is_empty() {
-            Ok(base_type)
-        } else {
-            let array_dims = ArrayDimensions(
-                dimensions
-                    .iter()
-                    .map(|e| self.convert_dim_expr(codegen, e))
-                    .collect::<Result<Vec<_>>>()?,
-            );
-            Ok(array_dims.new_array_type(&base_type).into())
-        }
+        dimension_exprs: &[Expression],
+    ) -> Result<Option<ArrayDimensions<'ctx, 'val>>> {
+        let dim_result_vec = dimension_exprs
+            .iter()
+            .map(|e| self.convert_dim_expr(codegen, e))
+            .collect::<Result<Vec<_>>>()?;
+        Ok(ArrayDimensions::from_results(dim_result_vec.as_slice()))
     }
 
-    /// Tries to convert a list of [`Expression`] to a list of [`Attribute`].
-    #[inline]
-    fn try_dimensions_to_attrs(
+    /// Same as [DimExprConverter::get_dimensions_if_able], but converts [None]
+    /// into an error. For cases where [ArrayDimensions] are expected to be generated
+    /// and there are no fallback contexts to try.
+    fn get_dimensions(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
-        dimensions: &[Expression],
-    ) -> Result<Vec<Attribute<'ctx>>> {
-        dimensions.iter().map(|e| self.convert_dim_expr(codegen, e).map(|d| *d.attr())).collect()
-    }
-
-    /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
-    /// `dimensions` (non-array scalar if empty).
-    fn new_nondet_felt_of_dimensions_at_location(
-        &self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
-        location: Location<'ctx>,
-        dimensions: &[Expression],
-    ) -> Result<Operation<'ctx>> {
-        codegen.new_nondet_at_location(
-            location,
-            self.type_from_dimension_exprs(codegen, codegen.felt_type().into(), dimensions)?,
-        )
-    }
-
-    /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
-    /// `dimensions` (non-array scalar if empty).
-    #[inline]
-    fn new_nondet_felt_of_dimensions(
-        &self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
-        meta: &Meta,
-        dimensions: &[Expression],
-    ) -> Result<Operation<'ctx>> {
-        self.new_nondet_felt_of_dimensions_at_location(
-            codegen,
-            codegen.location_from_meta(meta),
-            dimensions,
-        )
-    }
-
-    /// If `dimensions` is empty, returns a [`StructType`] with just the name. Otherwise,
-    /// returns a [`StructType`] with parameters by converting the
-    /// dimension circom Expressions to LLZK Attributes.
-    fn struct_type_with_concrete_dimensions(
-        &self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
-        name: &str,
-        dimensions: &[Expression],
-    ) -> Result<StructType<'ctx>> {
-        if dimensions.is_empty() {
-            Ok(StructType::from_str(codegen.context, name))
-        } else {
-            let dims = ArrayDimensions(
-                dimensions
-                    .iter()
-                    .map(|e| self.convert_dim_expr(codegen, e))
-                    .collect::<Result<Vec<_>, _>>()?,
-            );
-            Ok(StructType::new(FlatSymbolRefAttribute::new(codegen.context, name), &dims.attrs()))
-        }
+        dimension_exprs: &[Expression],
+    ) -> Result<ArrayDimensions<'ctx, 'val>> {
+        self.get_dimensions_if_able(codegen, dimension_exprs)?.ok_or_else(|| {
+            anyhow!("unexpected lack of data needed to convert dimension expressions")
+        })
     }
 }

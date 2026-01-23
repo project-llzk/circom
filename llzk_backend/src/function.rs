@@ -23,6 +23,8 @@ use crate::shared::replace_uses_with_new_block_argument;
 use crate::shared::set_operand_if_undef;
 use crate::shared::single_result_as_value;
 use crate::shared::ArrayDimension;
+use crate::shared::ArrayDimensionResult;
+use crate::shared::ArrayDimensions;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::SubcmpCallsMap;
@@ -744,6 +746,128 @@ where
         Ok(scf::r#if(condition, &[then_value.r#type()], then_region, else_region, location))
     }
 
+    /// Generate a simple `scf.for` op that doesn't need to override variables
+    /// in the block context.
+    /// The body function (`body_fn`) accepts a `Block` with a single argument representing
+    /// the for-loop induction variable and is used to fill in the `scf.for` op.
+    pub fn gen_simple_scf_for<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        start: Value<'ctx, 'val>,
+        step: Value<'ctx, 'val>,
+        end: Value<'ctx, 'val>,
+        body_fn: impl FnOnce(&mut Block<'ctx>) -> Result<()>,
+    ) -> Result<()> {
+        let block_arg = (codegen.index_type(), location);
+        let mut block = Block::new(&[block_arg]);
+        body_fn(&mut block)?;
+        let region = Region::new();
+        region.append_block(block);
+        let scf_op = scf::r#for(start, end, step, region, location);
+        self.append_op_no_result(scf_op)
+    }
+
+    /// Generate a simple `scf.for` op with normalized start=0 and step=1.
+    #[inline]
+    pub fn gen_normalized_scf_for<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        end: Value<'ctx, 'val>,
+        body_fn: impl FnOnce(&mut Block<'ctx>) -> Result<()>,
+    ) -> Result<()> {
+        let start = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
+        let step = self.append_op_unnamed_result(codegen.new_index_const_op(1, location))?;
+        self.gen_simple_scf_for(codegen, location, start, step, end, body_fn)
+    }
+
+    /// Implementation for [Expression::UniformArray] after conversion of dimension
+    /// expression. Useful because dimension generation differs between function
+    /// and template contexts due to template parameters, but the actual array generation
+    /// is otherwise the same.
+    pub fn generate_uniform_array<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        value: Value<'ctx, 'val>,
+        dimension: &ArrayDimension<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        // Ensure all symbols are of index type
+        let dimension = &self.transform_symbols_to_index(location, dimension)?;
+        let const_dim = IntegerAttribute::try_from(dimension);
+        if let Ok(subarr_ty) = ArrayType::try_from(value.r#type()) {
+            let arr_ty = dimension.new_array_type(&subarr_ty.into());
+            // The array.new constructor doesn't accept arrays as initializer values,
+            // so we instead create the array empty and use array.insert to insert values.
+            let ctor = if let Some(symbols) = dimension.value_range()? {
+                ArrayCtor::MapDimSlice(&[symbols], &[0])
+            } else {
+                ArrayCtor::Values(&[])
+            };
+            let new_arr = self.append_op_unnamed_result(array::new(
+                &OpBuilder::new(codegen.context),
+                location,
+                arr_ty,
+                ctor,
+            ))?;
+            if let Ok(const_dim) = const_dim {
+                for idx in 0..const_dim.value() {
+                    let idx_val =
+                        self.append_op_unnamed_result(codegen.new_index_const_op(idx, location))?;
+                    self.append_op_no_result(array::insert(location, new_arr, &[idx_val], value))?;
+                }
+            } else {
+                let dim = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
+                let array_len =
+                    self.append_op_unnamed_result(array::len(location, new_arr, dim))?;
+                self.gen_normalized_scf_for(codegen, location, array_len, |b| {
+                    let induction_var = b.argument(0)?;
+                    b.append_operation(array::insert(
+                        location,
+                        new_arr,
+                        &[induction_var.into()],
+                        value,
+                    ));
+                    b.append_operation(scf::r#yield(&[], location));
+                    Ok(())
+                })?;
+            };
+            // Output value is still the newly created array
+            Ok(new_arr)
+        } else {
+            let arr_ty = dimension.new_array_type(&value.r#type());
+            let builder = &OpBuilder::new(codegen.context);
+            if let Ok(const_dim) = const_dim {
+                let ctor = ArrayCtor::Values(&vec![value; usize::try_from(const_dim.value())?]);
+                self.append_op_unnamed_result(array::new(builder, location, arr_ty, ctor))
+            } else {
+                let ctor = if let Ok(Some(v)) = dimension.value_range() {
+                    ArrayCtor::MapDimSlice(&[v], &[0])
+                } else {
+                    ArrayCtor::Values(&[])
+                };
+                let array_ref =
+                    self.append_op_unnamed_result(array::new(builder, location, arr_ty, ctor))?;
+                let dim = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
+                let array_len =
+                    self.append_op_unnamed_result(array::len(location, array_ref, dim))?;
+                self.gen_normalized_scf_for(codegen, location, array_len, |b| {
+                    let induction_var = b.argument(0)?;
+                    b.append_operation(array::write(
+                        location,
+                        array_ref,
+                        &[induction_var.into()],
+                        value,
+                    ));
+                    b.append_operation(scf::r#yield(&[], location));
+                    Ok(())
+                })?;
+                Ok(array_ref)
+            }
+        }
+    }
+
     /// Generate an `scf.while` op based on the given [NestedBlockInfo] and update the
     /// block context with the results of the `scf.while` op mapped to the given names.
     pub fn gen_scf_while<'ast>(
@@ -1020,6 +1144,17 @@ where
 
         Ok(())
     }
+
+    /// Cast all symbols passed to affine_maps into index types, which is required
+    /// for affine_map usage.
+    #[inline]
+    fn transform_symbols_to_index(
+        &mut self,
+        location: Location<'ctx>,
+        dimension: &ArrayDimension<'ctx, 'val>,
+    ) -> Result<ArrayDimension<'ctx, 'val>> {
+        dimension.transform(|val| self.cast_to_index_if_needed(location, val))
+    }
 }
 
 impl<'ast, 'ctx, 'func, 'blk, 'val> DimExprConverter<'ctx, 'ast, 'val>
@@ -1034,7 +1169,7 @@ where
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         expr: &Expression,
-    ) -> Result<ArrayDimension<'ctx, 'val>> {
+    ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
         // First try to compute statically, falling back to literal computation
         // if all values are not compile-time constants or if the final result
         // does not properly convert to i64.
@@ -1042,7 +1177,7 @@ where
             codegen.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64)
         {
             let int_attr = codegen.index_attr(integer);
-            ArrayDimension::new(int_attr.into(), &[])
+            ArrayDimensionResult::new(int_attr.into(), &[])
         } else {
             match expr {
                 Expression::Number(_, _) => {
@@ -1052,7 +1187,7 @@ where
                     [] => {
                         if let Ok(v) = self.block_ctx.get_named_value(name) {
                             let id_map = codegen.affine_map_attr("affine_map<()[i] -> (i)>")?;
-                            ArrayDimension::new(id_map, &[*v])
+                            ArrayDimensionResult::new(id_map, &[*v])
                         } else {
                             todo!("Handle Variable expression in dimension for non-integer, non-template parameter attributes in FunctionContext")
                         }
@@ -1080,7 +1215,7 @@ where
                 // Give the same error that the circom type checker gives. The type checker ran
                 // earlier so this should technically be unreachable.
                 _ => {
-                    Err(anyhow!("Array indexes and lengths must be single arithmetic expressions"))
+                    unreachable!("Array indexes and lengths must be single arithmetic expressions")
                 }
             }
         }
@@ -1221,13 +1356,16 @@ where
     nonreturning_block_overwrites.insert(
         VAR_NAME_RETURN_VAL.to_string(),
         function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL).cloned().or_else(|_| {
-            single_result_as_value(nonreturning_block.append_operation(
-                // TODO: just like `gen_function_llzk()`, this must use an array type
-                // if applicable but is currently implemented for scalar `felt.type` only.
-                // In this case, the correct solution (once nondet op is supported for any type)
-                // is to just create the nondet op using `return_val.getType()`
-                function.new_nondet_felt_of_dimensions_at_location(codegen, location, &[])?,
-            ))
+            single_result_as_value(
+                nonreturning_block.append_operation(
+                    // TODO: just like `gen_function_llzk()`, this must use an array type
+                    // if applicable but is currently implemented for scalar `felt.type` only.
+                    // In this case, the correct solution (once nondet op is supported for any type)
+                    // is to just create the nondet op using `return_val.getType()`
+                    ArrayDimensions::new_empty()
+                        .new_nondet_felt_of_dimensions_at_location(codegen, location)?,
+                ),
+            )
         })?,
     );
     Ok(())
@@ -1417,7 +1555,8 @@ where
                 // In this case, the correct solution (once nondet op is supported for any
                 // type) is to just create the nondet op using
                 // `return_val.getType()`
-                function.new_nondet_felt_of_dimensions_at_location(codegen, location, &[])?,
+                ArrayDimensions::new_empty()
+                    .new_nondet_felt_of_dimensions_at_location(codegen, location)?,
                 VAR_NAME_RETURN_VAL.to_string(),
             )?;
         }
@@ -1485,7 +1624,8 @@ where
                     unreachable!("Template elements declared inside the function")
                 }
                 if !function.block_ctx.is_name_present(name) {
-                    let op = function.new_nondet_felt_of_dimensions(codegen, meta, dimensions)?;
+                    let dims = function.get_dimensions(codegen, dimensions)?;
+                    let op = dims.new_nondet_felt_of_dimensions(codegen, meta)?;
                     function.block_ctx.declare_name_ensure_not_present(name, op)?;
                 }
                 Ok(false)
@@ -1746,60 +1886,11 @@ where
             Expression::UniformArray { meta, value, dimension } => {
                 let location = codegen.location_from_meta(meta);
                 // Multi-dimensional arrays are made up of array values as their elements
-                let val = value.gen_llzk_in_function(codegen, function)?;
-                let dim = function.convert_dim_expr(codegen, dimension)?;
-                let const_dim = IntegerAttribute::try_from(&dim);
-                if let Ok(subarr_ty) = ArrayType::try_from(val.r#type()) {
-                    let arr_ty = dim.new_array_type(&subarr_ty.into());
-                    // The array.new constructor doesn't accept arrays as initializer values,
-                    // so we instead create the array empty and use array.insert to insert values.
-                    let ctor = if let Some(symbols) = dim.value_range()? {
-                        ArrayCtor::MapDimSlice(&[symbols], &[0])
-                    } else {
-                        ArrayCtor::Values(&[])
-                    };
-                    let new_arr = function.append_op_unnamed_result(array::new(
-                        &OpBuilder::new(codegen.context),
-                        codegen.location_from_meta(meta),
-                        arr_ty,
-                        ctor,
-                    ))?;
-                    if let Ok(const_dim) = const_dim {
-                        for idx in 0..const_dim.value() {
-                            let idx_val = function.append_op_unnamed_result(
-                                codegen.new_index_const_op(idx, location),
-                            )?;
-                            function.append_op_no_result(array::insert(
-                                location,
-                                new_arr,
-                                &[idx_val],
-                                val,
-                            ))?;
-                        }
-                    } else {
-                        todo!(
-                            "Handle template parameter array lengths for multi-dimensional arrays"
-                        )
-                    };
-                    // Output value is still the newly created array
-                    Ok(new_arr)
-                } else {
-                    let arr_ty = dim.new_array_type(&val.r#type());
-                    if let Ok(const_dim) = const_dim {
-                        let ctor =
-                            ArrayCtor::Values(&vec![val; usize::try_from(const_dim.value())?]);
-                        function.append_op_unnamed_result(array::new(
-                            &OpBuilder::new(codegen.context),
-                            location,
-                            arr_ty,
-                            ctor,
-                        ))
-                    } else {
-                        todo!(
-                            "Handle template parameter array lengths for single-dimensional arrays"
-                        )
-                    }
-                }
+                let value = value.gen_llzk_in_function(codegen, function)?;
+                let dim_result = function.convert_dim_expr(codegen, dimension)?;
+                let dim = Option::from(dim_result)
+                    .ok_or_else(|| anyhow!("unable to convert dimension in function context"))?;
+                function.generate_uniform_array(codegen, location, value, &dim)
             }
             Expression::Call { meta, id, args } => {
                 let builder = OpBuilder::new(codegen.context.deref());

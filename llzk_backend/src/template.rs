@@ -12,7 +12,7 @@ use crate::gen_context::NestedBlockInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared::get_constrain_call;
 use crate::shared::op_result_owner;
-use crate::shared::ArrayDimension;
+use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
 use crate::template_ext::TemplateLike as _;
@@ -32,10 +32,12 @@ use llzk::prelude::BlockRef;
 use llzk::prelude::CallOpLike as _;
 use llzk::prelude::CallOpRef;
 use llzk::prelude::FeltType;
+use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::LoopBoundsAttribute;
 use llzk::prelude::OperationLike;
+use llzk::prelude::StructDefOpLike;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Type;
@@ -577,7 +579,7 @@ where
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         expr: &Expression,
-    ) -> Result<ArrayDimension<'ctx, 'val>> {
+    ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
         // First try to compute statically, falling back to literal computation
         // if all values are not compile-time constants or if the final result
         // does not properly convert to i64.
@@ -585,7 +587,7 @@ where
             codegen.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64)
         {
             let int_attr = codegen.index_attr(integer);
-            ArrayDimension::new(int_attr.into(), &[])
+            ArrayDimensionResult::new(int_attr.into(), &[])
         } else {
             match expr {
                 Expression::Number(_, _) => {
@@ -593,11 +595,19 @@ where
                 }
                 Expression::Variable { meta, name, access } => match access.as_slice() {
                     [] => {
-                        println!("got {name} for var dim");
-                        todo!("complete me")
+                        // Grab the parameter name if it exists, else, defer to function generation.
+                        if self.struct_def.has_param_name(name) {
+                            ArrayDimensionResult::new(
+                                FlatSymbolRefAttribute::new(codegen.context, name).into(),
+                                &[],
+                            )
+                        } else {
+                            // Other variables are unsupported, defer to function context
+                            ArrayDimensionResult::insufficient_data_result()
+                        }
                     }
                     a => {
-                        todo!("resolve")
+                        todo!("Handle Variable expression in dimension for non-integer attributes")
                     }
                 },
                 Expression::InfixOp { meta, lhe, infix_op, rhe } => {
@@ -619,7 +629,7 @@ where
                 // Give the same error that the circom type checker gives. The type checker ran
                 // earlier so this should technically be unreachable.
                 _ => {
-                    Err(anyhow!("Array indexes and lengths must be single arithmetic expressions"))
+                    unreachable!("Array indexes and lengths must be single arithmetic expressions")
                 }
             }
         }
@@ -884,7 +894,8 @@ where
             Statement::Declaration { meta, name, dimensions, .. } => {
                 template.and_then_same(|fc, _| {
                     if !fc.block_ctx.is_name_present(name) {
-                        let op = fc.new_nondet_felt_of_dimensions(codegen, meta, dimensions)?;
+                        let dimensions = fc.get_dimensions(codegen, dimensions)?;
+                        let op = dimensions.new_nondet_felt_of_dimensions(codegen, meta)?;
                         fc.block_ctx.declare_name_ensure_not_present(name, op)
                     } else {
                         Ok(())
@@ -1350,8 +1361,8 @@ where
                     && codegen.program.contains_template(id) =>
             {
                 let location = codegen.location_from_meta(meta);
-                let subcmp_type =
-                    template.struct_type_with_concrete_dimensions(codegen, id, args)?;
+                let dimensions = template.get_dimensions(codegen, args)?;
+                let subcmp_type = dimensions.struct_type_with_concrete_dimensions(codegen, id);
                 let arg_types = std::iter::once(Type::from(subcmp_type))
                     .chain(codegen.get_template_input_types(id)?)
                     .collect::<Vec<_>>();
@@ -1400,6 +1411,23 @@ where
                         Ok(undefs[0])
                     },
                 )
+            }
+            Expression::UniformArray { meta, value, dimension } => {
+                let location = codegen.location_from_meta(meta);
+                let template_dim_res = template.convert_dim_expr(codegen, dimension)?;
+                let value = value.gen_llzk_in_template(codegen, template)?;
+                value.and_then_same(|fc, value| {
+                    // Try to convert in template first, or defer to function context if unsuccessful.
+                    let final_dim = match &template_dim_res {
+                        ArrayDimensionResult::Computed(array_dimension) => array_dimension,
+                        ArrayDimensionResult::InsufficientData => {
+                            &Option::from(fc.convert_dim_expr(codegen, dimension)?)
+                                .ok_or_else(||
+                                    anyhow!("missing data required to compute uniform array dimensions in template"))?
+                        },
+                    };
+                    fc.generate_uniform_array(codegen, location, value, final_dim)
+                })
             }
             // Delegate any other kind of expression to the implementation in `function.rs`.
             expr => {

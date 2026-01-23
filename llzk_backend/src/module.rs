@@ -6,7 +6,7 @@ use crate::function::GenerateLLZKInFunction as _;
 use crate::function_ext::FunctionLike;
 use crate::program_ext::ProgramLike;
 use crate::shared::map_name_to_arg_value;
-use crate::shared::ArrayDimension;
+use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::unique_instance_types;
@@ -14,7 +14,6 @@ use crate::subcmp::SubcmpDeclInfo;
 use crate::template::GenerateLLZKInTemplate as _;
 use crate::template::TemplateContext;
 use crate::template_ext::TemplateLike;
-use anyhow::anyhow;
 use anyhow::bail;
 use anyhow::Result;
 use llzk::attributes::NamedAttribute;
@@ -171,9 +170,10 @@ impl<'ctx> DeclarationInfo<'ctx> {
                     VariableType::Var => {
                         // Create an `undef` of the appropriate type. When the actual assignment is
                         // processed later, this is replaced with the appropriate value.
+                        let dimensions = self.get_dimensions(codegen, dimensions)?;
                         self.decl_inits.insert(
                             name.clone(),
-                            self.new_nondet_felt_of_dimensions(codegen, meta, dimensions)?,
+                            dimensions.new_nondet_felt_of_dimensions(codegen, meta)?,
                         );
                         Ok(())
                     }
@@ -199,7 +199,8 @@ impl<'ctx> DeclarationInfo<'ctx> {
     ) -> Result<StructType<'ctx>> {
         match expression {
             Expression::Call { meta, id, args, .. } if meta.get_type_knowledge().is_component() => {
-                self.struct_type_with_concrete_dimensions(codegen, id, args)
+                let dims = self.get_dimensions(codegen, args)?;
+                Ok(dims.struct_type_with_concrete_dimensions(codegen, id))
             }
             Expression::ParallelOp { rhe, .. } => {
                 // `parallel` is a tag used to generate parallelized code for the C++
@@ -220,13 +221,10 @@ impl<'ctx> DeclarationInfo<'ctx> {
         dimensions: &[Expression],
     ) -> Result<()> {
         let location = codegen.location_from_meta(meta);
-
+        let dims = self.get_dimensions(codegen, dimensions)?;
         if self
             .subcmp_decls
-            .insert(
-                name.to_owned(),
-                SubcmpDeclInfo::new(self.try_dimensions_to_attrs(codegen, dimensions)?, location),
-            )
+            .insert(name.to_owned(), SubcmpDeclInfo::new(dims.attrs(), location))
             .is_some()
         {
             bail!("Subcomponent {name} declared twice");
@@ -246,7 +244,8 @@ impl<'ctx> DeclarationInfo<'ctx> {
         base_type: Type<'ctx>,
     ) -> Result<()> {
         let location = codegen.location_from_meta(meta);
-        let decl_type = self.type_from_dimension_exprs(codegen, base_type, dimensions)?;
+        let dims = self.get_dimensions(codegen, dimensions)?;
+        let decl_type = dims.type_from_dimension_exprs(base_type);
         self.visit_signal_or_bus_impl(codegen, signal_type, name, location, decl_type)
     }
 
@@ -335,7 +334,7 @@ where
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         expr: &Expression,
-    ) -> Result<ArrayDimension<'ctx, 'val>> {
+    ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
         // First try to compute statically, falling back to literal computation
         // if all values are not compile-time constants or if the final result
         // does not properly convert to i64.
@@ -343,7 +342,7 @@ where
             codegen.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64)
         {
             let int_attr = codegen.index_attr(integer);
-            ArrayDimension::new(int_attr.into(), &[])
+            ArrayDimensionResult::new(int_attr.into(), &[])
         } else {
             match expr {
                 Expression::Number(_, _) => {
@@ -354,14 +353,14 @@ where
                         if self.template_params.contains(name) {
                             let template_param_attr =
                                 FlatSymbolRefAttribute::new(codegen.context, name);
-                            ArrayDimension::new(template_param_attr.into(), &[])
+                            ArrayDimensionResult::new(template_param_attr.into(), &[])
                         } else if let Some(op) = self.decl_inits.get(name) {
                             let id_map = codegen.affine_map_attr("affine_map<()[i] -> (i)>")?;
                             let value_range = op
                                 .results()
                                 .map(Into::<Value<'ctx, 'val>>::into)
                                 .collect::<Vec<_>>();
-                            ArrayDimension::new(id_map, &value_range)
+                            ArrayDimensionResult::new(id_map, &value_range)
                         } else {
                             todo!("Handle Variable expression in dimension for non-integer, non-template parameter attributes in DeclarationInfo")
                         }
@@ -389,7 +388,7 @@ where
                 // Give the same error that the circom type checker gives. The type checker ran
                 // earlier so this should technically be unreachable.
                 _ => {
-                    Err(anyhow!("Array indexes and lengths must be single arithmetic expressions"))
+                    unreachable!("Array indexes and lengths must be single arithmetic expressions")
                 }
             }
         }
