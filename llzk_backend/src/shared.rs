@@ -885,19 +885,12 @@ impl<'ast, 'ctx, 'val> ArrayDimensions<'ctx, 'val> {
     pub fn from_results(dim_results: &[ArrayDimensionResult<'ctx, 'val>]) -> Option<Self> {
         let dims = dim_results
             .iter()
-            .map(|d| match d {
-                ArrayDimensionResult::Computed(array_dimension) => Some(array_dimension),
-                ArrayDimensionResult::InsufficientData => None,
-            })
-            .filter_map(|mut x| Option::take(&mut x))
             .cloned()
+            .map(Option::from)
+            .filter_map(|mut x| Option::take(&mut x))
             .collect::<Vec<_>>();
 
-        if dims.len() != dim_results.len() {
-            None
-        } else {
-            Some(ArrayDimensions(dims))
-        }
+        (dims.len() == dim_results.len()).then(|| ArrayDimensions(dims))
     }
     /// Constructs a new empty list of dimensions.
     pub fn new_empty() -> Self {
