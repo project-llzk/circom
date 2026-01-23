@@ -485,6 +485,12 @@ impl MemoryKnowledge {
     pub fn set_abstract_memory_address(&mut self, value: usize) {
         self.abstract_memory_address = Option::Some(value);
     }
+    pub fn has_concrete_dimensions(&self) -> bool {
+        self.concrete_dimensions.is_some()
+    }
+    pub fn has_abstract_memory_address(&self) -> bool {
+        self.abstract_memory_address.is_some()
+    }
     pub fn get_concrete_dimensions(&self) -> &[usize] {
         if let Option::Some(v) = &self.concrete_dimensions {
             v
