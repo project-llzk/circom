@@ -1421,7 +1421,9 @@ where
                     let final_dim = match &template_dim_res {
                         ArrayDimensionResult::Computed(array_dimension) => array_dimension,
                         ArrayDimensionResult::InsufficientData => {
-                            &Option::from(fc.convert_dim_expr(codegen, dimension)?).ok_or_else(|| anyhow!("missing data required to compute uniform array dimensions in template"))?
+                            &Option::from(fc.convert_dim_expr(codegen, dimension)?)
+                                .ok_or_else(||
+                                    anyhow!("missing data required to compute uniform array dimensions in template"))?
                         },
                     };
                     fc.generate_uniform_array(codegen, location, value, final_dim)

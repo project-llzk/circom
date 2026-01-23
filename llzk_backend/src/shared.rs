@@ -970,8 +970,9 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
     /// Convert a circom [Expression] used as an array dimension to an LLZK Attribute.
     /// Returns an error if there was an error converting a dimension that should
     /// be convertible.
-    /// Returns [ArrayDimensionResult::InsufficientData] if a dimension is not convertible due to lack of information
-    /// in the implementer. Users can then attempt to resolve the dimension in a different
+    /// Returns [ArrayDimensionResult::InsufficientData] if a dimension is not
+    /// convertible due to lack of information in the implementer.
+    /// Users can then attempt to resolve the dimension in a different
     /// context, or throw an error if all available contexts are unable to convert
     /// the dimension.
     ///
