@@ -1155,6 +1155,35 @@ where
     ) -> Result<ArrayDimension<'ctx, 'val>> {
         dimension.transform(|val| self.cast_to_index_if_needed(location, val))
     }
+
+    /// Handle a [Statement::Declaration] by generating a nondet felt value with the given
+    /// dimensions and declaring it in the current block context.
+    pub fn gen_declaration(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        meta: &Meta,
+        name: &str,
+        dimensions: &[Expression],
+    ) -> Result<()> {
+        if self.block_ctx.is_name_present(name) {
+            return Ok(());
+        }
+        // If generating from VCP, there are cases where the `sugar_cleaner` added new
+        // declarations that only have `MemoryKnowledge` but not `dimensions` in the AST. So
+        // check `MemoryKnowledge` first (if not generating from VCP, this will always be
+        // empty so `dimensions` will be used).
+        let mk = meta.get_memory_knowledge();
+        let dims = if mk.has_concrete_dimensions() {
+            (mk.get_concrete_dimensions(), codegen).try_into()?
+        } else {
+            self.get_dimensions(codegen, dimensions)?
+        };
+        if codegen.verbose {
+            println!("Declaring variable '{name}' with dimensions {dims:?}");
+        }
+        let op = dims.new_nondet_felt_of_dimensions(codegen, meta)?;
+        self.block_ctx.declare_name_ensure_not_present(name, op)
+    }
 }
 
 impl<'ast, 'ctx, 'func, 'blk, 'val> DimExprConverter<'ctx, 'ast, 'val>
@@ -1362,7 +1391,7 @@ where
                     // if applicable but is currently implemented for scalar `felt.type` only.
                     // In this case, the correct solution (once nondet op is supported for any
                     // type) is to just create the nondet op using `return_val.getType()`
-                    ArrayDimensions::new_empty()
+                    ArrayDimensions::default()
                         .new_nondet_felt_of_dimensions_at_location(codegen, location)?,
                 ),
             )
@@ -1555,7 +1584,7 @@ where
                 // In this case, the correct solution (once nondet op is supported for any
                 // type) is to just create the nondet op using
                 // `return_val.getType()`
-                ArrayDimensions::new_empty()
+                ArrayDimensions::default()
                     .new_nondet_felt_of_dimensions_at_location(codegen, location)?,
                 VAR_NAME_RETURN_VAL.to_string(),
             )?;
@@ -1623,11 +1652,7 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Template elements declared inside the function")
                 }
-                if !function.block_ctx.is_name_present(name) {
-                    let dims = function.get_dimensions(codegen, dimensions)?;
-                    let op = dims.new_nondet_felt_of_dimensions(codegen, meta)?;
-                    function.block_ctx.declare_name_ensure_not_present(name, op)?;
-                }
+                function.gen_declaration(codegen, meta, name, dimensions)?;
                 Ok(false)
             }
             Statement::Block { meta, stmts } => {
