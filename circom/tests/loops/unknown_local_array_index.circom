@@ -81,7 +81,7 @@ component main = ForUnknownIndex();
 // CHECK-NEXT:          scf.yield %[[VAL_49]], %[[VAL_51]] : !felt.type, !felt.type
 // CHECK-NEXT:        }
 // CHECK-NEXT:        %[[VAL_52:[0-9a-zA-Z_\.]+]] = felt.const  10
-// CHECK-NEXT:        %[[VAL_53:[0-9a-zA-Z_\.]+]] = felt.mod %[[VAL_43]]#0, %[[VAL_52]] : !felt.type, !felt.type
+// CHECK-NEXT:        %[[VAL_53:[0-9a-zA-Z_\.]+]] = felt.umod %[[VAL_43]]#0, %[[VAL_52]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_54:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_53]]
 // CHECK-NEXT:        %[[VAL_55:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_27]]{{\[}}%[[VAL_54]]] : <10 x !felt.type>, !felt.type
 // CHECK-NEXT:        struct.writef %[[VAL_1]][@out] = %[[VAL_55]] : <@ForUnknownIndex<[]>>, !felt.type
