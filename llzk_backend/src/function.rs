@@ -523,24 +523,10 @@ where
                 try_felt_or_index_op!(felt::div, index::divu);
             }
             ExpressionInfixOpcode::IntDiv => {
-                // Need `this` to append required preceding ops. The final
-                // result is appended via the macro.
-                try_callback_for_type!(is_felt_type, |this| {
-                    // Perform integer division by casting to integer, using arith dialect
-                    // divui, then casting the quotient back to felt. Cast to an integer type
-                    // with sufficient bits to hold the felts without truncation.
-                    let int_ty = codegen.int_type(codegen.prime_field_bits()?.try_into()?);
-                    let loc = codegen.location_from_meta(meta);
-                    let int_lhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, lhs))?;
-                    let int_rhs = this.append_op_unnamed_result(cast::toint(loc, int_ty, rhs))?;
-                    let quotient =
-                        this.append_op_unnamed_result(arith::divui(int_lhs, int_rhs, loc))?;
-                    Ok(cast::tofelt(loc, quotient).into())
-                });
-                try_index_op!(index::divu);
+                try_felt_or_index_op!(felt::uintdiv, index::divu);
             }
             ExpressionInfixOpcode::Mod => {
-                try_felt_or_index_op!(felt::r#mod, index::remu);
+                try_felt_or_index_op!(felt::umod, index::remu);
             }
             ExpressionInfixOpcode::Pow => {
                 try_felt_or_math_op!(felt::pow, math::ipowi);

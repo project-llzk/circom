@@ -28,7 +28,7 @@ component main = ArithRemainder();
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = bool.cmp ne(%[[VAL_0]], %[[VAL_2]])
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_3]] -> (!felt.type) {
 // CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.mod %[[VAL_5]], %[[VAL_0]] : !felt.type, !felt.type
+// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.umod %[[VAL_5]], %[[VAL_0]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_6]] : !felt.type
 // CHECK-NEXT:        } else {
 // CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = felt.const  0
