@@ -278,7 +278,9 @@ where
         val: Value<'ctx, 'val>,
         expected: Type<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
-        if is_felt_type(expected) {
+        if expected == val.r#type() {
+            Ok(val)
+        } else if is_felt_type(expected) {
             self.cast_to_felt_if_needed(location, val)
         } else if is_index(expected) {
             self.cast_to_index_if_needed(location, val)
