@@ -798,10 +798,12 @@ where
         let const_dim = IntegerAttribute::try_from(dimension);
         if let Ok(subarr_ty) = ArrayType::try_from(value.r#type()) {
             let arr_ty = dimension.new_array_type(&subarr_ty.into());
+            let mut symbols_sto = vec![];
             // The array.new constructor doesn't accept arrays as initializer values,
             // so we instead create the array empty and use array.insert to insert values.
             let ctor = if let Some(symbols) = dimension.value_range()? {
-                ArrayCtor::MapDimSlice(&[symbols], &[0])
+                symbols_sto.push(symbols);
+                ArrayCtor::MapDimSlice(&symbols_sto, &[0])
             } else {
                 ArrayCtor::Values(&[])
             };
@@ -839,11 +841,14 @@ where
             let arr_ty = dimension.new_array_type(&value.r#type());
             let builder = &OpBuilder::new(codegen.context);
             if let Ok(const_dim) = const_dim {
-                let ctor = ArrayCtor::Values(&vec![value; usize::try_from(const_dim.value())?]);
+                let values = vec![value; usize::try_from(const_dim.value())?];
+                let ctor = ArrayCtor::Values(&values);
                 self.append_op_unnamed_result(array::new(builder, location, arr_ty, ctor))
             } else {
+                let mut v_sto = vec![];
                 let ctor = if let Ok(Some(v)) = dimension.value_range() {
-                    ArrayCtor::MapDimSlice(&[v], &[0])
+                    v_sto.push(v);
+                    ArrayCtor::MapDimSlice(&v_sto, &[0])
                 } else {
                     ArrayCtor::Values(&[])
                 };
