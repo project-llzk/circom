@@ -194,7 +194,7 @@ where
         value: Value<'ctx, 'val>,
     ) -> Result<()> {
         let mut op = if self.block_ctx.is_only_root() {
-            // TODO: As mentioned in `gen_function_llzk()`, functions could also
+            // TODO: As mentioned in `FunctionLike for FunctionData`, functions could also
             // return array type values but that is not currently implemented.
             let value = self.cast_to_felt_if_needed(location, value)?;
             function::r#return(location, &[value])
@@ -1378,7 +1378,7 @@ where
         function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL).cloned().or_else(|_| {
             single_result_as_value(
                 nonreturning_block.append_operation(
-                    // TODO: just like `gen_function_llzk()`, this must use an array type
+                    // TODO: just like `FunctionLike for FunctionData`, this must use an array type
                     // if applicable but is currently implemented for scalar `felt.type` only.
                     // In this case, the correct solution (once nondet op is supported for any
                     // type) is to just create the nondet op using `return_val.getType()`
@@ -1412,7 +1412,7 @@ where
     let then_block = then_region.append_block(Block::new(&[]));
     function.gen_in_given_block_with_new_circom_scope_and_merge_overwrites(then_block, |fc| {
         let ret_val = fc.block_ctx.get_named_value(VAR_NAME_RETURN_VAL)?;
-        // TODO: As mentioned in `gen_function_llzk()`, functions could also
+        // TODO: As mentioned in `FunctionLike for FunctionData`, functions could also
         // return array type values but that is not currently implemented.
         let value = fc.cast_to_felt_if_needed(location, *ret_val)?;
         let mut op = function::r#return(location, &[value]);
@@ -1570,7 +1570,7 @@ where
         // In the current block, ensure the return value variable is initialized, default to nondet.
         if function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL).is_err() {
             function.append_op_named_result(
-                // TODO: just like `gen_function_llzk()`, this must use an array type
+                // TODO: just like `FunctionLike for FunctionData`, this must use an array type
                 // if applicable but is currently implemented for scalar `felt.type` only.
                 // In this case, the correct solution (once nondet op is supported for any
                 // type) is to just create the nondet op using
@@ -1924,7 +1924,7 @@ where
                 let call_operands = args
                     .iter()
                     .map(|arg| {
-                        // TODO: As mentioned in `gen_function_llzk()`, functions could
+                        // TODO: As mentioned in `FunctionLike for FunctionData`, functions could
                         // also take array type parameters but that is not currently implemented.
                         let operand_val = arg.gen_llzk_in_function(codegen, function)?;
                         function.cast_to_felt_if_needed(location, operand_val)
