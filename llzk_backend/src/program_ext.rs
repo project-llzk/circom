@@ -18,6 +18,21 @@ pub trait ProgramLike: std::fmt::Debug {
     fn get_main_public_inputs(&self) -> &Vec<String>;
     /// Get an iterator over all functions in the program.
     fn get_functions(&self, sorted: bool) -> impl IntoIterator<Item = &impl FunctionLike>;
+    /// Returns true if the program contains a function with the given name.
+    fn contains_function(&self, name: &str) -> bool {
+        self.get_functions(false).into_iter().any(|f| f.get_name() == name)
+    }
+    /// Returns the function with the given name.
+    ///
+    /// # Panics
+    ///
+    /// If the program does not have a function with that name.
+    fn get_function_data(&self, name: &str) -> &impl FunctionLike {
+        self.get_functions(false)
+            .into_iter()
+            .find(|f| f.get_name() == name)
+            .unwrap_or_else(|| panic!("Function not found: {}", name))
+    }
     /// Get an iterator over all templates in the program.
     fn get_templates(&self, sorted: bool) -> impl IntoIterator<Item = &impl TemplateLike>;
     /// Returns true if the program contains a template with the given name.
@@ -30,7 +45,10 @@ pub trait ProgramLike: std::fmt::Debug {
     ///
     /// If the program does not have a template with that name.
     fn get_template_data(&self, name: &str) -> &impl TemplateLike {
-        self.get_templates(false).into_iter().find(|t| t.get_name() == name).unwrap()
+        self.get_templates(false)
+            .into_iter()
+            .find(|t| t.get_name() == name)
+            .unwrap_or_else(|| panic!("Template not found: {}", name))
     }
 }
 
@@ -50,6 +68,12 @@ impl ProgramLike for ProgramArchive {
             sort_functions_by_name(&mut functions);
         }
         functions
+    }
+    fn contains_function(&self, name: &str) -> bool {
+        self.contains_function(name)
+    }
+    fn get_function_data(&self, name: &str) -> &impl FunctionLike {
+        self.get_function_data(name)
     }
     fn get_templates(&self, sorted: bool) -> impl IntoIterator<Item = &impl TemplateLike> {
         let mut templates: Vec<_> = self.templates.values().collect();
