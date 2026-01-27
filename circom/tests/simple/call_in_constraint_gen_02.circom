@@ -21,7 +21,7 @@ component main = T();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
 // CHECK-LABEL:   function.def @f(
-// CHECK-SAME:                    %[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type {
+// CHECK-SAME:                    %[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_0]], %[[VAL_0]] : !felt.type, !felt.type
 // CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_1]], %[[VAL_2]] : !felt.type, !felt.type

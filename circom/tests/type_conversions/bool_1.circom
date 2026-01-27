@@ -18,7 +18,7 @@ template A(x) {
 component main = A(5);
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
-// CHECK-NEXT:    function.def @binop_comp(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type {
+// CHECK-NEXT:    function.def @binop_comp(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = bool.cmp gt(%[[VAL_0]], %[[VAL_1]])
 // CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_2]] : i1
 // CHECK-NEXT:      function.return %[[VAL_3]] : !felt.type

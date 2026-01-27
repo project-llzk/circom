@@ -23,12 +23,12 @@ component main = CallInFnTest();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
 // CHECK-LABEL:   function.def @passthrough(
-// CHECK-SAME:                              %[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type {
+// CHECK-SAME:                              %[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      function.return %[[VAL_0]] : !felt.type
 // CHECK-NEXT:    }
 // CHECK-LABEL:   function.def @sum(
 // CHECK-SAME:                      %[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type,
-// CHECK-SAME:                      %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type {
+// CHECK-SAME:                      %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = function.call @passthrough(%[[VAL_0]]) : (!felt.type) -> !felt.type
 // CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = function.call @passthrough(%[[VAL_1]]) : (!felt.type) -> !felt.type
 // CHECK-NEXT:      %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_2]], %[[VAL_3]] : !felt.type, !felt.type

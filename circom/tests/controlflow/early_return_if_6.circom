@@ -24,7 +24,7 @@ template EarlyReturn() {
 component main = EarlyReturn();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
-// CHECK-NEXT:    function.def @earlyReturnFn(%[[V_I:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_N:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type {
+// CHECK-NEXT:    function.def @earlyReturnFn(%[[V_I:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_N:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[V_U:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
 // CHECK-NEXT:      %[[V_3:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[V_4:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[V_N]], %[[V_3]])

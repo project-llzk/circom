@@ -22,7 +22,7 @@ function negative(n){
 component main = C();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
-// CHECK-NEXT:    function.def @negative_0(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type {
+// CHECK-NEXT:    function.def @negative_0(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_0]], %[[VAL_1]])
 // CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_2]] -> (!felt.type) {

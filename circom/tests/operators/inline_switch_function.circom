@@ -17,7 +17,7 @@ component main = CallInlineSwitch();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
 // CHECK-LABEL:   function.def @InlineSwitch
-// CHECK-SAME:    (%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type {
+// CHECK-SAME:    (%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_99:[0-9a-zA-Z_\.]+]] = bool.cmp ne(%[[VAL_0]], %[[VAL_3]])
 // CHECK-NEXT:      %[[VAL_4:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_99]] -> (!felt.type) {

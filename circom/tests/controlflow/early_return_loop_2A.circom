@@ -22,7 +22,7 @@ template EarlyReturn() {
 component main = EarlyReturn();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
-// CHECK-NEXT:    function.def @earlyReturnFn(%[[V_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type {
+// CHECK-NEXT:    function.def @earlyReturnFn(%[[V_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[V_1:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
 // CHECK-NEXT:      %[[V_I0:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[V_R0:[0-9a-zA-Z_\.]+]] = arith.constant false

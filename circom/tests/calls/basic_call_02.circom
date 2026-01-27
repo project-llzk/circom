@@ -24,7 +24,7 @@ template Call2() {
 component main = Call2();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
-// CHECK-NEXT:    function.def @nbits(%[[V_A:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type {
+// CHECK-NEXT:    function.def @nbits(%[[V_A:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[V_N0:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:      %[[V_R0:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[V_3:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[V_N1:[0-9a-zA-Z_\.]+]] = %[[V_N0]], %[[V_R1:[0-9a-zA-Z_\.]+]] = %[[V_R0]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {

@@ -16,7 +16,7 @@ template A() {
 component main = A();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
-// CHECK-LABEL:   function.def @f() -> !felt.type {
+// CHECK-LABEL:   function.def @f() -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      function.return %[[VAL_1]] : !felt.type
 // CHECK-NEXT:    }
