@@ -19,7 +19,7 @@ component main = T15();
 // CHECK-LABEL:   struct.def @T15<[]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute
-// CHECK-SAME:      () -> !struct.type<@T15<[]>> attributes {function.allow_witness} {
+// CHECK-SAME:      () -> !struct.type<@T15<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@T15<[]>>
 // CHECK-NEXT:        %[[VAL_y_1:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_i_1:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -40,7 +40,7 @@ component main = T15();
 // CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@T15<[]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
-// CHECK-SAME:      (%[[VAL_15:[0-9a-zA-Z_\.]+]]: !struct.type<@T15<[]>>) attributes {function.allow_constraint} {
+// CHECK-SAME:      (%[[VAL_15:[0-9a-zA-Z_\.]+]]: !struct.type<@T15<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_y_1:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_i_1:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_i_2:[0-9a-zA-Z_\.]+]] = %[[VAL_i_1]], %[[VAL_y_2:[0-9a-zA-Z_\.]+]] = %[[VAL_y_1]])

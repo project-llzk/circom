@@ -19,7 +19,7 @@ component main = A(1);
 // CHECK-NEXT:    struct.def @A<[@n]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute
-// CHECK-SAME:      (%[[V_0:[0-9a-zA-Z_\.]+]]: !array.type<3 x !felt.type>) -> !struct.type<@A<[@n]>> attributes {function.allow_witness} {
+// CHECK-SAME:      (%[[V_0:[0-9a-zA-Z_\.]+]]: !array.type<3 x !felt.type>) -> !struct.type<@A<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[SELF:[0-9a-zA-Z_\.]+]] = struct.new : <@A<[@n]>>
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
 // CHECK-NEXT:        %[[V_3:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -36,7 +36,7 @@ component main = A(1);
 // CHECK-NEXT:        function.return %[[SELF]] : !struct.type<@A<[@n]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
-// CHECK-SAME:      (%[[SELF:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[@n]>>, %[[V_14:[0-9a-zA-Z_\.]+]]: !array.type<3 x !felt.type>) attributes {function.allow_constraint} {
+// CHECK-SAME:      (%[[SELF:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[@n]>>, %[[V_14:[0-9a-zA-Z_\.]+]]: !array.type<3 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
 // CHECK-NEXT:        %[[V_16:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_17:[0-9a-zA-Z_\.]+]] = array.new %[[V_16]], %[[V_16]], %[[V_16]] : <3 x !felt.type>

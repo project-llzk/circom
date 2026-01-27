@@ -24,7 +24,7 @@ component main = B();
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
 // CHECK-LABEL:   struct.def @B<[]> {
 // CHECK-LABEL:     function.def @compute
-// CHECK-SAME:      () -> !struct.type<@B<[]>> attributes {function.allow_witness} {
+// CHECK-SAME:      () -> !struct.type<@B<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@B<[]>>
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  5
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  5
@@ -44,7 +44,7 @@ component main = B();
 // CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@B<[]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
-// CHECK-SAME:      (%[[VAL_12:[0-9a-zA-Z_\.]+]]: !struct.type<@B<[]>>) attributes {function.allow_constraint} {
+// CHECK-SAME:      (%[[VAL_12:[0-9a-zA-Z_\.]+]]: !struct.type<@B<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  5
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = felt.const  5
 // CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_13]], %[[VAL_14]])

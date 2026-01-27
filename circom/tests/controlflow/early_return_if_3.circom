@@ -52,13 +52,13 @@ component main = EarlyReturn();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @EarlyReturn<[]> {
 // CHECK-NEXT:      struct.field @outp : !felt.type {llzk.pub}
-// CHECK-NEXT:      function.def @compute(%[[VAL_13:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@EarlyReturn<[]>> attributes {function.allow_witness} {
+// CHECK-NEXT:      function.def @compute(%[[VAL_13:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@EarlyReturn<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.new : <@EarlyReturn<[]>>
 // CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = function.call @earlyReturnFn(%[[VAL_13]]) : (!felt.type) -> !felt.type
 // CHECK-NEXT:        struct.writef %[[VAL_14]][@outp] = %[[VAL_15]] : <@EarlyReturn<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_14]] : !struct.type<@EarlyReturn<[]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@EarlyReturn<[]>>, %[[VAL_17:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK-NEXT:      function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@EarlyReturn<[]>>, %[[VAL_17:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = function.call @earlyReturnFn(%[[VAL_17]]) : (!felt.type) -> !felt.type
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_16]][@outp] : <@EarlyReturn<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_19]], %[[VAL_18]] : !felt.type, !felt.type

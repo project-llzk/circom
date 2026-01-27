@@ -18,14 +18,14 @@ component main = ArrayDims(7);
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @ArrayDims<[@N]> {
 // CHECK-NEXT:      struct.field @outp : !array.type<#[[$ATTR_0]] x !felt.type> {llzk.pub}
-// CHECK-NEXT:      function.def @compute() -> !struct.type<@ArrayDims<[@N]>> attributes {function.allow_witness} {
+// CHECK-NEXT:      function.def @compute() -> !struct.type<@ArrayDims<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@ArrayDims<[@N]>>
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_1]], %[[VAL_2]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@ArrayDims<[@N]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@ArrayDims<[@N]>>) attributes {function.allow_constraint} {
+// CHECK-NEXT:      function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@ArrayDims<[@N]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_5]], %[[VAL_6]] : !felt.type, !felt.type

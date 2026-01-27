@@ -10,11 +10,11 @@ component main = EmptyTemplate();
 
 //CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
 //CHECK-NEXT:     struct.def @EmptyTemplate<[]> {
-//CHECK-NEXT:       function.def @compute() -> !struct.type<@EmptyTemplate<[]>> attributes {function.allow_witness} {
+//CHECK-NEXT:       function.def @compute() -> !struct.type<@EmptyTemplate<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 //CHECK-NEXT:         %[[SELF:[0-9a-zA-Z_\.]+]] = struct.new : <@EmptyTemplate<[]>>
 //CHECK-NEXT:         function.return %[[SELF]] : !struct.type<@EmptyTemplate<[]>>
 //CHECK-NEXT:       }
-//CHECK-NEXT:       function.def @constrain(%arg0: !struct.type<@EmptyTemplate<[]>>) attributes {function.allow_constraint} {
+//CHECK-NEXT:       function.def @constrain(%arg0: !struct.type<@EmptyTemplate<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 //CHECK-NEXT:         function.return
 //CHECK-NEXT:       }
 //CHECK-NEXT:     }

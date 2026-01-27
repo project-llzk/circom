@@ -34,14 +34,14 @@ component main = Multiplier3();
 // CHECK-NEXT:    struct.def @Multiplier2<[]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute
-// CHECK-SAME:      (%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Multiplier2<[]>> attributes {function.allow_witness} {
+// CHECK-SAME:      (%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Multiplier2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@Multiplier2<[]>>
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_0]], %[[VAL_1]] : !felt.type, !felt.type
 // CHECK-NEXT:        struct.writef %[[VAL_2]][@out] = %[[VAL_3]] : <@Multiplier2<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_2]] : !struct.type<@Multiplier2<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain
-// CHECK-SAME:      (%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@Multiplier2<[]>>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_6:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK-SAME:      (%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@Multiplier2<[]>>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_6:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_5]], %[[VAL_6]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@out] : <@Multiplier2<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_8]], %[[VAL_7]] : !felt.type, !felt.type
@@ -53,7 +53,7 @@ component main = Multiplier3();
 // CHECK-DAG:       struct.field @mult2 : !struct.type<@Multiplier2<[]>>
 // CHECK-DAG:       struct.field @mult1 : !struct.type<@Multiplier2<[]>>
 // CHECK-LABEL:     function.def @compute
-// CHECK-SAME:      (%[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_10:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_11:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Multiplier3<[]>> attributes {function.allow_witness} {
+// CHECK-SAME:      (%[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_10:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_11:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Multiplier3<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = struct.new : <@Multiplier3<[]>>
 // CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = function.call @Multiplier2::@compute(%[[VAL_9]], %[[VAL_10]]) : (!felt.type, !felt.type) -> !struct.type<@Multiplier2<[]>>
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_13]][@out] : <@Multiplier2<[]>>, !felt.type
@@ -65,7 +65,7 @@ component main = Multiplier3();
 // CHECK-NEXT:        function.return %[[VAL_12]] : !struct.type<@Multiplier3<[]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
-// CHECK-SAME:      (%[[VAL_17:[0-9a-zA-Z_\.]+]]: !struct.type<@Multiplier3<[]>>, %[[VAL_18:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_19:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_20:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK-SAME:      (%[[VAL_17:[0-9a-zA-Z_\.]+]]: !struct.type<@Multiplier3<[]>>, %[[VAL_18:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_19:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_20:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-DAG:         %[[VAL_21:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_17]][@mult2] : <@Multiplier3<[]>>, !struct.type<@Multiplier2<[]>>
 // CHECK-DAG:         %[[VAL_22:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_17]][@mult1] : <@Multiplier3<[]>>, !struct.type<@Multiplier2<[]>>
 // CHECK-NEXT:        function.call @Multiplier2::@constrain(%[[VAL_22]], %[[VAL_18]], %[[VAL_19]]) : (!struct.type<@Multiplier2<[]>>, !felt.type, !felt.type) -> ()

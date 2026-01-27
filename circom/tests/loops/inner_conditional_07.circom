@@ -32,7 +32,7 @@ component main = InnerConditional7(3);
 // CHECK-NEXT:    struct.def @InnerConditional7<[@N]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute
-// CHECK-SAME:      () -> !struct.type<@InnerConditional7<[@N]>> attributes {function.allow_witness} {
+// CHECK-SAME:      () -> !struct.type<@InnerConditional7<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[V_0:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerConditional7<[@N]>>
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
 // CHECK-NEXT:        %[[V_2:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -94,7 +94,7 @@ component main = InnerConditional7(3);
 // CHECK-NEXT:        function.return %[[V_0]] : !struct.type<@InnerConditional7<[@N]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
-// CHECK-SAME:      (%[[V_47:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerConditional7<[@N]>>) attributes {function.allow_constraint} {
+// CHECK-SAME:      (%[[V_47:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerConditional7<[@N]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
 // CHECK-NEXT:        %[[V_49:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_A:[0-9a-zA-Z_\.]+]] = array.new  : <@N x !felt.type>

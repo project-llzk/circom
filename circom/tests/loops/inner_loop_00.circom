@@ -23,7 +23,7 @@ component main = InnerLoops(2, 3);
 // CHECK-NEXT:    struct.def @InnerLoops<[@n, @m]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute
-// CHECK-SAME:      (%[[V_IN:[0-9a-zA-Z_\.]+]]: !array.type<@m x !felt.type>) -> !struct.type<@InnerLoops<[@n, @m]>> attributes {function.allow_witness} {
+// CHECK-SAME:      (%[[V_IN:[0-9a-zA-Z_\.]+]]: !array.type<@m x !felt.type>) -> !struct.type<@InnerLoops<[@n, @m]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[V_1:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerLoops<[@n, @m]>>
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
 // CHECK-NEXT:        %[[V_M:[0-9a-zA-Z_\.]+]] = poly.read_const @m : !felt.type
@@ -67,7 +67,7 @@ component main = InnerLoops(2, 3);
 // CHECK-NEXT:        function.return %[[V_1]] : !struct.type<@InnerLoops<[@n, @m]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
-// CHECK-SAME:      (%[[V_IN:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerLoops<[@n, @m]>>, %[[V_36:[0-9a-zA-Z_\.]+]]: !array.type<@m x !felt.type>) attributes {function.allow_constraint} {
+// CHECK-SAME:      (%[[V_IN:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerLoops<[@n, @m]>>, %[[V_36:[0-9a-zA-Z_\.]+]]: !array.type<@m x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
 // CHECK-NEXT:        %[[V_M:[0-9a-zA-Z_\.]+]] = poly.read_const @m : !felt.type
 // CHECK-NEXT:        %[[V_39:[0-9a-zA-Z_\.]+]] = felt.const  0

@@ -45,7 +45,7 @@ component main = KnownFunctionArgs();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @KnownFunctionArgs<[]> {
 // CHECK-NEXT:      struct.field @out : !array.type<3 x !felt.type> {llzk.pub}
-// CHECK-NEXT:      function.def @compute() -> !struct.type<@KnownFunctionArgs<[]>> attributes {function.allow_witness} {
+// CHECK-NEXT:      function.def @compute() -> !struct.type<@KnownFunctionArgs<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = struct.new : <@KnownFunctionArgs<[]>>
 // CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<3 x !felt.type>
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = felt.const  4
@@ -78,7 +78,7 @@ component main = KnownFunctionArgs();
 // CHECK-NEXT:        struct.writef %[[VAL_12]][@out] = %[[VAL_13]] : <@KnownFunctionArgs<[]>>, !array.type<3 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_12]] : !struct.type<@KnownFunctionArgs<[]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_37:[0-9a-zA-Z_\.]+]]: !struct.type<@KnownFunctionArgs<[]>>) attributes {function.allow_constraint} {
+// CHECK-NEXT:      function.def @constrain(%[[VAL_37:[0-9a-zA-Z_\.]+]]: !struct.type<@KnownFunctionArgs<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_38:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_39:[0-9a-zA-Z_\.]+]] = felt.const  2
 // CHECK-NEXT:        %[[VAL_40:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_41:[0-9a-zA-Z_\.]+]] = %[[VAL_38]], %[[VAL_42:[0-9a-zA-Z_\.]+]] = %[[VAL_39]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {

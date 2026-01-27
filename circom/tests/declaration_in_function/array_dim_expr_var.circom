@@ -27,12 +27,12 @@ component main = A();
 // CHECK-NEXT:      function.return %[[VAL_5]] : !felt.type
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @A<[]> {
-// CHECK-NEXT:      function.def @compute() -> !struct.type<@A<[]>> attributes {function.allow_witness} {
+// CHECK-NEXT:      function.def @compute() -> !struct.type<@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.new : <@A<[]>>
 // CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = function.call @f() : () -> !felt.type
 // CHECK-NEXT:        function.return %[[VAL_6]] : !struct.type<@A<[]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[]>>) attributes {function.allow_constraint} {
+// CHECK-NEXT:      function.def @constrain(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = function.call @f() : () -> !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }

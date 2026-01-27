@@ -20,7 +20,7 @@ component main = InnerLoops(2);
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @InnerLoops<[@n]> {
 // CHECK-NEXT:      function.def @compute
-// CHECK-SAME:      (%[[V_0:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) -> !struct.type<@InnerLoops<[@n]>> attributes {function.allow_witness} {
+// CHECK-SAME:      (%[[V_0:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) -> !struct.type<@InnerLoops<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[V_1:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerLoops<[@n]>>
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
 // CHECK-NEXT:        %[[V_3:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -62,7 +62,7 @@ component main = InnerLoops(2);
 // CHECK-NEXT:        function.return %[[V_1]] : !struct.type<@InnerLoops<[@n]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain
-// CHECK-SAME:      (%[[V_34:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerLoops<[@n]>>, %[[V_35:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) attributes {function.allow_constraint} {
+// CHECK-SAME:      (%[[V_34:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerLoops<[@n]>>, %[[V_35:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
 // CHECK-NEXT:        %[[V_37:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_38:[0-9a-zA-Z_\.]+]] = array.new  : <@n x !felt.type>

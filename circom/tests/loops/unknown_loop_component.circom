@@ -31,7 +31,7 @@ component main = UnknownLoopComponent();
 // CHECK-NEXT:    struct.def @UnknownLoopComponent<[]> {
 // CHECK-NEXT:      struct.field @bits : !felt.type {llzk.pub}
 // CHECK-NEXT:      struct.field @nb : !struct.type<@nbits<[]>>
-// CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@UnknownLoopComponent<[]>> attributes {function.allow_witness} {
+// CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@UnknownLoopComponent<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@UnknownLoopComponent<[]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = function.call @nbits::@compute(%[[VAL_0]]) : (!felt.type) -> !struct.type<@nbits<[]>>
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_2]][@out] : <@nbits<[]>>, !felt.type
@@ -39,7 +39,7 @@ component main = UnknownLoopComponent();
 // CHECK-NEXT:        struct.writef %[[VAL_1]][@nb] = %[[VAL_2]] : <@UnknownLoopComponent<[]>>, !struct.type<@nbits<[]>>
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@UnknownLoopComponent<[]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@UnknownLoopComponent<[]>>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK-NEXT:      function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@UnknownLoopComponent<[]>>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@nb] : <@UnknownLoopComponent<[]>>, !struct.type<@nbits<[]>>
 // CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
 // CHECK-NEXT:        function.call @nbits::@constrain(%[[VAL_6]], %[[VAL_7]]) : (!struct.type<@nbits<[]>>, !felt.type) -> ()
@@ -49,7 +49,7 @@ component main = UnknownLoopComponent();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @nbits<[]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
-// CHECK-NEXT:      function.def @compute(%[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@nbits<[]>> attributes {function.allow_witness} {
+// CHECK-NEXT:      function.def @compute(%[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@nbits<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = struct.new : <@nbits<[]>>
 // CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -69,7 +69,7 @@ component main = UnknownLoopComponent();
 // CHECK-NEXT:        struct.writef %[[VAL_10]][@out] = %[[VAL_13]]#1 : <@nbits<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_10]] : !struct.type<@nbits<[]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_25:[0-9a-zA-Z_\.]+]]: !struct.type<@nbits<[]>>, %[[VAL_26:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK-NEXT:      function.def @constrain(%[[VAL_25:[0-9a-zA-Z_\.]+]]: !struct.type<@nbits<[]>>, %[[VAL_26:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_27:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_28:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_29:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_30:[0-9a-zA-Z_\.]+]] = %[[VAL_27]], %[[VAL_31:[0-9a-zA-Z_\.]+]] = %[[VAL_28]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {

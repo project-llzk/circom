@@ -16,7 +16,7 @@ component main = BoolNot();
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
 // CHECK-NEXT:   struct.def @BoolNot<[]> {
 // CHECK-NEXT:     struct.field @out : !felt.type {llzk.pub}
-// CHECK-NEXT:     function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@BoolNot<[]>> attributes {function.allow_witness} {
+// CHECK-NEXT:     function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@BoolNot<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:       %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@BoolNot<[]>>
 // CHECK-NEXT:       %[[VAL_3:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_0]], %[[VAL_1]])
 // CHECK-NEXT:       %[[VAL_4:[0-9a-zA-Z_\.]+]] = bool.not %[[VAL_3]] : i1
@@ -24,7 +24,7 @@ component main = BoolNot();
 // CHECK-NEXT:       struct.writef %[[VAL_2]][@out] = %[[VAL_5]] : <@BoolNot<[]>>, !felt.type
 // CHECK-NEXT:       function.return %[[VAL_2]] : !struct.type<@BoolNot<[]>>
 // CHECK-NEXT:     }
-// CHECK-NEXT:     function.def @constrain(%[[VAL_6:[0-9a-zA-Z_\.]+]]: !struct.type<@BoolNot<[]>>, %[[VAL_7:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_8:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK-NEXT:     function.def @constrain(%[[VAL_6:[0-9a-zA-Z_\.]+]]: !struct.type<@BoolNot<[]>>, %[[VAL_7:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_8:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:       %[[VAL_9:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_6]][@out] : <@BoolNot<[]>>, !felt.type
 // CHECK-NEXT:       function.return
 // CHECK-NEXT:     }
