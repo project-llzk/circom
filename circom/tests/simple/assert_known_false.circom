@@ -15,7 +15,7 @@ component main = UCO();
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
 // CHECK-LABEL:   struct.def @UCO<[]> {
 // CHECK-LABEL:     function.def @compute
-// CHECK-SAME:      () -> !struct.type<@UCO<[]>> attributes {function.allow_witness} {
+// CHECK-SAME:      () -> !struct.type<@UCO<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@UCO<[]>>
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_5:[0-9a-zA-Z_\.]+]] = %[[VAL_1]]) : (!felt.type) -> !felt.type {
@@ -31,7 +31,7 @@ component main = UCO();
 // CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@UCO<[]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
-// CHECK-SAME:      (%[[VAL_9:[0-9a-zA-Z_\.]+]]: !struct.type<@UCO<[]>>) attributes {function.allow_constraint} {
+// CHECK-SAME:      (%[[VAL_9:[0-9a-zA-Z_\.]+]]: !struct.type<@UCO<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_14:[0-9a-zA-Z_\.]+]] = %[[VAL_10]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.const  100

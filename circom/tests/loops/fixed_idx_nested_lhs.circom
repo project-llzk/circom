@@ -17,7 +17,7 @@ component main = FixIdxNested();
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @FixIdxNested<[]> {
 // CHECK-NEXT:      struct.field @out : !array.type<9 x !felt.type>
-// CHECK-NEXT:      function.def @compute() -> !struct.type<@FixIdxNested<[]>> attributes {function.allow_witness} {
+// CHECK-NEXT:      function.def @compute() -> !struct.type<@FixIdxNested<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@FixIdxNested<[]>>
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<9 x !felt.type>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -52,7 +52,7 @@ component main = FixIdxNested();
 // CHECK-NEXT:        struct.writef %[[VAL_0]][@out] = %[[VAL_1]] : <@FixIdxNested<[]>>, !array.type<9 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@FixIdxNested<[]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_27:[0-9a-zA-Z_\.]+]]: !struct.type<@FixIdxNested<[]>>) attributes {function.allow_constraint} {
+// CHECK-NEXT:      function.def @constrain(%[[VAL_27:[0-9a-zA-Z_\.]+]]: !struct.type<@FixIdxNested<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_28:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_29:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_28]], %[[VAL_28]], %[[VAL_28]], %[[VAL_28]], %[[VAL_28]], %[[VAL_28]], %[[VAL_28]], %[[VAL_28]], %[[VAL_28]] : <9 x !felt.type>
 // CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = felt.const  8

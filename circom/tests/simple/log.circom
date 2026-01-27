@@ -24,11 +24,11 @@ component main = A();
 
 //IR-LABEL:  module attributes {veridise.lang = "llzk"} {
 // IR-NEXT:    struct.def @A<[]> {
-// IR-NEXT:      function.def @compute() -> !struct.type<@A<[]>> attributes {function.allow_witness} {
+// IR-NEXT:      function.def @compute() -> !struct.type<@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // IR-NEXT:        %self = struct.new : <@A<[]>>
 // IR-NEXT:        function.return %self : !struct.type<@A<[]>>
 // IR-NEXT:      }
-// IR-NEXT:      function.def @constrain(%arg0: !struct.type<@A<[]>>) attributes {function.allow_constraint} {
+// IR-NEXT:      function.def @constrain(%arg0: !struct.type<@A<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // IR-NEXT:        function.return
 // IR-NEXT:      }
 // IR-NEXT:    }

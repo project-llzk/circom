@@ -13,7 +13,7 @@ component main = Arrays();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @Arrays<[]> {
-// CHECK-NEXT:      function.def @compute() -> !struct.type<@Arrays<[]>> attributes {function.allow_witness} {
+// CHECK-NEXT:      function.def @compute() -> !struct.type<@Arrays<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@Arrays<[]>>
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_1]] : <1 x !felt.type>
@@ -49,7 +49,7 @@ component main = Arrays();
 // CHECK-NEXT:        array.insert %[[VAL_21]]{{\[}}%[[VAL_23]]] = %[[VAL_20]] : <2,2 x !felt.type>, <2 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@Arrays<[]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_24:[0-9a-zA-Z_\.]+]]: !struct.type<@Arrays<[]>>) attributes {function.allow_constraint} {
+// CHECK-NEXT:      function.def @constrain(%[[VAL_24:[0-9a-zA-Z_\.]+]]: !struct.type<@Arrays<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_25:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_26:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_25]] : <1 x !felt.type>
 // CHECK-NEXT:        %[[VAL_27:[0-9a-zA-Z_\.]+]] = array.new  : <2,1 x !felt.type>

@@ -419,7 +419,7 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
             f.region(0)?.append_block(Block::new(&arguments));
             Ok(f)
         })?;
-
+    func_def.set_allow_non_native_field_ops_attr(true);
     // Store function to the module.
     let func: FuncDefOpRefMut = codegen.add_function(func_def)?;
 

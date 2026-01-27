@@ -19,7 +19,7 @@ template Caller() {
 component main = Caller();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
-// CHECK-NEXT:    function.def @lookup() -> !felt.type {
+// CHECK-NEXT:    function.def @lookup() -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[VAL_0:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_0]], %[[VAL_0]] : <2 x !felt.type>
 // CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = array.new  : <2,2 x !felt.type>
@@ -48,13 +48,13 @@ component main = Caller();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @Caller<[]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
-// CHECK-NEXT:      function.def @compute(%[[VAL_20:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Caller<[]>> attributes {function.allow_witness} {
+// CHECK-NEXT:      function.def @compute(%[[VAL_20:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Caller<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = struct.new : <@Caller<[]>>
 // CHECK-NEXT:        %[[VAL_22:[0-9a-zA-Z_\.]+]] = function.call @lookup() : () -> !felt.type
 // CHECK-NEXT:        struct.writef %[[VAL_21]][@out] = %[[VAL_22]] : <@Caller<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_21]] : !struct.type<@Caller<[]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_23:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller<[]>>, %[[VAL_24:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK-NEXT:      function.def @constrain(%[[VAL_23:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller<[]>>, %[[VAL_24:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_25:[0-9a-zA-Z_\.]+]] = function.call @lookup() : () -> !felt.type
 // CHECK-NEXT:        %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_23]][@out] : <@Caller<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_26]], %[[VAL_25]] : !felt.type, !felt.type

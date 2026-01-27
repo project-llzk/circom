@@ -24,7 +24,7 @@ template EarlyReturn() {
 component main = EarlyReturn();
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
-// CHECK-NEXT:    function.def @earlyReturnFn(%[[V_IN:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type {
+// CHECK-NEXT:    function.def @earlyReturnFn(%[[V_IN:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[V_R0:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
 // CHECK-NEXT:      %[[V_F0:[0-9a-zA-Z_\.]+]] = undef.undef : i1
 // CHECK-NEXT:      %[[V_I0:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -72,13 +72,13 @@ component main = EarlyReturn();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @EarlyReturn<[]> {
 // CHECK-NEXT:      struct.field @outp : !felt.type {llzk.pub}
-// CHECK-NEXT:      function.def @compute(%[[V_29:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@EarlyReturn<[]>> attributes {function.allow_witness} {
+// CHECK-NEXT:      function.def @compute(%[[V_29:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@EarlyReturn<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[V_30:[0-9a-zA-Z_\.]+]] = struct.new : <@EarlyReturn<[]>>
 // CHECK-NEXT:        %[[V_31:[0-9a-zA-Z_\.]+]] = function.call @earlyReturnFn(%[[V_29]]) : (!felt.type) -> !felt.type
 // CHECK-NEXT:        struct.writef %[[V_30]][@outp] = %[[V_31]] : <@EarlyReturn<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[V_30]] : !struct.type<@EarlyReturn<[]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[V_32:[0-9a-zA-Z_\.]+]]: !struct.type<@EarlyReturn<[]>>, %[[V_33:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK-NEXT:      function.def @constrain(%[[V_32:[0-9a-zA-Z_\.]+]]: !struct.type<@EarlyReturn<[]>>, %[[V_33:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[V_34:[0-9a-zA-Z_\.]+]] = function.call @earlyReturnFn(%[[V_33]]) : (!felt.type) -> !felt.type
 // CHECK-NEXT:        %[[V_35:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_32]][@outp] : <@EarlyReturn<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[V_35]], %[[V_34]] : !felt.type, !felt.type

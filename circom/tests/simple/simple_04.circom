@@ -35,7 +35,7 @@ component main {public [a, b]} = A();
 // CHECK-NEXT:      struct.field @x : !felt.type
 // CHECK-NEXT:      struct.field @cb : !struct.type<@B<[]>>
 // CHECK-LABEL:     function.def @compute
-// CHECK-SAME:      (%[[V_0:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}, %[[V_1:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}, %[[V_2:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@A<[]>> attributes {function.allow_witness} {
+// CHECK-SAME:      (%[[V_0:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}, %[[V_1:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}, %[[V_2:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[V_3:[0-9a-zA-Z_\.]+]] = struct.new : <@A<[]>>
 // CHECK-NEXT:        %[[V_5:[0-9a-zA-Z_\.]+]] = function.call @B::@compute(%[[V_0]], %[[V_1]]) : (!felt.type, !felt.type) -> !struct.type<@B<[]>>
 // CHECK-NEXT:        %[[V_6:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_5]][@c] : <@B<[]>>, !felt.type
@@ -46,7 +46,7 @@ component main {public [a, b]} = A();
 // CHECK-NEXT:        function.return %[[V_3]] : !struct.type<@A<[]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
-// CHECK-SAME:      (%[[V_8:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[]>>, %[[V_9:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}, %[[V_10:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}, %[[V_11:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint} {
+// CHECK-SAME:      (%[[V_8:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[]>>, %[[V_9:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}, %[[V_10:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}, %[[V_11:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[V_12:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_8]][@cb] : <@A<[]>>, !struct.type<@B<[]>>
 // CHECK-NEXT:        function.call @B::@constrain(%[[V_12]], %[[V_9]], %[[V_10]]) : (!struct.type<@B<[]>>, !felt.type, !felt.type) -> ()
 // CHECK-NEXT:        %[[V_14:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_12]][@c] : <@B<[]>>, !felt.type
@@ -61,14 +61,14 @@ component main {public [a, b]} = A();
 // CHECK-NEXT:    struct.def @B<[]> {
 // CHECK-NEXT:      struct.field @c : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute
-// CHECK-SAME:      (%[[V_18:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}, %[[V_19:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}) -> !struct.type<@B<[]>> attributes {function.allow_witness} {
+// CHECK-SAME:      (%[[V_18:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}, %[[V_19:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}) -> !struct.type<@B<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[V_20:[0-9a-zA-Z_\.]+]] = struct.new : <@B<[]>>
 // CHECK-NEXT:        %[[V_21:[0-9a-zA-Z_\.]+]] = felt.mul %[[V_18]], %[[V_19]] : !felt.type, !felt.type
 // CHECK-NEXT:        struct.writef %[[V_20]][@c] = %[[V_21]] : <@B<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[V_20]] : !struct.type<@B<[]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
-// CHECK-SAME:      (%[[V_22:[0-9a-zA-Z_\.]+]]: !struct.type<@B<[]>>, %[[V_23:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}, %[[V_24:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}) attributes {function.allow_constraint} {
+// CHECK-SAME:      (%[[V_22:[0-9a-zA-Z_\.]+]]: !struct.type<@B<[]>>, %[[V_23:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}, %[[V_24:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[V_25:[0-9a-zA-Z_\.]+]] = felt.mul %[[V_23]], %[[V_24]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[V_26:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_22]][@c] : <@B<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[V_26]], %[[V_25]] : !felt.type, !felt.type
