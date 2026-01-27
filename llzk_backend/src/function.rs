@@ -6,6 +6,7 @@
 //! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes.
 
 use crate::function::felt::is_felt_type;
+use crate::function_ext::FunctionLike;
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
@@ -24,7 +25,6 @@ use crate::shared::set_operand_if_undef;
 use crate::shared::single_result_as_value;
 use crate::shared::ArrayDimension;
 use crate::shared::ArrayDimensionResult;
-use crate::shared::ArrayDimensions;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::SubcmpCallsMap;
@@ -156,6 +156,15 @@ where
         Ok(Self { func, block_ctx, subcmp_calls: Default::default() })
     }
 
+    /// Get the return type of the function.
+    pub fn return_type(&self) -> Type<'ctx> {
+        self.func
+            .get_function_type_attribute()
+            .expect("`function_type` attr must exist")
+            .result(0)
+            .expect("LLZK function must return a single result")
+    }
+
     /// Append an operation.
     pub fn append_op(&mut self, op: Operation<'ctx>) -> OperationRef<'ctx, 'val> {
         self.block_ctx.append_current_block(op)
@@ -194,9 +203,7 @@ where
         value: Value<'ctx, 'val>,
     ) -> Result<()> {
         let mut op = if self.block_ctx.is_only_root() {
-            // TODO: As mentioned in `gen_function_llzk()`, functions could also
-            // return array type values but that is not currently implemented.
-            let value = self.cast_to_felt_if_needed(location, value)?;
+            let value = self.cast_to_return_type_if_needed(codegen, location, value)?;
             function::r#return(location, &[value])
         } else {
             scf::r#yield(&[value], location)
@@ -260,6 +267,39 @@ where
             assert!(is_bool(val.r#type()));
             Ok(val)
         }
+    }
+
+    /// Create an op to cast `val` to match the `expected` type.
+    #[inline]
+    pub fn cast_to_expected_type_if_needed<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+        expected: Type<'ctx>,
+    ) -> Result<Value<'ctx, 'val>> {
+        if expected == val.r#type() {
+            Ok(val)
+        } else if is_felt_type(expected) {
+            self.cast_to_felt_if_needed(location, val)
+        } else if is_index(expected) {
+            self.cast_to_index_if_needed(location, val)
+        } else if is_bool(expected) {
+            self.cast_to_bool_if_needed(codegen, location, val)
+        } else {
+            anyhow::bail!("Unsupported 'expected' type '{}'", expected)
+        }
+    }
+
+    /// Create an op to cast `val` to match the return type of the function.
+    #[inline]
+    pub fn cast_to_return_type_if_needed<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        self.cast_to_expected_type_if_needed(codegen, location, val, self.return_type())
     }
 
     /// Generates a list of undef ops inside the given function context.
@@ -1378,12 +1418,7 @@ where
         function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL).cloned().or_else(|_| {
             single_result_as_value(
                 nonreturning_block.append_operation(
-                    // TODO: just like `gen_function_llzk()`, this must use an array type
-                    // if applicable but is currently implemented for scalar `felt.type` only.
-                    // In this case, the correct solution (once nondet op is supported for any
-                    // type) is to just create the nondet op using `return_val.getType()`
-                    ArrayDimensions::default()
-                        .new_nondet_felt_of_dimensions_at_location(codegen, location)?,
+                    codegen.new_nondet_at_location(location, return_val.r#type())?,
                 ),
             )
         })?,
@@ -1412,9 +1447,7 @@ where
     let then_block = then_region.append_block(Block::new(&[]));
     function.gen_in_given_block_with_new_circom_scope_and_merge_overwrites(then_block, |fc| {
         let ret_val = fc.block_ctx.get_named_value(VAR_NAME_RETURN_VAL)?;
-        // TODO: As mentioned in `gen_function_llzk()`, functions could also
-        // return array type values but that is not currently implemented.
-        let value = fc.cast_to_felt_if_needed(location, *ret_val)?;
+        let value = fc.cast_to_return_type_if_needed(codegen, location, *ret_val)?;
         let mut op = function::r#return(location, &[value]);
         op.set_attribute(CIRCOM_RETURN_MARKER_ATTR, Attribute::unit(codegen.context));
         fc.append_op_no_result(op)
@@ -1570,13 +1603,7 @@ where
         // In the current block, ensure the return value variable is initialized, default to nondet.
         if function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL).is_err() {
             function.append_op_named_result(
-                // TODO: just like `gen_function_llzk()`, this must use an array type
-                // if applicable but is currently implemented for scalar `felt.type` only.
-                // In this case, the correct solution (once nondet op is supported for any
-                // type) is to just create the nondet op using
-                // `return_val.getType()`
-                ArrayDimensions::default()
-                    .new_nondet_felt_of_dimensions_at_location(codegen, location)?,
+                codegen.new_nondet_at_location(location, early_return.r#type())?,
                 VAR_NAME_RETURN_VAL.to_string(),
             )?;
         }
@@ -1623,7 +1650,6 @@ where
 {
     type Output = SkipRestOfBlock;
 
-    #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_function<'ast>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
@@ -1678,6 +1704,7 @@ where
                                     Access::ArrayAccess(index_expr) => {
                                         index_expr.gen_llzk_in_function(codegen, function)
                                     }
+                                    #[allow(unused_variables)] // TODO: TEMP
                                     Access::ComponentAccess(name) => {
                                         todo!("Handle Substitution component access in function")
                                     }
@@ -1708,7 +1735,7 @@ where
                 }
                 Ok(false)
             }
-            Statement::UnderscoreSubstitution { meta, op, rhe } => {
+            Statement::UnderscoreSubstitution { op, rhe, .. } => {
                 if op.is_signal_operator() {
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Function uses template operators");
@@ -1775,7 +1802,6 @@ where
 {
     type Output = Value<'ctx, 'val>;
 
-    #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_function<'ast>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
@@ -1803,6 +1829,7 @@ where
                                 Access::ArrayAccess(index_expr) => {
                                     index_expr.gen_llzk_in_function(codegen, function)
                                 }
+                                #[allow(unused_variables)] // TODO: TEMP
                                 Access::ComponentAccess(name) => {
                                     todo!("Handle component access in function")
                                 }
@@ -1920,34 +1947,36 @@ where
             Expression::Call { meta, id, args } => {
                 let builder = OpBuilder::new(codegen.context.deref());
                 let location = codegen.location_from_meta(meta);
+                let target_function_data = codegen.program.get_function_data(id);
                 // Visit each argument and collect the resulting LLZK Values for both functions.
+                let param_types = target_function_data.get_type_of_params(codegen);
+                assert_eq!(param_types.len(), args.len(), "Argument-parameter count mismatch");
                 let call_operands = args
                     .iter()
-                    .map(|arg| {
-                        // TODO: As mentioned in `gen_function_llzk()`, functions could
-                        // also take array type parameters but that is not currently implemented.
+                    .zip(param_types)
+                    .map(|(arg, expected_type)| {
                         let operand_val = arg.gen_llzk_in_function(codegen, function)?;
-                        function.cast_to_felt_if_needed(location, operand_val)
+                        function.cast_to_expected_type_if_needed(
+                            codegen,
+                            location,
+                            operand_val,
+                            expected_type,
+                        )
                     })
                     .collect::<Result<Vec<Value>>>()?;
                 // Create the CallOp in each function using the collected args.
-
-                // TODO: Currently, the LLZK function will always return a `felt.type` but
-                // eventually, this gen function may need an "expected result type"
-                // parameter or use `poly.tvar` with function templates.
-                // See template.rs for Expression::Call generation there.
-                let return_types = &[codegen.felt_type()];
                 function.append_op_unnamed_result(
                     function::call(
                         &builder,
                         location,
                         FlatSymbolRefAttribute::new(codegen.context, id),
                         &call_operands,
-                        return_types,
+                        &[target_function_data.get_type_of_return(codegen)],
                     )?
                     .into(),
                 )
             }
+            #[allow(unused_variables)] // TODO: TEMP
             Expression::BusCall { meta, id, args } => {
                 todo!("Handle BusCall expression")
             }

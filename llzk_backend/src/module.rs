@@ -404,14 +404,9 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
         println!("Generating LLZK for function {}", func_like.get_name());
     }
     let location = func_like.get_location(codegen);
-    let felt_type = codegen.felt_type().into();
-    // TODO: This just uses `felt.type` for param and return types but those must actually be
-    // determined based on the caller. Circom functions cannot accept or return components or
-    // busses so the only types allowed for params and return are `felt.type` and arrays of
-    // `felt.type`. The actual type used here also affects the dimensions of array types and
-    // which array read/write-like ops must be used when translating the body.
-    let inputs = vec![felt_type; func_like.get_num_of_params()];
-    let func_type = FunctionType::new(codegen.context, &inputs, &[felt_type]);
+    let inputs = func_like.get_type_of_params(codegen);
+    let result = func_like.get_type_of_return(codegen);
+    let func_type = FunctionType::new(codegen.context, &inputs, &[result]);
     let func_def =
         function::def(location, func_like.get_name(), func_type, &[], None).and_then(|f| {
             let arguments: Vec<(Type, Location)> =
