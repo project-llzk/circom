@@ -1648,7 +1648,6 @@ where
 {
     type Output = SkipRestOfBlock;
 
-    #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_function<'ast>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
@@ -1703,6 +1702,7 @@ where
                                     Access::ArrayAccess(index_expr) => {
                                         index_expr.gen_llzk_in_function(codegen, function)
                                     }
+                                    #[allow(unused_variables)] // TODO: TEMP
                                     Access::ComponentAccess(name) => {
                                         todo!("Handle Substitution component access in function")
                                     }
@@ -1733,7 +1733,7 @@ where
                 }
                 Ok(false)
             }
-            Statement::UnderscoreSubstitution { meta, op, rhe } => {
+            Statement::UnderscoreSubstitution { op, rhe, .. } => {
                 if op.is_signal_operator() {
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Function uses template operators");
@@ -1800,7 +1800,6 @@ where
 {
     type Output = Value<'ctx, 'val>;
 
-    #[allow(unused_variables)] // TODO: TEMP
     fn gen_llzk_in_function<'ast>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
@@ -1828,6 +1827,7 @@ where
                                 Access::ArrayAccess(index_expr) => {
                                     index_expr.gen_llzk_in_function(codegen, function)
                                 }
+                                #[allow(unused_variables)] // TODO: TEMP
                                 Access::ComponentAccess(name) => {
                                     todo!("Handle component access in function")
                                 }
@@ -1974,6 +1974,7 @@ where
                     .into(),
                 )
             }
+            #[allow(unused_variables)] // TODO: TEMP
             Expression::BusCall { meta, id, args } => {
                 todo!("Handle BusCall expression")
             }
