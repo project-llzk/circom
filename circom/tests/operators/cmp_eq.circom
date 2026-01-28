@@ -48,26 +48,24 @@ component main = CmpEQ(5);
 // CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_18]], %[[VAL_19]])
-// CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_20]] -> (!array.type<@n x !felt.type>) {
-// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_22]]
-// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_17]]{{\[}}%[[VAL_23]]] : <@n x !felt.type>, !felt.type
-// CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_16]][@b] : <@CmpEQ<[@n]>>, !array.type<@n x !felt.type>
-// CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_26]]
-// CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_25]]{{\[}}%[[VAL_27]]] : <@n x !felt.type>, !felt.type
-// CHECK-NEXT:          constrain.eq %[[VAL_28]], %[[VAL_24]] : !felt.type, !felt.type
-// CHECK-NEXT:          scf.yield %[[VAL_25]] : !array.type<@n x !felt.type>
+// CHECK-NEXT:        scf.if %[[VAL_20]] {
+// CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_21]]
+// CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_17]]{{\[}}%[[VAL_22]]] : <@n x !felt.type>, !felt.type
+// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_16]][@b] : <@CmpEQ<[@n]>>, !array.type<@n x !felt.type>
+// CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_25]]
+// CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_24]]{{\[}}%[[VAL_26]]] : <@n x !felt.type>, !felt.type
+// CHECK-NEXT:          constrain.eq %[[VAL_27]], %[[VAL_23]] : !felt.type, !felt.type
 // CHECK-NEXT:        } else {
-// CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_29]]
-// CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_17]]{{\[}}%[[VAL_30]]] : <@n x !felt.type>, !felt.type
-// CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_16]][@b] : <@CmpEQ<[@n]>>, !array.type<@n x !felt.type>
-// CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_33]]
-// CHECK-NEXT:          %[[VAL_35:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_32]]{{\[}}%[[VAL_34]]] : <@n x !felt.type>, !felt.type
-// CHECK-NEXT:          constrain.eq %[[VAL_35]], %[[VAL_31]] : !felt.type, !felt.type
-// CHECK-NEXT:          scf.yield %[[VAL_32]] : !array.type<@n x !felt.type>
+// CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_28]]
+// CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_17]]{{\[}}%[[VAL_29]]] : <@n x !felt.type>, !felt.type
+// CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_16]][@b] : <@CmpEQ<[@n]>>, !array.type<@n x !felt.type>
+// CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_32]]
+// CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_31]]{{\[}}%[[VAL_33]]] : <@n x !felt.type>, !felt.type
+// CHECK-NEXT:          constrain.eq %[[VAL_34]], %[[VAL_30]] : !felt.type, !felt.type
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
