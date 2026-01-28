@@ -109,6 +109,8 @@ impl<'ast> WriteChain<'ast> {
         })
     }
 
+    /// Handle [WriteChain::Array] case of [`WriteChain::write`].
+    #[allow(clippy::too_many_arguments)]
     fn write_array<'ctx, 'val>(
         indices: Vec<&Expression>,
         prev: Self,
@@ -125,6 +127,8 @@ impl<'ast> WriteChain<'ast> {
         prev.write(arr_ref, target, codegen, fc, location, template)
     }
 
+    /// Handle [WriteChain::Subcmp] case of [`WriteChain::write`].
+    #[allow(clippy::too_many_arguments)]
     fn write_subcmp<'ctx, 'val>(
         name: &str,
         prev: Self,
@@ -144,7 +148,6 @@ impl<'ast> WriteChain<'ast> {
         };
         set_operand_if_undef(call_op, arg_idx + arg_offset, val)?;
         insert_after_if_op_result(val, call_op)?;
-
         prev.write(subcmp_value, target, codegen, fc, location, template)
     }
 
@@ -158,6 +161,7 @@ impl<'ast> WriteChain<'ast> {
         location: Location<'ctx>,
         template: &TemplateContext<'ctx, '_, '_, '_, 'val>,
     ) -> Result<()> {
+        /// Handle [WriteChain::Root] with [RootWriteOp::Signal] case.
         fn write_root_signal<'ctx, 'val>(
             var: &str,
             val: Value<'ctx, 'val>,
@@ -181,6 +185,7 @@ impl<'ast> WriteChain<'ast> {
             Ok(())
         }
 
+        /// Handle [WriteChain::Root] case other than [RootWriteOp::Signal].
         fn write_root_var<'ctx, 'val>(
             var: &str,
             val: Value<'ctx, 'val>,
@@ -189,6 +194,7 @@ impl<'ast> WriteChain<'ast> {
             fc.block_ctx.set_named_value(var.to_string(), val)
         }
 
+        /// Handle [WriteChain::Root] with [RootWriteOp::Subcmp] and [WriteTarget::Compute].
         fn write_root_subcmp_in_compute<'ctx, 'val>(
             var: &str,
             val: Value<'ctx, 'val>,
@@ -203,6 +209,7 @@ impl<'ast> WriteChain<'ast> {
             Ok(())
         }
 
+        /// Handle [WriteChain::Root] with [RootWriteOp::Subcmp] and [WriteTarget::Constrain].
         fn write_root_subcmp_in_constrain<'ctx, 'val>(
             var: &str,
             val: Value<'ctx, 'val>,
@@ -238,6 +245,33 @@ impl<'ast> WriteChain<'ast> {
         }
     }
 
+    /// Handle [WriteChain::Root] with [RootWriteOp::Signal] case of [`WriteChain::get_value`].
+    fn get_root_signal<'ctx, 'val>(
+        &self,
+        var: &str,
+        target: WriteTarget,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, 'val>> {
+        if target.is_constrain() {
+            // Read value from field of "self" struct.
+            let expected_type = fc.block_ctx.get_named_value(var).unwrap().r#type();
+            let self_value = fc.func.self_value_of_constrain()?;
+            fc.append_op_unnamed_result(r#struct::readf(
+                &OpBuilder::new(codegen.context),
+                location,
+                expected_type,
+                self_value,
+                var,
+            )?)
+        } else {
+            fc.block_ctx.get_named_value(var).copied()
+        }
+    }
+
+    /// Handle [WriteChain::Root] case of [`WriteChain::get_value`] other than
+    /// [RootWriteOp::Signal].
     fn get_root_value<'ctx, 'val>(
         &self,
         var: &str,
@@ -246,6 +280,7 @@ impl<'ast> WriteChain<'ast> {
         fc.block_ctx.get_named_value(var).copied()
     }
 
+    /// Handle [WriteChain::Array] case of [`WriteChain::get_value`].
     fn get_array_value<'ctx, 'val>(
         &self,
         indices: &[&Expression],
@@ -259,6 +294,7 @@ impl<'ast> WriteChain<'ast> {
             .map(|v| fc.subcmp_calls.propagate(&prev, v))
     }
 
+    /// Handle [WriteChain::Subcmp] with [WriteTarget::Compute] in [`WriteChain::get_value`].
     fn get_subcmp_in_compute<'ctx, 'val>(
         &self,
         signal_name: &str,
@@ -298,6 +334,7 @@ impl<'ast> WriteChain<'ast> {
         }
     }
 
+    /// Handle [WriteChain::Subcmp] with [WriteTarget::Constrain] in [`WriteChain::get_value`].
     fn get_subcmp_in_constrain<'ctx, 'val>(
         &self,
         signal_name: &str,
@@ -349,22 +386,9 @@ impl<'ast> WriteChain<'ast> {
     ) -> Result<Value<'ctx, 'val>> {
         match self {
             WriteChain::Root { var, op: RootWriteOp::Signal } => {
-                if target.is_constrain() {
-                    // Read value from field of "self" struct.
-                    let expected_type = fc.block_ctx.get_named_value(var).unwrap().r#type();
-                    let self_value = fc.func.self_value_of_constrain()?;
-                    fc.append_op_unnamed_result(r#struct::readf(
-                        &OpBuilder::new(codegen.context),
-                        location,
-                        expected_type,
-                        self_value,
-                        var,
-                    )?)
-                } else {
-                    fc.block_ctx.get_named_value(var).copied()
-                }
+                self.get_root_signal(var, target, codegen, fc, location)
             }
-            WriteChain::Root { var, .. } => self.get_root_value(*var, fc),
+            WriteChain::Root { var, .. } => self.get_root_value(var, fc),
             WriteChain::Array { indices, prev } => self.get_array_value(
                 indices,
                 prev.get_value(codegen, fc, location, target)?,
@@ -374,14 +398,14 @@ impl<'ast> WriteChain<'ast> {
             ),
             WriteChain::Subcmp { name: signal_name, prev } => match target {
                 WriteTarget::Compute => self.get_subcmp_in_compute(
-                    *signal_name,
+                    signal_name,
                     prev.get_value(codegen, fc, location, target)?,
                     codegen,
                     fc,
                     location,
                 ),
                 WriteTarget::Constrain => self.get_subcmp_in_constrain(
-                    *signal_name,
+                    signal_name,
                     prev.get_value(codegen, fc, location, target)?,
                     codegen,
                     fc,

@@ -163,7 +163,7 @@ impl<'ctx> RefactoringBlockResultType<'ctx> {
     /// `name_attr` from `self` if applicable.
     fn gen_yield(&self, values: &[Value<'ctx, '_>], location: Location<'ctx>) -> Operation<'ctx> {
         assert_eq!(values.len(), self.len(), "requires one value per result");
-        let mut new_yield = scf::r#yield(&values, location);
+        let mut new_yield = scf::r#yield(values, location);
         if let Some(names_attr) = self.name_attr() {
             new_yield.set_attribute(OPERAND_VAL_NAMES, names_attr);
         }
@@ -305,14 +305,14 @@ where
         let array_get_op = match indices.len().cmp(&arr_ty_dims.len()) {
             std::cmp::Ordering::Equal => {
                 // Indexing all dimensions requires an `array.read`
-                array::read(location, arr_ty.element_type(), arr_ref, &indices)
+                array::read(location, arr_ty.element_type(), arr_ref, indices)
             }
             std::cmp::Ordering::Less => {
                 // Indexing a subset of dimensions requires an `array.extract`
                 let reduced_dims: Vec<_> =
                     arr_ty_dims.iter().skip(indices.len()).copied().collect();
                 let reduced_type = ArrayType::new(arr_ty.element_type().into(), &reduced_dims);
-                array::extract(location, reduced_type.into(), arr_ref, &indices)
+                array::extract(location, reduced_type.into(), arr_ref, indices)
             }
             std::cmp::Ordering::Greater => {
                 let v = var_name.map_or(String::from("array"), |s| format!("'{}'", s));
@@ -1831,7 +1831,7 @@ where
                             indices,
                             location,
                             rvalue,
-                            Some(&var),
+                            Some(var),
                         )?;
                     }
                 }
