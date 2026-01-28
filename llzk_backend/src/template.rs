@@ -1143,28 +1143,30 @@ where
                                     },
                                 )
                             }
-                            access => {
-                                rhe.gen_llzk_in_template(codegen, template)?.and_then(
-                                    |fc, rhe| {
-                                        let chain = WriteChain::new(
-                                            var,
-                                            RootWriteOp::Signal,
-                                            access,
-                                        );
-                                        chain.write(
-                                            rhe,
-                                            WriteTarget::Compute,
-                                            codegen,
-                                            fc,
-                                            codegen.location_from_meta(meta),
-                                            template,
-                                        )
-                                    },
-                                    |_fc, _rhe| {
-                                        anyhow::bail!("Generate array write operation in template (constrain): \n{access:?}")
-                                    },
-                                )
-                            }
+                            access => rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                                |fc, rhv| {
+                                    let chain = WriteChain::new(var, RootWriteOp::Signal, access);
+                                    chain.write(
+                                        rhv,
+                                        WriteTarget::Compute,
+                                        codegen,
+                                        fc,
+                                        codegen.location_from_meta(meta),
+                                        template,
+                                    )
+                                },
+                                |fc, rhv| {
+                                    let chain = WriteChain::new(var, RootWriteOp::Signal, access);
+                                    let location = codegen.location_from_meta(meta);
+                                    let lhv = chain.get_value(
+                                        codegen,
+                                        fc,
+                                        location,
+                                        WriteTarget::Constrain,
+                                    )?;
+                                    fc.append_op_no_result(constrain::eq(location, lhv, rhv).into())
+                                },
+                            ),
                         }
                     }
                 }
