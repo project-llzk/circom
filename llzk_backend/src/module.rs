@@ -108,6 +108,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     ) -> Result<DeclarationInfo<'ctx>> {
         let mut declarations = DeclarationInfo {
             template_params: template.get_name_of_params().iter().cloned().collect(),
+            subcmp_decls: template.get_init_subcmp_decls(codegen)?,
             ..DeclarationInfo::default()
         };
         for s in template.get_body() {

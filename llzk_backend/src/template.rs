@@ -39,6 +39,7 @@ use llzk::prelude::LoopBoundsAttribute;
 use llzk::prelude::OperationLike;
 use llzk::prelude::StructDefOpLike;
 use llzk::prelude::StructDefOpRefMut;
+use llzk::prelude::StructType;
 use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
