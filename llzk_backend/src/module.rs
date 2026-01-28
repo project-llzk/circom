@@ -9,6 +9,9 @@ use crate::shared::map_name_to_arg_value;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
+use crate::subcmp::names::COMP;
+use crate::subcmp::names::COUNT;
+use crate::subcmp::names::PARAMS;
 use crate::subcmp::unique_instance_types;
 use crate::subcmp::SubcmpDeclInfo;
 use crate::template::GenerateLLZKInTemplate as _;
@@ -19,10 +22,13 @@ use anyhow::Result;
 use llzk::attributes::NamedAttribute;
 use llzk::builder::OpBuilder;
 use llzk::dialect::array::ArrayCtor::MapDimSlice;
+use llzk::dialect::pod;
 use llzk::error::Error;
 use llzk::prelude::r#struct::helpers::compute_fn;
 use llzk::prelude::r#struct::helpers::constrain_fn;
 use llzk::prelude::*;
+use melior::dialect::arith;
+use melior::dialect::scf;
 use num_bigint_dig::BigUint;
 use num_traits::ToPrimitive as _;
 use program_structure::ast::AssignOp;
@@ -34,6 +40,7 @@ use program_structure::ast::VariableType;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryFrom;
+use std::convert::TryInto as _;
 
 /// Information needed to create an LLZK struct function parameter collected from the input signal
 /// Declaration statements within a circom template.
@@ -67,37 +74,75 @@ pub struct DeclarationInfo<'ctx> {
     template_params: HashSet<String>,
 }
 
+type SubcmpPrologueData<'ctx> = (String, Type<'ctx>, Type<'ctx>, usize);
+
 impl<'ctx> DeclarationInfo<'ctx> {
     /// Completes the declaration information from the information collected from the
     /// subcomponents.
     ///
-    /// Returns a vector with an associative list of names to the type of the declaration.
+    /// Returns a vector with an associative list of names to the types of the declaration.
     ///
     /// Currently handles declaration of scalar subcomponents and array subcomponents of the same
     /// type.
-    fn complete(&mut self) -> Vec<(String, Type<'ctx>)> {
+    fn complete(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Result<Vec<SubcmpPrologueData<'ctx>>> {
         let mut ops = vec![];
         for (name, info) in &self.subcmp_decls {
-            let instances = info.instances();
-            let field_type: Type<'_> = match instances {
-                [] => todo!("Handle uninitialized component decl"),
-                instances => {
-                    let types = unique_instance_types(instances);
-                    if types.len() > 1 {
-                        todo!("Handle subcomponents with different instantiations")
-                    }
-                    match info.dimensions() {
-                        [] => types[0].into(),
-                        dims => ArrayType::new(types[0].into(), dims).into(),
-                    }
-                }
+            let extend_dims = |t: Type<'ctx>| match info.dimensions() {
+                [] => t,
+                dims => ArrayType::new(t, dims).into(),
             };
+
+            let instances = info.instances();
+
+            let types = unique_instance_types(instances);
+            if types.is_empty() {
+                todo!("Handle uninitialized component decl")
+            }
+            if types.len() > 1 {
+                todo!("Handle subcomponents with different instantiations")
+            }
+            let template_name = types[0].name().value();
+            let mut input_count = 0;
+            let template = codegen
+                .program
+                .get_templates(false)
+                .into_iter()
+                .find_map(|template| (template.get_name() == template_name).then_some(template))
+                .ok_or_else(|| anyhow::anyhow!("template '{template_name}' not found"))?;
+            let inputs = template
+                .get_declaration_inputs()
+                .into_iter()
+                .map(|(name, _)| {
+                    // Needs to adapt to the size of the input, in signals.
+                    // A scalar signal has size 1, an array of 2 signals has size 2, a 2x3 matrix
+                    // of signals has size 6, and so on. Buses have a size equal to the sum of the
+                    // field's sizes.
+                    input_count += 1;
+                    PodRecordAttribute::new(
+                        name,
+                        // Felt type for now, needs to use the type of the n-th argument of the
+                        // callee's `@compute` function.
+                        codegen.felt_type().into(),
+                    )
+                })
+                .collect::<Vec<_>>();
+            let inputs = extend_dims(PodType::new(codegen.context, &inputs).into());
+
+            let field_type = extend_dims(types[0].into());
             self.struct_fields.push(
                 r#struct::field(info.location(), name, field_type, false, false).map(Into::into),
             );
-            ops.push((name.clone(), field_type));
+            let name_inputs = format!("{name}$inputs");
+            self.struct_fields.push(
+                r#struct::field(info.location(), &name_inputs, inputs, false, false)
+                    .map(Into::into),
+            );
+            ops.push((name.clone(), field_type, inputs, input_count));
         }
-        ops
+        Ok(ops)
     }
 
     /// Visit all statements in the body of the template and return a new [DeclarationInfo]
@@ -438,7 +483,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     }
     // Collect declarations first to determine struct fields and function parameters.
     let mut declarations = template_like.get_declarations(codegen)?;
-    let subcmps = declarations.complete();
+    let subcmps = declarations.complete(codegen)?;
 
     // Generate the struct definition, prepopulated with fields.
     let struct_loc = template_like.get_location(codegen);
@@ -509,35 +554,16 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         // Insert the declaration into the constrain function.
         constrain_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op))?;
     }
-    let op_builder = OpBuilder::new(codegen.context);
     let subcmp_decls = declarations.subcmp_decls;
     // Insert the Operations created from subcomponent Declaration statements and map the
     // circom variable name to a LLZK op result Value.
-    for (name, subcmp_type) in subcmps {
-        compute_ctx.block_ctx.declare_name_if_not_present(&name, || {
-            ArrayType::try_from(subcmp_type)
-                .map(|subcmp_type| {
-                    array::new(
-                        &op_builder,
-                        codegen.location_unknown(),
-                        subcmp_type,
-                        MapDimSlice(&[], &[]),
-                    )
-                })
-                .or_else(|_| Ok(undef::undef(codegen.location_unknown(), subcmp_type)))
-        })?;
-
-        let self_ref = constrain_ctx.func.self_value_of_constrain()?;
-        constrain_ctx.block_ctx.declare_name_if_not_present(&name, || {
-            Ok(r#struct::readf(
-                &op_builder,
-                subcmp_decls[&name].location(),
-                subcmp_type,
-                self_ref,
-                &name,
-            )?)
-        })?;
-    }
+    gen_subcmps_prelude_in_template(
+        subcmps,
+        &mut compute_ctx,
+        &mut constrain_ctx,
+        codegen,
+        &subcmp_decls,
+    )?;
 
     let subcmp_names = subcmp_decls.into_keys().collect();
 
@@ -546,6 +572,139 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         TemplateContext::new(new_struct, compute_ctx, constrain_ctx, &subcmp_names);
     template_like.get_body().gen_llzk_in_template(codegen, &template_context)?;
     template_context.finalize(codegen)
+}
+
+/// Returns the element type if the type is an [`ArrayType`]. Returns the type itself otherwise.
+fn scalar_or_inner<'ctx>(t: Type<'ctx>) -> Type<'ctx> {
+    ArrayType::try_from(t).map(|t| t.element_type()).unwrap_or(t)
+}
+
+/// Maps the inner type of the given type if it is an [`ArrayType`]. Returns the new type
+/// otherwise.
+///
+/// ```text
+/// map([T], O) -> [O]
+/// map(T, O) -> O
+/// ```
+fn map_array_inner_type<'ctx>(t: Type<'ctx>, new_inner: Type<'ctx>) -> Type<'ctx> {
+    ArrayType::try_from(t).map(|t| ArrayType::new(new_inner, &t.dims()).into()).unwrap_or(new_inner)
+}
+
+/// Generates the prelude related to subcomponents in a template body.
+fn gen_subcmps_prelude_in_template<'ctx, 'func, 'blk, 'val: 'blk>(
+    subcmps: impl IntoIterator<Item = SubcmpPrologueData<'ctx>>,
+    compute_ctx: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    constrain_ctx: &mut FunctionContext<'ctx, '_, '_, '_>,
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    subcmp_decls: &HashMap<String, SubcmpDeclInfo<'ctx>>,
+) -> Result<()> {
+    let op_builder = OpBuilder::new(codegen.context);
+    for (name, subcmp_type, subcmp_inputs_type, count) in subcmps {
+        let name_inputs = format!("{name}$inputs");
+        // Constrain function
+        // Do this one first to avoid cloning `name` and `name_inputs` unnecessarily.
+        {
+            let self_ref = constrain_ctx.func.self_value_of_constrain()?;
+            constrain_ctx.block_ctx.declare_name_if_not_present(&name, || {
+                Ok(r#struct::readf(
+                    &op_builder,
+                    subcmp_decls[&name].location(),
+                    subcmp_type,
+                    self_ref,
+                    &name,
+                )?)
+            })?;
+            constrain_ctx.block_ctx.declare_name_if_not_present(&name_inputs, || {
+                Ok(r#struct::readf(
+                    &op_builder,
+                    subcmp_decls[&name].location(),
+                    subcmp_inputs_type,
+                    self_ref,
+                    &name_inputs,
+                )?)
+            })?;
+        }
+
+        // Compute function
+        {
+            let subcmp_struct_type = scalar_or_inner(subcmp_type);
+            let records = [
+                // Counts the number of inputs pending an assignment. When it reaches 0 it's safe
+                // to call the corresponding `@compute` function.
+                PodRecordAttribute::new(COUNT, Type::index(codegen.context)),
+                // Holds the output of calling `@compute`. Before the call, this value is undefined
+                // and should not be read from.
+                PodRecordAttribute::new(COMP, subcmp_struct_type),
+                // Holds the affine map operands of the subcomponents, if any.
+                PodRecordAttribute::new(PARAMS, PodType::new(codegen.context, &[]).into()),
+            ];
+            let comp_pod =
+                map_array_inner_type(subcmp_type, PodType::new(codegen.context, &records).into());
+            let location = codegen.location_unknown();
+            let index_ty = Type::index(codegen.context);
+            let count = compute_ctx.append_op_unnamed_result(arith::constant(
+                codegen.context,
+                IntegerAttribute::new(index_ty, count.try_into()?).into(),
+                location,
+            ))?;
+
+            match ArrayType::try_from(comp_pod).ok() {
+                Some(comp_pod) => {
+                    let dims = comp_pod.dims();
+                    compute_ctx.block_ctx.declare_name_ensure_not_present(
+                        &name,
+                        array::new(&op_builder, location, comp_pod, MapDimSlice(&[], &[])),
+                    )?;
+                    let comp_memory = *compute_ctx.block_ctx.get_named_value(&name)?;
+
+                    loop_nest(codegen, compute_ctx, location, &dims, |fc, indices| {
+                        let comp_memory_pod = fc.append_op_unnamed_result(array::read(
+                            location,
+                            comp_pod.element_type(),
+                            comp_memory,
+                            indices,
+                        ))?;
+                        fc.append_op_no_result(pod::write(
+                            location,
+                            comp_memory_pod,
+                            FlatSymbolRefAttribute::new(codegen.context, COUNT),
+                            count,
+                        ))?;
+                        fc.append_op_no_result(array::write(
+                            location,
+                            comp_memory,
+                            indices,
+                            comp_memory_pod,
+                        ))
+                    })?;
+                }
+                None => compute_ctx.block_ctx.declare_name_ensure_not_present(
+                    &name,
+                    pod::new(
+                        &op_builder,
+                        location,
+                        &[RecordValue::new(StringRef::new(COUNT), count)],
+                        Some(PodType::try_from(comp_pod)?),
+                    ),
+                )?,
+            };
+            compute_ctx.block_ctx.declare_name_ensure_not_present(
+                &name_inputs,
+                match ArrayType::try_from(subcmp_inputs_type).ok() {
+                    Some(subcmp_inputs_type) => {
+                        array::new(&op_builder, location, subcmp_inputs_type, MapDimSlice(&[], &[]))
+                    }
+                    None => pod::new(
+                        &op_builder,
+                        location,
+                        &[],
+                        Some(PodType::try_from(subcmp_inputs_type)?),
+                    ),
+                },
+            )?;
+        }
+    }
+    Ok(())
 }
 
 /// A trait to generate LLZK IR for structural elements of the circom AST:
@@ -572,4 +731,78 @@ impl<'ctx, P: ProgramLike> GenerateLLZKInModule<'ctx, P> for P {
         }
         Ok(())
     }
+}
+
+/// Creates a loop nest from a list of dimensions.
+///
+/// The body of the inner-most loop is defined by the given closure, which accepts a list of values
+/// representing the current index of each loop level.
+fn loop_nest<'ctx, 'val, 'func, 'blk>(
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    location: Location<'ctx>,
+    dims: &[Attribute<'ctx>],
+    body: impl FnOnce(&mut FunctionContext<'ctx, 'func, 'blk, 'val>, &[Value<'ctx, 'val>]) -> Result<()>,
+) -> Result<()>
+where
+    // 'val needs to outlive 'blk because 'blk refers to a block inside the for loop operations.
+    'val: 'blk,
+{
+    let index_ty = Type::index(codegen.context);
+    let zero = fc.append_op_unnamed_result(arith::constant(
+        codegen.context,
+        IntegerAttribute::new(index_ty, 0).into(),
+        location,
+    ))?;
+    let one = fc.append_op_unnamed_result(arith::constant(
+        codegen.context,
+        IntegerAttribute::new(index_ty, 1).into(),
+        location,
+    ))?;
+
+    let mut block: Option<BlockRef<'_, '_>> = None;
+    let dim_values = dims
+        .iter()
+        .copied()
+        .map(|attr| {
+            if let Ok(_) = IntegerAttribute::try_from(attr) {
+                return fc.append_op_unnamed_result(arith::constant(
+                    codegen.context,
+                    attr,
+                    location,
+                ));
+            }
+
+            unreachable!("Unhandled attribute in array dimensions {}", attr)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut loop_vars: Vec<Value> = vec![];
+    for dim in dim_values {
+        match &block {
+            Some(block_ref) => {
+                let loop_op =
+                    block_ref.append_operation(scf::r#for(zero, dim, one, Region::new(), location));
+                block = Some(
+                    loop_op
+                        .region(0)?
+                        .first_block()
+                        .ok_or_else(|| anyhow::anyhow!("region is missing first block"))?,
+                );
+            }
+            None => {
+                let outer_loop = fc.append_op(scf::r#for(zero, dim, one, Region::new(), location));
+                block = Some(
+                    outer_loop
+                        .region(0)?
+                        .first_block()
+                        .ok_or_else(|| anyhow::anyhow!("region is missing first block"))?,
+                );
+            }
+        }
+        loop_vars.push(block.unwrap().argument(0)?.into());
+    }
+    fc.block_ctx.push(block.ok_or_else(|| anyhow::anyhow!("no loops created"))?);
+    body(fc, &loop_vars)?;
+    fc.block_ctx.pop();
+    Ok(())
 }

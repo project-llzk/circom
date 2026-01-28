@@ -5,6 +5,12 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::marker::PhantomData;
 
+pub mod names {
+    pub const COUNT: &str = "count";
+    pub const COMP: &str = "comp";
+    pub const PARAMS: &str = "params";
+}
+
 /// Information collected about a subcomponent.
 #[derive(Debug)]
 pub struct SubcmpDeclInfo<'ctx> {
