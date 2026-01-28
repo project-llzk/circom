@@ -1203,14 +1203,10 @@ where
             }
             Statement::Assert { meta, arg } => {
                 arg.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, val| {
-                    fc.append_op_no_result(
-                        llzk::dialect::bool::assert(
-                            codegen.location_from_meta(meta),
-                            val,
-                            Some("assertion failed"),
-                        )?
-                        .into(),
-                    )
+                    let location = codegen.location_from_meta(meta);
+                    let cond = fc.cast_to_bool_if_needed(codegen, location, val)?;
+                    let msg = Some("assertion failed");
+                    fc.append_op_no_result(llzk::dialect::bool::assert(location, cond, msg)?.into())
                 })
             }
             Statement::LogCall { meta, .. } => {

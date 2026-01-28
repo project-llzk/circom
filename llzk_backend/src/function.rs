@@ -1863,13 +1863,11 @@ where
                 Ok(true)
             }
             Statement::Assert { meta, arg } => {
-                let value = arg.gen_llzk_in_function(codegen, function)?;
+                let cond = arg.gen_llzk_in_function(codegen, function)?;
                 let location = codegen.location_from_meta(meta);
-                function.append_op_no_result(llzk::dialect::bool::assert(
-                    location,
-                    value,
-                    Some("assertion failed"),
-                )?)?;
+                let cond = function.cast_to_bool_if_needed(codegen, location, cond)?;
+                let msg = Some("assertion failed");
+                function.append_op_no_result(llzk::dialect::bool::assert(location, cond, msg)?)?;
                 Ok(false)
             }
             Statement::LogCall { meta, .. } => {
