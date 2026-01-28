@@ -570,6 +570,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     // Visit the body of the template and generate LLZK IR for it within the struct functions.
     let template_context =
         TemplateContext::new(new_struct, compute_ctx, constrain_ctx, &subcmp_names);
+    template_like.gen_preamble(codegen, &template_context)?;
     template_like.get_body().gen_llzk_in_template(codegen, &template_context)?;
     template_context.finalize(codegen)
 }
