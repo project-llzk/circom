@@ -32,6 +32,7 @@ use llzk::prelude::BlockRef;
 use llzk::prelude::CallOpLike as _;
 use llzk::prelude::CallOpRef;
 use llzk::prelude::FeltType;
+use llzk::prelude::FieldDefOpLike;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
@@ -174,6 +175,16 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
     /// Marks the given signal as written.
     pub fn mark_signal_as_written(&self, name: String) {
         self.written_signals.borrow_mut().insert(name);
+    }
+
+    /// Get the type of the struct field with the given name.
+    /// Errors if the field does not exist within the struct.
+    pub fn get_signal_type(&self, name: &str) -> Result<Type<'ctx>> {
+        Ok(self
+            .struct_def
+            .get_field_def(name)
+            .ok_or_else(|| anyhow!("no field '{}' in struct", name))?
+            .field_type())
     }
 
     /// Finalizes the context by emitting the final write operations that write subcomponent
@@ -977,12 +988,18 @@ where
                                 // The `<--` operator is witness generation only so code for the RHS
                                 // expression should only be generated in the compute function.
                                 let compute_only = template.compute_only();
+                                let signal_type = template.get_signal_type(var)?;
                                 let _: () = rhe
                                     .gen_llzk_in_template(codegen, &compute_only)?
                                     .and_then_same(|fc, val| {
                                         let location = codegen.location_from_meta(meta);
-                                        // Cast value to field type if needed.
-                                        let value = fc.cast_to_felt_if_needed(location, val)?;
+                                        // Cast value to signal type if needed.
+                                        let value = fc.cast_to_expected_type_if_needed(
+                                            codegen,
+                                            location,
+                                            val,
+                                            signal_type,
+                                        )?;
                                         // Write value to field of "self" struct.
                                         fc.append_op_no_result(
                                             r#struct::writef(
@@ -1002,7 +1019,7 @@ where
                                         r#struct::readf(
                                             &OpBuilder::new(codegen.context.deref()),
                                             codegen.location_from_meta(meta),
-                                            FeltType::new(codegen.context).into(),
+                                            signal_type,
                                             fc.func.self_value_of_constrain()?,
                                             var,
                                         )?
@@ -1056,11 +1073,12 @@ where
                     AssignOp::AssignConstraintSignal => {
                         match &access[..] {
                             [] => {
+                                let signal_type = template.get_signal_type(var)?;
                                 rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                     |fc, val| {
                                         let location = codegen.location_from_meta(meta);
                                         // Cast value to field type if needed.
-                                        let value = fc.cast_to_felt_if_needed(location, val)?;
+                                        let value = fc.cast_to_expected_type_if_needed(codegen, location, val, signal_type)?;
                                         // Write value to field of "self" struct.
                                         fc.append_op_no_result(
                                             r#struct::writef(
@@ -1076,13 +1094,13 @@ where
                                     |fc, val| {
                                         // Read value of field from "self" struct and generate
                                         // equality constraint with 'val'.
+                                        let location = codegen.location_from_meta(meta);
                                         let builder = OpBuilder::new(codegen.context.deref());
-                                        let felt_type = FeltType::new(codegen.context).into();
                                         let val_from_read = fc.append_op_unnamed_result(
                                             r#struct::readf(
                                                 &builder,
-                                                codegen.location_from_meta(meta),
-                                                felt_type,
+                                                location,
+                                                signal_type,
                                                 fc.func.self_value_of_constrain()?,
                                                 var,
                                             )?
@@ -1090,13 +1108,13 @@ where
                                         )?;
                                         let (lhs, rhs) = unify_constrain_eq_types(
                                             fc,
-                                            codegen.location_from_meta(meta),
+                                            location,
                                             val_from_read,
                                             val,
                                         )?;
                                         fc.append_op_no_result(
                                             constrain::eq(
-                                                codegen.location_from_meta(meta),
+                                                location,
                                                 lhs,
                                                 rhs,
                                             )
