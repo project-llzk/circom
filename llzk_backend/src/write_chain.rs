@@ -201,16 +201,13 @@ impl<'ast> WriteChain<'ast> {
                     // Read value from field of "self" struct.
                     let expected_type = fc.block_ctx.get_named_value(var).unwrap().r#type();
                     let self_value = fc.func.self_value_of_constrain()?;
-                    fc.append_op_named_result(
-                        r#struct::readf(
-                            &OpBuilder::new(codegen.context),
-                            location,
-                            expected_type,
-                            self_value,
-                            var,
-                        )?,
-                        var.to_string(),
-                    )
+                    fc.append_op_unnamed_result(r#struct::readf(
+                        &OpBuilder::new(codegen.context),
+                        location,
+                        expected_type,
+                        self_value,
+                        var,
+                    )?)
                 } else {
                     fc.block_ctx.get_named_value(var).copied()
                 }
