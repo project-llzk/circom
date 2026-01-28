@@ -1,7 +1,6 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
-// XFAIL:.*
 
 pragma circom 2.0.0;
 
@@ -19,3 +18,58 @@ template CmpEQ(n) {
 component main = CmpEQ(5);
 
 // CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-NEXT:    struct.def @CmpEQ<[@n]> {
+// CHECK-NEXT:      struct.field @b : !array.type<@n x !felt.type> {llzk.pub}
+// CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) -> !struct.type<@CmpEQ<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@CmpEQ<[@n]>>
+// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<@n x !felt.type>
+// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_2]], %[[VAL_4]])
+// CHECK-NEXT:        scf.if %[[VAL_5]] {
+// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_6]]
+// CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_0]]{{\[}}%[[VAL_7]]] : <@n x !felt.type>, !felt.type
+// CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_9]]
+// CHECK-NEXT:          array.write %[[VAL_3]]{{\[}}%[[VAL_10]]] = %[[VAL_8]] : <@n x !felt.type>, !felt.type
+// CHECK-NEXT:        } else {
+// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_11]]
+// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_0]]{{\[}}%[[VAL_12]]] : <@n x !felt.type>, !felt.type
+// CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_14]]
+// CHECK-NEXT:          array.write %[[VAL_3]]{{\[}}%[[VAL_15]]] = %[[VAL_13]] : <@n x !felt.type>, !felt.type
+// CHECK-NEXT:        }
+// CHECK-NEXT:        struct.writef %[[VAL_1]][@b] = %[[VAL_3]] : <@CmpEQ<[@n]>>, !array.type<@n x !felt.type>
+// CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@CmpEQ<[@n]>>
+// CHECK-NEXT:      }
+// CHECK-NEXT:      function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@CmpEQ<[@n]>>, %[[VAL_17:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
+// CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_18]], %[[VAL_19]])
+// CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_20]] -> (!array.type<@n x !felt.type>) {
+// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_22]]
+// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_17]]{{\[}}%[[VAL_23]]] : <@n x !felt.type>, !felt.type
+// CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_16]][@b] : <@CmpEQ<[@n]>>, !array.type<@n x !felt.type>
+// CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_26]]
+// CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_25]]{{\[}}%[[VAL_27]]] : <@n x !felt.type>, !felt.type
+// CHECK-NEXT:          constrain.eq %[[VAL_28]], %[[VAL_24]] : !felt.type, !felt.type
+// CHECK-NEXT:          scf.yield %[[VAL_25]] : !array.type<@n x !felt.type>
+// CHECK-NEXT:        } else {
+// CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_29]]
+// CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_17]]{{\[}}%[[VAL_30]]] : <@n x !felt.type>, !felt.type
+// CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_16]][@b] : <@CmpEQ<[@n]>>, !array.type<@n x !felt.type>
+// CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_33]]
+// CHECK-NEXT:          %[[VAL_35:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_32]]{{\[}}%[[VAL_34]]] : <@n x !felt.type>, !felt.type
+// CHECK-NEXT:          constrain.eq %[[VAL_35]], %[[VAL_31]] : !felt.type, !felt.type
+// CHECK-NEXT:          scf.yield %[[VAL_32]] : !array.type<@n x !felt.type>
+// CHECK-NEXT:        }
+// CHECK-NEXT:        function.return
+// CHECK-NEXT:      }
+// CHECK-NEXT:    }
+// CHECK-NEXT:  }
