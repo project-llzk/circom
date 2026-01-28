@@ -40,6 +40,7 @@ use llzk::prelude::OperationLike;
 use llzk::prelude::OperationRef;
 use llzk::prelude::OperationResult;
 use llzk::prelude::PassManager;
+use llzk::prelude::StringAttribute;
 use llzk::prelude::StructDefOp;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructDefOpRefMut;
@@ -500,6 +501,21 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                 }
             })
             .collect())
+    }
+
+    /// Convert a `Vec<String>` into a comma-separated [StringAttribute].
+    #[inline]
+    pub fn list_to_attribute(&self, names: &[String]) -> Attribute<'ctx> {
+        StringAttribute::new(self.context, &names.join(",")).into()
+    }
+
+    /// Convert a [StringAttribute] containing a comma-separated list into a `Vec<String>`.
+    #[inline]
+    pub fn attribute_to_list(
+        &self,
+        attr: Attribute<'ctx>,
+    ) -> Result<impl Iterator<Item = &'ctx str>> {
+        Ok(StringAttribute::try_from(attr)?.value().split(','))
     }
 }
 
