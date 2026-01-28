@@ -4,6 +4,8 @@ use crate::module::DeclarationInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::SubcmpDeclInfo;
+use crate::template::GenerateLLZKInTemplate;
+use crate::template::TemplateContext;
 use anyhow::anyhow;
 use anyhow::bail;
 use anyhow::Result;
@@ -14,8 +16,14 @@ use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::Location;
 use llzk::prelude::Attribute;
 use llzk::prelude::StructType;
+use num_bigint_dig::BigInt;
+use num_traits::FromPrimitive;
+use program_structure::ast::AssignOp::AssignVar;
+use program_structure::ast::Expression;
+use program_structure::ast::Meta;
 use program_structure::ast::SignalType;
 use program_structure::ast::Statement;
+use program_structure::ast::VariableType;
 use program_structure::template_data::TemplateData;
 use program_structure::wire_data::WireData;
 use program_structure::wire_data::WireType;
@@ -73,6 +81,12 @@ pub trait TemplateLike: std::fmt::Debug {
             Cow::Owned(i) => i.get(name).cloned().map(Cow::Owned),
         }
     }
+    /// Generate any LLZK code needed in the beginning of the template.
+    fn gen_preamble<'ctx>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        template: &TemplateContext<'ctx, '_, '_, '_, '_>
+    ) -> Result<()>;
 }
 
 impl TemplateLike for TemplateData {
@@ -113,6 +127,13 @@ impl TemplateLike for TemplateData {
     }
     fn get_input_info(&'_ self, name: &str) -> Option<Cow<'_, WireData>> {
         self.get_input_info(name).map(Cow::Borrowed)
+    }
+    fn gen_preamble<'ctx>(
+        &self,
+        _codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        _template: &TemplateContext<'ctx, '_, '_, '_, '_>
+    ) -> Result<()> {
+        Ok(())
     }
 }
 
@@ -231,6 +252,65 @@ impl TemplateLike for TemplateInstance {
     }
     fn get_outputs(&'_ self) -> Cow<'_, HashMap<String, Wire>> {
         Cow::Owned(wires_of_type(&self.wires, SignalType::Output))
+    }
+    fn gen_preamble<'ctx>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        template: &TemplateContext<'ctx, '_, '_, '_, '_>
+    ) -> Result<()> {
+
+        fn build_nested(meta: &Meta, flat_vals: &[BigInt], offset: usize, dims: &[usize]) -> Result<(Expression, usize)> {
+            match dims {
+                [] => {
+                    if offset >= flat_vals.len() {
+                        Err(anyhow!("offset {} ouf of bounds (len {})", offset, flat_vals.len()))
+                    } else {
+                        Ok((Expression::Number(meta.clone(), flat_vals[offset].clone()), offset + 1))
+                    }
+                }
+                [next, remaining @ ..] => {
+                    let mut values = vec![];
+                    let mut curr_offset = offset;
+                    for _ in 0..*next {
+                        let (expr, new_offset) = build_nested(meta, flat_vals, curr_offset, remaining)?;
+                        curr_offset = new_offset;
+                        values.push(expr);
+                    }
+                    let expr = Expression::ArrayInLine { meta: meta.clone(), values };
+                    Ok((expr, curr_offset))
+                }
+            }
+        }
+
+        // Insert Argument values (static versions of template parameters) in
+        // case an assignment references these (happens when assigning an array
+        // variable to equal an array Argument.
+        for arg in &self.header {
+            let meta = Meta::new(0, 0);
+            let declaration = Statement::Declaration {
+                meta: meta.clone(),
+                xtype: VariableType::Var,
+                name: arg.name.clone(),
+                dimensions: arg.lengths.iter()
+                    .map(|d| {
+                        let bigint = BigInt::from_usize(*d).ok_or_else(|| anyhow!("could not convert usize to bigint"))?;
+                        Ok(Expression::Number(meta.clone(), bigint))
+                    })
+                    .collect::<Result<Vec<_>>>()?,
+                is_constant: true,
+                is_anonymous: false,
+            };
+            let assignment = Statement::Substitution {
+                meta: meta.clone(),
+                var: arg.name.clone(),
+                access: vec![],
+                op: AssignVar,
+                rhe: build_nested(&meta, &arg.values, 0, &arg.lengths)?.0,
+            };
+            declaration.gen_llzk_in_template(codegen, template)?;
+            assignment.gen_llzk_in_template(codegen, template)?;
+        }
+        Ok(())
     }
 }
 
