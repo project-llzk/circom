@@ -3,7 +3,6 @@
 use llzk::prelude::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::convert::TryFrom;
 use std::marker::PhantomData;
 
 /// Information collected about a subcomponent.
@@ -26,28 +25,6 @@ impl<'ctx> SubcmpDeclInfo<'ctx> {
     /// Returns the dimensions of the declaration.
     pub fn dimensions(&self) -> &[Attribute<'ctx>] {
         &self.dimensions
-    }
-
-    /// Compute the flattened length of all dimensions, if they're constants.
-    pub fn length(&self) -> Option<usize> {
-        self
-            .dimensions
-            .iter()
-            .map(|a|
-                IntegerAttribute::try_from(*a)
-                .map_or(None, |i|
-                    Some(i.value()))
-            )
-            .reduce(|acc, i| {
-                if let (Some(x), Some(y)) = (acc, i) {
-                    Some(x * y)
-                } else {
-                    None
-                }
-            })
-            .flatten()
-            .map(|i| usize::try_from(i).ok())
-            .flatten()
     }
 
     /// Returns the location of the declaration.
