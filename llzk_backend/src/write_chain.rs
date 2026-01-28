@@ -110,6 +110,7 @@ impl<'ast> WriteChain<'ast> {
     }
 
     /// Handle [WriteChain::Array] case of [`WriteChain::write`].
+    #[allow(clippy::too_many_arguments)]
     fn write_array<'ctx, 'val>(
         indices: Vec<&Expression>,
         prev: Self,
@@ -127,6 +128,7 @@ impl<'ast> WriteChain<'ast> {
     }
 
     /// Handle [WriteChain::Subcmp] case of [`WriteChain::write`].
+    #[allow(clippy::too_many_arguments)]
     fn write_subcmp<'ctx, 'val>(
         name: &str,
         prev: Self,
@@ -384,9 +386,9 @@ impl<'ast> WriteChain<'ast> {
     ) -> Result<Value<'ctx, 'val>> {
         match self {
             WriteChain::Root { var, op: RootWriteOp::Signal } => {
-                self.get_root_signal(*var, target, codegen, fc, location)
+                self.get_root_signal(var, target, codegen, fc, location)
             }
-            WriteChain::Root { var, .. } => self.get_root_value(*var, fc),
+            WriteChain::Root { var, .. } => self.get_root_value(var, fc),
             WriteChain::Array { indices, prev } => self.get_array_value(
                 indices,
                 prev.get_value(codegen, fc, location, target)?,
@@ -396,14 +398,14 @@ impl<'ast> WriteChain<'ast> {
             ),
             WriteChain::Subcmp { name: signal_name, prev } => match target {
                 WriteTarget::Compute => self.get_subcmp_in_compute(
-                    *signal_name,
+                    signal_name,
                     prev.get_value(codegen, fc, location, target)?,
                     codegen,
                     fc,
                     location,
                 ),
                 WriteTarget::Constrain => self.get_subcmp_in_constrain(
-                    *signal_name,
+                    signal_name,
                     prev.get_value(codegen, fc, location, target)?,
                     codegen,
                     fc,
