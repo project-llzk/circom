@@ -61,9 +61,9 @@ fn start() -> Result<(), ()> {
         json_substitutions: user_input.json_substitutions_file().to_string(),
         prime: user_input.prime(),        
     };
-    let public_inputs =
+    let parse_info =
         if llzk_gen_opt.is_some_and(|kind| kind == crate::input_user::LLZK_KIND_CONCRETE) {
-            Some(program_archive.get_public_inputs_main_component().clone())
+            Some(llzk_backend::CachedParseInfo::from(&program_archive))
         } else {
             None
         };
@@ -78,8 +78,8 @@ fn start() -> Result<(), ()> {
     }
 
     // If requested, generate LLZK IR output after templates have been made concrete
-    if let Some(public_inputs) = public_inputs {
-        let vcp_plus = llzk_backend::VCPPlus { vcp: &circuit, public_inputs };
+    if let Some(parse_info) = parse_info {
+        let vcp_plus = llzk_backend::VCPPlus { vcp: &circuit, parse_info };
         return llzk_backend::generate_llzk(
             &vcp_plus,
             user_input.llzk_file(),
