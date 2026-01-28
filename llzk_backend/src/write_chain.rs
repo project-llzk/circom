@@ -160,11 +160,10 @@ impl<'ast> WriteChain<'ast> {
                 }
             }
             WriteChain::Array { indices, prev } => {
-                let array = prev.get_value(codegen, fc, location, target)?;
+                let arr_ref = prev.get_value(codegen, fc, location, target)?;
                 let indices = gen_index_ops(indices, codegen, fc, location)?;
-
-                fc.append_op_no_result(array::write(location, array, &indices, val))?;
-                prev.write(array, target, codegen, fc, location, template)
+                fc.append_array_write(arr_ref, &indices, location, val, None)?;
+                prev.write(arr_ref, target, codegen, fc, location, template)
             }
             WriteChain::Subcmp { name, prev } => {
                 let subcmp_value = prev.get_value(codegen, fc, location, target)?;

@@ -256,6 +256,38 @@ where
         self.append_op_no_result(op)
     }
 
+    /// Generate an `array.write` or `array.insert` operation appropriate for the number of indices
+    /// and the [ArrayType] of the `arr_ref` value.
+    pub fn append_array_write(
+        &mut self,
+        arr_ref: Value<'ctx, 'val>,
+        indices: &[Value<'ctx, 'val>],
+        location: Location<'ctx>,
+        rvalue: Value<'ctx, 'val>,
+        var_name: Option<&str>,
+    ) -> Result<()> {
+        let arr_ty = ArrayType::try_from(arr_ref.r#type()).with_context(|| {
+            let v = var_name.map_or(String::from("array"), |s| format!("'{}'", s));
+            format!("Conflicting types to write {v} at {location}")
+        })?;
+        let arr_ty_dims = arr_ty.dims();
+        let write_op = match indices.len().cmp(&arr_ty_dims.len()) {
+            std::cmp::Ordering::Equal => {
+                // Indexing all dimensions requires an `array.write`
+                array::write(location, arr_ref, indices, rvalue)
+            }
+            std::cmp::Ordering::Less => {
+                // Indexing a subset of dimensions requires an `array.insert`
+                array::insert(location, arr_ref, indices, rvalue)
+            }
+            std::cmp::Ordering::Greater => {
+                let v = var_name.map_or(String::from("array"), |s| format!("'{}'", s));
+                anyhow::bail!("Too many indices to write {v} at {location}");
+            }
+        };
+        self.append_op_no_result(write_op)
+    }
+
     /// Create a cast to felt (field element) type if the given value is not already a felt.
     #[inline]
     pub fn cast_to_felt_if_needed(
@@ -1760,24 +1792,13 @@ where
                             })
                             .collect::<Result<Vec<Value<'_, '_>>>>()?;
                         let arr_ref = function.block_ctx.get_named_value(var)?;
-                        let arr_ty = ArrayType::try_from(arr_ref.r#type()).with_context(|| {
-                            format!("Conflicting types to write '{var}' at {location}")
-                        })?;
-                        let arr_ty_dims = arr_ty.dims();
-                        let write_op = match indices.len().cmp(&arr_ty_dims.len()) {
-                            std::cmp::Ordering::Equal => {
-                                // Indexing all dimensions requires an `array.write`
-                                array::write(location, *arr_ref, indices, rvalue)
-                            }
-                            std::cmp::Ordering::Less => {
-                                // Indexing a subset of dimensions requires an `array.insert`
-                                array::insert(location, *arr_ref, indices, rvalue)
-                            }
-                            std::cmp::Ordering::Greater => {
-                                anyhow::bail!("Too many indices to write array '{}'", var);
-                            }
-                        };
-                        no_results(function.append_op(write_op))?;
+                        function.append_array_write(
+                            *arr_ref,
+                            indices,
+                            location,
+                            rvalue,
+                            Some(&var),
+                        )?;
                     }
                 }
                 Ok(false)
