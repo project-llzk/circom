@@ -5,7 +5,7 @@ use crate::shared::LlzkCodegen;
 use anyhow::Result;
 use compiler::hir::very_concrete_program::VCF;
 use llzk::prelude::Location;
-use melior::ir::Type;
+use llzk::prelude::Type;
 use program_structure::ast::Statement;
 use program_structure::function_data::FunctionData;
 use std::slice;
