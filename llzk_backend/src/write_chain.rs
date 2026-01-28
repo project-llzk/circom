@@ -22,6 +22,7 @@ use llzk::prelude::Location;
 use llzk::prelude::OperationLike as _;
 use llzk::prelude::Value;
 use llzk::value_ext::replace_all_uses;
+use melior::ir::ValueLike;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
@@ -56,8 +57,14 @@ pub enum WriteTarget {
 
 impl WriteTarget {
     /// Returns true if the target is  `@compute`.
+    #[inline]
     fn is_compute(&self) -> bool {
         matches!(self, WriteTarget::Compute)
+    }
+    /// Returns true if the target is `@constrain`.
+    #[inline]
+    fn is_constrain(&self) -> bool {
+        matches!(self, WriteTarget::Constrain)
     }
 }
 
@@ -181,7 +188,7 @@ impl<'ast> WriteChain<'ast> {
     /// Returns a SSA representing the op.
     ///
     /// It could be a placeholder operation at this point (usually represented with `undef.undef`).
-    fn get_value<'ctx, 'val>(
+    pub fn get_value<'ctx, 'val>(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
@@ -189,6 +196,25 @@ impl<'ast> WriteChain<'ast> {
         target: WriteTarget,
     ) -> Result<Value<'ctx, 'val>> {
         match self {
+            WriteChain::Root { var, op: RootWriteOp::Signal } => {
+                if target.is_constrain() {
+                    // Read value from field of "self" struct.
+                    let expected_type = fc.block_ctx.get_named_value(var).unwrap().r#type();
+                    let self_value = fc.func.self_value_of_constrain()?;
+                    fc.append_op_named_result(
+                        r#struct::readf(
+                            &OpBuilder::new(codegen.context),
+                            location,
+                            expected_type,
+                            self_value,
+                            var,
+                        )?,
+                        var.to_string(),
+                    )
+                } else {
+                    fc.block_ctx.get_named_value(var).copied()
+                }
+            }
             WriteChain::Root { var, .. } => fc.block_ctx.get_named_value(var).copied(),
             WriteChain::Array { indices, prev } => {
                 let arr_ref = prev.get_value(codegen, fc, location, target)?;
