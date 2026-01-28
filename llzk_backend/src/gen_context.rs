@@ -197,12 +197,12 @@ where
         self.top().scope_local_name_to_value.contains_key(name)
     }
 
-    /// Ensure the given name is not already declared in the current scope, then declare it by producing an
-    /// [Operation] via the callback, inserting that into the current block, and using its result.
-    /// The only scenario where a declaration would already be present is when the same Declaration
-    /// statements are visited that were used to produce the parameters of the current function.
-    /// Otherwise, the checks performed earlier in the circom parser pipeline will produce an error
-    /// if a symbol is declared more than once in the same scope.
+    /// Ensure the given name is not already declared in the current scope, then declare it by
+    /// producing an [Operation] via the callback, inserting that into the current block, and
+    /// using its result. The only scenario where a declaration would already be present is when
+    /// the same Declaration statements are visited that were used to produce the parameters of
+    /// the current function. Otherwise, the checks performed earlier in the circom parser
+    /// pipeline will produce an error if a symbol is declared more than once in the same scope.
     pub fn declare_name_ensure_not_present(
         &mut self,
         name: &str,
