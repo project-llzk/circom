@@ -31,8 +31,8 @@ component main = Foo(3);
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>) -> !struct.type<@Foo<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Foo<[@N]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<@N x !felt.type>
-// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<@N x !felt.type>
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = undef.undef : !array.type<@N x !felt.type>
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = undef.undef : !array.type<@N x !felt.type>
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_7:[0-9a-zA-Z_\.]+]] = %[[VAL_5]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_7]], %[[VAL_2]])
@@ -42,7 +42,7 @@ component main = Foo(3);
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_9]]
 // CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_0]]{{\[}}%[[VAL_10]]] : <@N x !felt.type>, !felt.type
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_9]]
-// CHECK-NEXT:          array.write %[[VAL_4]]{{\[}}%[[VAL_12]]] = %[[VAL_11]] : <@N x !felt.type>, !felt.type
+// CHECK-NEXT:          array.write %[[VAL_4:[0-9a-zA-Z_\.]+]]{{\[}}%[[VAL_12]]] = %[[VAL_11]] : <@N x !felt.type>, !felt.type
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_9]], %[[VAL_13]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_14]] : !felt.type
@@ -56,7 +56,7 @@ component main = Foo(3);
 // CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_19]]
 // CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_4]]{{\[}}%[[VAL_20]]] : <@N x !felt.type>, !felt.type
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_19]]
-// CHECK-NEXT:          array.write %[[VAL_3]]{{\[}}%[[VAL_22]]] = %[[VAL_21]] : <@N x !felt.type>, !felt.type
+// CHECK-NEXT:          array.write %[[VAL_3:[0-9a-zA-Z_\.]+]]{{\[}}%[[VAL_22]]] = %[[VAL_21]] : <@N x !felt.type>, !felt.type
 // CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_19]], %[[VAL_23]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_24]] : !felt.type
