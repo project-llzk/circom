@@ -1149,28 +1149,30 @@ where
                                     },
                                 )
                             }
-                            access => {
-                                rhe.gen_llzk_in_template(codegen, template)?.and_then(
-                                    |fc, rhe| {
-                                        let chain = WriteChain::new(
-                                            var,
-                                            RootWriteOp::Signal,
-                                            access,
-                                        );
-                                        chain.write(
-                                            rhe,
-                                            WriteTarget::Compute,
-                                            codegen,
-                                            fc,
-                                            codegen.location_from_meta(meta),
-                                            template,
-                                        )
-                                    },
-                                    |_fc, _rhe| {
-                                        anyhow::bail!("Generate array write operation in template (constrain): \n{access:?}")
-                                    },
-                                )
-                            }
+                            access => rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                                |fc, rhv| {
+                                    let chain = WriteChain::new(var, RootWriteOp::Signal, access);
+                                    chain.write(
+                                        rhv,
+                                        WriteTarget::Compute,
+                                        codegen,
+                                        fc,
+                                        codegen.location_from_meta(meta),
+                                        template,
+                                    )
+                                },
+                                |fc, rhv| {
+                                    let chain = WriteChain::new(var, RootWriteOp::Signal, access);
+                                    let location = codegen.location_from_meta(meta);
+                                    let lhv = chain.get_value(
+                                        codegen,
+                                        fc,
+                                        location,
+                                        WriteTarget::Constrain,
+                                    )?;
+                                    fc.append_op_no_result(constrain::eq(location, lhv, rhv).into())
+                                },
+                            ),
                         }
                     }
                 }
@@ -1209,14 +1211,10 @@ where
             }
             Statement::Assert { meta, arg } => {
                 arg.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, val| {
-                    fc.append_op_no_result(
-                        llzk::dialect::bool::assert(
-                            codegen.location_from_meta(meta),
-                            val,
-                            Some("assertion failed"),
-                        )?
-                        .into(),
-                    )
+                    let location = codegen.location_from_meta(meta);
+                    let cond = fc.cast_to_bool_if_needed(codegen, location, val)?;
+                    let msg = Some("assertion failed");
+                    fc.append_op_no_result(llzk::dialect::bool::assert(location, cond, msg)?.into())
                 })
             }
             Statement::LogCall { meta, .. } => {

@@ -12,19 +12,17 @@ use crate::template::TemplateContext;
 use crate::template_ext::TemplateLike as _;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
-use llzk::dialect::array;
 use llzk::dialect::cast;
 use llzk::dialect::r#struct;
 use llzk::prelude::r#struct::is_struct_readf;
-use llzk::prelude::ArrayType;
 use llzk::prelude::CallOpLike as _;
 use llzk::prelude::CallOpRef;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::OperationLike as _;
 use llzk::prelude::Value;
-use llzk::prelude::ValueLike as _;
 use llzk::value_ext::replace_all_uses;
+use melior::ir::ValueLike;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
@@ -59,8 +57,14 @@ pub enum WriteTarget {
 
 impl WriteTarget {
     /// Returns true if the target is  `@compute`.
+    #[inline]
     fn is_compute(&self) -> bool {
         matches!(self, WriteTarget::Compute)
+    }
+    /// Returns true if the target is `@constrain`.
+    #[inline]
+    fn is_constrain(&self) -> bool {
+        matches!(self, WriteTarget::Constrain)
     }
 }
 
@@ -115,11 +119,10 @@ impl<'ast> WriteChain<'ast> {
         location: Location<'ctx>,
         template: &TemplateContext<'ctx, '_, '_, '_, 'val>,
     ) -> Result<()> {
-        let array = prev.get_value(codegen, fc, location, target)?;
+        let arr_ref = prev.get_value(codegen, fc, location, target)?;
         let indices = gen_index_ops(indices, codegen, fc, location)?;
-
-        fc.append_op_no_result(array::write(location, array, &indices, val))?;
-        prev.write(array, target, codegen, fc, location, template)
+        fc.append_array_write(arr_ref, &indices, location, val, None)?;
+        prev.write(arr_ref, target, codegen, fc, location, template)
     }
 
     fn write_subcmp<'ctx, 'val>(
@@ -251,11 +254,9 @@ impl<'ast> WriteChain<'ast> {
         fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
-        let elt_type = ArrayType::try_from(prev.r#type())?.element_type();
         let indices = gen_index_ops(indices.iter().copied(), codegen, fc, location)?;
-
-        fc.append_op_unnamed_result(array::read(location, elt_type, prev, &indices))
-            .map(|v| fc.subcmp_calls.propagate(&prev, v))
+        fc.append_array_read(prev, &indices, location, None)
+                    .map(|v| fc.subcmp_calls.propagate(&prev, v))
     }
 
     fn get_subcmp_in_compute<'ctx, 'val>(
@@ -339,7 +340,7 @@ impl<'ast> WriteChain<'ast> {
     /// Returns a SSA representing the op.
     ///
     /// It could be a placeholder operation at this point (usually represented with `undef.undef`).
-    fn get_value<'ctx, 'val>(
+    pub fn get_value<'ctx, 'val>(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
@@ -347,6 +348,22 @@ impl<'ast> WriteChain<'ast> {
         target: WriteTarget,
     ) -> Result<Value<'ctx, 'val>> {
         match self {
+            WriteChain::Root { var, op: RootWriteOp::Signal } => {
+                if target.is_constrain() {
+                    // Read value from field of "self" struct.
+                    let expected_type = fc.block_ctx.get_named_value(var).unwrap().r#type();
+                    let self_value = fc.func.self_value_of_constrain()?;
+                    fc.append_op_unnamed_result(r#struct::readf(
+                        &OpBuilder::new(codegen.context),
+                        location,
+                        expected_type,
+                        self_value,
+                        var,
+                    )?)
+                } else {
+                    fc.block_ctx.get_named_value(var).copied()
+                }
+            }
             WriteChain::Root { var, .. } => self.get_root_value(*var, fc),
             WriteChain::Array { indices, prev } => self.get_array_value(
                 indices,
