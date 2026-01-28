@@ -67,7 +67,6 @@ use llzk::prelude::OperationRef;
 use llzk::prelude::OperationRefMut;
 use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
-use llzk::prelude::StringAttribute;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
@@ -125,6 +124,51 @@ where
     pub(crate) block_ctx: BlockContextStack<'ctx, 'blk, 'val>,
     /// Calls to subcomponents
     pub(crate) subcmp_calls: SubcmpCallsMap<'ctx>,
+}
+
+/// Cache block yield/return result value while performing early-return refactoring.
+enum RefactoringBlockResultType<'ctx> {
+    /// Single result value from the block.
+    Single(Type<'ctx>),
+    /// Multiple result values from the block with `OPERAND_VAL_NAMES` attribute.
+    Multiple(Vec<Type<'ctx>>, Attribute<'ctx>),
+}
+
+impl<'ctx> RefactoringBlockResultType<'ctx> {
+    /// Get the number of result values.
+    fn len(&self) -> usize {
+        match self {
+            RefactoringBlockResultType::Single(_) => 1,
+            RefactoringBlockResultType::Multiple(types, _) => types.len(),
+        }
+    }
+
+    /// Get the result types.
+    fn result_types(&self) -> &[Type<'ctx>] {
+        match self {
+            RefactoringBlockResultType::Single(ty) => std::slice::from_ref(ty),
+            RefactoringBlockResultType::Multiple(types, _) => types,
+        }
+    }
+
+    /// Get name [Attribute] if multiple result types.
+    fn name_attr(&self) -> Option<Attribute<'ctx>> {
+        match self {
+            RefactoringBlockResultType::Single(_) => None,
+            RefactoringBlockResultType::Multiple(_, attr) => Some(*attr),
+        }
+    }
+
+    /// Generate an [scf::yield] operation with the given values and location, propagating the
+    /// `name_attr` from `self` if applicable.
+    fn gen_yield(&self, values: &[Value<'ctx, '_>], location: Location<'ctx>) -> Operation<'ctx> {
+        assert_eq!(values.len(), self.len(), "requires one value per result");
+        let mut new_yield = scf::r#yield(&values, location);
+        if let Some(names_attr) = self.name_attr() {
+            new_yield.set_attribute(OPERAND_VAL_NAMES, names_attr);
+        }
+        new_yield
+    }
 }
 
 impl<'ctx, 'func, 'blk, 'val> FunctionContext<'ctx, 'func, 'blk, 'val>
@@ -625,20 +669,18 @@ where
     }
 
     /// Create a new `scf.yield` op, in the given block, that yields multiple values with associated
-    /// variable names. Create a [StringAttribute] containing comma-separated list of `value_names`
+    /// variable names. Create an [Attribute] containing comma-separated list of `value_names`
     /// and attach it to the `scf.yield` op using the [OPERAND_VAL_NAMES] attribute key.
-    fn append_multi_operand_yield(
+    fn append_multi_operand_yield_to_block(
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         block: BlockRef<'ctx, 'val>,
         values: &[Value<'ctx, 'val>],
         value_names: &[String],
         location: Location<'ctx>,
     ) -> Result<()> {
+        assert_eq!(values.len(), value_names.len(), "requires one name per value");
         let mut op = scf::r#yield(values, location);
-        op.set_attribute(
-            OPERAND_VAL_NAMES,
-            StringAttribute::new(codegen.context, &value_names.join(",")).into(),
-        );
+        op.set_attribute(OPERAND_VAL_NAMES, codegen.list_to_attribute(value_names));
         no_results(block.append_operation(op))
     }
 
@@ -677,14 +719,14 @@ where
             .collect::<Result<Vec<_>, _>>()?;
 
         // Insert `scf.yield` at the end of each block.
-        Self::append_multi_operand_yield(
+        Self::append_multi_operand_yield_to_block(
             codegen,
             then_info.block,
             &then_values,
             &overwrite_names,
             location,
         )?;
-        Self::append_multi_operand_yield(
+        Self::append_multi_operand_yield_to_block(
             codegen,
             else_info.block,
             &else_values,
@@ -926,7 +968,7 @@ where
             overwrites_sorted.into_iter().unzip();
 
         // Append the loop body block with an `scf.yield`
-        Self::append_multi_operand_yield(
+        Self::append_multi_operand_yield_to_block(
             codegen,
             loop_body_info.block,
             &body_yield_values,
@@ -1074,8 +1116,7 @@ where
 
         // Move all ops after the `scf.if` into a new block for "else" branch of new `scf.if`.
         let new_else_block = Block::new(&[]);
-        let new_else_block_result_types: Vec<Type>;
-        let operand_val_names_attr: Result<Attribute, melior::Error>;
+        let new_else_result_info: RefactoringBlockResultType;
         {
             // Collect all ops before removing any to avoid invalidating references.
             let mut following_ops = Vec::new();
@@ -1091,17 +1132,18 @@ where
             // Special handling for the tail op: yield is just added, return is converted to yield.
             let tail = remove_from_parent(&mut tail);
             if is_scf_yield(&tail) {
-                operand_val_names_attr = tail.attribute(OPERAND_VAL_NAMES);
-                new_else_block_result_types = tail.operands().map(|v| v.r#type()).collect();
+                let result_types = tail.operands().map(|v| v.r#type()).collect();
+                let names = tail
+                    .attribute(OPERAND_VAL_NAMES)
+                    .expect("multi-value yield op must have names");
+                new_else_result_info = RefactoringBlockResultType::Multiple(result_types, names);
                 no_results(new_else_block.append_operation(tail))?;
             } else if is_func_return(&tail) {
                 assert_eq!(tail.operand_count(), 1, "circom functions must return a single value");
-                let ret_operand = tail.operand(0).unwrap();
-                operand_val_names_attr = // replicate Err that `tail.attribute()` would always give here
-                    Err(melior::Error::AttributeNotFound(String::from(OPERAND_VAL_NAMES)));
-                new_else_block_result_types = vec![ret_operand.r#type()];
+                let ret_val = tail.operand(0).unwrap();
+                new_else_result_info = RefactoringBlockResultType::Single(ret_val.r#type());
                 no_results(
-                    new_else_block.append_operation(scf::r#yield(&[ret_operand], tail.location())),
+                    new_else_block.append_operation(scf::r#yield(&[ret_val], tail.location())),
                 )?;
             } else {
                 anyhow::bail!("expected either yield or return at end of block");
@@ -1112,41 +1154,43 @@ where
         let new_then_block = Block::new(&[]);
         {
             assert_eq!(ret_op.operand_count(), 1, "circom functions must return a single value");
-            let ret_operand = ret_op.operand(0).unwrap();
-            let mut yield_values = Vec::with_capacity(new_else_block_result_types.len());
+            let ret_val = ret_op.operand(0).unwrap();
+            let mut yield_values = Vec::with_capacity(new_else_result_info.len());
 
             // The blocks must yield the same number and type of values. So if the "else" block
             // yields more than one value, need to add additional operands to yield here.
-            if new_else_block_result_types.len() > 1 {
-                let location = ret_op.location();
-                let val_names = operand_val_names_attr.and_then(StringAttribute::try_from)?.value();
-                for (i, s) in val_names.split(",").enumerate() {
-                    if s == VAR_NAME_RETURN_VAL {
-                        yield_values.push(ret_operand);
-                    } else if s == VAR_NAME_HAD_RETURN {
-                        // Gen true constant since this case has a return.
-                        yield_values.push(single_result_as_value(
-                            new_then_block
-                                .append_operation(codegen.new_bool_const_op(true, location)),
-                        )?);
-                    } else {
-                        // Fill other positions with undef values of the appropriate type.
-                        yield_values.push(single_result_as_value(
-                            new_then_block.append_operation(codegen.new_nondet_at_location(
-                                location,
-                                new_else_block_result_types[i],
-                            )?),
-                        )?);
+            match &new_else_result_info {
+                RefactoringBlockResultType::Single(t) => {
+                    if ret_val.r#type() != *t {
+                        anyhow::bail!("type mismatch in return value between branches");
+                    }
+                    yield_values.push(ret_val);
+                }
+                RefactoringBlockResultType::Multiple(result_types, names) => {
+                    let location = ret_op.location();
+                    for (i, s) in codegen.attribute_to_list(*names)?.enumerate() {
+                        if s == VAR_NAME_RETURN_VAL {
+                            yield_values.push(ret_val);
+                        } else if s == VAR_NAME_HAD_RETURN {
+                            // Gen true constant since this case has a return.
+                            yield_values.push(single_result_as_value(
+                                new_then_block
+                                    .append_operation(codegen.new_bool_const_op(true, location)),
+                            )?);
+                        } else {
+                            assert!(i <= result_types.len(), "more names than result types");
+                            // Fill other positions with undef values of the appropriate type.
+                            yield_values.push(single_result_as_value(
+                                new_then_block.append_operation(
+                                    codegen.new_nondet_at_location(location, result_types[i])?,
+                                ),
+                            )?);
+                        }
                     }
                 }
-            } else if new_else_block_result_types[0] != ret_operand.r#type() {
-                anyhow::bail!("type mismatch in return value between branches");
-            } else {
-                yield_values.push(ret_operand);
             }
-            no_results(
-                new_then_block.append_operation(scf::r#yield(&yield_values, ret_op.location())),
-            )?;
+            let new_yield = new_else_result_info.gen_yield(&yield_values, ret_op.location());
+            no_results(new_then_block.append_operation(new_yield))?;
         }
 
         // Create new `scf.if` op using the new "then" and "else" blocks. Replace `parent_if_op`
@@ -1158,7 +1202,7 @@ where
         then_region.append_block(new_then_block);
         let new_if_ref = blk.append_operation(scf::r#if(
             parent_if_op.operand(0)?,
-            &new_else_block_result_types,
+            new_else_result_info.result_types(),
             then_region,
             else_region,
             parent_if_op.location(),
@@ -1169,7 +1213,7 @@ where
         let op = if blk.parent_operation().is_some_and(|r| is_func_def(&r)) {
             function::r#return(parent_if_op.location(), &result_values)
         } else {
-            scf::r#yield(&result_values, parent_if_op.location())
+            new_else_result_info.gen_yield(&result_values, parent_if_op.location())
         };
         no_results(blk.append_operation(op))?;
 
