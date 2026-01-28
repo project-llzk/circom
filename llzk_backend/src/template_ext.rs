@@ -277,7 +277,7 @@ impl TemplateLike for TemplateInstance {
             match dims {
                 [] => {
                     if offset >= flat_vals.len() {
-                        Err(anyhow!("offset {} ouf of bounds (len {})", offset, flat_vals.len()))
+                        Err(anyhow!("offset {} out of bounds (len {})", offset, flat_vals.len()))
                     } else {
                         Ok((
                             Expression::Number(meta.clone(), flat_vals[offset].clone()),
@@ -302,7 +302,7 @@ impl TemplateLike for TemplateInstance {
 
         // Insert Argument values (static versions of template parameters) in
         // case an assignment references these (happens when assigning an array
-        // variable to equal an array Argument.
+        // variable to equal an array Argument).
         for arg in &self.header {
             let meta = Meta::new(0, 0);
             let declaration = Statement::Declaration {
