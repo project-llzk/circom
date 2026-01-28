@@ -287,7 +287,10 @@ where
         } else if is_bool(expected) {
             self.cast_to_bool_if_needed(codegen, location, val)
         } else {
-            anyhow::bail!("Unsupported 'expected' type '{}'", expected)
+            anyhow::bail!(
+                "Unsupported 'expected' type '{expected}' with value type {}",
+                val.r#type()
+            )
         }
     }
 
