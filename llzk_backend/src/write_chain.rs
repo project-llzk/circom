@@ -12,18 +12,15 @@ use crate::template::TemplateContext;
 use crate::template_ext::TemplateLike as _;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
-use llzk::dialect::array;
 use llzk::dialect::cast;
 use llzk::dialect::r#struct;
 use llzk::prelude::r#struct::is_struct_readf;
-use llzk::prelude::ArrayType;
 use llzk::prelude::CallOpLike as _;
 use llzk::prelude::CallOpRef;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::OperationLike as _;
 use llzk::prelude::Value;
-use llzk::prelude::ValueLike as _;
 use llzk::value_ext::replace_all_uses;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
@@ -160,11 +157,10 @@ impl<'ast> WriteChain<'ast> {
                 }
             }
             WriteChain::Array { indices, prev } => {
-                let array = prev.get_value(codegen, fc, location, target)?;
+                let arr_ref = prev.get_value(codegen, fc, location, target)?;
                 let indices = gen_index_ops(indices, codegen, fc, location)?;
-
-                fc.append_op_no_result(array::write(location, array, &indices, val))?;
-                prev.write(array, target, codegen, fc, location, template)
+                fc.append_array_write(arr_ref, &indices, location, val, None)?;
+                prev.write(arr_ref, target, codegen, fc, location, template)
             }
             WriteChain::Subcmp { name, prev } => {
                 let subcmp_value = prev.get_value(codegen, fc, location, target)?;
@@ -195,12 +191,10 @@ impl<'ast> WriteChain<'ast> {
         match self {
             WriteChain::Root { var, .. } => fc.block_ctx.get_named_value(var).copied(),
             WriteChain::Array { indices, prev } => {
-                let array = prev.get_value(codegen, fc, location, target)?;
-                let elt_type = ArrayType::try_from(array.r#type())?.element_type();
+                let arr_ref = prev.get_value(codegen, fc, location, target)?;
                 let indices = gen_index_ops(indices.iter().copied(), codegen, fc, location)?;
-
-                fc.append_op_unnamed_result(array::read(location, elt_type, array, &indices))
-                    .map(|v| fc.subcmp_calls.propagate(&array, v))
+                fc.append_array_read(arr_ref, &indices, location, None)
+                    .map(|v| fc.subcmp_calls.propagate(&arr_ref, v))
             }
             WriteChain::Subcmp { name: signal_name, prev } => match target {
                 WriteTarget::Compute => {
