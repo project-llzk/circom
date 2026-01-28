@@ -105,6 +105,46 @@ impl<'ast> WriteChain<'ast> {
         })
     }
 
+    fn write_array<'ctx, 'val>(
+        indices: Vec<&Expression>,
+        prev: Self,
+        val: Value<'ctx, 'val>,
+        target: WriteTarget,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        location: Location<'ctx>,
+        template: &TemplateContext<'ctx, '_, '_, '_, 'val>,
+    ) -> Result<()> {
+        let array = prev.get_value(codegen, fc, location, target)?;
+        let indices = gen_index_ops(indices, codegen, fc, location)?;
+
+        fc.append_op_no_result(array::write(location, array, &indices, val))?;
+        prev.write(array, target, codegen, fc, location, template)
+    }
+
+    fn write_subcmp<'ctx, 'val>(
+        name: &str,
+        prev: Self,
+        val: Value<'ctx, 'val>,
+        target: WriteTarget,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        location: Location<'ctx>,
+        template: &TemplateContext<'ctx, '_, '_, '_, 'val>,
+    ) -> Result<()> {
+        let subcmp_value = prev.get_value(codegen, fc, location, target)?;
+        let arg_idx = fc.lookup_arg_idx(name, &subcmp_value, codegen)?;
+        let (arg_offset, call_op) = match target {
+            WriteTarget::Compute => (0, op_result_owner(subcmp_value)?),
+            WriteTarget::Constrain => (1, get_constrain_call(subcmp_value)?),
+            WriteTarget::Free => unreachable!(),
+        };
+        set_operand_if_undef(call_op, arg_idx + arg_offset, val)?;
+        insert_after_if_op_result(val, call_op)?;
+
+        prev.write(subcmp_value, target, codegen, fc, location, template)
+    }
+
     /// Emits the write operations.
     pub fn write<'ctx, 'val>(
         self,
@@ -115,70 +155,184 @@ impl<'ast> WriteChain<'ast> {
         location: Location<'ctx>,
         template: &TemplateContext<'ctx, '_, '_, '_, 'val>,
     ) -> Result<()> {
+        fn write_root_signal<'ctx, 'val>(
+            var: &str,
+            val: Value<'ctx, 'val>,
+            target: WriteTarget,
+            fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+            location: Location<'ctx>,
+            template: &TemplateContext<'ctx, '_, '_, '_, 'val>,
+        ) -> Result<()> {
+            if target.is_compute() && !template.signal_already_written(var) {
+                let block = fc.block_ctx.get_decl_block_of_value(var)?;
+
+                let self_value = fc.func.self_value_of_compute()?;
+                // Write value to field of "self" struct.
+                fc.block_ctx.enqueue_in_block(
+                    r#struct::writef(location, self_value, var, val)?.into(),
+                    block,
+                )?;
+                fc.block_ctx.set_named_value_at_declaration(var.to_string(), val)?;
+                template.mark_signal_as_written(var.to_string())
+            }
+            Ok(())
+        }
+
+        fn write_root_var<'ctx, 'val>(
+            var: &str,
+            val: Value<'ctx, 'val>,
+            fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        ) -> Result<()> {
+            fc.block_ctx.set_named_value(var.to_string(), val)
+        }
+
+        fn write_root_subcmp_in_compute<'ctx, 'val>(
+            var: &str,
+            val: Value<'ctx, 'val>,
+            fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        ) -> Result<()> {
+            let current = fc.block_ctx.get_named_value(var)?;
+            if *current != val {
+                replace_all_uses(*current, val);
+            }
+            fc.subcmp_calls.update_keys(*current, val);
+            fc.block_ctx.set_named_value(var.to_string(), val)?;
+            Ok(())
+        }
+
+        fn write_root_subcmp_in_constrain<'ctx, 'val>(
+            var: &str,
+            val: Value<'ctx, 'val>,
+            fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        ) -> Result<()> {
+            // Replace value
+            let field_read = fc.block_ctx.get_named_value(var)?;
+            // ASSERT: value comes from a `struct.readf`
+            assert!(is_struct_readf(&op_result_owner(*field_read).unwrap()));
+            if val != *field_read {
+                replace_all_uses(val, *field_read);
+            }
+            fc.subcmp_calls.update_keys(val, *field_read);
+            Ok(())
+        }
+
         match self {
             WriteChain::Root { var, op: RootWriteOp::Signal } => {
-                if target.is_compute() && !template.signal_already_written(var) {
-                    let block = fc.block_ctx.get_decl_block_of_value(var)?;
-
-                    let self_value = fc.func.self_value_of_compute()?;
-                    // Write value to field of "self" struct.
-                    fc.block_ctx.enqueue_in_block(
-                        r#struct::writef(location, self_value, var, val)?.into(),
-                        block,
-                    )?;
-                    fc.block_ctx.set_named_value_at_declaration(var.to_string(), val)?;
-                    template.mark_signal_as_written(var.to_string())
-                }
-                Ok(())
+                write_root_signal(var, val, target, fc, location, template)
             }
-            WriteChain::Root { var, op: RootWriteOp::Var } => {
-                fc.block_ctx.set_named_value(var.to_string(), val)
-            }
-            WriteChain::Root { var, op: RootWriteOp::Subcmp } => {
-                match target {
-                    WriteTarget::Compute => {
-                        let current = fc.block_ctx.get_named_value(var)?;
-                        if *current != val {
-                            replace_all_uses(*current, val);
-                        }
-                        fc.subcmp_calls.update_keys(*current, val);
-                        fc.block_ctx.set_named_value(var.to_string(), val)?;
-                        Ok(())
-                    }
-                    WriteTarget::Constrain => {
-                        // Replace value
-                        let field_read = fc.block_ctx.get_named_value(var)?;
-                        // ASSERT: value comes from a `struct.readf`
-                        assert!(is_struct_readf(&op_result_owner(*field_read).unwrap()));
-                        if val != *field_read {
-                            replace_all_uses(val, *field_read);
-                        }
-                        fc.subcmp_calls.update_keys(val, *field_read);
-                        Ok(())
-                    }
-                    WriteTarget::Free => unreachable!(),
-                }
-            }
+            WriteChain::Root { var, op: RootWriteOp::Var } => write_root_var(var, val, fc),
+            WriteChain::Root { var, op: RootWriteOp::Subcmp } => match target {
+                WriteTarget::Compute => write_root_subcmp_in_compute(var, val, fc),
+                WriteTarget::Constrain => write_root_subcmp_in_constrain(var, val, fc),
+                WriteTarget::Free => unreachable!(),
+            },
             WriteChain::Array { indices, prev } => {
-                let array = prev.get_value(codegen, fc, location, target)?;
-                let indices = gen_index_ops(indices, codegen, fc, location)?;
-
-                fc.append_op_no_result(array::write(location, array, &indices, val))?;
-                prev.write(array, target, codegen, fc, location, template)
+                Self::write_array(indices, *prev, val, target, codegen, fc, location, template)
             }
             WriteChain::Subcmp { name, prev } => {
-                let subcmp_value = prev.get_value(codegen, fc, location, target)?;
-                let arg_idx = fc.lookup_arg_idx(name, &subcmp_value, codegen)?;
-                let (arg_offset, call_op) = match target {
-                    WriteTarget::Compute => (0, op_result_owner(subcmp_value)?),
-                    WriteTarget::Constrain => (1, get_constrain_call(subcmp_value)?),
-                    WriteTarget::Free => unreachable!(),
-                };
-                set_operand_if_undef(call_op, arg_idx + arg_offset, val)?;
-                insert_after_if_op_result(val, call_op)?;
-
-                prev.write(subcmp_value, target, codegen, fc, location, template)
+                Self::write_subcmp(name, *prev, val, target, codegen, fc, location, template)
             }
+        }
+    }
+
+    fn get_root_value<'ctx, 'val>(
+        &self,
+        var: &str,
+        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        fc.block_ctx.get_named_value(var).copied()
+    }
+
+    fn get_array_value<'ctx, 'val>(
+        &self,
+        indices: &[&Expression],
+        prev: Value<'ctx, 'val>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, 'val>> {
+        let elt_type = ArrayType::try_from(prev.r#type())?.element_type();
+        let indices = gen_index_ops(indices.iter().copied(), codegen, fc, location)?;
+
+        fc.append_op_unnamed_result(array::read(location, elt_type, prev, &indices))
+            .map(|v| fc.subcmp_calls.propagate(&prev, v))
+    }
+
+    fn get_subcmp_in_compute<'ctx, 'val>(
+        &self,
+        signal_name: &str,
+        subcmp_value: Value<'ctx, 'val>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, 'val>> {
+        let template_data = fc
+            .subcmp_calls
+            .get(&subcmp_value)
+            .ok_or_else(|| anyhow::anyhow!("subcomponent call for {subcmp_value} not found"))
+            .and_then(|name| {
+                codegen
+                    .find_template_data(name)
+                    .ok_or_else(|| anyhow::anyhow!("template {name:?} not found"))
+            })?;
+        if template_data.get_outputs().contains_key(signal_name) {
+            fc.append_op_unnamed_result(r#struct::readf(
+                &OpBuilder::new(codegen.context),
+                location,
+                codegen.felt_type().into(),
+                subcmp_value,
+                signal_name,
+            )?)
+        } else if template_data.get_inputs().contains_key(signal_name) {
+            let idx = template_data
+                .get_declaration_inputs()
+                .iter()
+                .find_map(|(s, idx)| (signal_name == s).then_some(*idx))
+                .expect("signal in mapping but not in declaration list");
+            let call = CallOpRef::try_from(op_result_owner(subcmp_value)?)?;
+            assert!(call.callee_is_struct_compute());
+            Ok(call.operand(idx)?)
+        } else {
+            anyhow::bail!("signal {signal_name} is internal");
+        }
+    }
+
+    fn get_subcmp_in_constrain<'ctx, 'val>(
+        &self,
+        signal_name: &str,
+        subcmp_value: Value<'ctx, 'val>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, 'val>> {
+        let template_data = fc
+            .subcmp_calls
+            .get(&subcmp_value)
+            .ok_or_else(|| anyhow::anyhow!("subcomponent call for {subcmp_value} not found"))
+            .and_then(|name| {
+                codegen
+                    .find_template_data(name)
+                    .ok_or_else(|| anyhow::anyhow!("template {name:?} not found"))
+            })?;
+        if template_data.get_outputs().contains_key(signal_name) {
+            fc.append_op_unnamed_result(r#struct::readf(
+                &OpBuilder::new(codegen.context),
+                location,
+                codegen.felt_type().into(),
+                subcmp_value,
+                signal_name,
+            )?)
+        } else if template_data.get_inputs().contains_key(signal_name) {
+            let idx = template_data
+                .get_declaration_inputs()
+                .iter()
+                .enumerate()
+                .find_map(|(idx, (s, _))| (signal_name == s).then_some(idx))
+                .expect("signal in mapping but not in declaration list");
+            let call = get_constrain_call(subcmp_value)?;
+            Ok(call.operand(idx + 1)?)
+        } else {
+            anyhow::bail!("signal {signal_name}  is internal");
         }
     }
 
@@ -193,84 +347,29 @@ impl<'ast> WriteChain<'ast> {
         target: WriteTarget,
     ) -> Result<Value<'ctx, 'val>> {
         match self {
-            WriteChain::Root { var, .. } => fc.block_ctx.get_named_value(var).copied(),
-            WriteChain::Array { indices, prev } => {
-                let array = prev.get_value(codegen, fc, location, target)?;
-                let elt_type = ArrayType::try_from(array.r#type())?.element_type();
-                let indices = gen_index_ops(indices.iter().copied(), codegen, fc, location)?;
-
-                fc.append_op_unnamed_result(array::read(location, elt_type, array, &indices))
-                    .map(|v| fc.subcmp_calls.propagate(&array, v))
-            }
+            WriteChain::Root { var, .. } => self.get_root_value(*var, fc),
+            WriteChain::Array { indices, prev } => self.get_array_value(
+                indices,
+                prev.get_value(codegen, fc, location, target)?,
+                codegen,
+                fc,
+                location,
+            ),
             WriteChain::Subcmp { name: signal_name, prev } => match target {
-                WriteTarget::Compute => {
-                    let subcmp_value = prev.get_value(codegen, fc, location, target)?;
-                    let template_data = fc
-                        .subcmp_calls
-                        .get(&subcmp_value)
-                        .ok_or_else(|| {
-                            anyhow::anyhow!("subcomponent call for {subcmp_value} not found")
-                        })
-                        .and_then(|name| {
-                            codegen
-                                .find_template_data(name)
-                                .ok_or_else(|| anyhow::anyhow!("template {name:?} not found"))
-                        })?;
-                    if template_data.get_outputs().contains_key(*signal_name) {
-                        fc.append_op_unnamed_result(r#struct::readf(
-                            &OpBuilder::new(codegen.context),
-                            location,
-                            codegen.felt_type().into(),
-                            subcmp_value,
-                            signal_name,
-                        )?)
-                    } else if template_data.get_inputs().contains_key(*signal_name) {
-                        let idx = template_data
-                            .get_declaration_inputs()
-                            .iter()
-                            .find_map(|(s, idx)| (signal_name == s).then_some(*idx))
-                            .expect("signal in mapping but not in declaration list");
-                        let call = CallOpRef::try_from(op_result_owner(subcmp_value)?)?;
-                        assert!(call.callee_is_struct_compute());
-                        Ok(call.operand(idx)?)
-                    } else {
-                        anyhow::bail!("signal {signal_name} is internal");
-                    }
-                }
-                WriteTarget::Constrain => {
-                    let subcmp_value = prev.get_value(codegen, fc, location, target)?;
-                    let template_data = fc
-                        .subcmp_calls
-                        .get(&subcmp_value)
-                        .ok_or_else(|| {
-                            anyhow::anyhow!("subcomponent call for {subcmp_value} not found")
-                        })
-                        .and_then(|name| {
-                            codegen
-                                .find_template_data(name)
-                                .ok_or_else(|| anyhow::anyhow!("template {name:?} not found"))
-                        })?;
-                    if template_data.get_outputs().contains_key(*signal_name) {
-                        fc.append_op_unnamed_result(r#struct::readf(
-                            &OpBuilder::new(codegen.context),
-                            location,
-                            codegen.felt_type().into(),
-                            subcmp_value,
-                            signal_name,
-                        )?)
-                    } else if template_data.get_inputs().contains_key(*signal_name) {
-                        let idx = template_data
-                            .get_declaration_inputs()
-                            .iter()
-                            .enumerate()
-                            .find_map(|(idx, (s, _))| (signal_name == s).then_some(idx))
-                            .expect("signal in mapping but not in declaration list");
-                        let call = get_constrain_call(subcmp_value)?;
-                        Ok(call.operand(idx + 1)?)
-                    } else {
-                        anyhow::bail!("signal {signal_name}  is internal");
-                    }
-                }
+                WriteTarget::Compute => self.get_subcmp_in_compute(
+                    *signal_name,
+                    prev.get_value(codegen, fc, location, target)?,
+                    codegen,
+                    fc,
+                    location,
+                ),
+                WriteTarget::Constrain => self.get_subcmp_in_constrain(
+                    *signal_name,
+                    prev.get_value(codegen, fc, location, target)?,
+                    codegen,
+                    fc,
+                    location,
+                ),
                 WriteTarget::Free => unreachable!(),
             },
         }

@@ -1011,37 +1011,43 @@ where
                                     fc.block_ctx.set_named_value(var.clone(), val)
                                 })
                             }
-                            [Access::ComponentAccess(subcmp_signal)] => {
-                                // Assigning to a subcomponent signal is translated into replacing
-                                // the corresponding argument of the `@compute`
-                                // call. Since the value was not constrained the argument is left
-                                // as `undef.undef` in the call to `@constrain`.
-                                //
-                                // The value representing the call is mapped to the name of
-                                // the subcomponent and mapped to the name of
-                                // the subcomponent's template. For `@compute` that value is the
-                                // call op to `@compute` and in `@constrain` is the first operand
-                                // to the `@constrain` call.
-                                //
-                                // We use that name to look for the signal's declaration index and
-                                // use it to locate the corresponding operand and
-                                // replace it with the given `rhe`.
-                                rhe.gen_llzk_in_template(codegen, &template.compute_only())?
-                                    .and_then_same(|fc, rhe| {
-                                        fc.assign_subcmp(
-                                            rhe,
-                                            var,
-                                            subcmp_signal,
-                                            codegen,
-                                            0,
-                                            op_result_owner,
-                                        )
-                                    })
-                            }
+                            //[Access::ComponentAccess(subcmp_signal)] => {
+                            //    // Assigning to a subcomponent signal is translated into replacing
+                            //    // the corresponding argument of the `@compute`
+                            //    // call. Since the value was not constrained the argument is left
+                            //    // as `undef.undef` in the call to `@constrain`.
+                            //    //
+                            //    // The value representing the call is mapped to the name of
+                            //    // the subcomponent and mapped to the name of
+                            //    // the subcomponent's template. For `@compute` that value is the
+                            //    // call op to `@compute` and in `@constrain` is the first operand
+                            //    // to the `@constrain` call.
+                            //    //
+                            //    // We use that name to look for the signal's declaration index and
+                            //    // use it to locate the corresponding operand and
+                            //    // replace it with the given `rhe`.
+                            //    rhe.gen_llzk_in_template(codegen, &template.compute_only())?
+                            //        .and_then_same(|fc, rhe| {
+                            //            fc.assign_subcmp(
+                            //                rhe,
+                            //                var,
+                            //                subcmp_signal,
+                            //                codegen,
+                            //                0,
+                            //                op_result_owner,
+                            //            )
+                            //        })
+                            //}
                             access => rhe
                                 .gen_llzk_in_template(codegen, &template.compute_only())?
                                 .and_then_same(|fc, rhe| {
-                                    let chain = WriteChain::new(var, RootWriteOp::Signal, access);
+                                    let write_op = if template.subcmps.contains(var) {
+                                        RootWriteOp::Subcmp
+                                    } else {
+                                        RootWriteOp::Signal
+                                    };
+
+                                    let chain = WriteChain::new(var, write_op, access);
                                     chain.write(
                                         rhe,
                                         WriteTarget::Compute,
