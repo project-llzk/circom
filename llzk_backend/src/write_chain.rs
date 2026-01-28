@@ -21,8 +21,8 @@ use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::OperationLike as _;
 use llzk::prelude::Value;
+use llzk::prelude::ValueLike as _;
 use llzk::value_ext::replace_all_uses;
-use melior::ir::ValueLike;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
@@ -256,7 +256,7 @@ impl<'ast> WriteChain<'ast> {
     ) -> Result<Value<'ctx, 'val>> {
         let indices = gen_index_ops(indices.iter().copied(), codegen, fc, location)?;
         fc.append_array_read(prev, &indices, location, None)
-                    .map(|v| fc.subcmp_calls.propagate(&prev, v))
+            .map(|v| fc.subcmp_calls.propagate(&prev, v))
     }
 
     fn get_subcmp_in_compute<'ctx, 'val>(
