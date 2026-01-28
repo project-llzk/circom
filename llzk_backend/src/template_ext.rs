@@ -69,6 +69,7 @@ pub trait TemplateLike: std::fmt::Debug {
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Result<DeclarationInfo<'ctx>>;
     /// Returns the inputs in declaration order.
+    /// TODO: document return type here
     fn get_declaration_inputs(&'_ self) -> Cow<'_, [(String, usize)]>;
     /// Returns the inputs of the template.
     fn get_inputs(&'_ self) -> Cow<'_, HashMap<String, Self::WireData>>;

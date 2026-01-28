@@ -24,11 +24,10 @@ use llzk::builder::OpBuilder;
 use llzk::dialect::array::ArrayCtor::MapDimSlice;
 use llzk::dialect::pod;
 use llzk::error::Error;
+use llzk::prelude::melior_dialects::*;
 use llzk::prelude::r#struct::helpers::compute_fn;
 use llzk::prelude::r#struct::helpers::constrain_fn;
 use llzk::prelude::*;
-use melior::dialect::arith;
-use melior::dialect::scf;
 use num_bigint_dig::BigUint;
 use num_traits::ToPrimitive as _;
 use program_structure::ast::AssignOp;
@@ -74,6 +73,7 @@ pub struct DeclarationInfo<'ctx> {
     template_params: HashSet<String>,
 }
 
+// TODO: document
 type SubcmpPrologueData<'ctx> = (String, Type<'ctx>, Type<'ctx>, usize);
 
 impl<'ctx> DeclarationInfo<'ctx> {
@@ -110,21 +110,21 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 .program
                 .get_templates(false)
                 .into_iter()
-                .find_map(|template| (template.get_name() == template_name).then_some(template))
+                .find(|t| t.get_name() == template_name)
                 .ok_or_else(|| anyhow::anyhow!("template '{template_name}' not found"))?;
             let inputs = template
                 .get_declaration_inputs()
                 .into_iter()
                 .map(|(name, _)| {
-                    // Needs to adapt to the size of the input, in signals.
+                    // TODO: Needs to adapt to the size of the input, in signals.
                     // A scalar signal has size 1, an array of 2 signals has size 2, a 2x3 matrix
                     // of signals has size 6, and so on. Buses have a size equal to the sum of the
                     // field's sizes.
                     input_count += 1;
                     PodRecordAttribute::new(
                         name,
-                        // Felt type for now, needs to use the type of the n-th argument of the
-                        // callee's `@compute` function.
+                        // TODO: Felt type for now, needs to use the type of the n-th argument of
+                        // the callee's `@compute` function.
                         codegen.felt_type().into(),
                     )
                 })
