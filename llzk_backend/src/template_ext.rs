@@ -3,10 +3,17 @@
 use crate::module::DeclarationInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared::LlzkCodegen;
+use crate::subcmp::SubcmpDeclInfo;
+use anyhow::anyhow;
+use anyhow::bail;
 use anyhow::Result;
+use compiler::hir::very_concrete_program::ClusterType;
 use compiler::hir::very_concrete_program::TemplateInstance;
 use compiler::hir::very_concrete_program::Wire;
+use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::Location;
+use llzk::prelude::Attribute;
+use llzk::prelude::StructType;
 use program_structure::ast::SignalType;
 use program_structure::ast::Statement;
 use program_structure::template_data::TemplateData;
@@ -15,6 +22,7 @@ use program_structure::wire_data::WireType;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::slice;
+use std::convert::TryFrom;
 
 /// A trait that allows common handling of structs/enums that represent template
 /// inputs or outputs.
@@ -38,6 +46,12 @@ pub trait TemplateLike: std::fmt::Debug {
     fn get_name(&self) -> &str;
     /// Get the names of the parameters of the template.
     fn get_name_of_params(&self) -> &[String];
+    /// Get the initial subcomponent declarations of the template (outside the body),
+    /// if any.
+    fn get_init_subcmp_decls<'ctx>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>
+    ) -> Result<HashMap<String, SubcmpDeclInfo<'ctx>>>;
     /// Get the body statements of the template.
     fn get_body(&self) -> &[Statement];
     /// Construct [DeclarationInfo] containing var and signal declarations
@@ -78,6 +92,9 @@ impl TemplateLike for TemplateData {
     }
     fn get_body(&self) -> &[Statement] {
         self.get_body_as_vec()
+    }
+    fn get_init_subcmp_decls<'ctx>(&self, _codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Result<HashMap<String, SubcmpDeclInfo<'ctx>>> {
+        Ok(HashMap::new())
     }
     fn get_declarations<'ctx>(
         &self,
@@ -122,6 +139,47 @@ impl TemplateLike for TemplateInstance {
     }
     fn get_body(&self) -> &[Statement] {
         slice::from_ref(&self.code)
+    }
+    fn get_init_subcmp_decls<'ctx>(&self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Result<HashMap<String, SubcmpDeclInfo<'ctx>>> {
+        let mut subcmp_decls = HashMap::new();
+        let location = codegen.location_unknown();
+        // Create the declarations, but they currently have no types
+        for component in &self.components {
+            let name = &component.name;
+            let dimensions = component
+                .lengths
+                .iter()
+                .map(|len| -> Result<Attribute> {
+                    let idx = codegen.index_attr(i64::try_from(*len)?);
+                    Ok(idx.into())
+                })
+                .collect::<Result<Vec<Attribute>>>()?;
+            let subcmp_decl = SubcmpDeclInfo::new(dimensions, location);
+
+            if subcmp_decls
+                .insert(name.clone(), subcmp_decl)
+                .is_some()
+            {
+                bail!("Subcomponent {name} declared twice");
+            }
+        }
+        // Get the types for the declarations
+        for cluster in &self.clusters {
+            if let Some(subcmp_decl) = subcmp_decls.get_mut(&cluster.cmp_name) {
+                match &cluster.xtype {
+                    // Mixed instantiation is also not supported in [DeclarationInfo::complete]
+                    ClusterType::Mixed { .. } => todo!("Support mixed type subcomponent instantiations"),
+                    ClusterType::Uniform { header, .. } => {
+                        // See ExecutedTemplate::export_to_circuit for header construction
+                        let last_underscore = header.rfind("_").ok_or_else(|| anyhow!("unexpected header string format"))?;
+                        let (template_name, _) = header.split_at(last_underscore);
+                        let struct_type = StructType::new(FlatSymbolRefAttribute::new(codegen.context, template_name), &[]);
+                        subcmp_decl.instances_mut().push(struct_type);
+                    },
+                }
+            }
+        }
+        Ok(subcmp_decls)
     }
     fn get_declarations<'ctx>(
         &self,
