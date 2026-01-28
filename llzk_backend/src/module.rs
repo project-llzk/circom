@@ -71,7 +71,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     /// Completes the declaration information from the information collected from the
     /// subcomponents.
     ///
-    /// Returns a vector with an associative list of names to the type of the declaration.
+    /// Returns a vector with an associative list of names to the types of the declaration.
     ///
     /// Currently handles declaration of scalar subcomponents and array subcomponents of the same
     /// type.
