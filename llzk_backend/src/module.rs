@@ -514,7 +514,6 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     // Insert read operations for struct fields into constrain functions.
     let location = Location::unknown(codegen.context);
     let builder = OpBuilder::new(codegen.context);
-    println!("Number of fields: {}", new_struct.get_field_defs().len());
     for field in new_struct.get_field_defs() {
         let field_name = field.field_name();
         constrain_ctx.block_ctx.declare_name_if_not_present(field_name, || {
@@ -525,7 +524,6 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
                 constrain_func.self_value_of_constrain()?,
                 field_name,
             )?;
-            println!("readf = {readf}");
             Ok(readf)
         })?;
     }
