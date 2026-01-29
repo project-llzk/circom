@@ -235,12 +235,11 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
         // Required by `loop_nest`
         'val: 'blk,
     {
-        
         let subcmps = self.subcmps;
         let location = codegen.location_unknown();
         let comp_sym = FlatSymbolRefAttribute::new(codegen.context, COMP);
 
-            let builder = OpBuilder::new(codegen.context);
+        let builder = OpBuilder::new(codegen.context);
         self.and_then::<_, _, GenResultUnit>(|fc, _| {
                 // Write the subcomponent declarations to self.
                 let self_value = fc.func.self_value_of_compute()?;
@@ -264,29 +263,29 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                             let struct_type = comp_type(ty.element_type().try_into()?)?;
 
                             let comp_array = fc.append_op_unnamed_result(array::new(
-                                &builder, 
-                                location, 
-                                map_array_inner_type(ty.into(), struct_type).try_into()?, 
+                                &builder,
+                                location,
+                                map_array_inner_type(ty.into(), struct_type).try_into()?,
                                 MapDimSlice(&[], &[])
                             ))?;
 
                             loop_nest(codegen, fc, codegen.location_unknown(), &ty.dims(), |fc, indices| {
                                 let comp_memory = fc.append_op_unnamed_result(array::read(
-                                    location, 
-                                    ty.element_type(), 
-                                    mem, 
+                                    location,
+                                    ty.element_type(),
+                                    mem,
                                     indices
                                 ))?;
                                 let comp_instance = fc.append_op_unnamed_result(pod::read(
-                                    location, 
-                                    comp_memory, 
-                                    comp_sym, 
+                                    location,
+                                    comp_memory,
+                                    comp_sym,
                                     struct_type
                                 ))?;
                                 fc.append_op_no_result(array::write(
-                                    location, 
-                                    comp_array, 
-                                    indices, 
+                                    location,
+                                    comp_array,
+                                    indices,
                                     comp_instance
                                 ))
                             })?;
@@ -343,20 +342,20 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                             loop_nest(codegen, fc, location, &dims, |fc, indices| {
                                 emit_constrain_call(
                                     fc.append_op_unnamed_result(array::read(
-                                        location, 
-                                        subcmp_type.element_type(), 
-                                        subcmp, 
+                                        location,
+                                        subcmp_type.element_type(),
+                                        subcmp,
                                         indices
                                     ))?,
                                     fc.append_op_unnamed_result(array::read(
-                                        location, 
-                                        inputs_type.element_type(), 
-                                        inputs, 
+                                        location,
+                                        inputs_type.element_type(),
+                                        inputs,
                                         indices
                                     ))?,
-                                    fc, 
-                                    location, 
-                                    &builder, 
+                                    fc,
+                                    location,
+                                    &builder,
                                     codegen
                                 )
                             })
@@ -1079,7 +1078,6 @@ where
                             if template.subcmps.contains(var) {
                                 // Do nothing.
                                 Ok(())
-
                             } else {
                                 rhe.gen_llzk_in_template(codegen, template)?.and_then_same(
                                     |fc, val| fc.block_ctx.set_named_value(var.clone(), val),
@@ -1087,30 +1085,28 @@ where
                             }
                         } else {
                             let location = codegen.location_from_meta(meta);
-                            
-                                rhe.gen_llzk_in_template(codegen, template)?.and_then(
-                                    |fc, val| {
-                                        WriteChain::new(var, RootWriteOp::Var, access).write(
-                                            val,
-                                            WriteTarget::Compute,
-                                            codegen,
-                                            fc,
-                                            location,
-                                            template,
-                                        )
-                                    },
-                                    |fc, val| {
-                                        WriteChain::new(var, RootWriteOp::Var, access).write(
-                                            val,
-                                            WriteTarget::Constrain,
-                                            codegen,
-                                            fc,
-                                            location,
-                                            template,
-                                        )
-                                    },
-                                )
-                            
+                            rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                                |fc, val| {
+                                    WriteChain::new(var, RootWriteOp::Var, access).write(
+                                        val,
+                                        WriteTarget::Compute,
+                                        codegen,
+                                        fc,
+                                        location,
+                                        template,
+                                    )
+                                },
+                                |fc, val| {
+                                    WriteChain::new(var, RootWriteOp::Var, access).write(
+                                        val,
+                                        WriteTarget::Constrain,
+                                        codegen,
+                                        fc,
+                                        location,
+                                        template,
+                                    )
+                                },
+                            )
                         }
                     }
                     AssignOp::AssignSignal => {
@@ -1278,7 +1274,13 @@ where
                                 |fc, rhv| {
                                     let location = codegen.location_from_meta(meta);
                                     let lhv = WriteChain::new(var, RootWriteOp::Signal, access)
-                                        .get_value(codegen, fc,template, location, WriteTarget::Constrain)?;
+                                        .get_value(
+                                            codegen,
+                                            fc,
+                                            template,
+                                            location,
+                                            WriteTarget::Constrain,
+                                        )?;
                                     fc.append_op_no_result(constrain::eq(location, lhv, rhv).into())
                                 },
                             ),
@@ -1472,23 +1474,30 @@ where
                 // TODO: Figure out the concrete size of the inputs to determine the count value.
                 let count = 0;
                 let index_ty = Type::index(codegen.context);
-                
                 let records = [
-                // Counts the number of inputs pending an assignment. When it reaches 0 it's safe
-                // to call the corresponding `@compute` function.
-                PodRecordAttribute::new(COUNT, index_ty),
-                // Holds the output of calling `@compute`. Before the call, this value is undefined
-                // and should not be read from.
-                PodRecordAttribute::new(COMP, subcmp_type.into()),
-                // Holds the affine map operands of the subcomponents, if any.
-                PodRecordAttribute::new(PARAMS, PodType::new(codegen.context, &[]).into()),
-            ];
+                    // Counts the number of inputs pending an assignment. When it reaches 0 it's
+                    // safe to call the corresponding `@compute` function.
+                    PodRecordAttribute::new(COUNT, index_ty),
+                    // Holds the output of calling `@compute`. Before the call, this value is
+                    // undefined and should not be read from.
+                    PodRecordAttribute::new(COMP, subcmp_type.into()),
+                    // Holds the affine map operands of the subcomponents, if any.
+                    PodRecordAttribute::new(PARAMS, PodType::new(codegen.context, &[]).into()),
+                ];
                 // Create a `pod.new` operation with the memory for the subcomponent.
                 template.and_then_same(|fc, _| {
-                    let count = fc.append_op_unnamed_result(arith::constant(codegen.context, IntegerAttribute::new(index_ty, count).into(), location))?;
-                    fc.append_op_unnamed_result(pod::new(&OpBuilder::new(codegen.context), location, &[RecordValue::new(StringRef::new(COUNT), count)], Some(PodType::new(codegen.context, &records))))
+                    let count = fc.append_op_unnamed_result(arith::constant(
+                        codegen.context,
+                        IntegerAttribute::new(index_ty, count).into(),
+                        location,
+                    ))?;
+                    fc.append_op_unnamed_result(pod::new(
+                        &OpBuilder::new(codegen.context),
+                        location,
+                        &[RecordValue::new(StringRef::new(COUNT), count)],
+                        Some(PodType::new(codegen.context, &records)),
+                    ))
                 })
-
             }
             Expression::UniformArray { meta, value, dimension } => {
                 let location = codegen.location_from_meta(meta);
