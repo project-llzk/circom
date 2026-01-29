@@ -34,7 +34,7 @@ use std::slice;
 
 /// A trait that allows common handling of structs/enums that represent template
 /// inputs or outputs.
-pub trait WireLike: Clone {
+pub trait WireLike: Clone + std::fmt::Debug {
     /// Type of the wire (signal or bus).
     fn get_type(&self) -> WireType;
 }
