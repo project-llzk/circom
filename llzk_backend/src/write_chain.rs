@@ -352,14 +352,14 @@ impl<'ast> WriteChain<'ast> {
     fn clone_for_compute_result(&self) -> Self {
         match self {
             WriteChain::Root { var, op, .. } => {
-                WriteChain::Root { var: *var, op: *op, compute_result: true }
+                WriteChain::Root { var, op: *op, compute_result: true }
             }
             WriteChain::Array { indices, prev } => WriteChain::Array {
                 indices: indices.clone(),
                 prev: Box::new(prev.clone_for_compute_result()),
             },
             WriteChain::Subcmp { name, prev } => {
-                WriteChain::Subcmp { name: *name, prev: Box::new(prev.clone_for_compute_result()) }
+                WriteChain::Subcmp { name, prev: Box::new(prev.clone_for_compute_result()) }
             }
         }
     }

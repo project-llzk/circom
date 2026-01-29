@@ -5,9 +5,15 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::marker::PhantomData;
 
+/// Names used for `pod` records.
 pub mod names {
+    /// Counts the number of inputs pending an assignment. When it reaches 0 it's safe
+    /// to call the corresponding `@compute` function.
     pub const COUNT: &str = "count";
+    /// Holds the output of calling `@compute`. Before the call, this value is undefined
+    /// and should not be read from.
     pub const COMP: &str = "comp";
+    /// Holds the affine map operands of the subcomponents, if any.
     pub const PARAMS: &str = "params";
 }
 

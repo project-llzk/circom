@@ -154,9 +154,9 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 .ok_or_else(|| anyhow::anyhow!("template '{template_name}' not found"))?;
             let inputs = template
                 .get_declaration_inputs()
-                .into_iter()
+                .iter()
                 .map(|(signal_name, _)| {
-                    let signal_type = codegen.get_input_signal_type(template_name, &signal_name)?;
+                    let signal_type = codegen.get_input_signal_type(template_name, signal_name)?;
                     inputs_size += count_signals(signal_type)?;
                     Ok(PodRecordAttribute::new(signal_name, signal_type))
                 })

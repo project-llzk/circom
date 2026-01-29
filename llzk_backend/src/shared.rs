@@ -1167,14 +1167,13 @@ where
         .iter()
         .copied()
         .map(|attr| {
-            if let Ok(_) = IntegerAttribute::try_from(attr) {
+            if IntegerAttribute::try_from(attr).is_ok() {
                 return fc.append_op_unnamed_result(arith::constant(
                     codegen.context,
                     attr,
                     location,
                 ));
             }
-
             unreachable!("Unhandled attribute in array dimensions {}", attr)
         })
         .collect::<Result<Vec<_>, _>>()?;
