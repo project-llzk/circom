@@ -1145,7 +1145,7 @@ fn region_with_block<'ctx>(arguments: &[(Type<'ctx>, Location<'ctx>)]) -> Region
 /// Creates a loop nest from a list of dimensions.
 ///
 /// The body of the inner-most loop is defined by the given closure, which accepts a list of values
-/// representing the current index of each loop level.
+/// representing the current value of each loop's induction variable.
 pub fn loop_nest<'ctx, 'val, 'func, 'blk>(
     codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
@@ -1208,7 +1208,7 @@ where
 
     // Unwrap the block after creating the loop nest.
     let mut block = block.ok_or_else(|| anyhow::anyhow!("no loops created"))?;
-    // Push the block of the inner-most block s.t. the user can use `fc` and ops will get added to
+    // Push the block of the inner-most loop s.t. the user can use `fc` and ops will get added to
     // the right block.
     fc.block_ctx.push(block);
     body(fc, &loop_vars)?;
