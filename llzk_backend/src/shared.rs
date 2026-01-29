@@ -1159,17 +1159,8 @@ pub fn loop_nest<'ctx, 'val, 'func, 'blk>(
 where
     'val: 'blk,
 {
-    let index_ty = Type::index(codegen.context);
-    let zero = fc.append_op_unnamed_result(arith::constant(
-        codegen.context,
-        IntegerAttribute::new(index_ty, 0).into(),
-        location,
-    ))?;
-    let one = fc.append_op_unnamed_result(arith::constant(
-        codegen.context,
-        IntegerAttribute::new(index_ty, 1).into(),
-        location,
-    ))?;
+    let zero = fc.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
+    let one = fc.append_op_unnamed_result(codegen.new_index_const_op(1, location))?;
 
     // Create values from the dimensions
     let dim_values = dims
