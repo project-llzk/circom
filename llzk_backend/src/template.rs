@@ -927,7 +927,6 @@ where
                                         if let Ok(current) = fc.block_ctx.get_named_value(var) {
                                             replace_all_uses(*current, rhe);
                                         }
-
                                         fc.block_ctx.set_named_value(var.clone(), rhe)
                                     },
                                     |fc, rhe| {
@@ -956,28 +955,24 @@ where
                             let location = codegen.location_from_meta(meta);
                             rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                 |fc, val| {
-                                    let chain = WriteChain::new(var, write_op, access);
-                                    chain.write(
+                                    WriteChain::new(var, write_op, access).write(
                                         val,
                                         WriteTarget::Compute,
                                         codegen,
                                         fc,
                                         location,
                                         template,
-                                    )?;
-                                    Ok(())
+                                    )
                                 },
                                 |fc, val| {
-                                    let chain = WriteChain::new(var, write_op, access);
-                                    chain.write(
+                                    WriteChain::new(var, write_op, access).write(
                                         val,
                                         WriteTarget::Constrain,
                                         codegen,
                                         fc,
                                         location,
                                         template,
-                                    )?;
-                                    Ok(())
+                                    )
                                 },
                             )
                         }
@@ -1028,33 +1023,6 @@ where
                                     fc.block_ctx.set_named_value(var.clone(), val)
                                 })
                             }
-                            //[Access::ComponentAccess(subcmp_signal)] => {
-                            //    // Assigning to a subcomponent signal is translated into replacing
-                            //    // the corresponding argument of the `@compute`
-                            //    // call. Since the value was not constrained the argument is left
-                            //    // as `undef.undef` in the call to `@constrain`.
-                            //    //
-                            //    // The value representing the call is mapped to the name of
-                            //    // the subcomponent and mapped to the name of
-                            //    // the subcomponent's template. For `@compute` that value is the
-                            //    // call op to `@compute` and in `@constrain` is the first operand
-                            //    // to the `@constrain` call.
-                            //    //
-                            //    // We use that name to look for the signal's declaration index and
-                            //    // use it to locate the corresponding operand and
-                            //    // replace it with the given `rhe`.
-                            //    rhe.gen_llzk_in_template(codegen, &template.compute_only())?
-                            //        .and_then_same(|fc, rhe| {
-                            //            fc.assign_subcmp(
-                            //                rhe,
-                            //                var,
-                            //                subcmp_signal,
-                            //                codegen,
-                            //                0,
-                            //                op_result_owner,
-                            //            )
-                            //        })
-                            //}
                             access => rhe
                                 .gen_llzk_in_template(codegen, &template.compute_only())?
                                 .and_then_same(|fc, rhe| {
@@ -1063,9 +1031,7 @@ where
                                     } else {
                                         RootWriteOp::Signal
                                     };
-
-                                    let chain = WriteChain::new(var, write_op, access);
-                                    chain.write(
+                                    WriteChain::new(var, write_op, access).write(
                                         rhe,
                                         WriteTarget::Compute,
                                         codegen,
@@ -1084,7 +1050,12 @@ where
                                     |fc, val| {
                                         let location = codegen.location_from_meta(meta);
                                         // Cast value to field type if needed.
-                                        let value = fc.cast_to_expected_type_if_needed(codegen, location, val, signal_type)?;
+                                        let value = fc.cast_to_expected_type_if_needed(
+                                            codegen,
+                                            location,
+                                            val,
+                                            signal_type,
+                                        )?;
                                         // Write value to field of "self" struct.
                                         fc.append_op_no_result(
                                             r#struct::writef(
@@ -1119,12 +1090,7 @@ where
                                             val,
                                         )?;
                                         fc.append_op_no_result(
-                                            constrain::eq(
-                                                location,
-                                                lhs,
-                                                rhs,
-                                            )
-                                            .into(),
+                                            constrain::eq(location, lhs, rhs).into(),
                                         )?;
                                         fc.block_ctx.set_named_value(var.clone(), rhs)
                                     },
@@ -1169,8 +1135,7 @@ where
                             }
                             access => rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                 |fc, rhv| {
-                                    let chain = WriteChain::new(var, RootWriteOp::Signal, access);
-                                    chain.write(
+                                    WriteChain::new(var, RootWriteOp::Signal, access).write(
                                         rhv,
                                         WriteTarget::Compute,
                                         codegen,
@@ -1180,14 +1145,9 @@ where
                                     )
                                 },
                                 |fc, rhv| {
-                                    let chain = WriteChain::new(var, RootWriteOp::Signal, access);
                                     let location = codegen.location_from_meta(meta);
-                                    let lhv = chain.get_value(
-                                        codegen,
-                                        fc,
-                                        location,
-                                        WriteTarget::Constrain,
-                                    )?;
+                                    let lhv = WriteChain::new(var, RootWriteOp::Signal, access)
+                                        .get_value(codegen, fc, location, WriteTarget::Constrain)?;
                                     fc.append_op_no_result(constrain::eq(location, lhv, rhv).into())
                                 },
                             ),
