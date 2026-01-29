@@ -30,7 +30,7 @@ pub fn generate_llzk(
 ) -> Result<(), ()> {
     let ctx = LlzkContext::new();
     let module = new_llzk_module(&ctx, program);
-    let mut codegen = LlzkCodegen { program, context: &ctx, module, prime_str: prime, verbose };
+    let mut codegen = LlzkCodegen::new(program, &ctx, module, prime, verbose);
 
     program.gen_llzk(&codegen).map_err(|err| {
         if verbose {
