@@ -1164,8 +1164,8 @@ where
     /// used in a new `scf.return` op added after the new `scf.if`.
     fn refactor_return_in_if(
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        ret_op: OperationRefMut,
-        mut parent_if_op: OperationRefMut,
+        ret_op: OperationRefMut<'ctx, '_>,
+        mut parent_if_op: OperationRefMut<'ctx, '_>,
     ) -> Result<()> {
         assert!(is_func_return(&ret_op)); // precondition
         assert!(is_scf_if(&parent_if_op)); // precondition
