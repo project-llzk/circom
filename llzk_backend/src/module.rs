@@ -98,6 +98,39 @@ impl<'ctx> DeclarationInfo<'ctx> {
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Result<Vec<SubcmpPrologueData<'ctx>>> {
+        // Compute the size of the type in signals. A scalar signal has size 1, an array of 2
+        // signals has size 2, a 2x3 matrix of signals has size 6, and so on. Buses have a size
+        // equal to the sum of the field's sizes.
+        fn count_signals(t: Type) -> Result<usize> {
+            if is_felt_type(t) {
+                Ok(1)
+            } else if let Ok(at) = ArrayType::try_from(t) {
+                let init = count_signals(at.element_type())?;
+                at.dims().iter().fold(Ok(init), |acc, d| {
+                    acc.and_then(|acc| {
+                        let s = IntegerAttribute::try_from(*d)?;
+                        let s = usize::try_from(s.value())?;
+                        acc.checked_mul(s).ok_or_else(|| {
+                            anyhow::anyhow!("overflow while multiplying array dimension sizes")
+                        })
+                    })
+                })
+            } else if let Ok(pt) = PodType::try_from(t) {
+                pt.get_records().iter().fold(Ok(0), |acc, r| {
+                    acc.and_then(|acc| {
+                        let s = count_signals(r.r#type())?;
+                        acc.checked_add(s).ok_or_else(|| {
+                            anyhow::anyhow!("overflow while adding pod record sizes")
+                        })
+                    })
+                })
+            } else if let Ok(st) = StructType::try_from(t) {
+                todo!("count signals in StructType: {st}");
+            } else {
+                bail!("unexpected type while counting signals: {t}");
+            }
+        }
+
         let mut ops = vec![];
         for (name, info) in &self.subcmp_decls {
             let extend_dims = |t: Type<'ctx>| match info.dimensions() {
@@ -114,8 +147,10 @@ impl<'ctx> DeclarationInfo<'ctx> {
             if types.len() > 1 {
                 todo!("Handle subcomponents with different instantiations")
             }
-            let template_name = types[0].name().value();
+            // TODO: this static input count will only work in "concrete" mode. In "templated" mode,
+            // IR must be generated to compute the input count from the template parameters, etc.
             let mut input_count = 0;
+            let template_name = types[0].name().value();
             let template = codegen
                 .program
                 .get_templates(false)
@@ -125,20 +160,12 @@ impl<'ctx> DeclarationInfo<'ctx> {
             let inputs = template
                 .get_declaration_inputs()
                 .into_iter()
-                .map(|(name, _)| {
-                    // TODO: Needs to adapt to the size of the input, in signals.
-                    // A scalar signal has size 1, an array of 2 signals has size 2, a 2x3 matrix
-                    // of signals has size 6, and so on. Buses have a size equal to the sum of the
-                    // field's sizes.
-                    input_count += 1;
-                    PodRecordAttribute::new(
-                        name,
-                        // TODO: Felt type for now, needs to use the type of the n-th argument of
-                        // the callee's `@compute` function.
-                        codegen.felt_type().into(),
-                    )
+                .map(|(signal_name, _)| {
+                    let signal_type = codegen.get_signal_type(template_name, &signal_name)?;
+                    input_count += count_signals(signal_type)?;
+                    Ok(PodRecordAttribute::new(signal_name, signal_type))
                 })
-                .collect::<Vec<_>>();
+                .collect::<Result<Vec<_>>>()?;
             let inputs = extend_dims(PodType::new(codegen.context, &inputs).into());
 
             let field_type = extend_dims(types[0].into());
