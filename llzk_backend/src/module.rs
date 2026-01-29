@@ -77,6 +77,16 @@ pub struct DeclarationInfo<'ctx> {
 type SubcmpPrologueData<'ctx> = (String, Type<'ctx>, Type<'ctx>, usize);
 
 impl<'ctx> DeclarationInfo<'ctx> {
+    /// Returns a mapping of input signal names to their types.
+    pub(crate) fn build_input_name_to_type_map(&self) -> HashMap<String, Type<'ctx>> {
+        self.inputs.iter().map(|i| (i.name.clone(), i.type_and_loc.0)).collect()
+    }
+
+    /// Returns the type of the input signal with the given name, if it exists.
+    pub(crate) fn get_input_type(&self, signal_name: &str) -> Option<Type<'ctx>> {
+        self.inputs.iter().find_map(|i| (i.name == signal_name).then_some(i.type_and_loc.0))
+    }
+
     /// Completes the declaration information from the information collected from the
     /// subcomponents.
     ///
@@ -482,7 +492,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         println!("Generating LLZK for template {}", template_like.get_name());
     }
     // Collect declarations first to determine struct fields and function parameters.
-    let mut declarations = template_like.get_declarations(codegen)?;
+    let mut declarations = codegen.take_template_decl(template_like.get_name())?;
     let subcmps = declarations.complete(codegen)?;
 
     // Generate the struct definition, prepopulated with fields.
@@ -721,11 +731,15 @@ pub trait GenerateLLZKInModule<'ctx, P: ProgramLike> {
 
 impl<'ctx, P: ProgramLike> GenerateLLZKInModule<'ctx, P> for P {
     fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx, P>) -> Result<()> {
-        // Sort functions and templates by name for deterministic output (this is only needed for
-        // the lit tests since the order in a HashMap is non-deterministic and could be triggered
-        // only based on a debug flag or similar).
+        // Sort functions and templates by name for deterministic output (this is only needed
+        // for the lit tests since the order in a HashMap is non-deterministic and thus could
+        // be triggered only based on a debug flag or similar).
         for f in self.get_functions(true) {
             gen_function_llzk(f, codegen)?;
+        }
+        // Collect declaration information for all templates first to avoid duplicating work.
+        for t in self.get_templates(false) {
+            codegen.put_template_decl(t.get_name(), t.get_declarations(codegen)?);
         }
         for t in self.get_templates(true) {
             gen_template_llzk(t, codegen)?;
