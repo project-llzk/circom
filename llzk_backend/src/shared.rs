@@ -1,5 +1,6 @@
 //! Shared code generation utilities.
 
+use crate::module::DeclarationInfo;
 use crate::program_ext::ProgramLike;
 use crate::template_ext::TemplateLike;
 use crate::template_ext::WireLike;
@@ -71,6 +72,7 @@ use program_structure::error_definition::Report;
 use program_structure::file_definition::FileID;
 use program_structure::file_definition::FileLocation;
 use program_structure::wire_data::WireType;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto as _;
@@ -80,6 +82,17 @@ use std::io::Write;
 use std::ops::Deref;
 use std::os::raw::c_void;
 use std::path::Path;
+
+/// Information about a template's declaration, either full before LLZK IR is generated for the
+/// template or, after the template is processed, just the minimal information needed to support
+/// queries about input signal types that other templates may need.
+#[derive(Debug)]
+enum DeclInfo<'ctx> {
+    /// Complete declaration info computed initially.
+    Full(DeclarationInfo<'ctx>),
+    /// Just the map of signal name to type left behind after generating LLZK for a template.
+    Remnant(HashMap<String, Type<'ctx>>),
+}
 
 /// Stores necessary context for generating LLZK IR.
 ///
@@ -97,9 +110,56 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     pub prime_str: &'ctx str,
     /// State of the `--verbose` flag.
     pub verbose: bool,
+    /// Declaration info pre-computed for all templates.
+    template_decls: RefCell<HashMap<String, DeclInfo<'ctx>>>,
 }
 
 impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
+    /// Construct.
+    pub fn new(
+        program: &'ast P,
+        context: &'ctx LlzkContext,
+        module: Module<'ctx>,
+        prime_str: &'ctx str,
+        verbose: bool,
+    ) -> Self {
+        LlzkCodegen {
+            program,
+            context,
+            module,
+            prime_str,
+            verbose,
+            template_decls: RefCell::new(Default::default()),
+        }
+    }
+
+    /// Store the full [DeclarationInfo] for the template with the given name.
+    pub fn put_template_decl(&self, name: &str, decl_info: DeclarationInfo<'ctx>) {
+        self.template_decls.borrow_mut().insert(name.to_string(), DeclInfo::Full(decl_info));
+    }
+
+    /// Remove and return the full [DeclarationInfo] for the template with the given name and leave
+    /// behind just the mapping of signal names to types.
+    pub fn take_template_decl(&self, name: &str) -> Result<DeclarationInfo<'ctx>> {
+        let mut borrow = self.template_decls.borrow_mut();
+        if let Some((name, DeclInfo::Full(decl_info))) = borrow.remove_entry(name) {
+            borrow.insert(name, DeclInfo::Remnant(decl_info.build_input_name_to_type_map()));
+            return Ok(decl_info);
+        }
+        Err(anyhow!("No full declaration info for {name}"))
+    }
+
+    /// Get the type of the input signal with the given name in the given template, if it exists.
+    pub fn get_signal_type(&self, template_name: &str, signal_name: &str) -> Result<Type<'ctx>> {
+        let borrow = self.template_decls.borrow();
+        match borrow.get(template_name) {
+            None => anyhow::bail!("No declaration info for {template_name}"),
+            Some(DeclInfo::Full(info)) => info.get_input_type(signal_name),
+            Some(DeclInfo::Remnant(map)) => map.get(signal_name).copied(),
+        }
+        .ok_or_else(|| anyhow!("No input signal with name {signal_name}"))
+    }
+
     /// Get the width of the scalar prime field in bits.
     pub fn prime_field_bits(&self) -> Result<usize> {
         Ok(self.prime()?.bits())
