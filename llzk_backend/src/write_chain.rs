@@ -3,26 +3,42 @@
 use crate::function::FunctionContext;
 use crate::function::GenerateLLZKInFunction;
 use crate::program_ext::ProgramLike;
+use crate::shared::comp_type;
 use crate::shared::get_constrain_call;
 use crate::shared::insert_after_if_op_result;
 use crate::shared::op_result_owner;
+use crate::shared::region_with_block;
 use crate::shared::set_operand_if_undef;
 use crate::shared::LlzkCodegen;
+use crate::subcmp::names::COMP;
+use crate::subcmp::names::COUNT;
 use crate::template::TemplateContext;
 use crate::template_ext::TemplateLike as _;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
 use llzk::dialect::r#struct;
+use llzk::prelude::function;
+use llzk::prelude::pod;
 use llzk::prelude::r#struct::is_struct_readf;
 use llzk::prelude::CallOpLike as _;
 use llzk::prelude::CallOpRef;
+use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
+use llzk::prelude::IntegerAttribute;
 use llzk::prelude::Location;
 use llzk::prelude::OperationLike as _;
+use llzk::prelude::PodType;
+use llzk::prelude::StructType;
+use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use llzk::value_ext::replace_all_uses;
+use melior::dialect::arith;
+use melior::dialect::scf;
+use melior::ir::BlockLike as _;
+use melior::ir::RegionLike as _;
+use melior::ir::Type;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
@@ -39,8 +55,6 @@ pub enum RootWriteOp {
     Signal,
     /// Write into a felt var.
     Var,
-    /// Write into a subcomponent var.
-    Subcmp,
 }
 
 /// Indicates the target function the write operation is happening on.
@@ -77,6 +91,8 @@ pub enum WriteChain<'ast> {
         var: &'ast str,
         /// Type of the variable written into.
         op: RootWriteOp,
+        /// True if we are writing the result of calling a @compute function.
+        compute_result: bool,
     },
     /// Represents a write into an array.
     Array {
@@ -97,14 +113,18 @@ pub enum WriteChain<'ast> {
 impl<'ast> WriteChain<'ast> {
     /// Creates a new write chain.
     pub fn new(var: &'ast str, op: RootWriteOp, access: &'ast [Access]) -> Self {
-        access.iter().fold(Self::Root { var, op }, |wc, access| match (wc, access) {
-            (WriteChain::Array { mut indices, prev }, Access::ArrayAccess(expression)) => {
-                indices.push(expression);
-                WriteChain::Array { indices, prev }
-            }
-            (wc, Access::ComponentAccess(name)) => WriteChain::Subcmp { name, prev: Box::new(wc) },
-            (wc, Access::ArrayAccess(expression)) => {
-                WriteChain::Array { indices: vec![expression], prev: Box::new(wc) }
+        access.iter().fold(Self::Root { var, op, compute_result: false }, |wc, access| {
+            match (wc, access) {
+                (WriteChain::Array { mut indices, prev }, Access::ArrayAccess(expression)) => {
+                    indices.push(expression);
+                    WriteChain::Array { indices, prev }
+                }
+                (wc, Access::ComponentAccess(name)) => {
+                    WriteChain::Subcmp { name, prev: Box::new(wc) }
+                }
+                (wc, Access::ArrayAccess(expression)) => {
+                    WriteChain::Array { indices: vec![expression], prev: Box::new(wc) }
+                }
             }
         })
     }
@@ -121,7 +141,7 @@ impl<'ast> WriteChain<'ast> {
         location: Location<'ctx>,
         template: &TemplateContext<'ctx, '_, '_, '_, 'val>,
     ) -> Result<()> {
-        let arr_ref = prev.get_value(codegen, fc, location, target)?;
+        let arr_ref = prev.get_value(codegen, fc, template, location, target)?;
         let indices = gen_index_ops(indices, codegen, fc, location)?;
         fc.append_array_write(arr_ref, &indices, location, val, None)?;
         prev.write(arr_ref, target, codegen, fc, location, template)
@@ -139,16 +159,124 @@ impl<'ast> WriteChain<'ast> {
         location: Location<'ctx>,
         template: &TemplateContext<'ctx, '_, '_, '_, 'val>,
     ) -> Result<()> {
-        let subcmp_value = prev.get_value(codegen, fc, location, target)?;
-        let arg_idx = fc.lookup_arg_idx(name, &subcmp_value, codegen)?;
-        let (arg_offset, call_op) = match target {
-            WriteTarget::Compute => (0, op_result_owner(subcmp_value)?),
-            WriteTarget::Constrain => (1, get_constrain_call(subcmp_value)?),
-            WriteTarget::Free => unreachable!(),
-        };
-        set_operand_if_undef(call_op, arg_idx + arg_offset, val)?;
-        insert_after_if_op_result(val, call_op)?;
-        prev.write(subcmp_value, target, codegen, fc, location, template)
+        fn decrease_counter<'ctx, 'val>(
+            amount: i64,
+            subcmp_value: Value<'ctx, 'val>,
+            location: Location<'ctx>,
+            fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+            codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        ) -> Result<Value<'ctx, 'val>> {
+            let count_name = FlatSymbolRefAttribute::new(codegen.context, COUNT);
+            let index_ty = Type::index(codegen.context);
+            let mut counter = fc.append_op_unnamed_result(pod::read(
+                location,
+                subcmp_value,
+                count_name,
+                index_ty,
+            ))?;
+            let one = fc.append_op_unnamed_result(arith::constant(
+                codegen.context,
+                IntegerAttribute::new(index_ty, amount).into(),
+                location,
+            ))?;
+            counter = fc.append_op_unnamed_result(arith::subi(counter, one, location))?;
+            fc.append_op_no_result(pod::write(location, subcmp_value, count_name, counter))?;
+            Ok(counter)
+        }
+
+        fn call_compute<'ctx, 'val>(
+            inputs: Value<'ctx, 'val>,
+            dst: Value<'ctx, 'val>,
+            location: Location<'ctx>,
+            fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+            codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        ) -> Result<Type<'ctx>> {
+            let input_values = PodType::try_from(inputs.r#type())?
+                .get_records()
+                .into_iter()
+                .map(|record| {
+                    let record_name =
+                        FlatSymbolRefAttribute::new(codegen.context, record.name().as_str()?);
+                    fc.append_op_unnamed_result(pod::read(
+                        location,
+                        inputs,
+                        record_name,
+                        record.r#type(),
+                    ))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+
+            let struct_type = StructType::try_from(comp_type(PodType::try_from(dst.r#type())?)?)?;
+            let func_name =
+                SymbolRefAttribute::new(codegen.context, struct_type.name().value(), &["compute"]);
+
+            let subcmp_instance = fc.append_op_unnamed_result(
+                function::call(
+                    &OpBuilder::new(codegen.context),
+                    location,
+                    func_name,
+                    &input_values,
+                    &[struct_type],
+                )?
+                .into(),
+            )?;
+
+            let comp_name = FlatSymbolRefAttribute::new(codegen.context, COMP);
+            fc.append_op_no_result(pod::write(location, dst, comp_name, subcmp_instance))?;
+            Ok(struct_type.into())
+        }
+
+        fn check_if_counter_is_zero<'ctx, 'val>(
+            counter: Value<'ctx, 'val>,
+            location: Location<'ctx>,
+            fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+            codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+            body: impl FnOnce(&mut FunctionContext<'ctx, '_, '_, 'val>) -> Result<()>,
+        ) -> Result<()> {
+            let index_ty = Type::index(codegen.context);
+            let zero = fc.append_op_unnamed_result(arith::constant(
+                codegen.context,
+                IntegerAttribute::new(index_ty, 0).into(),
+                location,
+            ))?;
+            let cmp = fc.append_op_unnamed_result(arith::cmpi(
+                codegen.context,
+                arith::CmpiPredicate::Eq,
+                counter,
+                zero,
+                location,
+            ))?;
+            let then_region = region_with_block(&[]);
+            fc.block_ctx.push(then_region.first_block().unwrap());
+            body(fc)?;
+            fc.append_op_no_result(scf::r#yield(&[], location))?;
+            fc.block_ctx.pop();
+            let else_region = region_with_block(&[]);
+            else_region.first_block().unwrap().append_operation(scf::r#yield(&[], location));
+
+            fc.append_op_no_result(scf::r#if(cmp, &[], then_region, else_region, location))
+        }
+
+        let subcmp_value_inputs = prev.get_value(codegen, fc, template, location, target)?;
+        let name = FlatSymbolRefAttribute::new(codegen.context, name);
+        fc.append_op_no_result(pod::write(location, subcmp_value_inputs, name, val))?;
+        let prev_for_compute = prev.clone_for_compute_result();
+        prev.write(subcmp_value_inputs, target, codegen, fc, location, template)?;
+        // Read the subcomponent's memory, which should be the memory pod.
+        let subcmp_value = prev_for_compute.get_value(codegen, fc, template, location, target)?;
+
+        let counter = decrease_counter(1, subcmp_value, location, fc, codegen)?;
+        check_if_counter_is_zero(counter, location, fc, codegen, |fc| {
+            let subcmp_type =
+                call_compute(subcmp_value_inputs, subcmp_value, location, fc, codegen)?;
+            //let subcmp_instance = fc.append_op_unnamed_result(pod::read(
+            //    location,
+            //    subcmp_value,
+            //    FlatSymbolRefAttribute::new(codegen.context, COMP),
+            //    subcmp_type,
+            //))?;
+            prev_for_compute.write(subcmp_value, target, codegen, fc, location, template)
+        })
     }
 
     /// Emits the write operations.
@@ -185,63 +313,62 @@ impl<'ast> WriteChain<'ast> {
             Ok(())
         }
 
-        /// Handle [WriteChain::Root] case other than [RootWriteOp::Signal].
-        fn write_root_var<'ctx, 'val>(
-            var: &str,
-            val: Value<'ctx, 'val>,
-            fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
-        ) -> Result<()> {
-            fc.block_ctx.set_named_value(var.to_string(), val)
-        }
-
-        /// Handle [WriteChain::Root] with [RootWriteOp::Subcmp] and [WriteTarget::Compute].
-        fn write_root_subcmp_in_compute<'ctx, 'val>(
-            var: &str,
-            val: Value<'ctx, 'val>,
-            fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
-        ) -> Result<()> {
-            //let current = fc.block_ctx.get_named_value(var)?;
-            //if *current != val {
-            //    replace_all_uses(*current, val);
-            //}
-            //fc.subcmp_calls.update_keys(*current, val);
-            //fc.block_ctx.set_named_value(var.to_string(), val)?;
-            Ok(())
-        }
-
-        /// Handle [WriteChain::Root] with [RootWriteOp::Subcmp] and [WriteTarget::Constrain].
-        fn write_root_subcmp_in_constrain<'ctx, 'val>(
-            var: &str,
-            val: Value<'ctx, 'val>,
-            fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
-        ) -> Result<()> {
-            //// Replace value
-            //let field_read = fc.block_ctx.get_named_value(var)?;
-            //// ASSERT: value comes from a `struct.readf`
-            //assert!(is_struct_readf(&op_result_owner(*field_read).unwrap()));
-            //if val != *field_read {
-            //    replace_all_uses(val, *field_read);
-            //}
-            //fc.subcmp_calls.update_keys(val, *field_read);
-            Ok(())
+        // If we are writing into a variable annotated as a subcomponent and we are
+        // writing in the constraint function skip the whole chain.
+        if let WriteChain::Root { var, op: RootWriteOp::Var, .. } = self.root() {
+            if template.is_subcmp(var) && target == WriteTarget::Constrain {
+                return Ok(());
+            }
         }
 
         match self {
-            WriteChain::Root { var, op: RootWriteOp::Signal } => {
+            WriteChain::Root { var, op: RootWriteOp::Signal, compute_result } => {
+                // We know we are assigning a subcomponent signal if the root var is the name
+                // of the var listed as a subcomponent.
+                if template.is_subcmp(var) {
+                    return fc.block_ctx.set_named_value(
+                        if compute_result { var.to_owned() } else { format!("{var}$inputs") },
+                        val,
+                    );
+                }
                 write_root_signal(var, val, target, fc, location, template)
             }
-            WriteChain::Root { var, op: RootWriteOp::Var } => write_root_var(var, val, fc),
-            WriteChain::Root { var, op: RootWriteOp::Subcmp } => match target {
-                WriteTarget::Compute => write_root_subcmp_in_compute(var, val, fc),
-                WriteTarget::Constrain => write_root_subcmp_in_constrain(var, val, fc),
-                WriteTarget::Free => unreachable!(),
-            },
+            WriteChain::Root { var, op: RootWriteOp::Var, .. } => {
+                if template.is_subcmp(var) {
+                    return Ok(()); // Do nothing (for now)
+                }
+                fc.block_ctx.set_named_value(var.to_string(), val)
+            }
             WriteChain::Array { indices, prev } => {
                 Self::write_array(indices, *prev, val, target, codegen, fc, location, template)
             }
             WriteChain::Subcmp { name, prev } => {
                 Self::write_subcmp(name, *prev, val, target, codegen, fc, location, template)
             }
+        }
+    }
+
+    /// Creates a copy of the chain with the `compute_result` flag set to true.
+    fn clone_for_compute_result(&self) -> Self {
+        match self {
+            WriteChain::Root { var, op, .. } => {
+                WriteChain::Root { var: *var, op: *op, compute_result: true }
+            }
+            WriteChain::Array { indices, prev } => WriteChain::Array {
+                indices: indices.clone(),
+                prev: Box::new(prev.clone_for_compute_result()),
+            },
+            WriteChain::Subcmp { name, prev } => {
+                WriteChain::Subcmp { name: *name, prev: Box::new(prev.clone_for_compute_result()) }
+            }
+        }
+    }
+
+    /// Returns the root of the chain.
+    fn root(&self) -> &Self {
+        match self {
+            root @ WriteChain::Root { .. } => root,
+            WriteChain::Array { prev, .. } | WriteChain::Subcmp { prev, .. } => prev.root(),
         }
     }
 
@@ -294,8 +421,10 @@ impl<'ast> WriteChain<'ast> {
             .map(|v| fc.subcmp_calls.propagate(&prev, v))
     }
 
-    /// Handle [WriteChain::Subcmp] with [WriteTarget::Compute] in [`WriteChain::get_value`].
-    fn get_subcmp_in_compute<'ctx, 'val>(
+    /// Handle [WriteChain::Subcmp]  in [`WriteChain::get_value`].
+    ///
+    /// The only subcmp signals that can be used inside a write chain are input signals.
+    fn get_subcmp<'ctx, 'val>(
         &self,
         signal_name: &str,
         subcmp_value: Value<'ctx, 'val>,
@@ -303,68 +432,14 @@ impl<'ast> WriteChain<'ast> {
         fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
-        let template_data = fc
-            .subcmp_calls
-            .get(&subcmp_value)
-            .ok_or_else(|| anyhow::anyhow!("subcomponent call for {subcmp_value} not found"))
-            .and_then(|name| {
-                codegen
-                    .find_template_data(name)
-                    .ok_or_else(|| anyhow::anyhow!("template {name:?} not found"))
-            })?;
-        if template_data.get_outputs().contains_key(signal_name) {
-            fc.append_op_unnamed_result(r#struct::readf(
-                &OpBuilder::new(codegen.context),
-                location,
-                codegen.felt_type().into(),
-                subcmp_value,
-                signal_name,
-            )?)
-        } else if template_data.get_inputs().contains_key(signal_name) {
-            let idx =
-                template_data.get_declaration_input_idx(signal_name).expect("signal from mapping");
-            let call = CallOpRef::try_from(op_result_owner(subcmp_value)?)?;
-            assert!(call.callee_is_struct_compute());
-            Ok(call.operand(idx)?)
-        } else {
-            anyhow::bail!("signal {signal_name} is internal");
-        }
-    }
-
-    /// Handle [WriteChain::Subcmp] with [WriteTarget::Constrain] in [`WriteChain::get_value`].
-    fn get_subcmp_in_constrain<'ctx, 'val>(
-        &self,
-        signal_name: &str,
-        subcmp_value: Value<'ctx, 'val>,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
-        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
-        location: Location<'ctx>,
-    ) -> Result<Value<'ctx, 'val>> {
-        let template_data = fc
-            .subcmp_calls
-            .get(&subcmp_value)
-            .ok_or_else(|| anyhow::anyhow!("subcomponent call for {subcmp_value} not found"))
-            .and_then(|name| {
-                codegen
-                    .find_template_data(name)
-                    .ok_or_else(|| anyhow::anyhow!("template {name:?} not found"))
-            })?;
-        if template_data.get_outputs().contains_key(signal_name) {
-            fc.append_op_unnamed_result(r#struct::readf(
-                &OpBuilder::new(codegen.context),
-                location,
-                codegen.felt_type().into(),
-                subcmp_value,
-                signal_name,
-            )?)
-        } else if template_data.get_inputs().contains_key(signal_name) {
-            let idx =
-                template_data.get_declaration_input_idx(signal_name).expect("signal from mapping");
-            let call = get_constrain_call(subcmp_value)?;
-            Ok(call.operand(idx + 1)?)
-        } else {
-            anyhow::bail!("signal {signal_name}  is internal");
-        }
+        fc.append_op_unnamed_result(pod::read(
+            location,
+            subcmp_value,
+            FlatSymbolRefAttribute::new(codegen.context, signal_name),
+            PodType::try_from(subcmp_value.r#type())?
+                .get_type_of_record(signal_name)
+                .ok_or_else(|| anyhow::anyhow!("subcomponent signal {signal_name} not found"))?,
+        ))
     }
 
     /// Returns a SSA representing the op.
@@ -374,38 +449,38 @@ impl<'ast> WriteChain<'ast> {
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        template: &TemplateContext<'ctx, '_, '_, '_, 'val>,
         location: Location<'ctx>,
         target: WriteTarget,
     ) -> Result<Value<'ctx, 'val>> {
         match self {
-            WriteChain::Root { var, op: RootWriteOp::Signal } => {
+            WriteChain::Root { var, op: RootWriteOp::Signal, compute_result } => {
+                if template.is_subcmp(var) && !compute_result {
+                    return self.get_root_signal(
+                        &format!("{var}$inputs"),
+                        target,
+                        codegen,
+                        fc,
+                        location,
+                    );
+                }
                 self.get_root_signal(var, target, codegen, fc, location)
             }
-            WriteChain::Root { var, .. } => self.get_root_value(var, fc),
+            WriteChain::Root { var, op: RootWriteOp::Var, .. } => self.get_root_value(var, fc),
             WriteChain::Array { indices, prev } => self.get_array_value(
                 indices,
-                prev.get_value(codegen, fc, location, target)?,
+                prev.get_value(codegen, fc, template, location, target)?,
                 codegen,
                 fc,
                 location,
             ),
-            WriteChain::Subcmp { name: signal_name, prev } => match target {
-                WriteTarget::Compute => self.get_subcmp_in_compute(
-                    signal_name,
-                    prev.get_value(codegen, fc, location, target)?,
-                    codegen,
-                    fc,
-                    location,
-                ),
-                WriteTarget::Constrain => self.get_subcmp_in_constrain(
-                    signal_name,
-                    prev.get_value(codegen, fc, location, target)?,
-                    codegen,
-                    fc,
-                    location,
-                ),
-                WriteTarget::Free => unreachable!(),
-            },
+            WriteChain::Subcmp { name: signal_name, prev } => self.get_subcmp(
+                signal_name,
+                prev.get_value(codegen, fc, template, location, target)?,
+                codegen,
+                fc,
+                location,
+            ),
         }
     }
 }
@@ -598,14 +673,13 @@ impl fmt::Display for WriteChain<'_> {
         }
 
         match self {
-            WriteChain::Root { var, op } => {
+            WriteChain::Root { var, op, .. } => {
                 write!(
                     f,
                     "{}:{var}",
                     match op {
                         RootWriteOp::Signal => "Signal",
                         RootWriteOp::Var => "Var",
-                        RootWriteOp::Subcmp => "Subcmp",
                     }
                 )
             }

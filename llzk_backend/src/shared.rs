@@ -3,6 +3,7 @@
 use crate::function::FunctionContext;
 use crate::module::DeclarationInfo;
 use crate::program_ext::ProgramLike;
+use crate::subcmp::names::COMP;
 use crate::template_ext::TemplateLike;
 use crate::template_ext::WireLike;
 use crate::traversal::walk_from_block;
@@ -42,6 +43,7 @@ use llzk::prelude::OperationLike;
 use llzk::prelude::OperationRef;
 use llzk::prelude::OperationResult;
 use llzk::prelude::PassManager;
+use llzk::prelude::PodType;
 use llzk::prelude::StringAttribute;
 use llzk::prelude::StructDefOp;
 use llzk::prelude::StructDefOpRef;
@@ -80,6 +82,7 @@ use program_structure::wire_data::WireType;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::convert::TryInto as _;
 use std::fs;
 use std::fs::File;
@@ -1136,7 +1139,7 @@ pub fn map_array_inner_type<'ctx>(t: Type<'ctx>, new_inner: Type<'ctx>) -> Type<
 }
 
 /// Returns a region that contains one block with the given arguments.
-fn region_with_block<'ctx>(arguments: &[(Type<'ctx>, Location<'ctx>)]) -> Region<'ctx> {
+pub fn region_with_block<'ctx>(arguments: &[(Type<'ctx>, Location<'ctx>)]) -> Region<'ctx> {
     let region = Region::new();
     region.append_block(Block::new(arguments));
     region
@@ -1312,4 +1315,10 @@ macro_rules! type_switch {
             type_switch!(@parse $name, $( $rest )+)
         }
     };
+}
+
+/// Returns the type of a subcomponent as defined in its memory.
+pub fn comp_type<'ctx>(pod: PodType<'ctx>) -> Result<Type<'ctx>> {
+    pod.get_type_of_record(COMP)
+        .ok_or_else(|| anyhow::anyhow!("missing {} record in memory struct: {pod:?}", COMP))
 }
