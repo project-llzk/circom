@@ -254,20 +254,10 @@ impl<'ast> WriteChain<'ast> {
         fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
-        if target.is_constrain() {
-            // Read value from field of "self" struct.
-            let expected_type = fc.block_ctx.get_named_value(var).unwrap().r#type();
-            let self_value = fc.func.self_value_of_constrain()?;
-            fc.append_op_unnamed_result(r#struct::readf(
-                &OpBuilder::new(codegen.context),
-                location,
-                expected_type,
-                self_value,
-                var,
-            )?)
-        } else {
-            fc.block_ctx.get_named_value(var).copied()
-        }
+        // Both compute and constrain functions hshould have the `var` defined:
+        // compute from an existing assignment, or constrain from pre-generation
+        // of the `readf` in `gen_template_llzk`.
+        fc.block_ctx.get_named_value(var).copied()
     }
 
     /// Handle [WriteChain::Root] case of [`WriteChain::get_value`] other than

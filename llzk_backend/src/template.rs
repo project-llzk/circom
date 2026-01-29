@@ -57,7 +57,6 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryFrom;
-use std::ops::Deref;
 use std::rc::Rc;
 
 /// Alias for `Option<T>` to make it clear what the meaning of the option is within the
@@ -982,9 +981,12 @@ where
                             [] => {
                                 // The `<--` operator is witness generation only so code for the RHS
                                 // expression should only be generated in the compute function.
+                                // The constrain function just reads that field from "self" struct.
+                                // However, we already inserted these reads at the beginning of the
+                                // constrain function in `gen_template_llzk`.
                                 let compute_only = template.compute_only();
                                 let signal_type = template.get_signal_type(var)?;
-                                let _: () = rhe
+                                rhe
                                     .gen_llzk_in_template(codegen, &compute_only)?
                                     .and_then_same(|fc, val| {
                                         let location = codegen.location_from_meta(meta);
@@ -1006,22 +1008,7 @@ where
                                             .into(),
                                         )?;
                                         fc.block_ctx.set_named_value(var.clone(), value)
-                                    })?;
-                                // The constrain function just reads that field from "self" struct.
-                                let constrain_only = template.constrain_only();
-                                (&constrain_only).and_then_same(|fc, _| {
-                                    let val = fc.append_op_unnamed_result(
-                                        r#struct::readf(
-                                            &OpBuilder::new(codegen.context.deref()),
-                                            codegen.location_from_meta(meta),
-                                            signal_type,
-                                            fc.func.self_value_of_constrain()?,
-                                            var,
-                                        )?
-                                        .into(),
-                                    )?;
-                                    fc.block_ctx.set_named_value(var.clone(), val)
-                                })
+                                    })
                             }
                             access => rhe
                                 .gen_llzk_in_template(codegen, &template.compute_only())?
@@ -1069,30 +1056,20 @@ where
                                         fc.block_ctx.set_named_value(var.clone(), value)
                                     },
                                     |fc, val| {
-                                        // Read value of field from "self" struct and generate
-                                        // equality constraint with 'val'.
+                                        // Get value of field from "self" struct (already generated at
+                                        // the beginning of the constrain function, see `gen_template_llzk`)
+                                        // and generate equality constraint with 'val'.
                                         let location = codegen.location_from_meta(meta);
-                                        let builder = OpBuilder::new(codegen.context.deref());
-                                        let val_from_read = fc.append_op_unnamed_result(
-                                            r#struct::readf(
-                                                &builder,
-                                                location,
-                                                signal_type,
-                                                fc.func.self_value_of_constrain()?,
-                                                var,
-                                            )?
-                                            .into(),
-                                        )?;
+                                        let signal_val = fc.block_ctx.get_named_value(var)?;
                                         let (lhs, rhs) = unify_constrain_eq_types(
                                             fc,
                                             location,
-                                            val_from_read,
+                                            *signal_val,
                                             val,
                                         )?;
                                         fc.append_op_no_result(
                                             constrain::eq(location, lhs, rhs).into(),
-                                        )?;
-                                        fc.block_ctx.set_named_value(var.clone(), rhs)
+                                        )
                                     },
                                 )
                             }
