@@ -34,7 +34,7 @@ use std::slice;
 
 /// A trait that allows common handling of structs/enums that represent template
 /// inputs or outputs.
-pub trait WireLike: Clone {
+pub trait WireLike: Clone + std::fmt::Debug {
     /// Type of the wire (signal or bus).
     fn get_type(&self) -> WireType;
 }
@@ -43,7 +43,7 @@ pub trait WireLike: Clone {
 /// template at different stages in the compilation process.
 pub trait TemplateLike: std::fmt::Debug {
     /// The type used to represent wires.
-    type WireData: WireLike;
+    type WireDataType: WireLike;
 
     /// Generate the LLZK Location for the template definition.
     fn get_location<'ctx>(
@@ -81,11 +81,11 @@ pub trait TemplateLike: std::fmt::Debug {
             })
     }
     /// Returns the inputs of the template.
-    fn get_inputs(&'_ self) -> Cow<'_, HashMap<String, Self::WireData>>;
+    fn get_inputs(&'_ self) -> Cow<'_, HashMap<String, Self::WireDataType>>;
     /// Returns the outputs of the template.
-    fn get_outputs(&'_ self) -> Cow<'_, HashMap<String, Self::WireData>>;
+    fn get_outputs(&'_ self) -> Cow<'_, HashMap<String, Self::WireDataType>>;
     /// Returns information about a concrete input.
-    fn get_input_info(&'_ self, name: &str) -> Option<Cow<'_, Self::WireData>> {
+    fn get_input_info(&'_ self, name: &str) -> Option<Cow<'_, Self::WireDataType>> {
         match self.get_inputs() {
             Cow::Borrowed(i) => i.get(name).map(Cow::Borrowed),
             Cow::Owned(i) => i.get(name).cloned().map(Cow::Owned),
@@ -100,7 +100,7 @@ pub trait TemplateLike: std::fmt::Debug {
 }
 
 impl TemplateLike for TemplateData {
-    type WireData = WireData;
+    type WireDataType = WireData;
 
     fn get_location<'ctx>(
         &self,
@@ -157,7 +157,7 @@ impl WireLike for WireData {
 }
 
 impl TemplateLike for TemplateInstance {
-    type WireData = Wire;
+    type WireDataType = Wire;
 
     fn get_location<'ctx>(
         &self,
