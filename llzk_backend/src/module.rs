@@ -667,7 +667,7 @@ where
             let records = [
                 // Counts the number of inputs pending an assignment. When it reaches 0 it's safe
                 // to call the corresponding `@compute` function.
-                PodRecordAttribute::new(COUNT, Type::index(codegen.context)),
+                PodRecordAttribute::new(COUNT, codegen.index_type()),
                 // Holds the output of calling `@compute`. Before the call, this value is undefined
                 // and should not be read from.
                 PodRecordAttribute::new(COMP, subcmp_struct_type),
@@ -677,13 +677,9 @@ where
             let comp_pod =
                 map_array_inner_type(subcmp_type, PodType::new(codegen.context, &records).into());
             let location = codegen.location_unknown();
-            let index_ty = Type::index(codegen.context);
-            let count = compute_ctx.append_op_unnamed_result(arith::constant(
-                codegen.context,
-                IntegerAttribute::new(index_ty, count.try_into()?).into(),
-                location,
-            ))?;
-
+            let count = compute_ctx.append_op_unnamed_result(
+                codegen.new_index_const_op(i64::try_from(count)?, location),
+            )?;
             match ArrayType::try_from(comp_pod).ok() {
                 Some(comp_pod) => {
                     let dims = comp_pod.dims();

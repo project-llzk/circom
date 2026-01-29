@@ -167,18 +167,13 @@ impl<'ast> WriteChain<'ast> {
             codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         ) -> Result<Value<'ctx, 'val>> {
             let count_name = FlatSymbolRefAttribute::new(codegen.context, COUNT);
-            let index_ty = Type::index(codegen.context);
             let mut counter = fc.append_op_unnamed_result(pod::read(
                 location,
                 subcmp_value,
                 count_name,
-                index_ty,
+                codegen.index_type(),
             ))?;
-            let one = fc.append_op_unnamed_result(arith::constant(
-                codegen.context,
-                IntegerAttribute::new(index_ty, amount).into(),
-                location,
-            ))?;
+            let one = fc.append_op_unnamed_result(codegen.new_index_const_op(amount, location))?;
             counter = fc.append_op_unnamed_result(arith::subi(counter, one, location))?;
             fc.append_op_no_result(pod::write(location, subcmp_value, count_name, counter))?;
             Ok(counter)
@@ -233,12 +228,7 @@ impl<'ast> WriteChain<'ast> {
             codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
             body: impl FnOnce(&mut FunctionContext<'ctx, '_, '_, 'val>) -> Result<()>,
         ) -> Result<()> {
-            let index_ty = Type::index(codegen.context);
-            let zero = fc.append_op_unnamed_result(arith::constant(
-                codegen.context,
-                IntegerAttribute::new(index_ty, 0).into(),
-                location,
-            ))?;
+            let zero = fc.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
             let cmp = fc.append_op_unnamed_result(arith::cmpi(
                 codegen.context,
                 arith::CmpiPredicate::Eq,
@@ -269,7 +259,7 @@ impl<'ast> WriteChain<'ast> {
         check_if_counter_is_zero(counter, location, fc, codegen, |fc| {
             let subcmp_type =
                 call_compute(subcmp_value_inputs, subcmp_value, location, fc, codegen)?;
-            //let subcmp_instance = fc.append_op_unnamed_result(pod::read(
+            // let subcmp_instance = fc.append_op_unnamed_result(pod::read(
             //    location,
             //    subcmp_value,
             //    FlatSymbolRefAttribute::new(codegen.context, COMP),

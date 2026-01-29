@@ -1473,11 +1473,10 @@ where
                 let subcmp_type = dimensions.struct_type_with_concrete_dimensions(codegen, id);
                 // TODO: Figure out the concrete size of the inputs to determine the count value.
                 let count = 0;
-                let index_ty = Type::index(codegen.context);
                 let records = [
                     // Counts the number of inputs pending an assignment. When it reaches 0 it's
                     // safe to call the corresponding `@compute` function.
-                    PodRecordAttribute::new(COUNT, index_ty),
+                    PodRecordAttribute::new(COUNT, codegen.index_type()),
                     // Holds the output of calling `@compute`. Before the call, this value is
                     // undefined and should not be read from.
                     PodRecordAttribute::new(COMP, subcmp_type.into()),
@@ -1486,11 +1485,8 @@ where
                 ];
                 // Create a `pod.new` operation with the memory for the subcomponent.
                 template.and_then_same(|fc, _| {
-                    let count = fc.append_op_unnamed_result(arith::constant(
-                        codegen.context,
-                        IntegerAttribute::new(index_ty, count).into(),
-                        location,
-                    ))?;
+                    let count =
+                        fc.append_op_unnamed_result(codegen.new_index_const_op(count, location))?;
                     fc.append_op_unnamed_result(pod::new(
                         &OpBuilder::new(codegen.context),
                         location,
