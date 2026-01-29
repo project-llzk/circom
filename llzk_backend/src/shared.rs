@@ -1179,7 +1179,7 @@ where
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let loop_block_args = [(Type::index(codegen.context), location)];
+    let loop_block_args = [(codegen.index_type(), location)];
     let top_block = *fc.block_ctx.top_block();
     let mut loop_vars: Vec<Value> = vec![];
     // Create the loop nest
