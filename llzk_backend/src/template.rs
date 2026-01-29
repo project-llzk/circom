@@ -1268,10 +1268,8 @@ where
                                 )?)
                             } else if template_data.get_inputs().contains_key(signal_name) {
                                 let idx = template_data
-                                    .get_declaration_inputs()
-                                    .iter()
-                                    .find_map(|(s, idx)| (signal_name == s).then_some(*idx))
-                                    .expect("signal in mapping but not in declaration list");
+                                    .get_declaration_input_idx(signal_name)
+                                    .expect("signal from mapping");
                                 let call = CallOpRef::try_from(op_result_owner(*subcmp_value)?)?;
                                 assert!(call.callee_is_struct_compute());
                                 Ok(call.operand(idx)?)
@@ -1306,10 +1304,8 @@ where
                                 )?)
                             } else if template_data.get_inputs().contains_key(signal_name) {
                                 let idx = template_data
-                                    .get_declaration_inputs()
-                                    .iter()
-                                    .find_map(|(s, idx)| (signal_name == s).then_some(*idx))
-                                    .expect("signal in mapping but not in declaration list");
+                                    .get_declaration_input_idx(signal_name)
+                                    .expect("signal from mapping");
                                 let call = get_constrain_call(*subcmp_value)?;
                                 Ok(call.operand(idx + 1)?)
                             } else {
