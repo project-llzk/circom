@@ -1,5 +1,6 @@
 //! Shared code generation utilities.
 
+use crate::function::FunctionContext;
 use crate::module::DeclarationInfo;
 use crate::program_ext::ProgramLike;
 use crate::template_ext::TemplateLike;
@@ -54,6 +55,10 @@ use llzk::value_ext::get_single_user;
 use llzk::value_ext::replace_all_uses_in_block_with;
 use llzk::value_ext::OwningValueRange;
 use llzk::value_ext::ValueRange;
+use melior::dialect::scf;
+use melior::ir::Block;
+use melior::ir::Region;
+use melior::ir::RegionLike as _;
 use melior::utility;
 use num_bigint_dig::BigInt;
 use num_bigint_dig::BigUint;
@@ -1117,4 +1122,194 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
             anyhow!("unexpected lack of data needed to convert dimension expressions")
         })
     }
+}
+
+/// Maps the inner type of the given type if it is an [`ArrayType`]. Returns the new type
+/// otherwise.
+///
+/// ```text
+/// map([T], O) -> [O]
+/// map(T, O) -> O
+/// ```
+pub fn map_array_inner_type<'ctx>(t: Type<'ctx>, new_inner: Type<'ctx>) -> Type<'ctx> {
+    ArrayType::try_from(t).map(|t| ArrayType::new(new_inner, &t.dims()).into()).unwrap_or(new_inner)
+}
+
+/// Returns a region that contains one block with the given arguments.
+fn region_with_block<'ctx>(arguments: &[(Type<'ctx>, Location<'ctx>)]) -> Region<'ctx> {
+    let region = Region::new();
+    region.append_block(Block::new(arguments));
+    region
+}
+
+/// Creates a loop nest from a list of dimensions.
+///
+/// The body of the inner-most loop is defined by the given closure, which accepts a list of values
+/// representing the current index of each loop level.
+pub fn loop_nest<'ctx, 'val, 'func, 'blk>(
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    location: Location<'ctx>,
+    dims: &[Attribute<'ctx>],
+    body: impl FnOnce(&mut FunctionContext<'ctx, 'func, 'blk, 'val>, &[Value<'ctx, 'val>]) -> Result<()>,
+) -> Result<()>
+where
+    'val: 'blk,
+{
+    let index_ty = Type::index(codegen.context);
+    let zero = fc.append_op_unnamed_result(arith::constant(
+        codegen.context,
+        IntegerAttribute::new(index_ty, 0).into(),
+        location,
+    ))?;
+    let one = fc.append_op_unnamed_result(arith::constant(
+        codegen.context,
+        IntegerAttribute::new(index_ty, 1).into(),
+        location,
+    ))?;
+
+    // Create values from the dimensions
+    let dim_values = dims
+        .iter()
+        .copied()
+        .map(|attr| {
+            if let Ok(_) = IntegerAttribute::try_from(attr) {
+                return fc.append_op_unnamed_result(arith::constant(
+                    codegen.context,
+                    attr,
+                    location,
+                ));
+            }
+
+            unreachable!("Unhandled attribute in array dimensions {}", attr)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let loop_block_args = [(Type::index(codegen.context), location)];
+    let top_block = *fc.block_ctx.top_block();
+    let mut loop_vars: Vec<Value> = vec![];
+    // Create the loop nest
+    let mut block: Option<BlockRef<'_, '_>> = None;
+    for dim in dim_values {
+        let op = scf::r#for(zero, dim, one, region_with_block(&loop_block_args), location);
+        let loop_op = match &block {
+            Some(block_ref) => block_ref.append_operation(op),
+            None => fc.append_op(op),
+        };
+        block = Some(
+            loop_op
+                .region(0)?
+                .first_block()
+                .ok_or_else(|| anyhow::anyhow!("region is missing first block"))?,
+        );
+        // Accumulate the induction variables for later giving all of them to the callback.
+        loop_vars.push(block.unwrap().argument(0)?.into());
+    }
+
+    // Unwrap the block after creating the loop nest.
+    let mut block = block.ok_or_else(|| anyhow::anyhow!("no loops created"))?;
+    // Push the block of the inner-most block s.t. the user can use `fc` and ops will get added to
+    // the right block.
+    fc.block_ctx.push(block);
+    body(fc, &loop_vars)?;
+    fc.block_ctx.pop();
+
+    // Traverse the stack of blocks until we reach the block where we inserted the whole nest.
+    // For each block traversed this way add the scf terminator op.
+    while block != top_block {
+        block.append_operation(scf::r#yield(&[], location));
+        block = block
+            .parent_operation()
+            .and_then(|op| op.block())
+            .ok_or_else(|| anyhow::anyhow!("detached block while creating loop nest"))?;
+    }
+
+    Ok(())
+}
+
+/// This macro allows writing type switches with a syntax similar to match expressions.
+#[macro_export]
+macro_rules! type_switch {
+    // Entry point
+    { $name:ident = $value:expr, $( $body:tt )+ } => {{
+        // Evaluate once
+        let $name = $value;
+
+        type_switch!(@parse $name, $( $body )+)
+    }};
+
+    // Entry point
+    { $name:ident, $( $body:tt )+ } => {
+        type_switch!(@parse $name, $( $body )+);
+    };
+
+    // Parsing
+
+    (@parse $name:ident, $ty:ty => $body:block $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, $name, $body) $( $rest )*)
+    };
+
+    (@parse $name:ident, $ty:ty as $bind:ident => $body:block $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, $bind, $body) $( $rest )*)
+    };
+
+    (@parse $name:ident, $ty:ty as  => $body:block $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, _, $body) $( $rest )*)
+    };
+
+    (@parse $name:ident, $ty:ty  => $body:expr, $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, $name, {$body}) $( $rest )*)
+    };
+
+    (@parse $name:ident, $ty:ty as $bind:ident  => $body:expr, $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, $bind, {$body}) $( $rest )*)
+    };
+
+    (@parse $name:ident, $ty:ty as _  => $body:expr, $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, _, {$body}) $( $rest )*)
+    };
+
+    // Inner implementation
+
+    // Last arm without default case
+    (@inner $name:ident, ( $ty:ty, $bind:ident, $body:block) $(,)?) => {
+        type_switch!(@inner $name, ( $ty, $bind, $body) else => {panic!("unhandled type {}", $name)})
+    };
+    (@inner $name:ident, ( $ty:ty, _, $body:block) $(,)?) => {
+        type_switch!(@inner $name, ( $ty, _, $body) else => {panic!("unhandled type {}", $name)})
+    };
+
+    // Last arm with default case
+    (@inner $name:ident, ( $ty:ty, $bind:ident, $body:block ) else => $else_body:expr $(,)?) => {
+        if let Ok($bind) = <$ty>::try_from($name) {
+            $body
+        } else {
+            $else_body
+        }
+    };
+
+    (@inner $name:ident, ( $ty:ty, _, $body:block ) else => $else_body:expr $(,)?) => {
+        if let Ok(_) = <$ty>::try_from($name) {
+            $body
+        } else {
+            $else_body
+        }
+    };
+
+    // Recursive case
+    (@inner $name:ident, ( $ty:ty, $bind:ident, $body:block ) $( $rest:tt )+ ) => {
+        if let Ok($bind) = <$ty>::try_from($name) {
+            $body
+        } else {
+            type_switch!(@parse $name, $( $rest )+)
+        }
+    };
+
+    (@inner $name:ident, ( $ty:ty, _, $body:block ) $( $rest:tt )+ ) => {
+        if let Ok(_) = <$ty>::try_from($name) {
+            $body
+        } else {
+            type_switch!(@parse $name, $( $rest )+)
+        }
+    };
 }

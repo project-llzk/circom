@@ -5,6 +5,8 @@ use crate::function::FunctionContext;
 use crate::function::GenerateLLZKInFunction as _;
 use crate::function_ext::FunctionLike;
 use crate::program_ext::ProgramLike;
+use crate::shared::loop_nest;
+use crate::shared::map_array_inner_type;
 use crate::shared::map_name_to_arg_value;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
@@ -106,23 +108,18 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 Ok(1)
             } else if let Ok(at) = ArrayType::try_from(t) {
                 let init = count_signals(at.element_type())?;
-                at.dims().iter().fold(Ok(init), |acc, d| {
-                    acc.and_then(|acc| {
-                        let s = IntegerAttribute::try_from(*d)?;
-                        let s = usize::try_from(s.value())?;
-                        acc.checked_mul(s).ok_or_else(|| {
-                            anyhow::anyhow!("overflow while multiplying array dimension sizes")
-                        })
+                at.dims().iter().try_fold(init, |acc, d| {
+                    let s = IntegerAttribute::try_from(*d)?;
+                    let s = usize::try_from(s.value())?;
+                    acc.checked_mul(s).ok_or_else(|| {
+                        anyhow::anyhow!("overflow while multiplying array dimension sizes")
                     })
                 })
             } else if let Ok(pt) = PodType::try_from(t) {
-                pt.get_records().iter().fold(Ok(0), |acc, r| {
-                    acc.and_then(|acc| {
-                        let s = count_signals(r.r#type())?;
-                        acc.checked_add(s).ok_or_else(|| {
-                            anyhow::anyhow!("overflow while adding pod record sizes")
-                        })
-                    })
+                pt.get_records().iter().try_fold(0usize, |acc, r| {
+                    let s = count_signals(r.r#type())?;
+                    acc.checked_add(s)
+                        .ok_or_else(|| anyhow::anyhow!("overflow while adding pod record sizes"))
                 })
             } else if let Ok(st) = StructType::try_from(t) {
                 todo!("count signals in StructType: {st}");
@@ -617,25 +614,17 @@ fn scalar_or_inner<'ctx>(t: Type<'ctx>) -> Type<'ctx> {
     ArrayType::try_from(t).map(|t| t.element_type()).unwrap_or(t)
 }
 
-/// Maps the inner type of the given type if it is an [`ArrayType`]. Returns the new type
-/// otherwise.
-///
-/// ```text
-/// map([T], O) -> [O]
-/// map(T, O) -> O
-/// ```
-fn map_array_inner_type<'ctx>(t: Type<'ctx>, new_inner: Type<'ctx>) -> Type<'ctx> {
-    ArrayType::try_from(t).map(|t| ArrayType::new(new_inner, &t.dims()).into()).unwrap_or(new_inner)
-}
-
 /// Generates the prelude related to subcomponents in a template body.
-fn gen_subcmps_prelude_in_template<'ctx, 'func, 'blk, 'val: 'blk>(
+fn gen_subcmps_prelude_in_template<'ctx, 'func, 'blk, 'val>(
     subcmps: impl IntoIterator<Item = SubcmpPrologueData<'ctx>>,
     compute_ctx: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     constrain_ctx: &mut FunctionContext<'ctx, '_, '_, '_>,
     codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     subcmp_decls: &HashMap<String, SubcmpDeclInfo<'ctx>>,
-) -> Result<()> {
+) -> Result<()>
+where
+    'val: 'blk,
+{
     let op_builder = OpBuilder::new(codegen.context);
     for (name, subcmp_type, subcmp_inputs_type, count) in subcmps {
         let name_inputs = format!("{name}$inputs");
@@ -773,78 +762,4 @@ impl<'ctx, P: ProgramLike> GenerateLLZKInModule<'ctx, P> for P {
         }
         Ok(())
     }
-}
-
-/// Creates a loop nest from a list of dimensions.
-///
-/// The body of the inner-most loop is defined by the given closure, which accepts a list of values
-/// representing the current index of each loop level.
-fn loop_nest<'ctx, 'val, 'func, 'blk>(
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
-    location: Location<'ctx>,
-    dims: &[Attribute<'ctx>],
-    body: impl FnOnce(&mut FunctionContext<'ctx, 'func, 'blk, 'val>, &[Value<'ctx, 'val>]) -> Result<()>,
-) -> Result<()>
-where
-    // 'val needs to outlive 'blk because 'blk refers to a block inside the for loop operations.
-    'val: 'blk,
-{
-    let index_ty = Type::index(codegen.context);
-    let zero = fc.append_op_unnamed_result(arith::constant(
-        codegen.context,
-        IntegerAttribute::new(index_ty, 0).into(),
-        location,
-    ))?;
-    let one = fc.append_op_unnamed_result(arith::constant(
-        codegen.context,
-        IntegerAttribute::new(index_ty, 1).into(),
-        location,
-    ))?;
-
-    let mut block: Option<BlockRef<'_, '_>> = None;
-    let dim_values = dims
-        .iter()
-        .copied()
-        .map(|attr| {
-            if let Ok(_) = IntegerAttribute::try_from(attr) {
-                return fc.append_op_unnamed_result(arith::constant(
-                    codegen.context,
-                    attr,
-                    location,
-                ));
-            }
-
-            unreachable!("Unhandled attribute in array dimensions {}", attr)
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    let mut loop_vars: Vec<Value> = vec![];
-    for dim in dim_values {
-        match &block {
-            Some(block_ref) => {
-                let loop_op =
-                    block_ref.append_operation(scf::r#for(zero, dim, one, Region::new(), location));
-                block = Some(
-                    loop_op
-                        .region(0)?
-                        .first_block()
-                        .ok_or_else(|| anyhow::anyhow!("region is missing first block"))?,
-                );
-            }
-            None => {
-                let outer_loop = fc.append_op(scf::r#for(zero, dim, one, Region::new(), location));
-                block = Some(
-                    outer_loop
-                        .region(0)?
-                        .first_block()
-                        .ok_or_else(|| anyhow::anyhow!("region is missing first block"))?,
-                );
-            }
-        }
-        loop_vars.push(block.unwrap().argument(0)?.into());
-    }
-    fc.block_ctx.push(block.ok_or_else(|| anyhow::anyhow!("no loops created"))?);
-    body(fc, &loop_vars)?;
-    fc.block_ctx.pop();
-    Ok(())
 }

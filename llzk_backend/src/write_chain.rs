@@ -200,12 +200,12 @@ impl<'ast> WriteChain<'ast> {
             val: Value<'ctx, 'val>,
             fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
         ) -> Result<()> {
-            let current = fc.block_ctx.get_named_value(var)?;
-            if *current != val {
-                replace_all_uses(*current, val);
-            }
-            fc.subcmp_calls.update_keys(*current, val);
-            fc.block_ctx.set_named_value(var.to_string(), val)?;
+            //let current = fc.block_ctx.get_named_value(var)?;
+            //if *current != val {
+            //    replace_all_uses(*current, val);
+            //}
+            //fc.subcmp_calls.update_keys(*current, val);
+            //fc.block_ctx.set_named_value(var.to_string(), val)?;
             Ok(())
         }
 
@@ -215,14 +215,14 @@ impl<'ast> WriteChain<'ast> {
             val: Value<'ctx, 'val>,
             fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
         ) -> Result<()> {
-            // Replace value
-            let field_read = fc.block_ctx.get_named_value(var)?;
-            // ASSERT: value comes from a `struct.readf`
-            assert!(is_struct_readf(&op_result_owner(*field_read).unwrap()));
-            if val != *field_read {
-                replace_all_uses(val, *field_read);
-            }
-            fc.subcmp_calls.update_keys(val, *field_read);
+            //// Replace value
+            //let field_read = fc.block_ctx.get_named_value(var)?;
+            //// ASSERT: value comes from a `struct.readf`
+            //assert!(is_struct_readf(&op_result_owner(*field_read).unwrap()));
+            //if val != *field_read {
+            //    replace_all_uses(val, *field_read);
+            //}
+            //fc.subcmp_calls.update_keys(val, *field_read);
             Ok(())
         }
 
