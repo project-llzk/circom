@@ -442,17 +442,7 @@ where
         let template_data = codegen.find_template_data(name).ok_or_else(|| {
             anyhow::anyhow!("template with name {name:?} constructed by {subcmp_value} not found")
         })?;
-        template_data
-            .get_declaration_inputs()
-            .iter()
-            .enumerate()
-            .find_map(|(idx, (signal, _))| (subcmp_signal == signal).then_some(idx))
-            .ok_or_else(|| {
-                anyhow::anyhow!(
-                    "template '{}' has no input signal '{subcmp_signal}'",
-                    template_data.get_name()
-                )
-            })
+        template_data.get_declaration_input_idx(subcmp_signal)
     }
 
     /// Assigns the `rhe` value to the given subcomponent signal.
