@@ -68,8 +68,18 @@ pub trait TemplateLike: std::fmt::Debug {
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Result<DeclarationInfo<'ctx>>;
-    /// Returns the inputs in declaration order.
+    /// Returns the inputs in declaration order, containing name and number of dimensions.
     fn get_declaration_inputs(&'_ self) -> Cow<'_, [(String, usize)]>;
+    /// Gets the index of the input signal with the given name from `get_declaration_inputs()`.
+    fn get_declaration_input_idx(&self, signal_name: &str) -> Result<usize> {
+        self.get_declaration_inputs()
+            .iter()
+            .enumerate()
+            .find_map(|(idx, (s, _))| (signal_name == s).then_some(idx))
+            .ok_or_else(|| {
+                anyhow::anyhow!("no input signal '{signal_name}' in template '{}'", self.get_name())
+            })
+    }
     /// Returns the inputs of the template.
     fn get_inputs(&'_ self) -> Cow<'_, HashMap<String, Self::WireData>>;
     /// Returns the outputs of the template.
