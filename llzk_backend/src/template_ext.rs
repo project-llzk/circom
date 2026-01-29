@@ -227,13 +227,14 @@ impl TemplateLike for TemplateInstance {
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Result<DeclarationInfo<'ctx>> {
         let mut declarations = DeclarationInfo::from_template(codegen, self)?;
+        let location = self.get_location(codegen);
         for w in &self.wires {
             match w {
                 Wire::TSignal(signal) => declarations.visit_signal_or_bus_impl(
                     codegen,
                     &signal.xtype,
                     &signal.name,
-                    self.get_location(codegen),
+                    location,
                     codegen
                         .type_from_dimension_consts(codegen.felt_type().into(), &signal.lengths)?,
                 )?,
@@ -241,7 +242,7 @@ impl TemplateLike for TemplateInstance {
                     codegen,
                     &bus.xtype,
                     &bus.name,
-                    self.get_location(codegen),
+                    location,
                     codegen.type_from_dimension_consts(
                         codegen.struct_type(&bus.name).into(),
                         &bus.lengths,
