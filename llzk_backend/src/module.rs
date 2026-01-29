@@ -161,7 +161,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 .get_declaration_inputs()
                 .into_iter()
                 .map(|(signal_name, _)| {
-                    let signal_type = codegen.get_signal_type(template_name, &signal_name)?;
+                    let signal_type = codegen.get_input_signal_type(template_name, &signal_name)?;
                     input_count += count_signals(signal_type)?;
                     Ok(PodRecordAttribute::new(signal_name, signal_type))
                 })

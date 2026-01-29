@@ -150,7 +150,11 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     }
 
     /// Get the type of the input signal with the given name in the given template, if it exists.
-    pub fn get_signal_type(&self, template_name: &str, signal_name: &str) -> Result<Type<'ctx>> {
+    pub fn get_input_signal_type(
+        &self,
+        template_name: &str,
+        signal_name: &str,
+    ) -> Result<Type<'ctx>> {
         let borrow = self.template_decls.borrow();
         match borrow.get(template_name) {
             None => anyhow::bail!("No declaration info for {template_name}"),
