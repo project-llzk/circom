@@ -135,3 +135,16 @@ impl Default for SubcmpCallsMap<'_> {
         Self::new()
     }
 }
+
+/// Holds the information required for generating the IR to support subcomponents in the prologue
+/// of the template's functions.
+pub struct SubcmpPrologueData<'ctx> {
+    /// Name of the subcomponent.
+    pub name: String,
+    /// Type of the subcomponent.
+    pub subcmp: Type<'ctx>,
+    /// Type representing the inputs of the subcomponent.
+    pub inputs: Type<'ctx>,
+    /// Number of inputs in the subcomponent.
+    pub inputs_size: usize,
+}

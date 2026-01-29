@@ -16,6 +16,7 @@ use crate::subcmp::names::COUNT;
 use crate::subcmp::names::PARAMS;
 use crate::subcmp::unique_instance_types;
 use crate::subcmp::SubcmpDeclInfo;
+use crate::subcmp::SubcmpPrologueData;
 use crate::template::GenerateLLZKInTemplate as _;
 use crate::template::TemplateContext;
 use crate::template_ext::TemplateLike;
@@ -74,9 +75,6 @@ pub struct DeclarationInfo<'ctx> {
     /// The template params that may be used to instantiate array dimensions.
     template_params: HashSet<String>,
 }
-
-// TODO: document
-type SubcmpPrologueData<'ctx> = (String, Type<'ctx>, Type<'ctx>, usize);
 
 impl<'ctx> DeclarationInfo<'ctx> {
     /// Returns a mapping of input signal names to their types.
@@ -146,7 +144,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
             }
             // TODO: this static input count will only work in "concrete" mode. In "templated" mode,
             // IR must be generated to compute the input count from the template parameters, etc.
-            let mut input_count = 0;
+            let mut inputs_size = 0;
             let template_name = types[0].name().value();
             let template = codegen
                 .program
@@ -159,7 +157,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 .into_iter()
                 .map(|(signal_name, _)| {
                     let signal_type = codegen.get_input_signal_type(template_name, &signal_name)?;
-                    input_count += count_signals(signal_type)?;
+                    inputs_size += count_signals(signal_type)?;
                     Ok(PodRecordAttribute::new(signal_name, signal_type))
                 })
                 .collect::<Result<Vec<_>>>()?;
@@ -174,7 +172,12 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 r#struct::field(info.location(), &name_inputs, inputs, false, false)
                     .map(Into::into),
             );
-            ops.push((name.clone(), field_type, inputs, input_count));
+            ops.push(SubcmpPrologueData {
+                name: name.clone(),
+                subcmp: field_type,
+                inputs,
+                inputs_size,
+            });
         }
         Ok(ops)
     }
@@ -626,7 +629,13 @@ where
     'val: 'blk,
 {
     let op_builder = OpBuilder::new(codegen.context);
-    for (name, subcmp_type, subcmp_inputs_type, count) in subcmps {
+    for SubcmpPrologueData {
+        name,
+        subcmp: subcmp_type,
+        inputs: subcmp_inputs_type,
+        inputs_size: count,
+    } in subcmps
+    {
         let name_inputs = format!("{name}$inputs");
         // Constrain function
         // Do this one first to avoid cloning `name` and `name_inputs` unnecessarily.
