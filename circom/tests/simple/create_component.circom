@@ -6,13 +6,13 @@
 pragma circom 2.0.0;
 
 template B(n) {
-  signal input in;
+  signal input inB;
 }
 
 template A(n) {
-  signal input in;
+  signal input inA;
   component x = B(n * n);
-  x.in <-- in;
+  x.inB <-- inA;
 }
 
 component main = A(5);
