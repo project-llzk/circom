@@ -27,7 +27,6 @@ use llzk::builder::OpBuilder;
 use llzk::dialect::array::ArrayCtor::MapDimSlice;
 use llzk::dialect::pod;
 use llzk::error::Error;
-use llzk::prelude::melior_dialects::*;
 use llzk::prelude::r#struct::helpers::compute_fn;
 use llzk::prelude::r#struct::helpers::constrain_fn;
 use llzk::prelude::*;
@@ -42,7 +41,6 @@ use program_structure::ast::VariableType;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryFrom;
-use std::convert::TryInto as _;
 
 /// Information needed to create an LLZK struct function parameter collected from the input signal
 /// Declaration statements within a circom template.
@@ -98,34 +96,6 @@ impl<'ctx> DeclarationInfo<'ctx> {
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Result<Vec<SubcmpPrologueData<'ctx>>> {
-        // Compute the size of the type in signals. A scalar signal has size 1, an array of 2
-        // signals has size 2, a 2x3 matrix of signals has size 6, and so on. Buses have a size
-        // equal to the sum of the field's sizes.
-        fn count_signals(t: Type) -> Result<usize> {
-            if is_felt_type(t) {
-                Ok(1)
-            } else if let Ok(at) = ArrayType::try_from(t) {
-                let init = count_signals(at.element_type())?;
-                at.dims().iter().try_fold(init, |acc, d| {
-                    let s = IntegerAttribute::try_from(*d)?;
-                    let s = usize::try_from(s.value())?;
-                    acc.checked_mul(s).ok_or_else(|| {
-                        anyhow::anyhow!("overflow while multiplying array dimension sizes")
-                    })
-                })
-            } else if let Ok(pt) = PodType::try_from(t) {
-                pt.get_records().iter().try_fold(0usize, |acc, r| {
-                    let s = count_signals(r.r#type())?;
-                    acc.checked_add(s)
-                        .ok_or_else(|| anyhow::anyhow!("overflow while adding pod record sizes"))
-                })
-            } else if let Ok(st) = StructType::try_from(t) {
-                todo!("count signals in StructType: {st}");
-            } else {
-                bail!("unexpected type while counting signals: {t}");
-            }
-        }
-
         let mut ops = vec![];
         for (name, info) in &self.subcmp_decls {
             let extend_dims = |t: Type<'ctx>| match info.dimensions() {
@@ -143,7 +113,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 todo!("Handle subcomponents with different instantiations")
             }
             // TODO: this static input count will only work in "concrete" mode. In "templated" mode,
-            // IR must be generated to compute the input count from the template parameters, etc.
+            // may need to generate IR to compute the input count from the template parameters, etc.
             let mut inputs_size = 0;
             let template_name = types[0].name().value();
             let template = codegen
@@ -157,7 +127,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 .iter()
                 .map(|(signal_name, _)| {
                     let signal_type = codegen.get_input_signal_type(template_name, signal_name)?;
-                    inputs_size += count_signals(signal_type)?;
+                    inputs_size += codegen.count_input_signals(signal_type)?;
                     Ok(PodRecordAttribute::new(signal_name, signal_type))
                 })
                 .collect::<Result<Vec<_>>>()?;

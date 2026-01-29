@@ -34,11 +34,8 @@ use llzk::prelude::array;
 use llzk::prelude::constrain;
 use llzk::prelude::function;
 use llzk::prelude::is_felt_type;
-use llzk::prelude::is_pod_type;
 use llzk::prelude::pod;
 use llzk::prelude::r#struct;
-use llzk::prelude::r#struct::is_struct_readf;
-use llzk::prelude::undef;
 use llzk::prelude::ArrayType;
 use llzk::prelude::BlockRef;
 use llzk::prelude::CallOpLike as _;
@@ -47,7 +44,6 @@ use llzk::prelude::FeltType;
 use llzk::prelude::FieldDefOpLike;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
-use llzk::prelude::IntegerAttribute;
 use llzk::prelude::Location;
 use llzk::prelude::LoopBoundsAttribute;
 use llzk::prelude::OperationLike;
@@ -61,8 +57,6 @@ use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
-use llzk::value_ext::replace_all_uses;
-use melior::dialect::arith;
 use melior::StringRef;
 use num_bigint_dig::BigUint;
 use num_traits::ToPrimitive;
@@ -1471,8 +1465,9 @@ where
                 let location = codegen.location_from_meta(meta);
                 let dimensions = template.get_dimensions(codegen, args)?;
                 let subcmp_type = dimensions.struct_type_with_concrete_dimensions(codegen, id);
-                // TODO: Figure out the concrete size of the inputs to determine the count value.
-                let count = 0;
+                // TODO: this static input count will only work in "concrete" mode. In "templated"
+                // mode, may need to generate IR to compute the input count.
+                let count = codegen.count_input_signals(subcmp_type.into())?;
                 let records = [
                     // Counts the number of inputs pending an assignment. When it reaches 0 it's
                     // safe to call the corresponding `@compute` function.
@@ -1485,8 +1480,9 @@ where
                 ];
                 // Create a `pod.new` operation with the memory for the subcomponent.
                 template.and_then_same(|fc, _| {
-                    let count =
-                        fc.append_op_unnamed_result(codegen.new_index_const_op(count, location))?;
+                    let count = fc.append_op_unnamed_result(
+                        codegen.new_index_const_op(i64::try_from(count)?, location),
+                    )?;
                     fc.append_op_unnamed_result(pod::new(
                         &OpBuilder::new(codegen.context),
                         location,

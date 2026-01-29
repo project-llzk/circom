@@ -15,6 +15,7 @@ use anyhow::Result;
 use llzk::dialect::undef;
 use llzk::operation::move_op_after;
 use llzk::prelude::felt;
+use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
@@ -83,7 +84,6 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto;
-use std::convert::TryInto as _;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
@@ -573,6 +573,38 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                 }
             })
             .collect())
+    }
+
+    /// Compute the size of the type in signals. A scalar signal has size 1, an array of 2 signals
+    /// has size 2, a 2x3 matrix of signals has size 6, and so on. Structs have a size equal to the
+    /// sum of its input sizes.
+    pub fn count_input_signals(&self, t: Type) -> Result<usize> {
+        if is_felt_type(t) {
+            Ok(1)
+        } else if let Ok(at) = ArrayType::try_from(t) {
+            let init = self.count_input_signals(at.element_type())?;
+            at.dims().iter().try_fold(init, |acc, d| {
+                let s = IntegerAttribute::try_from(*d)?;
+                let s = usize::try_from(s.value())?;
+                acc.checked_mul(s).ok_or_else(|| {
+                    anyhow::anyhow!("overflow while multiplying array dimension sizes")
+                })
+            })
+        } else if let Ok(pt) = PodType::try_from(t) {
+            pt.get_records().iter().try_fold(0usize, |acc, r| {
+                let s = self.count_input_signals(r.r#type())?;
+                acc.checked_add(s)
+                    .ok_or_else(|| anyhow::anyhow!("overflow while adding pod record sizes"))
+            })
+        } else if let Ok(st) = StructType::try_from(t) {
+            self.get_template_input_types(st.name().value())?.iter().try_fold(0usize, |acc, t| {
+                let s = self.count_input_signals(*t)?;
+                acc.checked_add(s)
+                    .ok_or_else(|| anyhow::anyhow!("overflow while adding component input sizes"))
+            })
+        } else {
+            anyhow::bail!("unexpected type while counting signals: {t}");
+        }
     }
 
     /// Convert a `Vec<String>` into a comma-separated [StringAttribute].
