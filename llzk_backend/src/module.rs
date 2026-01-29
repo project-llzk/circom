@@ -594,7 +594,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     let subcmp_decls = declarations.subcmp_decls;
     // Insert the Operations created from subcomponent Declaration statements and map the
     // circom variable name to a LLZK op result Value.
-    gen_subcmps_prelude_in_template(
+    gen_subcmps_prologue_in_template(
         subcmps,
         &mut compute_ctx,
         &mut constrain_ctx,
@@ -617,8 +617,8 @@ fn scalar_or_inner<'ctx>(t: Type<'ctx>) -> Type<'ctx> {
     ArrayType::try_from(t).map(|t| t.element_type()).unwrap_or(t)
 }
 
-/// Generates the prelude related to subcomponents in a template body.
-fn gen_subcmps_prelude_in_template<'ctx, 'func, 'blk, 'val>(
+/// Generates the prologue related to subcomponents in a template body.
+fn gen_subcmps_prologue_in_template<'ctx, 'func, 'blk, 'val>(
     subcmps: impl IntoIterator<Item = SubcmpPrologueData<'ctx>>,
     compute_ctx: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     constrain_ctx: &mut FunctionContext<'ctx, '_, '_, '_>,
