@@ -26,7 +26,6 @@ use std::collections::HashMap;
 pub struct BlockContext<'ctx, 'blk, 'val>
 where
     'ctx: 'blk,
-    //'blk: 'val,
     'ctx: 'val,
 {
     /// Reference to a block in LLZK IR.
@@ -46,7 +45,6 @@ where
 impl<'ctx, 'blk, 'val> BlockContext<'ctx, 'blk, 'val>
 where
     'ctx: 'blk,
-    //'blk: 'val,
     'ctx: 'val,
 {
     /// Create a new empty [BlockContext] for the given block.
@@ -110,7 +108,6 @@ where
 pub struct BlockContextStack<'ctx, 'blk, 'val>
 where
     'ctx: 'blk,
-    //'blk: 'val,
     'ctx: 'val,
 {
     /// Context for the function entry block.
@@ -122,7 +119,6 @@ where
 impl<'ctx, 'blk, 'val> BlockContextStack<'ctx, 'blk, 'val>
 where
     'ctx: 'blk,
-    //'blk: 'val,
     'ctx: 'val,
 {
     /// Create a new [BlockContextStack] for the given function with an initial name-to-value
