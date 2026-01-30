@@ -8,6 +8,7 @@ use anyhow::Result;
 use llzk::prelude::LlzkContext;
 use llzk::prelude::Location;
 use llzk::prelude::Module;
+use program_structure::constants::UsefulConstants;
 
 /// Create a new, empty LLZK `Module` with Location "main" from the `ProgramArchive`.
 ///
@@ -28,6 +29,16 @@ pub fn generate_llzk(
     prime: &str,
     verbose: bool,
 ) -> Result<(), ()> {
+    let prime = UsefulConstants::new(&prime.to_string()).get_p().to_biguint();
+    if prime.is_none() {
+        eprintln!(
+            "{} prime should be convertible to unsigned",
+            Color::Red.paint("LLZK config error:"),
+        );
+        std::process::exit(10); // force exit to avoid hang if MLIR state is inconsistent
+    }
+    let prime = prime.unwrap();
+
     let ctx = LlzkContext::new();
     let module = new_llzk_module(&ctx, program);
     let mut codegen = LlzkCodegen::new(program, &ctx, module, prime, verbose);
@@ -38,7 +49,7 @@ pub fn generate_llzk(
         } else {
             eprintln!("{} {err}", Color::Red.paint("Failed to generate LLZK IR:"));
         }
-        std::process::exit(1); // force exit to avoid hang if MLIR state is inconsistent
+        std::process::exit(30); // force exit to avoid hang if MLIR state is inconsistent
     })?;
 
     // Verify the module
@@ -46,7 +57,7 @@ pub fn generate_llzk(
         eprintln!("{}", Color::Red.paint("Generated LLZK IR is invalid"));
         eprintln!("{err}");
         eprintln!("{}", codegen.module.as_operation());
-        std::process::exit(2); // force exit to avoid hang if MLIR state is inconsistent
+        std::process::exit(50); // force exit to avoid hang if MLIR state is inconsistent
     }
 
     // Run user-specified MLIR pass pipeline
@@ -56,7 +67,7 @@ pub fn generate_llzk(
         } else {
             eprintln!("{} {err}", Color::Red.paint("Failed to run pass pipeline:"));
         }
-        std::process::exit(3); // force exit to avoid hang if MLIR state is inconsistent
+        std::process::exit(70); // force exit to avoid hang if MLIR state is inconsistent
     })?;
 
     // Write module to file
@@ -66,6 +77,6 @@ pub fn generate_llzk(
         } else {
             eprintln!("{} {err}", Color::Red.paint("Failed to write LLZK IR:"));
         }
-        std::process::exit(4); // force exit to avoid hang if MLIR state is inconsistent
+        std::process::exit(90); // force exit to avoid hang if MLIR state is inconsistent
     })
 }
