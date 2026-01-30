@@ -591,7 +591,7 @@ where
     ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
         // First try to compute statically, falling back to literal computation if all values are
         // not compile-time constants or if the final result does not properly convert to i64.
-        if let Some(integer) = shared::try_compute_as_i64(expr, &codegen.prime()?)? {
+        if let Some(integer) = shared::try_compute_as_i64(expr, codegen.prime())? {
             ArrayDimensionResult::new(codegen.index_attr(integer).into(), &[])
         } else {
             #[allow(unused_variables)] // TODO: TEMP

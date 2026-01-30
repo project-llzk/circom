@@ -66,7 +66,6 @@ use program_structure::ast::Expression;
 use program_structure::ast::ExpressionInfixOpcode;
 use program_structure::ast::ExpressionPrefixOpcode;
 use program_structure::ast::Meta;
-use program_structure::constants::UsefulConstants;
 use program_structure::error_code::ReportCode;
 use program_structure::error_definition::Report;
 use program_structure::file_definition::FileID;
@@ -120,8 +119,8 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     pub context: &'ctx LlzkContext,
     /// The generated LLZK `Module`.
     pub module: Module<'ctx>,
-    /// The name of the prime field.
-    pub prime_str: &'ctx str,
+    /// The prime field modulus.
+    pub prime: BigUint,
     /// State of the `--verbose` flag.
     pub verbose: bool,
     /// Declaration info pre-computed for all templates.
@@ -134,14 +133,14 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         program: &'ast P,
         context: &'ctx LlzkContext,
         module: Module<'ctx>,
-        prime_str: &'ctx str,
+        prime: BigUint,
         verbose: bool,
     ) -> Self {
         LlzkCodegen {
             program,
             context,
             module,
-            prime_str,
+            prime,
             verbose,
             template_decls: RefCell::new(Default::default()),
         }
@@ -175,14 +174,13 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     }
 
     /// Get the width of the scalar prime field in bits.
-    pub fn prime_field_bits(&self) -> Result<usize> {
-        Ok(self.prime()?.bits())
+    pub fn prime_field_bits(&self) -> usize {
+        self.prime().bits()
     }
 
     /// Get the prime field modulus as a BigUint
-    pub fn prime(&self) -> Result<BigUint> {
-        let c = UsefulConstants::new(&self.prime_str.to_string());
-        c.get_p().to_biguint().ok_or_else(|| anyhow!("prime should be convertible to unsigned"))
+    pub fn prime(&self) -> &BigUint {
+        &self.prime
     }
 
     /// Emit a circom-style warning.
