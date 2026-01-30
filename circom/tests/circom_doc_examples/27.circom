@@ -41,10 +41,10 @@ component main = A();
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@A<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[]>>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@out] : <@A<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@b] : <@A<[]>>, !struct.type<@Bits2Num<[10]>>
 // CHECK-NEXT:        function.call @Bits2Num::@constrain(%[[VAL_6]], %[[VAL_5]]) : (!struct.type<@Bits2Num<[10]>>, !array.type<10 x !felt.type>) -> ()
 // CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_6]][@out] : <@Bits2Num<[10]>>, !felt.type
-// CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@out] : <@A<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_8]], %[[VAL_7]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
@@ -76,6 +76,7 @@ component main = A();
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_30:[0-9a-zA-Z_\.]+]]: !struct.type<@Bits2Num<[@n]>>, %[[VAL_31:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
+// CHECK-NEXT:        %[[VAL_51:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_30]][@out] : <@Bits2Num<[@n]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_33:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_34:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_35:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -93,7 +94,6 @@ component main = A();
 // CHECK-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_42]], %[[VAL_49]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_48]], %[[VAL_50]], %[[VAL_47]] : !felt.type, !felt.type, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_51:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_30]][@out] : <@Bits2Num<[@n]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_51]], %[[VAL_36]]#2 : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }

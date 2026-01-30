@@ -48,12 +48,12 @@ component main = CallDiffTypeTest();
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[VAL_6:[0-9a-zA-Z_\.]+]]: !struct.type<@CallDiffTypeTest<[]>>, %[[VAL_7:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_8:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = function.call @f(%[[VAL_7]], %[[VAL_8]]) : (!felt.type, !felt.type) -> !felt.type
 // CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_6]][@out1] : <@CallDiffTypeTest<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_6]][@out2] : <@CallDiffTypeTest<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = function.call @f(%[[VAL_7]], %[[VAL_8]]) : (!felt.type, !felt.type) -> !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_10]], %[[VAL_9]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = function.call @f(%[[VAL_11]], %[[VAL_8]]) : (!felt.type, !felt.type) -> !felt.type
-// CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_6]][@out2] : <@CallDiffTypeTest<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_13]], %[[VAL_12]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }

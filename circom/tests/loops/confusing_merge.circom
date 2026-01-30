@@ -67,7 +67,8 @@ component main = Foo(3);
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_25:[0-9a-zA-Z_\.]+]]: !struct.type<@Foo<[@N]>>, %[[VAL_26:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_27:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %[[VAL_28:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<@N x !felt.type>
+// CHECK-NEXT:        %[[VAL_OUTP:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_25]][@outp] : <@Foo<[@N]>>, !array.type<@N x !felt.type>
+// CHECK-NEXT:        %[[VAL_36:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_25]][@internal] : <@Foo<[@N]>>, !array.type<@N x !felt.type>
 // CHECK-NEXT:        %[[VAL_29:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_31:[0-9a-zA-Z_\.]+]] = %[[VAL_29]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_31]], %[[VAL_27]])
@@ -76,7 +77,6 @@ component main = Foo(3);
 // CHECK-NEXT:        ^bb0(%[[VAL_33:[0-9a-zA-Z_\.]+]]: !felt.type):
 // CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_33]]
 // CHECK-NEXT:          %[[VAL_35:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_26]]{{\[}}%[[VAL_34]]] : <@N x !felt.type>, !felt.type
-// CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_25]][@internal] : <@Foo<[@N]>>, !array.type<@N x !felt.type>
 // CHECK-NEXT:          %[[VAL_37:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_33]]
 // CHECK-NEXT:          %[[VAL_38:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_36]]{{\[}}%[[VAL_37]]] : <@N x !felt.type>, !felt.type
 // CHECK-NEXT:          constrain.eq %[[VAL_38]], %[[VAL_35]] : !felt.type, !felt.type
@@ -91,10 +91,9 @@ component main = Foo(3);
 // CHECK-NEXT:        } do {
 // CHECK-NEXT:        ^bb0(%[[VAL_45:[0-9a-zA-Z_\.]+]]: !felt.type):
 // CHECK-NEXT:          %[[VAL_46:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_45]]
-// CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_28]]{{\[}}%[[VAL_46]]] : <@N x !felt.type>, !felt.type
-// CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_25]][@outp] : <@Foo<[@N]>>, !array.type<@N x !felt.type>
+// CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_36]]{{\[}}%[[VAL_46]]] : <@N x !felt.type>, !felt.type
 // CHECK-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_45]]
-// CHECK-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_48]]{{\[}}%[[VAL_49]]] : <@N x !felt.type>, !felt.type
+// CHECK-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_OUTP]]{{\[}}%[[VAL_49]]] : <@N x !felt.type>, !felt.type
 // CHECK-NEXT:          constrain.eq %[[VAL_50]], %[[VAL_47]] : !felt.type, !felt.type
 // CHECK-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_45]], %[[VAL_51]] : !felt.type, !felt.type

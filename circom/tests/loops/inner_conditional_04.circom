@@ -51,6 +51,7 @@ component main = InnerConditional4(6);
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerConditional4<[@N]>>, %[[VAL_17:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readf %[[VAL_16]][@out] : <@InnerConditional4<[@N]>>, !array.type<@N x !felt.type>
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_21:[0-9a-zA-Z_\.]+]] = %[[VAL_19]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_21]], %[[VAL_18]])

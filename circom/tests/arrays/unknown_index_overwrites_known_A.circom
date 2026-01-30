@@ -62,6 +62,7 @@ component main = UnknownIndexOverwriteKnown();
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@UnknownIndexOverwriteKnown<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_27:[0-9a-zA-Z_\.]+]]: !struct.type<@UnknownIndexOverwriteKnown<[]>>, %[[VAL_28:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readf %[[VAL_27]][@out] : <@UnknownIndexOverwriteKnown<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_29:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_29]], %[[VAL_29]], %[[VAL_29]], %[[VAL_29]], %[[VAL_29]], %[[VAL_29]], %[[VAL_29]], %[[VAL_29]], %[[VAL_29]], %[[VAL_29]] : <10 x !felt.type>
 // CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = felt.const  0

@@ -41,6 +41,7 @@ component main = UnknownIndex();
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@UnknownIndex<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_17:[0-9a-zA-Z_\.]+]]: !struct.type<@UnknownIndex<[]>>, %[[VAL_18:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_17]][@out] : <@UnknownIndex<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_19]], %[[VAL_19]], %[[VAL_19]], %[[VAL_19]], %[[VAL_19]], %[[VAL_19]], %[[VAL_19]], %[[VAL_19]], %[[VAL_19]], %[[VAL_19]] : <10 x !felt.type>
 // CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -54,7 +55,6 @@ component main = UnknownIndex();
 // CHECK-NEXT:        %[[VAL_29:[0-9a-zA-Z_\.]+]] = felt.const  8
 // CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = felt.const  9
 // CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_21]], %[[VAL_22]], %[[VAL_23]], %[[VAL_24]], %[[VAL_25]], %[[VAL_26]], %[[VAL_27]], %[[VAL_28]], %[[VAL_29]], %[[VAL_30]] : <10 x !felt.type>
-// CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_17]][@out] : <@UnknownIndex<[]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

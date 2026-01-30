@@ -43,6 +43,7 @@ component main = CmpGE(5);
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@CmpGE<[@n]>>, %[[VAL_17:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
+// CHECK-NEXT:        %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_16]][@b] : <@CmpGE<[@n]>>, !array.type<@n x !felt.type>
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = felt.sub %[[VAL_18]], %[[VAL_19]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_22:[0-9a-zA-Z_\.]+]] = %[[VAL_20]]) : (!felt.type) -> !felt.type {
@@ -53,7 +54,6 @@ component main = CmpGE(5);
 // CHECK-NEXT:        ^bb0(%[[VAL_25:[0-9a-zA-Z_\.]+]]: !felt.type):
 // CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_25]]
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_17]]{{\[}}%[[VAL_26]]] : <@n x !felt.type>, !felt.type
-// CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_16]][@b] : <@CmpGE<[@n]>>, !array.type<@n x !felt.type>
 // CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_25]]
 // CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_28]]{{\[}}%[[VAL_29]]] : <@n x !felt.type>, !felt.type
 // CHECK-NEXT:          constrain.eq %[[VAL_30]], %[[VAL_27]] : !felt.type, !felt.type

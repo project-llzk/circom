@@ -7,6 +7,7 @@ use crate::function_ext::FunctionLike;
 use crate::program_ext::ProgramLike;
 use crate::shared::loop_nest;
 use crate::shared::map_array_inner_type;
+use crate::shared;
 use crate::shared::map_name_to_arg_value;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
@@ -30,8 +31,6 @@ use llzk::error::Error;
 use llzk::prelude::r#struct::helpers::compute_fn;
 use llzk::prelude::r#struct::helpers::constrain_fn;
 use llzk::prelude::*;
-use num_bigint_dig::BigUint;
-use num_traits::ToPrimitive as _;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -382,24 +381,20 @@ impl<'ast, 'ctx, 'val> DimExprConverter<'ctx, 'ast, 'val> for DeclarationInfo<'c
 where
     'ctx: 'val,
 {
-    #[allow(unused_variables)] // TODO: TEMP
     fn convert_dim_expr(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         expr: &Expression,
     ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
-        // First try to compute statically, falling back to literal computation
-        // if all values are not compile-time constants or if the final result
-        // does not properly convert to i64.
-        if let Some(integer) =
-            codegen.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64)
-        {
-            let int_attr = codegen.index_attr(integer);
-            ArrayDimensionResult::new(int_attr.into(), &[])
+        // First try to compute statically, falling back to literal computation if all values are
+        // not compile-time constants or if the final result does not properly convert to i64.
+        if let Some(integer) = shared::try_compute_as_i64(expr, codegen.prime())? {
+            ArrayDimensionResult::new(codegen.index_attr(integer).into(), &[])
         } else {
+            #[allow(unused_variables)] // TODO: TEMP
             match expr {
                 Expression::Number(_, _) => {
-                    unreachable!("handled by try_compute_dim_expr")
+                    unreachable!("handled by try_compute_as_i64")
                 }
                 Expression::Variable { meta, name, access } => match access.as_slice() {
                     [] => {
@@ -550,6 +545,23 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         })?;
         constrain_ctx.block_ctx.declare_name_if_not_present(name, || {
             Ok(poly::read_const(struct_loc, name, codegen.felt_type().into()))
+        })?;
+    }
+
+    // Insert read operations for struct fields into constrain functions.
+    let location = Location::unknown(codegen.context);
+    let builder = OpBuilder::new(codegen.context);
+    for field in new_struct.get_field_defs() {
+        let field_name = field.field_name();
+        constrain_ctx.block_ctx.declare_name_if_not_present(field_name, || {
+            r#struct::readf(
+                &builder,
+                location,
+                field.field_type(),
+                constrain_func.self_value_of_constrain()?,
+                field_name,
+            )
+            .map_err(Into::into)
         })?;
     }
 

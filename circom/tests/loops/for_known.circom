@@ -40,6 +40,7 @@ component main = ForKnown(10);
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_13:[0-9a-zA-Z_\.]+]]: !struct.type<@ForKnown<[@N]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
+// CHECK-NEXT:        %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_13]][@out] : <@ForKnown<[@N]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_18:[0-9a-zA-Z_\.]+]] = %[[VAL_15]], %[[VAL_19:[0-9a-zA-Z_\.]+]] = %[[VAL_16]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {
@@ -52,7 +53,6 @@ component main = ForKnown(10);
 // CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_22]], %[[VAL_24]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_23]], %[[VAL_25]] : !felt.type, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_13]][@out] : <@ForKnown<[@N]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

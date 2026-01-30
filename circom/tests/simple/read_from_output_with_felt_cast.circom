@@ -28,13 +28,13 @@ component main = ReadFromOutputWithFeltCast();
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@ReadFromOutputWithFeltCast<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_5:[0-9a-zA-Z_\.]+]]: !struct.type<@ReadFromOutputWithFeltCast<[]>>, %[[VAL_6:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_5]][@outp] : <@ReadFromOutputWithFeltCast<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_5]][@intermediate] : <@ReadFromOutputWithFeltCast<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_6]], %[[VAL_7]])
-// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_5]][@outp] : <@ReadFromOutputWithFeltCast<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_8]] : i1
 // CHECK-NEXT:        constrain.eq %[[VAL_9]], %[[VAL_10]] : !felt.type, !felt.type
-// CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_5]][@intermediate] : <@ReadFromOutputWithFeltCast<[]>>, !felt.type
-// CHECK-NEXT:        constrain.eq %[[VAL_11]], %[[VAL_10]] : !felt.type, !felt.type
+// CHECK-NEXT:        constrain.eq %[[VAL_11]], %[[VAL_9]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

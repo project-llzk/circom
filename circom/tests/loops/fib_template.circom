@@ -77,6 +77,7 @@ component main = FibonacciTmpl(5);
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[SELF:[0-9a-zA-Z_\.]+]]: !struct.type<@FibonacciTmpl<[@N]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readf %[[SELF]][@out] : <@FibonacciTmpl<[@N]>>, !felt.type
 // CHECK-NEXT:        %[[V_A0:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_B0:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[V_X0:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -93,20 +94,13 @@ component main = FibonacciTmpl(5);
 // CHECK-NEXT:        }
 // CHECK-NEXT:        %[[V_47:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_48:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[V_N]], %[[V_47]])
-// CHECK-NEXT:        %[[V_49:[0-9a-zA-Z_\.]+]] = scf.if %[[V_48]] -> (!felt.type) {
-// CHECK-NEXT:          %[[V_50:[0-9a-zA-Z_\.]+]] = struct.readf %[[SELF]][@out] : <@FibonacciTmpl<[@N]>>, !felt.type
-// CHECK-NEXT:          scf.yield %[[V_50]] : !felt.type
+// CHECK-NEXT:        scf.if %[[V_48]] {
 // CHECK-NEXT:        } else {
 // CHECK-NEXT:          %[[V_51:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:          %[[V_52:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[V_N]], %[[V_51]])
-// CHECK-NEXT:          %[[V_53:[0-9a-zA-Z_\.]+]] = scf.if %[[V_52]] -> (!felt.type) {
-// CHECK-NEXT:            %[[V_54:[0-9a-zA-Z_\.]+]] = struct.readf %[[SELF]][@out] : <@FibonacciTmpl<[@N]>>, !felt.type
-// CHECK-NEXT:            scf.yield %[[V_54]] : !felt.type
+// CHECK-NEXT:          scf.if %[[V_52]] {
 // CHECK-NEXT:          } else {
-// CHECK-NEXT:            %[[V_55:[0-9a-zA-Z_\.]+]] = struct.readf %[[SELF]][@out] : <@FibonacciTmpl<[@N]>>, !felt.type
-// CHECK-NEXT:            scf.yield %[[V_55]] : !felt.type
 // CHECK-NEXT:          }
-// CHECK-NEXT:          scf.yield %[[V_53]] : !felt.type
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }

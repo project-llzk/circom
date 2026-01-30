@@ -60,6 +60,7 @@ component main = ImplicitExtension();
 // CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@ImplicitExtension<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_30:[0-9a-zA-Z_\.]+]]: !struct.type<@ImplicitExtension<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readf %[[VAL_30]][@out] : <@ImplicitExtension<[]>>, !array.type<10 x !felt.type>
 // CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_31]], %[[VAL_31]], %[[VAL_31]], %[[VAL_31]], %[[VAL_31]], %[[VAL_31]], %[[VAL_31]], %[[VAL_31]], %[[VAL_31]], %[[VAL_31]] : <10 x !felt.type>
 // CHECK-NEXT:        %[[VAL_33:[0-9a-zA-Z_\.]+]] = felt.const  99

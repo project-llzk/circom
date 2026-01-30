@@ -4,36 +4,25 @@ use crate::function::FunctionContext;
 use crate::function::GenerateLLZKInFunction;
 use crate::program_ext::ProgramLike;
 use crate::shared::comp_type;
-use crate::shared::get_constrain_call;
-use crate::shared::insert_after_if_op_result;
-use crate::shared::op_result_owner;
 use crate::shared::region_with_block;
-use crate::shared::set_operand_if_undef;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COMP;
 use crate::subcmp::names::COUNT;
 use crate::template::TemplateContext;
-use crate::template_ext::TemplateLike as _;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::dialect::cast;
 use llzk::dialect::r#struct;
 use llzk::prelude::function;
 use llzk::prelude::pod;
-use llzk::prelude::r#struct::is_struct_readf;
-use llzk::prelude::CallOpLike as _;
-use llzk::prelude::CallOpRef;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
-use llzk::prelude::IntegerAttribute;
 use llzk::prelude::Location;
-use llzk::prelude::OperationLike as _;
 use llzk::prelude::PodType;
 use llzk::prelude::StructType;
 use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Value;
-use llzk::prelude::ValueLike as _;
-use llzk::value_ext::replace_all_uses;
+use llzk::prelude::ValueLike;
 use melior::dialect::arith;
 use melior::dialect::scf;
 use melior::ir::BlockLike as _;
@@ -76,6 +65,7 @@ impl WriteTarget {
         matches!(self, WriteTarget::Compute)
     }
     /// Returns true if the target is `@constrain`.
+    #[allow(unused)]
     #[inline]
     fn is_constrain(&self) -> bool {
         matches!(self, WriteTarget::Constrain)
@@ -366,25 +356,12 @@ impl<'ast> WriteChain<'ast> {
     fn get_root_signal<'ctx, 'val>(
         &self,
         var: &str,
-        target: WriteTarget,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
-        location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
-        if target.is_constrain() {
-            // Read value from field of "self" struct.
-            let expected_type = fc.block_ctx.get_named_value(var).unwrap().r#type();
-            let self_value = fc.func.self_value_of_constrain()?;
-            fc.append_op_unnamed_result(r#struct::readf(
-                &OpBuilder::new(codegen.context),
-                location,
-                expected_type,
-                self_value,
-                var,
-            )?)
-        } else {
-            fc.block_ctx.get_named_value(var).copied()
-        }
+        // Both compute and constrain functions should have the `var` defined:
+        // compute from an existing assignment, or constrain from pre-generation
+        // of the `readf` in `gen_template_llzk`.
+        fc.block_ctx.get_named_value(var).copied()
     }
 
     /// Handle [WriteChain::Root] case of [`WriteChain::get_value`] other than
@@ -446,15 +423,9 @@ impl<'ast> WriteChain<'ast> {
         match self {
             WriteChain::Root { var, op: RootWriteOp::Signal, compute_result } => {
                 if template.is_subcmp(var) && !compute_result {
-                    return self.get_root_signal(
-                        &format!("{var}$inputs"),
-                        target,
-                        codegen,
-                        fc,
-                        location,
-                    );
+                    return self.get_root_signal(&format!("{var}$inputs"), fc);
                 }
-                self.get_root_signal(var, target, codegen, fc, location)
+                self.get_root_signal(var, fc)
             }
             WriteChain::Root { var, op: RootWriteOp::Var, .. } => self.get_root_value(var, fc),
             WriteChain::Array { indices, prev } => self.get_array_value(

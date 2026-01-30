@@ -50,6 +50,7 @@ component main = A();
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[V_22:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[]>>, %[[V_23:[0-9a-zA-Z_\.]+]]: !array.type<17,13 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readf %[[V_22]][@out] : <@A<[]>>, !felt.type
 // CHECK-NEXT:        %[[V_S0:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_I0:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_26:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[V_I1:[0-9a-zA-Z_\.]+]] = %[[V_I0]], %[[V_S1:[0-9a-zA-Z_\.]+]] = %[[V_S0]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {
