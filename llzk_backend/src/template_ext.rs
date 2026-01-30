@@ -32,6 +32,20 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::slice;
 
+/// Trait for IR objects that can have signal declarations on them.
+pub trait SignalDeclarations {
+    /// Returns true if the signal is an input.
+    ///
+    /// Returns false if the signal is not an input or is not declared.
+    fn signal_is_input(&self, name: &str) -> bool;
+}
+
+impl<T: TemplateLike> SignalDeclarations for T {
+    fn signal_is_input(&self, name: &str) -> bool {
+        self.get_inputs().contains_key(name)
+    }
+}
+
 /// A trait that allows common handling of structs/enums that represent template
 /// inputs or outputs.
 pub trait WireLike: Clone + std::fmt::Debug {

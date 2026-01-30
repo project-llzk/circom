@@ -30,8 +30,10 @@ use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COUNT;
 use crate::subcmp::SubcmpCallsMap;
+use crate::subcmp::SubcmpInfo;
 use crate::template_ext::TemplateLike as _;
 use crate::try_for_loop_heuristic;
+use crate::write_chain::SignalWriteInfo;
 use anyhow::anyhow;
 use anyhow::Context as _;
 use anyhow::Result;
@@ -108,6 +110,15 @@ const CIRCOM_RETURN_MARKER_ATTR: &str = "from_circom_return";
 /// LLZK attribute used to attach comma-separated list of variable names for the operands
 /// of an `scf.yield` op.
 const OPERAND_VAL_NAMES: &str = "operand_val_names";
+
+/// Contains references to information providers.
+#[derive(Copy, Clone, Debug)]
+pub struct InfoProviders<'info> {
+    /// Subcomponent information.
+    pub subcmp_info: &'info dyn SubcmpInfo,
+    /// Signals write information.
+    pub signal_write_info: &'info dyn SignalWriteInfo,
+}
 
 /// Stores ref to the current function while generating LLZK IR for the function.
 ///
@@ -1122,11 +1133,12 @@ where
     }
 
     /// Creates LLZK ops for array indexing from the collection of elements.
-    pub fn gen_index_ops<'ast, E>(
+    pub fn gen_index_ops<'ast, 'info, E>(
         &mut self,
         indices: impl IntoIterator<Item = &'ast E>,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
+        info: InfoProviders<'info>,
     ) -> Result<Vec<Value<'ctx, 'val>>>
     where
         E: GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val, Output = Value<'ctx, 'val>> + 'ast,
@@ -1134,7 +1146,7 @@ where
         indices
             .into_iter()
             .map(|e| {
-                let val = e.gen_llzk_in_function(codegen, self)?;
+                let val = e.gen_llzk_in_function(codegen, self, info)?;
                 self.append_op_unnamed_result(cast::toindex(location, val))
             })
             .collect()
@@ -1667,10 +1679,11 @@ where
     /// Generates LLZK IR from [Statement] and [Expression] nodes in a circom function.
     ///
     /// 'ast: lifetime of the circom AST element
-    fn gen_llzk_in_function<'ast>(
+    fn gen_llzk_in_function<'ast, 'info>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+        info: InfoProviders<'info>,
     ) -> Result<Self::Output>;
 }
 
@@ -1788,9 +1801,10 @@ where
 }
 
 /// Generate LLZK code for a circom [Statement::IfThenElse].
-fn gen_if_then_else<'ast, 'ctx, 'func, 'blk, 'val>(
+fn gen_if_then_else<'ast, 'ctx, 'func, 'blk, 'val, 'info>(
     codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    info: InfoProviders<'info>,
     meta: &Meta,
     cond: &Expression,
     if_case: &Statement,
@@ -1805,20 +1819,20 @@ where
     let mut then_info = NestedBlockInfo::default();
     function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
         then_info.block,
-        |function| if_case.gen_llzk_in_function(codegen, function),
+        |function| if_case.gen_llzk_in_function(codegen, function, info),
         &mut then_info,
     )?;
     let mut else_info = NestedBlockInfo::default();
     if let Some(else_case) = else_case {
         function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
             else_info.block,
-            |function| else_case.gen_llzk_in_function(codegen, function),
+            |function| else_case.gen_llzk_in_function(codegen, function, info),
             &mut else_info,
         )?;
     }
 
     let location = codegen.location_from_meta(meta);
-    let condition = cond.gen_llzk_in_function(codegen, function)?;
+    let condition = cond.gen_llzk_in_function(codegen, function, info)?;
 
     // Check if one or both blocks end with a return in circom. The `scf.if` op used in LLZK cannot
     // have returns nested within other blocks like circom allows. Use of `append_circom_return()`
@@ -1877,9 +1891,10 @@ where
 }
 
 /// Generate LLZK code for a circom [Statement::While].
-fn gen_while<'ast, 'ctx, 'func, 'blk, 'val>(
+fn gen_while<'ast, 'ctx, 'func, 'blk, 'val, 'info>(
     codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    info: InfoProviders<'info>,
     meta: &Meta,
     cond: &Expression,
     body_stmt: &Statement,
@@ -1894,13 +1909,13 @@ where
     let mut loop_cond_info = NestedBlockInfo::default();
     let cond_result = function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
         loop_cond_info.block,
-        |fc| cond.gen_llzk_in_function(codegen, fc),
+        |fc| cond.gen_llzk_in_function(codegen, fc, info),
         &mut loop_cond_info,
     )?;
     let mut loop_body_info = NestedBlockInfo::default();
     function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
         loop_body_info.block,
-        |fc| body_stmt.gen_llzk_in_function(codegen, fc),
+        |fc| body_stmt.gen_llzk_in_function(codegen, fc, info),
         &mut loop_body_info,
     )?;
 
@@ -1962,6 +1977,7 @@ where
 fn gen_init_block<'ast, 'ctx, 'func, 'blk, 'val>(
     codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    info: InfoProviders<'_>,
     initializations: &[Statement],
 ) -> Result<()>
 where
@@ -1969,7 +1985,7 @@ where
     'func: 'blk,
     'blk: 'val,
 {
-    initializations.gen_llzk_in_function(codegen, function)
+    initializations.gen_llzk_in_function(codegen, function, info)
 }
 
 impl<'ctx, 'func, 'blk, 'val> GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val> for Statement
@@ -1980,10 +1996,11 @@ where
 {
     type Output = SkipRestOfBlock;
 
-    fn gen_llzk_in_function<'ast>(
+    fn gen_llzk_in_function<'ast, 'info>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+        info: InfoProviders<'info>,
     ) -> Result<Self::Output> {
         match self {
             Statement::InitializationBlock { xtype, initializations, .. } => {
@@ -1991,7 +2008,7 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Template elements declared inside the function")
                 }
-                gen_init_block(codegen, function, initializations)?;
+                gen_init_block(codegen, function, info, initializations)?;
                 Ok(false)
             }
             Statement::Declaration { meta, xtype, name, dimensions, .. } => {
@@ -2005,9 +2022,9 @@ where
             Statement::Block { meta, stmts } => {
                 function.gen_in_current_block_with_new_circom_scope_and_merge_overwrites(
                     |function| {
-                        try_for_loop_heuristic!(codegen, function, meta, stmts);
+                        try_for_loop_heuristic!(codegen, function, info, meta, stmts);
                         // Fallback to standard block handling.
-                        stmts.gen_llzk_in_function(codegen, function)?;
+                        stmts.gen_llzk_in_function(codegen, function, info)?;
                         Ok(false)
                     },
                 )?;
@@ -2018,7 +2035,7 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Function uses template operators");
                 }
-                let rvalue = rhe.gen_llzk_in_function(codegen, function)?;
+                let rvalue = rhe.gen_llzk_in_function(codegen, function, info)?;
                 match access.as_slice() {
                     [] => {
                         // Since there's no simple assignment in LLZK, just update the mapped Value
@@ -2032,7 +2049,7 @@ where
                             .map(|access| {
                                 let idx = match access {
                                     Access::ArrayAccess(index_expr) => {
-                                        index_expr.gen_llzk_in_function(codegen, function)
+                                        index_expr.gen_llzk_in_function(codegen, function, info)
                                     }
                                     #[allow(unused_variables)] // TODO: TEMP
                                     Access::ComponentAccess(name) => {
@@ -2060,17 +2077,17 @@ where
                     unreachable!("Function uses template operators");
                 }
                 // Just visit and drop the resulting Value since it's unused.
-                rhe.gen_llzk_in_function(codegen, function).map(drop)?;
+                rhe.gen_llzk_in_function(codegen, function, info).map(drop)?;
                 Ok(false)
             }
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
-                gen_if_then_else(codegen, function, meta, cond, if_case, else_case)
+                gen_if_then_else(codegen, function, info, meta, cond, if_case, else_case)
             }
             Statement::While { meta, cond, stmt } => {
-                gen_while(codegen, function, meta, cond, stmt, None)
+                gen_while(codegen, function, info, meta, cond, stmt, None)
             }
             Statement::Return { meta, value } => {
-                let value = value.gen_llzk_in_function(codegen, function)?;
+                let value = value.gen_llzk_in_function(codegen, function, info)?;
                 let location = codegen.location_from_meta(meta);
                 function.append_circom_return(codegen, location, value)?;
                 // circom allows unreachable code after a return but it is not processed
@@ -2080,7 +2097,7 @@ where
                 Ok(true)
             }
             Statement::Assert { meta, arg } => {
-                let cond = arg.gen_llzk_in_function(codegen, function)?;
+                let cond = arg.gen_llzk_in_function(codegen, function, info)?;
                 let location = codegen.location_from_meta(meta);
                 let cond = function.cast_to_bool_if_needed(codegen, location, cond)?;
                 let msg = Some("assertion failed");
@@ -2119,10 +2136,11 @@ where
 {
     type Output = Value<'ctx, 'val>;
 
-    fn gen_llzk_in_function<'ast>(
+    fn gen_llzk_in_function<'ast, 'info>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+        info: InfoProviders<'info>,
     ) -> Result<Self::Output> {
         match self {
             Expression::Number(meta, big_int) => {
@@ -2144,7 +2162,7 @@ where
                         .map(|access| {
                             let idx = match access {
                                 Access::ArrayAccess(index_expr) => {
-                                    index_expr.gen_llzk_in_function(codegen, function)
+                                    index_expr.gen_llzk_in_function(codegen, function, info)
                                 }
                                 #[allow(unused_variables)] // TODO: TEMP
                                 Access::ComponentAccess(name) => {
@@ -2159,25 +2177,25 @@ where
                 }
             },
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                let lhs = lhe.gen_llzk_in_function(codegen, function)?;
-                let rhs = rhe.gen_llzk_in_function(codegen, function)?;
+                let lhs = lhe.gen_llzk_in_function(codegen, function, info)?;
+                let rhs = rhe.gen_llzk_in_function(codegen, function, info)?;
                 function.gen_infix_op(codegen, meta, infix_op, lhs, rhs)
             }
             Expression::PrefixOp { meta, prefix_op, rhe } => {
-                let rhs = rhe.gen_llzk_in_function(codegen, function)?;
+                let rhs = rhe.gen_llzk_in_function(codegen, function, info)?;
                 function.gen_prefix_op(codegen, meta, prefix_op, rhs)
             }
             Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
                 let location = codegen.location_from_meta(meta);
                 // Ensure the condition is a bool type.
-                let cond_val = cond.gen_llzk_in_function(codegen, function)?;
+                let cond_val = cond.gen_llzk_in_function(codegen, function, info)?;
                 let condition = function.cast_to_bool_if_needed(codegen, location, cond_val)?;
                 let scf_if_op = function.generate_simple_scf_if(
                     codegen,
                     meta,
                     condition,
-                    |fc| if_true.gen_llzk_in_function(codegen, fc),
-                    |fc| if_false.gen_llzk_in_function(codegen, fc),
+                    |fc| if_true.gen_llzk_in_function(codegen, fc, info),
+                    |fc| if_false.gen_llzk_in_function(codegen, fc, info),
                 )?;
 
                 function.append_op_unnamed_result(scf_if_op)
@@ -2188,7 +2206,7 @@ where
                 // Multi-dimensional arrays are made up of array values as their elements
                 let values = values
                     .iter()
-                    .map(|val_expr| val_expr.gen_llzk_in_function(codegen, function))
+                    .map(|val_expr| val_expr.gen_llzk_in_function(codegen, function, info))
                     .collect::<Result<Vec<Value>>>()?;
                 let value_ty =
                     values.first().expect("Array must have at least one element").r#type();
@@ -2234,7 +2252,7 @@ where
             Expression::UniformArray { meta, value, dimension } => {
                 let location = codegen.location_from_meta(meta);
                 // Multi-dimensional arrays are made up of array values as their elements
-                let value = value.gen_llzk_in_function(codegen, function)?;
+                let value = value.gen_llzk_in_function(codegen, function, info)?;
                 let dim_result = function.convert_dim_expr(codegen, dimension)?;
                 let dim = Option::from(dim_result)
                     .ok_or_else(|| anyhow!("unable to convert dimension in function context"))?;
@@ -2251,7 +2269,7 @@ where
                     .iter()
                     .zip(param_types)
                     .map(|(arg, expected_type)| {
-                        let operand_val = arg.gen_llzk_in_function(codegen, function)?;
+                        let operand_val = arg.gen_llzk_in_function(codegen, function, info)?;
                         function.cast_to_expected_type_if_needed(
                             codegen,
                             location,
@@ -2293,13 +2311,14 @@ where
 {
     type Output = ();
 
-    fn gen_llzk_in_function<'ast>(
+    fn gen_llzk_in_function<'ast, 'info>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+        info: InfoProviders<'info>,
     ) -> Result<Self::Output> {
         for s in self {
-            let skip_rest_of_block = s.gen_llzk_in_function(codegen, function)?;
+            let skip_rest_of_block = s.gen_llzk_in_function(codegen, function, info)?;
             if skip_rest_of_block {
                 break;
             }

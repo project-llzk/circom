@@ -1,9 +1,13 @@
 //! Helper types for handling subcomponents.
 
+use anyhow::Result;
 use llzk::prelude::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::marker::PhantomData;
+
+use crate::program_ext::ProgramInfo;
+use crate::template_ext::SignalDeclarations;
 
 /// Names used for `pod` records.
 pub mod names {
@@ -17,9 +21,24 @@ pub mod names {
     pub const PARAMS: &str = "params";
 }
 
+/// Gives information about subcomponents.
+pub trait SubcmpInfo: std::fmt::Debug {
+    /// Returns true if the given variable name is a subcomponent.
+    fn is_subcmp(&self, var: &str) -> bool;
+
+    /// Returns the template information for the given subcomponent.
+    fn subcmp_info<'i>(
+        &self,
+        var: &str,
+        info: &'i dyn ProgramInfo,
+    ) -> Result<&'i dyn SignalDeclarations>;
+}
+
 /// Information collected about a subcomponent.
 #[derive(Debug)]
 pub struct SubcmpDeclInfo<'ctx> {
+    /// Name of the template type.
+    template: Option<String>,
     /// List of dimensions for arrays of subcomponents of the same type.
     dimensions: Vec<Attribute<'ctx>>,
     /// Location of the declaration.
@@ -31,7 +50,17 @@ pub struct SubcmpDeclInfo<'ctx> {
 impl<'ctx> SubcmpDeclInfo<'ctx> {
     /// Creates a new declaration instance.
     pub fn new(dimensions: Vec<Attribute<'ctx>>, location: Location<'ctx>) -> Self {
-        Self { dimensions, location, instances: Default::default() }
+        Self { template: None, dimensions, location, instances: Default::default() }
+    }
+
+    /// Sets the name of the subcomponent's template type.
+    pub fn set_template(&mut self, name: String) {
+        self.template = Some(name)
+    }
+
+    /// Gets the name of the subcomponent's template type.
+    pub fn template(&self) -> Option<&str> {
+        self.template.as_deref()
     }
 
     /// Returns the dimensions of the declaration.

@@ -9,6 +9,10 @@
 use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
+use crate::lvalue::Lvalue;
+use crate::lvalue::NoOverride;
+use crate::lvalue::Root;
+use crate::program_ext::ProgramInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::comp_type;
@@ -21,8 +25,10 @@ use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COMP;
 use crate::subcmp::names::COUNT;
 use crate::subcmp::names::PARAMS;
+use crate::subcmp::SubcmpInfo;
+use crate::template_ext::SignalDeclarations;
+use crate::template_ext::TemplateLike;
 use crate::template_ext::TemplateLike as _;
-use crate::write_chain::RootWriteOp;
 use crate::write_chain::WriteChain;
 use crate::write_chain::WriteTarget;
 use anyhow::anyhow;
@@ -130,8 +136,8 @@ where
     compute: ShouldGenerate<Rc<RefCell<FunctionContext<'ctx, 'func, 'blk, 'val>>>>,
     /// Codegen refs for the "@constrain" function within `struct_def`
     constrain: ShouldGenerate<Rc<RefCell<FunctionContext<'ctx, 'func, 'blk, 'val>>>>,
-    /// Set of subcomponent names.
-    subcmps: &'str HashSet<String>,
+    /// Map of subcomponent names to their types.
+    subcmps: &'str HashMap<String, String>,
     /// Tracks for what component signals we have created their `struct.writef` op already.
     written_signals: Rc<RefCell<HashSet<String>>>,
 }
@@ -143,7 +149,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
         struct_def: StructDefOpRefMut<'ctx, 'str>,
         compute: FunctionContext<'ctx, 'func, 'blk, 'val>,
         constrain: FunctionContext<'ctx, 'func, 'blk, 'val>,
-        subcmps: &'str HashSet<String>,
+        subcmps: &'str HashMap<String, String>,
     ) -> TemplateContext<'ctx, 'str, 'func, 'blk, 'val> {
         Self {
             struct_def,
@@ -198,11 +204,6 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
             .field_type())
     }
 
-    /// Returns true if the given var is a subcomponent.
-    pub fn is_subcmp(&self, var: &str) -> bool {
-        self.subcmps.contains(var)
-    }
-
     /// Part of the finalization procedure that emits the pending operations in the queue.
     fn finalize_queue(self) -> Result<Self> {
         self.and_then_same::<_, GenResultUnit>(|fc, _| {
@@ -234,7 +235,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
         self.and_then::<_, _, GenResultUnit>(|fc, _| {
                 // Write the subcomponent declarations to self.
                 let self_value = fc.func.self_value_of_compute()?;
-                subcmps.iter().try_for_each(|name| {
+                subcmps.iter().try_for_each(|(name, _)| {
                     // Write the inputs of the subcomponent.
                     let name_inputs = format!("{name}$inputs");
                     let name_inputs_val = *fc.block_ctx.get_named_value(&name_inputs)?;
@@ -304,7 +305,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                 })
 
         }, |fc, _| {
-                subcmps.iter().try_for_each(|name| {
+                subcmps.iter().try_for_each(|(name, _)| {
                     // Read the subcomponent
                     let subcmp = *fc.block_ctx.get_named_value(name)?;
 
@@ -356,6 +357,22 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
         self.finalize_subcmps(codegen)?
             .finalize_queue()?
             .and_then_same(|fc, _| fc.finalize(codegen))
+    }
+}
+
+impl SubcmpInfo for TemplateContext<'_, '_, '_, '_, '_> {
+    fn is_subcmp(&self, var: &str) -> bool {
+        self.subcmps.contains_key(var)
+    }
+
+    fn subcmp_info<'i>(
+        &self,
+        var: &str,
+        info: &'i dyn ProgramInfo,
+    ) -> Result<&'i dyn SignalDeclarations> {
+        let template_name =
+            self.subcmps.get(var).ok_or_else(|| anyhow!("subcomponent '{var}' not found"))?;
+        info.find_template(template_name)
     }
 }
 
@@ -1050,7 +1067,7 @@ where
                 match op {
                     AssignOp::AssignVar => {
                         if access.is_empty() {
-                            if template.subcmps.contains(var) {
+                            if template.is_subcmp(var) {
                                 // Do nothing.
                                 Ok(())
                             } else {
@@ -1062,22 +1079,24 @@ where
                             let location = codegen.location_from_meta(meta);
                             rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                 |fc, val| {
-                                    WriteChain::new(var, RootWriteOp::Var, access).write(
+                                    WriteChain::new(var, Root::Var, access).write(
                                         val,
                                         WriteTarget::Compute,
                                         codegen,
                                         fc,
                                         location,
                                         template,
+                                        template,
                                     )
                                 },
                                 |fc, val| {
-                                    WriteChain::new(var, RootWriteOp::Var, access).write(
+                                    WriteChain::new(var, Root::Var, access).write(
                                         val,
                                         WriteTarget::Constrain,
                                         codegen,
                                         fc,
                                         location,
+                                        template,
                                         template,
                                     )
                                 },
@@ -1119,12 +1138,13 @@ where
                             access => rhe
                                 .gen_llzk_in_template(codegen, &template.compute_only())?
                                 .and_then_same(|fc, rhe| {
-                                    WriteChain::new(var, RootWriteOp::Signal, access).write(
+                                    WriteChain::new(var, Root::Signal, access).write(
                                         rhe,
                                         WriteTarget::Compute,
                                         codegen,
                                         fc,
                                         codegen.location_from_meta(meta),
+                                        template,
                                         template,
                                     )
                                 }),
@@ -1214,25 +1234,20 @@ where
                             //}
                             access => rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                 |fc, rhv| {
-                                    WriteChain::new(var, RootWriteOp::Signal, access).write(
+                                    WriteChain::new(var, Root::Signal, access).write(
                                         rhv,
                                         WriteTarget::Compute,
                                         codegen,
                                         fc,
                                         codegen.location_from_meta(meta),
                                         template,
+                                        template,
                                     )
                                 },
                                 |fc, rhv| {
                                     let location = codegen.location_from_meta(meta);
-                                    let lhv = WriteChain::new(var, RootWriteOp::Signal, access)
-                                        .get_value(
-                                            codegen,
-                                            fc,
-                                            template,
-                                            location,
-                                            WriteTarget::Constrain,
-                                        )?;
+                                    let lhv = Lvalue::new(var, Root::Signal, access)
+                                        .get_value(codegen, fc, template, location, None)?;
                                     fc.append_op_no_result(constrain::eq(location, lhv, rhv).into())
                                 },
                             ),

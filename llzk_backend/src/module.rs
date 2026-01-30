@@ -95,12 +95,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Result<Vec<SubcmpPrologueData<'ctx>>> {
         let mut ops = vec![];
-        for (name, info) in &self.subcmp_decls {
-            let extend_dims = |t: Type<'ctx>| match info.dimensions() {
-                [] => t,
-                dims => ArrayType::new(t, dims).into(),
-            };
-
+        for (name, info) in &mut self.subcmp_decls {
             let instances = info.instances();
 
             let types = unique_instance_types(instances);
@@ -114,6 +109,8 @@ impl<'ctx> DeclarationInfo<'ctx> {
             // may need to generate IR to compute the input count from the template parameters, etc.
             let mut inputs_size = 0;
             let template_name = types[0].name().value();
+            info.set_template(template_name.to_owned());
+
             let template = codegen
                 .program
                 .get_templates(false)
@@ -129,6 +126,11 @@ impl<'ctx> DeclarationInfo<'ctx> {
                     Ok(PodRecordAttribute::new(signal_name, signal_type))
                 })
                 .collect::<Result<Vec<_>>>()?;
+            let extend_dims = |t: Type<'ctx>| match info.dimensions() {
+                [] => t,
+                dims => ArrayType::new(t, dims).into(),
+            };
+
             let inputs = extend_dims(PodType::new(codegen.context, &inputs).into());
 
             let field_type = extend_dims(types[0].into());
@@ -583,7 +585,16 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         &subcmp_decls,
     )?;
 
-    let subcmp_names = subcmp_decls.into_keys().collect();
+    let subcmp_names = subcmp_decls
+        .into_iter()
+        .map(|(subcmp, decl)| {
+            decl.template()
+                .map(|template_name| (subcmp.clone(), template_name.to_owned()))
+                .ok_or_else(|| {
+                    anyhow::anyhow!("could not deduce the type of subcomponent '{subcmp}'")
+                })
+        })
+        .collect::<Result<_, _>>()?;
 
     // Visit the body of the template and generate LLZK IR for it within the struct functions.
     let template_context =

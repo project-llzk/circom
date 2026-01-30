@@ -16,6 +16,7 @@ mod module;
 mod program_ext;
 #[macro_use]
 mod shared;
+mod lvalue;
 mod subcmp;
 mod template;
 mod template_ext;
