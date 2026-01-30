@@ -10,10 +10,9 @@ use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::program_ext::ProgramLike;
-use crate::shared::comp_type;
 use crate::shared;
+use crate::shared::comp_type;
 use crate::shared::get_constrain_call;
-use crate::shared::loop_nest;
 use crate::shared::map_array_inner_type;
 use crate::shared::op_result_owner;
 use crate::shared::ArrayDimensionResult;
@@ -229,7 +228,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
     {
         let subcmps = self.subcmps;
         let location = codegen.location_unknown();
-        let comp_sym = FlatSymbolRefAttribute::new(codegen.context, COMP);
+        let comp_sym = codegen.flat_sym(COMP);
 
         let builder = OpBuilder::new(codegen.context);
         self.and_then::<_, _, GenResultUnit>(|fc, _| {
@@ -261,25 +260,26 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                                 MapDimSlice(&[], &[])
                             ))?;
 
-                            loop_nest(codegen, fc, codegen.location_unknown(), &ty.dims(), |fc, indices| {
-                                let comp_memory = fc.append_op_unnamed_result(array::read(
-                                    location,
-                                    ty.element_type(),
+                            fc.gen_loop_nest(codegen, codegen.location_unknown(), &ty.dims(), |fc, indices| {
+                                let comp_memory = fc.append_array_read(
                                     mem,
-                                    indices
-                                ))?;
+                                    indices,
+                                    location,
+                                    None
+                                )?;
                                 let comp_instance = fc.append_op_unnamed_result(pod::read(
                                     location,
                                     comp_memory,
                                     comp_sym,
                                     struct_type
                                 ))?;
-                                fc.append_op_no_result(array::write(
-                                    location,
+                                fc.append_array_write(
                                     comp_array,
                                     indices,
-                                    comp_instance
-                                ))
+                                    location,
+                                    comp_instance,
+                                    None
+                                )
                             })?;
 
                             comp_array
@@ -305,19 +305,6 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
 
         }, |fc, _| {
                 subcmps.iter().try_for_each(|name| {
-                    /// Emits the constrain call for a single subcomponent.
-                    fn emit_constrain_call<'ctx, 'val>(subcmp: Value<'ctx, 'val>, inputs: Value<'ctx, 'val>, fc: &mut FunctionContext<'ctx, '_, '_, 'val>, location: Location<'ctx>, builder: &OpBuilder<'ctx>, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Result<()> {
-                        let mut call_args = vec![subcmp];
-                                            call_args.extend(PodType::try_from(inputs.r#type())?.get_records().into_iter().map(|record| {
-                        let record_name = FlatSymbolRefAttribute::new(codegen.context, record.name().as_str()?);
-                        fc.append_op_unnamed_result(pod::read(location, inputs, record_name, record.r#type()))
-                    }).collect::<Result<Vec<_>, _>>()?);
-
-
-                    let func_name = SymbolRefAttribute::new(codegen.context,  StructType::try_from(call_args[0].r#type())?.name().value(), &["constrain"]);
-                    let return_types : [Type;0] = [];
-                    fc.append_op_no_result(function::call(builder, location, func_name, &call_args, &return_types)?.into())
-                    }
                     // Read the subcomponent
                     let subcmp = *fc.block_ctx.get_named_value(name)?;
 
@@ -331,28 +318,28 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                             let subcmp_type = ArrayType::try_from(subcmp.r#type())?;
                             assert_eq!(dims, subcmp_type.dims());
 
-                            loop_nest(codegen, fc, location, &dims, |fc, indices| {
-                                emit_constrain_call(
-                                    fc.append_op_unnamed_result(array::read(
-                                        location,
-                                        subcmp_type.element_type(),
+                            fc.gen_loop_nest(codegen, location, &dims, |fc, indices| {
+                                let subcmp_instance =  fc.append_array_read(
                                         subcmp,
-                                        indices
-                                    ))?,
-                                    fc.append_op_unnamed_result(array::read(
+                                        indices,
                                         location,
-                                        inputs_type.element_type(),
+                                    None
+                                    )?;
+                                let subcmp_inputs = fc.append_array_read(
                                         inputs,
-                                        indices
-                                    ))?,
-                                    fc,
+                                        indices,
+                                        location,
+                                    None
+                                    )?;
+                                fc.gen_constrain_call(
+                                   subcmp_instance,
+                                    subcmp_inputs,
                                     location,
-                                    &builder,
                                     codegen
                                 )
                             })
                         }
-                        PodType as _ => emit_constrain_call(subcmp, inputs, fc, location, &builder, codegen),
+                        PodType as _ => fc.gen_constrain_call(subcmp, inputs,  location, codegen),
                     }
                 })
         })?;

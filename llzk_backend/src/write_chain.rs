@@ -131,7 +131,7 @@ impl<'ast> WriteChain<'ast> {
         template: &TemplateContext<'ctx, '_, '_, '_, 'val>,
     ) -> Result<()> {
         let arr_ref = prev.get_value(codegen, fc, template, location, target)?;
-        let indices = gen_index_ops(indices, codegen, fc, location)?;
+        let indices = fc.gen_index_ops(indices, codegen, location)?;
         fc.append_array_write(arr_ref, &indices, location, val, None)?;
         prev.write(arr_ref, target, codegen, fc, location, template)
     }
@@ -148,112 +148,25 @@ impl<'ast> WriteChain<'ast> {
         location: Location<'ctx>,
         template: &TemplateContext<'ctx, '_, '_, '_, 'val>,
     ) -> Result<()> {
-        fn decrease_counter<'ctx, 'val>(
-            amount: i64,
-            subcmp_value: Value<'ctx, 'val>,
-            location: Location<'ctx>,
-            fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
-            codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        ) -> Result<Value<'ctx, 'val>> {
-            let count_name = FlatSymbolRefAttribute::new(codegen.context, COUNT);
-            let mut counter = fc.append_op_unnamed_result(pod::read(
-                location,
-                subcmp_value,
-                count_name,
-                codegen.index_type(),
-            ))?;
-            let one = fc.append_op_unnamed_result(codegen.new_index_const_op(amount, location))?;
-            counter = fc.append_op_unnamed_result(arith::subi(counter, one, location))?;
-            fc.append_op_no_result(pod::write(location, subcmp_value, count_name, counter))?;
-            Ok(counter)
-        }
-
-        fn call_compute<'ctx, 'val>(
-            inputs: Value<'ctx, 'val>,
-            dst: Value<'ctx, 'val>,
-            location: Location<'ctx>,
-            fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
-            codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        ) -> Result<Type<'ctx>> {
-            let input_values = PodType::try_from(inputs.r#type())?
-                .get_records()
-                .into_iter()
-                .map(|record| {
-                    let record_name =
-                        FlatSymbolRefAttribute::new(codegen.context, record.name().as_str()?);
-                    fc.append_op_unnamed_result(pod::read(
-                        location,
-                        inputs,
-                        record_name,
-                        record.r#type(),
-                    ))
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-
-            let struct_type = StructType::try_from(comp_type(PodType::try_from(dst.r#type())?)?)?;
-            let func_name =
-                SymbolRefAttribute::new(codegen.context, struct_type.name().value(), &["compute"]);
-
-            let subcmp_instance = fc.append_op_unnamed_result(
-                function::call(
-                    &OpBuilder::new(codegen.context),
-                    location,
-                    func_name,
-                    &input_values,
-                    &[struct_type],
-                )?
-                .into(),
-            )?;
-
-            let comp_name = FlatSymbolRefAttribute::new(codegen.context, COMP);
-            fc.append_op_no_result(pod::write(location, dst, comp_name, subcmp_instance))?;
-            Ok(struct_type.into())
-        }
-
-        fn check_if_counter_is_zero<'ctx, 'val>(
-            counter: Value<'ctx, 'val>,
-            location: Location<'ctx>,
-            fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
-            codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-            body: impl FnOnce(&mut FunctionContext<'ctx, '_, '_, 'val>) -> Result<()>,
-        ) -> Result<()> {
-            let zero = fc.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
-            let cmp = fc.append_op_unnamed_result(arith::cmpi(
-                codegen.context,
-                arith::CmpiPredicate::Eq,
-                counter,
-                zero,
-                location,
-            ))?;
-            let then_region = region_with_block(&[]);
-            fc.block_ctx.push(then_region.first_block().unwrap());
-            body(fc)?;
-            fc.append_op_no_result(scf::r#yield(&[], location))?;
-            fc.block_ctx.pop();
-            let else_region = region_with_block(&[]);
-            else_region.first_block().unwrap().append_operation(scf::r#yield(&[], location));
-
-            fc.append_op_no_result(scf::r#if(cmp, &[], then_region, else_region, location))
-        }
-
         let subcmp_value_inputs = prev.get_value(codegen, fc, template, location, target)?;
-        let name = FlatSymbolRefAttribute::new(codegen.context, name);
-        fc.append_op_no_result(pod::write(location, subcmp_value_inputs, name, val))?;
+        fc.append_op_no_result(codegen.new_pod_write_op(subcmp_value_inputs, name, val, location))?;
         let prev_for_compute = prev.clone_for_compute_result();
         prev.write(subcmp_value_inputs, target, codegen, fc, location, template)?;
         // Read the subcomponent's memory, which should be the memory pod.
         let subcmp_value = prev_for_compute.get_value(codegen, fc, template, location, target)?;
 
-        let counter = decrease_counter(1, subcmp_value, location, fc, codegen)?;
-        check_if_counter_is_zero(counter, location, fc, codegen, |fc| {
-            let subcmp_type =
-                call_compute(subcmp_value_inputs, subcmp_value, location, fc, codegen)?;
-            // let subcmp_instance = fc.append_op_unnamed_result(pod::read(
-            //    location,
-            //    subcmp_value,
-            //    FlatSymbolRefAttribute::new(codegen.context, COMP),
-            //    subcmp_type,
-            //))?;
+        let counter = fc.gen_subcmp_decrease_counter(codegen, location, subcmp_value, 1)?;
+        fc.gen_scf_if_is_zero(counter, location, codegen, |fc| {
+            let struct_type =
+                StructType::try_from(comp_type(PodType::try_from(subcmp_value.r#type())?)?)?;
+            let subcmp_instance =
+                fc.gen_compute_call(struct_type, subcmp_value_inputs, location, codegen)?;
+            fc.append_op_no_result(codegen.new_pod_write_op(
+                subcmp_value,
+                COMP,
+                subcmp_instance,
+                location,
+            ))?;
             prev_for_compute.write(subcmp_value, target, codegen, fc, location, template)
         })
     }
@@ -382,7 +295,7 @@ impl<'ast> WriteChain<'ast> {
         fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
-        let indices = gen_index_ops(indices.iter().copied(), codegen, fc, location)?;
+        let indices = fc.gen_index_ops(indices.iter().copied(), codegen, location)?;
         fc.append_array_read(prev, &indices, location, None)
             .map(|v| fc.subcmp_calls.propagate(&prev, v))
     }
@@ -443,25 +356,6 @@ impl<'ast> WriteChain<'ast> {
             ),
         }
     }
-}
-
-/// Creates LLZK ops for array indexing from the collection of elements.
-fn gen_index_ops<'ctx, 'func, 'blk, 'val, 'ast, E>(
-    indices: impl IntoIterator<Item = &'ast E>,
-    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
-    fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
-    location: Location<'ctx>,
-) -> Result<Vec<Value<'ctx, 'val>>>
-where
-    E: GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val, Output = Value<'ctx, 'val>> + 'ast,
-{
-    indices
-        .into_iter()
-        .map(|e| {
-            let val = e.gen_llzk_in_function(codegen, fc)?;
-            fc.append_op_unnamed_result(cast::toindex(location, val))
-        })
-        .collect()
 }
 
 impl fmt::Display for WriteChain<'_> {

@@ -13,11 +13,13 @@ use anyhow::anyhow;
 use anyhow::ensure;
 use anyhow::Context;
 use anyhow::Result;
+use llzk::builder::OpBuilder;
 use llzk::dialect::undef;
 use llzk::operation::move_op_after;
 use llzk::prelude::felt;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
+use llzk::prelude::pod;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
@@ -45,6 +47,7 @@ use llzk::prelude::OperationLike;
 use llzk::prelude::OperationRef;
 use llzk::prelude::OperationResult;
 use llzk::prelude::PassManager;
+use llzk::prelude::PodRecordAttribute;
 use llzk::prelude::PodType;
 use llzk::prelude::StringAttribute;
 use llzk::prelude::StructDefOp;
@@ -134,6 +137,8 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     pub verbose: bool,
     /// Declaration info pre-computed for all templates.
     template_decls: RefCell<HashMap<String, DeclInfo<'ctx>>>,
+    /// Operation builder
+    builder: OpBuilder<'ctx>,
 }
 
 impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
@@ -152,7 +157,13 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
             prime,
             verbose,
             template_decls: RefCell::new(Default::default()),
+            builder: OpBuilder::new(context),
         }
+    }
+
+    /// Returns a reference to the operation builder.
+    pub fn op_builder(&self) -> &OpBuilder<'ctx> {
+        &self.builder
     }
 
     /// Store the full [DeclarationInfo] for the template with the given name.
@@ -304,6 +315,16 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         StructType::from_str(self.context, name)
     }
 
+    /// Get a pod struct type with the given records.
+    #[inline]
+    pub fn pod_type(&self, records: &[(&str, Type<'ctx>)]) -> PodType<'ctx> {
+        let records = records
+            .iter()
+            .map(|(name, r#type)| PodRecordAttribute::new(*name, *r#type))
+            .collect::<Vec<_>>();
+        PodType::new(self.context, &records)
+    }
+
     /// Create an index attribute.
     #[inline]
     pub fn index_attr<T>(&self, integer: T) -> IntegerAttribute<'ctx>
@@ -317,6 +338,39 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     pub fn affine_map_attr(&self, definition: &str) -> Result<Attribute<'ctx>> {
         Attribute::parse(self.context, definition)
             .ok_or_else(|| anyhow!("could not parse affine_map definition"))
+    }
+
+    /// Creates a [`FlatSymbolRefAttribute`] from the given string.
+    pub fn flat_sym(&self, sym: impl AsRef<str>) -> FlatSymbolRefAttribute<'ctx> {
+        FlatSymbolRefAttribute::new(self.context, sym.as_ref())
+    }
+
+    /// Creates a `pod.read` operation.
+    ///
+    /// Fails if the type of the value is not [`PodType`] or if the given name does not correspond
+    /// with a record in the pod.
+    pub fn new_pod_read_op(
+        &self,
+        pod: Value<'ctx, '_>,
+        name: impl AsRef<str>,
+        location: Location<'ctx>,
+    ) -> Result<Operation<'ctx>> {
+        let pod_type = PodType::try_from(pod.r#type())?;
+        let record_type = pod_type
+            .get_type_of_record(name.as_ref())
+            .ok_or_else(|| anyhow!("record '{}' not found for pod {pod_type}", name.as_ref()))?;
+        Ok(pod::read(location, pod, self.flat_sym(name), record_type))
+    }
+
+    /// Creates a `pod.write` operation.
+    pub fn new_pod_write_op(
+        &self,
+        pod: Value<'ctx, '_>,
+        name: impl AsRef<str>,
+        src: Value<'ctx, '_>,
+        location: Location<'ctx>,
+    ) -> Operation<'ctx> {
+        pod::write(location, pod, self.flat_sym(name), src)
     }
 
     /// Create an LLZK operation that produces a boolean constant value.
@@ -1195,81 +1249,6 @@ pub fn region_with_block<'ctx>(arguments: &[(Type<'ctx>, Location<'ctx>)]) -> Re
     let region = Region::new();
     region.append_block(Block::new(arguments));
     region
-}
-
-/// Creates a loop nest from a list of dimensions.
-///
-/// The body of the inner-most loop is defined by the given closure, which accepts a list of values
-/// representing the current value of each loop's induction variable.
-pub fn loop_nest<'ctx, 'val, 'func, 'blk>(
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
-    location: Location<'ctx>,
-    dims: &[Attribute<'ctx>],
-    body: impl FnOnce(&mut FunctionContext<'ctx, 'func, 'blk, 'val>, &[Value<'ctx, 'val>]) -> Result<()>,
-) -> Result<()>
-where
-    'val: 'blk,
-{
-    let zero = fc.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
-    let one = fc.append_op_unnamed_result(codegen.new_index_const_op(1, location))?;
-
-    // Create values from the dimensions
-    let dim_values = dims
-        .iter()
-        .copied()
-        .map(|attr| {
-            if IntegerAttribute::try_from(attr).is_ok() {
-                return fc.append_op_unnamed_result(arith::constant(
-                    codegen.context,
-                    attr,
-                    location,
-                ));
-            }
-            unreachable!("Unhandled attribute in array dimensions {}", attr)
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    let loop_block_args = [(codegen.index_type(), location)];
-    let top_block = *fc.block_ctx.top_block();
-    let mut loop_vars: Vec<Value> = vec![];
-    // Create the loop nest
-    let mut block: Option<BlockRef<'_, '_>> = None;
-    for dim in dim_values {
-        let op = scf::r#for(zero, dim, one, region_with_block(&loop_block_args), location);
-        let loop_op = match &block {
-            Some(block_ref) => block_ref.append_operation(op),
-            None => fc.append_op(op),
-        };
-        block = Some(
-            loop_op
-                .region(0)?
-                .first_block()
-                .ok_or_else(|| anyhow::anyhow!("region is missing first block"))?,
-        );
-        // Accumulate the induction variables for later giving all of them to the callback.
-        loop_vars.push(block.unwrap().argument(0)?.into());
-    }
-
-    // Unwrap the block after creating the loop nest.
-    let mut block = block.ok_or_else(|| anyhow::anyhow!("no loops created"))?;
-    // Push the block of the inner-most loop s.t. the user can use `fc` and ops will get added to
-    // the right block.
-    fc.block_ctx.push(block);
-    body(fc, &loop_vars)?;
-    fc.block_ctx.pop();
-
-    // Traverse the stack of blocks until we reach the block where we inserted the whole nest.
-    // For each block traversed this way add the scf terminator op.
-    while block != top_block {
-        block.append_operation(scf::r#yield(&[], location));
-        block = block
-            .parent_operation()
-            .and_then(|op| op.block())
-            .ok_or_else(|| anyhow::anyhow!("detached block while creating loop nest"))?;
-    }
-
-    Ok(())
 }
 
 /// This macro allows writing type switches with a syntax similar to match expressions.

@@ -5,9 +5,8 @@ use crate::function::FunctionContext;
 use crate::function::GenerateLLZKInFunction as _;
 use crate::function_ext::FunctionLike;
 use crate::program_ext::ProgramLike;
-use crate::shared::loop_nest;
-use crate::shared::map_array_inner_type;
 use crate::shared;
+use crate::shared::map_array_inner_type;
 use crate::shared::map_name_to_arg_value;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
@@ -649,15 +648,14 @@ where
             let records = [
                 // Counts the number of inputs pending an assignment. When it reaches 0 it's safe
                 // to call the corresponding `@compute` function.
-                PodRecordAttribute::new(COUNT, codegen.index_type()),
+                (COUNT, codegen.index_type()),
                 // Holds the output of calling `@compute`. Before the call, this value is undefined
                 // and should not be read from.
-                PodRecordAttribute::new(COMP, subcmp_struct_type),
+                (COMP, subcmp_struct_type),
                 // Holds the affine map operands of the subcomponents, if any.
-                PodRecordAttribute::new(PARAMS, PodType::new(codegen.context, &[]).into()),
+                (PARAMS, codegen.pod_type(&[]).into()),
             ];
-            let comp_pod =
-                map_array_inner_type(subcmp_type, PodType::new(codegen.context, &records).into());
+            let comp_pod = map_array_inner_type(subcmp_type, codegen.pod_type(&records).into());
             let location = codegen.location_unknown();
             let count = compute_ctx.append_op_unnamed_result(
                 codegen.new_index_const_op(i64::try_from(count)?, location),
@@ -671,25 +669,16 @@ where
                     )?;
                     let comp_memory = *compute_ctx.block_ctx.get_named_value(&name)?;
 
-                    loop_nest(codegen, compute_ctx, location, &dims, |fc, indices| {
-                        let comp_memory_pod = fc.append_op_unnamed_result(array::read(
-                            location,
-                            comp_pod.element_type(),
-                            comp_memory,
-                            indices,
-                        ))?;
+                    compute_ctx.gen_loop_nest(codegen, location, &dims, |fc, indices| {
+                        let comp_memory_pod =
+                            fc.append_array_read(comp_memory, indices, location, None)?;
                         fc.append_op_no_result(pod::write(
                             location,
                             comp_memory_pod,
                             FlatSymbolRefAttribute::new(codegen.context, COUNT),
                             count,
                         ))?;
-                        fc.append_op_no_result(array::write(
-                            location,
-                            comp_memory,
-                            indices,
-                            comp_memory_pod,
-                        ))
+                        fc.append_array_write(comp_memory, indices, location, comp_memory_pod, None)
                     })?;
                 }
                 None => compute_ctx.block_ctx.declare_name_ensure_not_present(

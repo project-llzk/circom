@@ -19,6 +19,7 @@ use crate::shared::new_array_type;
 use crate::shared::next_in_block_mut;
 use crate::shared::no_results;
 use crate::shared::parent_operation_mut;
+use crate::shared::region_with_block;
 use crate::shared::remove_from_parent;
 use crate::shared::replace_uses_with_new_block_argument;
 use crate::shared::set_operand_if_undef;
@@ -27,6 +28,7 @@ use crate::shared::ArrayDimension;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
+use crate::subcmp::names::COUNT;
 use crate::subcmp::SubcmpCallsMap;
 use crate::template_ext::TemplateLike as _;
 use crate::try_for_loop_heuristic;
@@ -50,6 +52,7 @@ use llzk::prelude::melior_dialects::index;
 use llzk::prelude::melior_dialects::scf;
 use llzk::prelude::melior_dialects::scf::is_scf_if;
 use llzk::prelude::melior_dialects::scf::is_scf_yield;
+use llzk::prelude::pod;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::Block;
@@ -66,8 +69,11 @@ use llzk::prelude::OperationLike as _;
 use llzk::prelude::OperationMutLike;
 use llzk::prelude::OperationRef;
 use llzk::prelude::OperationRefMut;
+use llzk::prelude::PodType;
 use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
+use llzk::prelude::StructType;
+use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
@@ -905,6 +911,233 @@ where
         let start = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
         let step = self.append_op_unnamed_result(codegen.new_index_const_op(1, location))?;
         self.gen_simple_scf_for(codegen, location, start, step, end, body_fn)
+    }
+
+    /// Generates IR for decreasing the counter of a subcomponent.
+    ///
+    /// Returns a [`Value`] with the updated counter.
+    pub fn gen_subcmp_decrease_counter(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        subcmp_memory: Value<'ctx, 'val>,
+        amount: u32,
+    ) -> Result<Value<'ctx, 'val>> {
+        let counter = self.append_op_unnamed_result(codegen.new_pod_read_op(
+            subcmp_memory,
+            COUNT,
+            location,
+        )?)?;
+        let one = self.append_op_unnamed_result(codegen.new_index_const_op(amount, location))?;
+        let counter = self.append_op_unnamed_result(arith::subi(counter, one, location))?;
+        self.append_op_no_result(codegen.new_pod_write_op(
+            subcmp_memory,
+            COUNT,
+            counter,
+            location,
+        ))?;
+        Ok(counter)
+    }
+
+    /// Generates a `scf.if` block that runs the 'then' branch if the given value is 0.
+    pub fn gen_scf_if_is_zero(
+        &mut self,
+        value: Value<'ctx, 'val>,
+        location: Location<'ctx>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        body: impl FnOnce(&mut Self) -> Result<()>,
+    ) -> Result<()> {
+        let zero = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
+        let cmp = self.append_op_unnamed_result(arith::cmpi(
+            codegen.context,
+            arith::CmpiPredicate::Eq,
+            value,
+            zero,
+            location,
+        ))?;
+        let then_region = region_with_block(&[]);
+        self.block_ctx.push(then_region.first_block().unwrap());
+        body(self)?;
+        self.append_op_no_result(scf::r#yield(&[], location))?;
+        self.block_ctx.pop();
+        let else_region = region_with_block(&[]);
+        else_region.first_block().unwrap().append_operation(scf::r#yield(&[], location));
+
+        self.append_op_no_result(scf::r#if(cmp, &[], then_region, else_region, location))
+    }
+
+    /// Decomposes the given value of [`PodType`] into a sequence of values in declaration order.
+    pub fn gen_decompose_pod(
+        &mut self,
+        pod: Value<'ctx, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+    ) -> Result<Vec<Value<'ctx, 'val>>> {
+        PodType::try_from(pod.r#type())?
+            .get_records()
+            .into_iter()
+            .map(|record| {
+                let record_name = codegen.flat_sym(record.name().as_str()?);
+                self.append_op_unnamed_result(pod::read(
+                    location,
+                    pod,
+                    record_name,
+                    record.r#type(),
+                ))
+            })
+            .collect()
+    }
+
+    /// Generates a call to `@compute` for the given struct type.
+    ///
+    /// The arguments for the call are given as a value of [`PodType`] representing the inputs of
+    /// the subcomponent.
+    ///
+    /// # TODO
+    ///
+    /// Map operands are missing.
+    pub fn gen_compute_call(
+        &mut self,
+        struct_type: StructType<'ctx>,
+        inputs: Value<'ctx, 'val>,
+        location: Location<'ctx>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Result<Value<'ctx, 'val>> {
+        let input_values = self.gen_decompose_pod(inputs, codegen, location)?;
+
+        let func_name =
+            SymbolRefAttribute::new(codegen.context, struct_type.name().value(), &["compute"]);
+
+        self.append_op_unnamed_result(
+            function::call(
+                codegen.op_builder(),
+                location,
+                func_name,
+                &input_values,
+                &[struct_type],
+            )?
+            .into(),
+        )
+    }
+
+    /// Generates a call to `@constrain` for the given struct type.
+    ///
+    /// The arguments for the call are given as a value of [`PodType`] representing the inputs of
+    /// the subcomponent.
+    pub fn gen_constrain_call(
+        &mut self,
+        subcmp: Value<'ctx, 'val>,
+        inputs: Value<'ctx, 'val>,
+        location: Location<'ctx>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Result<()> {
+        let mut call_args = vec![subcmp];
+        call_args.extend(self.gen_decompose_pod(inputs, codegen, location)?);
+
+        let func_name = SymbolRefAttribute::new(
+            codegen.context,
+            StructType::try_from(call_args[0].r#type())?.name().value(),
+            &["constrain"],
+        );
+        let return_types: [Type; 0] = [];
+        self.append_op_no_result(
+            function::call(codegen.op_builder(), location, func_name, &call_args, &return_types)?
+                .into(),
+        )
+    }
+
+    /// Creates a loop nest from a list of dimensions.
+    ///
+    /// The body of the inner-most loop is defined by the given closure, which accepts a list of values
+    /// representing the current value of each loop's induction variable.
+    pub fn gen_loop_nest(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        dims: &[Attribute<'ctx>],
+        body: impl FnOnce(&mut Self, &[Value<'ctx, 'val>]) -> Result<()>,
+    ) -> Result<()>
+    where
+        'val: 'blk,
+    {
+        let zero = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
+        let one = self.append_op_unnamed_result(codegen.new_index_const_op(1, location))?;
+
+        // Create values from the dimensions
+        let dim_values = dims
+            .iter()
+            .copied()
+            .map(|attr| {
+                if IntegerAttribute::try_from(attr).is_ok() {
+                    return self.append_op_unnamed_result(arith::constant(
+                        codegen.context,
+                        attr,
+                        location,
+                    ));
+                }
+                unreachable!("Unhandled attribute in array dimensions {}", attr)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let loop_block_args = [(codegen.index_type(), location)];
+        let top_block = *self.block_ctx.top_block();
+        let mut loop_vars: Vec<Value> = vec![];
+        // Create the loop nest
+        let mut block: Option<BlockRef<'_, '_>> = None;
+        for dim in dim_values {
+            let op = scf::r#for(zero, dim, one, region_with_block(&loop_block_args), location);
+            let loop_op = match &block {
+                Some(block_ref) => block_ref.append_operation(op),
+                None => self.append_op(op),
+            };
+            block = Some(
+                loop_op
+                    .region(0)?
+                    .first_block()
+                    .ok_or_else(|| anyhow::anyhow!("region is missing first block"))?,
+            );
+            // Accumulate the induction variables for later giving all of them to the callback.
+            loop_vars.push(block.unwrap().argument(0)?.into());
+        }
+
+        // Unwrap the block after creating the loop nest.
+        let mut block = block.ok_or_else(|| anyhow::anyhow!("no loops created"))?;
+        // Push the block of the inner-most loop s.t. the user can use `self` and ops will get added to
+        // the right block.
+        self.block_ctx.push(block);
+        body(self, &loop_vars)?;
+        self.block_ctx.pop();
+
+        // Traverse the stack of blocks until we reach the block where we inserted the whole nest.
+        // For each block traversed this way add the scf terminator op.
+        while block != top_block {
+            block.append_operation(scf::r#yield(&[], location));
+            block = block
+                .parent_operation()
+                .and_then(|op| op.block())
+                .ok_or_else(|| anyhow::anyhow!("detached block while creating loop nest"))?;
+        }
+
+        Ok(())
+    }
+
+    /// Creates LLZK ops for array indexing from the collection of elements.
+    pub fn gen_index_ops<'ast, E>(
+        &mut self,
+        indices: impl IntoIterator<Item = &'ast E>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+    ) -> Result<Vec<Value<'ctx, 'val>>>
+    where
+        E: GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val, Output = Value<'ctx, 'val>> + 'ast,
+    {
+        indices
+            .into_iter()
+            .map(|e| {
+                let val = e.gen_llzk_in_function(codegen, self)?;
+                self.append_op_unnamed_result(cast::toindex(location, val))
+            })
+            .collect()
     }
 
     /// Implementation for [Expression::UniformArray] after conversion of dimension
