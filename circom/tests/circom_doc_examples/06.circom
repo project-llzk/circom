@@ -30,7 +30,7 @@ template Caller() {
 
 component main = Caller();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Caller<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    function.def @example(%[[V_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[V_1:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[V_2:[0-9a-zA-Z_\.]+]] = bool.cmp ge(%[[V_0]], %[[V_1]])

@@ -19,7 +19,7 @@ template InnerConditional4(N) {
 
 component main = InnerConditional4(6);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@InnerConditional4<[6]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @InnerConditional4<[@N]> {
 // CHECK-NEXT:      struct.field @out : !array.type<@N x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@InnerConditional4<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

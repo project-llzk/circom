@@ -37,4 +37,4 @@ template EscalarMulFix() {
 
 component main = EscalarMulFix();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {

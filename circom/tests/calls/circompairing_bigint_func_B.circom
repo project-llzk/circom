@@ -492,4 +492,4 @@ template Test() {
 
 component main = Test();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {

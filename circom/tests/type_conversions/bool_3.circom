@@ -19,7 +19,7 @@ template A(x) {
 
 component main = A(99);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@A<[99]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @A<[@x]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@A<[@x]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

@@ -23,4 +23,4 @@ template NeedsStackContext(max) {
 
 component main = NeedsStackContext(3);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {

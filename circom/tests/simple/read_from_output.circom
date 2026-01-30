@@ -14,7 +14,7 @@ template ReadFromOutput() {
 
 component main = ReadFromOutput();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@ReadFromOutput<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:   struct.def @ReadFromOutput<[]> {
 // CHECK-NEXT:     struct.field @outp : !felt.type {llzk.pub}
 // CHECK-NEXT:     struct.field @intermediate : !felt.type

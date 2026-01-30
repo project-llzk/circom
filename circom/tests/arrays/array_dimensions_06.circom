@@ -12,4 +12,4 @@ template ArrayDims(N) {
 
 component main = ArrayDims(7);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {

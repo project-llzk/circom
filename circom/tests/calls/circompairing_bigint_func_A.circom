@@ -321,4 +321,4 @@ template BigModInv51() {
 
 component main = BigModInv51();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {

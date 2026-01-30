@@ -1105,10 +1105,8 @@ where
                                 // The constrain function just reads that field from "self" struct.
                                 // However, we already inserted these reads at the beginning of the
                                 // constrain function in `gen_template_llzk`.
-                                let compute_only = template.compute_only();
                                 let signal_type = template.get_signal_type(var)?;
-                                rhe
-                                    .gen_llzk_in_template(codegen, &compute_only)?
+                                rhe.gen_llzk_in_template(codegen, &template.compute_only())?
                                     .and_then_same(|fc, val| {
                                         let location = codegen.location_from_meta(meta);
                                         // Cast value to signal type if needed.
@@ -1172,9 +1170,10 @@ where
                                         fc.block_ctx.set_named_value(var.clone(), value)
                                     },
                                     |fc, val| {
-                                        // Get value of field from "self" struct (already generated at
-                                        // the beginning of the constrain function, see `gen_template_llzk`)
-                                        // and generate equality constraint with 'val'.
+                                        // Get value of field from "self" struct (already generated
+                                        // at the beginning of the constrain function, see
+                                        // `gen_template_llzk`) and generate equality constraint
+                                        // with 'val'.
                                         let location = codegen.location_from_meta(meta);
                                         let signal_val = fc.block_ctx.get_named_value(var)?;
                                         let (lhs, rhs) = unify_constrain_eq_types(

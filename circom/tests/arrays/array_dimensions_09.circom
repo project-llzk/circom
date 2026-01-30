@@ -12,7 +12,7 @@ template ArrayDims(N, M) {
 component main = ArrayDims(7, 2);
 
 // CHECK: #[[$ATTR_0:[0-9a-zA-Z_\.]+]] = affine_map<()[s0] -> (s0)>
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@ArrayDims<[7, 2]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @ArrayDims<[@N, @M]> {
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@ArrayDims<[@N, @M]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@ArrayDims<[@N, @M]>>

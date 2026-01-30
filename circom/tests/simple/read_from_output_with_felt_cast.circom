@@ -14,7 +14,7 @@ template ReadFromOutputWithFeltCast() {
 
 component main = ReadFromOutputWithFeltCast();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@ReadFromOutputWithFeltCast<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:   struct.def @ReadFromOutputWithFeltCast<[]> {
 // CHECK-NEXT:      struct.field @outp : !felt.type {llzk.pub}
 // CHECK-NEXT:      struct.field @intermediate : !felt.type

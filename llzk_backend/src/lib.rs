@@ -23,4 +23,5 @@ mod traversal;
 mod write_chain;
 
 pub use codegen::generate_llzk;
+pub use program_ext::CachedParseInfo;
 pub use program_ext::VCPPlus;

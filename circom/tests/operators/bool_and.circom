@@ -13,7 +13,7 @@ template BoolAnd() {
 
 component main = BoolAnd();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@BoolAnd<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @BoolAnd<[]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@BoolAnd<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
@@ -32,3 +32,4 @@ component main = BoolAnd();
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
+// CHECK-NEXT:  }
