@@ -5,6 +5,7 @@ use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::LlzkCodegen;
 use ansi_term::Color;
+use anyhow::anyhow;
 use anyhow::Result;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::IntegerAttribute;
@@ -38,9 +39,12 @@ fn new_llzk_module<'ctx>(
     let params = main_info
         .params
         .into_iter()
-        .map(|e| shared::try_compute_as_i64(&e, prime))
-        .collect::<Result<Option<Vec<_>>, _>>()?
-        .ok_or_else(|| anyhow::anyhow!("main component has non-constant parameters"))?;
+        .enumerate()
+        .map(|(i, e)| {
+            shared::try_compute_as_i64(&e, prime)?
+                .ok_or_else(|| anyhow!("main component parameter {i} is not a positive constant"))
+        })
+        .collect::<Result<Vec<_>>>()?;
     let params: Vec<_> =
         params.into_iter().map(|p| IntegerAttribute::new(Type::index(context), p).into()).collect();
 
