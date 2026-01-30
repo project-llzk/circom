@@ -5,6 +5,7 @@ use crate::function::FunctionContext;
 use crate::function::GenerateLLZKInFunction as _;
 use crate::function_ext::FunctionLike;
 use crate::program_ext::ProgramLike;
+use crate::shared;
 use crate::shared::map_name_to_arg_value;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
@@ -23,8 +24,6 @@ use llzk::error::Error;
 use llzk::prelude::r#struct::helpers::compute_fn;
 use llzk::prelude::r#struct::helpers::constrain_fn;
 use llzk::prelude::*;
-use num_bigint_dig::BigUint;
-use num_traits::ToPrimitive as _;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -340,24 +339,20 @@ impl<'ast, 'ctx, 'val> DimExprConverter<'ctx, 'ast, 'val> for DeclarationInfo<'c
 where
     'ctx: 'val,
 {
-    #[allow(unused_variables)] // TODO: TEMP
     fn convert_dim_expr(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         expr: &Expression,
     ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
-        // First try to compute statically, falling back to literal computation
-        // if all values are not compile-time constants or if the final result
-        // does not properly convert to i64.
-        if let Some(integer) =
-            codegen.try_compute_dim_expr(expr)?.as_ref().and_then(BigUint::to_i64)
-        {
-            let int_attr = codegen.index_attr(integer);
-            ArrayDimensionResult::new(int_attr.into(), &[])
+        // First try to compute statically, falling back to literal computation if all values are
+        // not compile-time constants or if the final result does not properly convert to i64.
+        if let Some(integer) = shared::try_compute_as_i64(expr, &codegen.prime()?)? {
+            ArrayDimensionResult::new(codegen.index_attr(integer).into(), &[])
         } else {
+            #[allow(unused_variables)] // TODO: TEMP
             match expr {
                 Expression::Number(_, _) => {
-                    unreachable!("handled by try_compute_dim_expr")
+                    unreachable!("handled by try_compute_as_i64")
                 }
                 Expression::Variable { meta, name, access } => match access.as_slice() {
                     [] => {
