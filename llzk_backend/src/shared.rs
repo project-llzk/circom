@@ -94,6 +94,20 @@ enum DeclInfo<'ctx> {
     Remnant(HashMap<String, Type<'ctx>>),
 }
 
+/// Convert circom location information to MLIR location.
+pub fn location<'ctx>(
+    context: &'ctx LlzkContext,
+    program: &impl ProgramLike,
+    file_id: FileID,
+    file_location: FileLocation,
+) -> Location<'ctx> {
+    let files = program.get_file_library();
+    let filename = files.get_filename_or_default(&file_id);
+    let line = files.get_line(file_location.start, file_id).unwrap_or(0);
+    let column = files.get_column(file_location.start, file_id).unwrap_or(0);
+    Location::new(context, &filename, line, column)
+}
+
 /// Stores necessary context for generating LLZK IR.
 ///
 /// 'ast: lifetime of the circom AST element
@@ -186,17 +200,15 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     }
 
     /// Get the unknown location.
+    #[inline]
     pub fn location_unknown(&self) -> Location<'ctx> {
         Location::unknown(self.context)
     }
 
     /// Convert circom location information to MLIR location.
+    #[inline]
     pub fn location(&self, file_id: FileID, file_location: FileLocation) -> Location<'ctx> {
-        let files = self.program.get_file_library();
-        let filename = files.get_filename_or_default(&file_id);
-        let line = files.get_line(file_location.start, file_id).unwrap_or(0);
-        let column = files.get_column(file_location.start, file_id).unwrap_or(0);
-        Location::new(self.context, &filename, line, column)
+        location(self.context, self.program, file_id, file_location)
     }
 
     /// Convert circom Meta location information to MLIR location.
