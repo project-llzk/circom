@@ -258,6 +258,7 @@ where
     /// and the [ArrayType] of the `arr_ref` value.
     pub fn append_array_write(
         &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         arr_ref: Value<'ctx, 'val>,
         indices: &[Value<'ctx, 'val>],
         location: Location<'ctx>,
@@ -272,6 +273,12 @@ where
         let write_op = match indices.len().cmp(&arr_ty_dims.len()) {
             std::cmp::Ordering::Equal => {
                 // Indexing all dimensions requires an `array.write`
+                let rvalue = self.cast_to_expected_type_if_needed(
+                    codegen,
+                    location,
+                    rvalue,
+                    arr_ty.element_type(),
+                )?;
                 array::write(location, arr_ref, indices, rvalue)
             }
             std::cmp::Ordering::Less => {
@@ -1811,6 +1818,7 @@ where
                             .collect::<Result<Vec<Value<'_, '_>>>>()?;
                         let arr_ref = function.block_ctx.get_named_value(var)?;
                         function.append_array_write(
+                            codegen,
                             *arr_ref,
                             indices,
                             location,
