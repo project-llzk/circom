@@ -11,6 +11,7 @@ use crate::traversal::WalkCallbacks;
 use ansi_term::Color;
 use anyhow::anyhow;
 use anyhow::ensure;
+use anyhow::Context;
 use anyhow::Result;
 use llzk::dialect::undef;
 use llzk::operation::move_op_after;
@@ -462,8 +463,9 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         } else if let Ok(at) = ArrayType::try_from(t) {
             let init = self.count_input_signals(at.element_type())?;
             at.dims().iter().try_fold(init, |acc, d| {
-                let s = IntegerAttribute::try_from(*d)?;
-                let s = usize::try_from(s.value())?;
+                let s =
+                    IntegerAttribute::try_from(*d).context("array size is not a known constant")?;
+                let s = usize::try_from(s.value()).context("negative array size")?;
                 acc.checked_mul(s).ok_or_else(|| {
                     anyhow::anyhow!("overflow while multiplying array dimension sizes")
                 })

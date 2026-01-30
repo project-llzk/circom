@@ -65,7 +65,6 @@ impl WriteTarget {
         matches!(self, WriteTarget::Compute)
     }
     /// Returns true if the target is `@constrain`.
-    #[allow(unused)]
     #[inline]
     fn is_constrain(&self) -> bool {
         matches!(self, WriteTarget::Constrain)
@@ -296,7 +295,7 @@ impl<'ast> WriteChain<'ast> {
         // If we are writing into a variable annotated as a subcomponent and we are
         // writing in the constraint function skip the whole chain.
         if let WriteChain::Root { var, op: RootWriteOp::Var, .. } = self.root() {
-            if template.is_subcmp(var) && target == WriteTarget::Constrain {
+            if target.is_constrain() && template.is_subcmp(var) {
                 return Ok(());
             }
         }
@@ -422,7 +421,7 @@ impl<'ast> WriteChain<'ast> {
     ) -> Result<Value<'ctx, 'val>> {
         match self {
             WriteChain::Root { var, op: RootWriteOp::Signal, compute_result } => {
-                if template.is_subcmp(var) && !compute_result {
+                if !compute_result && template.is_subcmp(var) {
                     return self.get_root_signal(&format!("{var}$inputs"), fc);
                 }
                 self.get_root_signal(var, fc)
