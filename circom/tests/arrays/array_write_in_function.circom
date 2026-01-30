@@ -60,8 +60,8 @@ component main = Caller();
 // CHECK-NEXT:        function.return %[[VAL_27]] : !struct.type<@Caller<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_29:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller<[]>>, %[[VAL_30:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = function.call @compute(%[[VAL_30]]) : (!felt.type) -> !felt.type
-// CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_29]][@out] : <@Caller<[]>>, !felt.type
+// CHECK-DAG:         %[[VAL_31:[0-9a-zA-Z_\.]+]] = function.call @compute(%[[VAL_30]]) : (!felt.type) -> !felt.type
+// CHECK-DAG:         %[[VAL_32:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_29]][@out] : <@Caller<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_32]], %[[VAL_31]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }

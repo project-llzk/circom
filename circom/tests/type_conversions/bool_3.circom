@@ -42,19 +42,19 @@ component main = A(99);
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_11:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[@x]>>, %[[VAL_12:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = poly.read_const @x : !felt.type
-// CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_11]][@out] : <@A<[@x]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = bool.cmp ne(%[[VAL_12]], %[[VAL_15]])
-// CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = bool.cmp ne(%[[VAL_13]], %[[VAL_17]])
-// CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = bool.or %[[VAL_16]], %[[VAL_18]] : i1, i1
-// CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_19]] -> (!felt.type) {
-// CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:          scf.yield %[[VAL_21]] : !felt.type
+// CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = bool.cmp ne(%[[VAL_12]], %[[VAL_16]])
+// CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = bool.cmp ne(%[[VAL_13]], %[[VAL_18]])
+// CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = bool.or %[[VAL_17]], %[[VAL_19]] : i1, i1
+// CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_20]] -> (!felt.type) {
+// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:          scf.yield %[[VAL_22]] : !felt.type
 // CHECK-NEXT:        } else {
-// CHECK-NEXT:          scf.yield %[[VAL_14]] : !felt.type
+// CHECK-NEXT:          scf.yield %[[VAL_15]] : !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_22:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_11]][@out] : <@A<[@x]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

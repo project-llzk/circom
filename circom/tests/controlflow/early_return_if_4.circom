@@ -55,8 +55,8 @@ component main = EarlyReturn();
 // CHECK-NEXT:        function.return %[[V_13]] : !struct.type<@EarlyReturn<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[V_15:[0-9a-zA-Z_\.]+]]: !struct.type<@EarlyReturn<[]>>, %[[V_16:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[V_17:[0-9a-zA-Z_\.]+]] = function.call @earlyReturnFn(%[[V_16]]) : (!felt.type) -> !felt.type
-// CHECK-NEXT:        %[[V_18:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_15]][@outp] : <@EarlyReturn<[]>>, !felt.type
+// CHECK-DAG:         %[[V_17:[0-9a-zA-Z_\.]+]] = function.call @earlyReturnFn(%[[V_16]]) : (!felt.type) -> !felt.type
+// CHECK-DAG:         %[[V_18:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_15]][@outp] : <@EarlyReturn<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[V_18]], %[[V_17]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }

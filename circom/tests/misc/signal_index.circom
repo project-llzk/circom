@@ -47,14 +47,14 @@ component main {public [a, b]} = A();
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[V_8:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[]>>, %[[V_9:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}, %[[V_10:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[V_17:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_8]][@c] : <@A<[]>>, !felt.type
+// CHECK-NEXT:        %[[V_14:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_8]][@x] : <@A<[]>>, !felt.type
 // CHECK-NEXT:        %[[V_11:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_8]][@cb] : <@A<[]>>, !struct.type<@B<[]>>
 // CHECK-NEXT:        function.call @B::@constrain(%[[V_11]], %[[V_9]], %[[V_10]]) : (!struct.type<@B<[]>>, !felt.type, !felt.type) -> ()
 // CHECK-NEXT:        %[[V_13:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_11]][@c] : <@B<[]>>, !felt.type
-// CHECK-NEXT:        %[[V_14:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_8]][@x] : <@A<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[V_14]], %[[V_13]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[V_15:[0-9a-zA-Z_\.]+]] = felt.const  5
-// CHECK-NEXT:        %[[V_16:[0-9a-zA-Z_\.]+]] = felt.mul %[[V_13]], %[[V_15]] : !felt.type, !felt.type
-// CHECK-NEXT:        %[[V_17:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_8]][@c] : <@A<[]>>, !felt.type
+// CHECK-NEXT:        %[[V_16:[0-9a-zA-Z_\.]+]] = felt.mul %[[V_14]], %[[V_15]] : !felt.type, !felt.type
 // CHECK-NEXT:        constrain.eq %[[V_17]], %[[V_16]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
@@ -70,8 +70,8 @@ component main {public [a, b]} = A();
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[V_22:[0-9a-zA-Z_\.]+]]: !struct.type<@B<[]>>, %[[V_23:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}, %[[V_24:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[V_25:[0-9a-zA-Z_\.]+]] = felt.mul %[[V_23]], %[[V_24]] : !felt.type, !felt.type
-// CHECK-NEXT:        %[[V_26:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_22]][@c] : <@B<[]>>, !felt.type
+// CHECK-DAG:         %[[V_25:[0-9a-zA-Z_\.]+]] = felt.mul %[[V_23]], %[[V_24]] : !felt.type, !felt.type
+// CHECK-DAG:         %[[V_26:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_22]][@c] : <@B<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[V_26]], %[[V_25]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }

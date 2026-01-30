@@ -21,7 +21,6 @@ use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::OperationLike as _;
 use llzk::prelude::Value;
-use llzk::prelude::ValueLike as _;
 use llzk::value_ext::replace_all_uses;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
@@ -62,6 +61,7 @@ impl WriteTarget {
         matches!(self, WriteTarget::Compute)
     }
     /// Returns true if the target is `@constrain`.
+    #[allow(unused)]
     #[inline]
     fn is_constrain(&self) -> bool {
         matches!(self, WriteTarget::Constrain)
@@ -249,25 +249,12 @@ impl<'ast> WriteChain<'ast> {
     fn get_root_signal<'ctx, 'val>(
         &self,
         var: &str,
-        target: WriteTarget,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
-        location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
-        if target.is_constrain() {
-            // Read value from field of "self" struct.
-            let expected_type = fc.block_ctx.get_named_value(var).unwrap().r#type();
-            let self_value = fc.func.self_value_of_constrain()?;
-            fc.append_op_unnamed_result(r#struct::readf(
-                &OpBuilder::new(codegen.context),
-                location,
-                expected_type,
-                self_value,
-                var,
-            )?)
-        } else {
-            fc.block_ctx.get_named_value(var).copied()
-        }
+        // Both compute and constrain functions should have the `var` defined:
+        // compute from an existing assignment, or constrain from pre-generation
+        // of the `readf` in `gen_template_llzk`.
+        fc.block_ctx.get_named_value(var).copied()
     }
 
     /// Handle [WriteChain::Root] case of [`WriteChain::get_value`] other than
@@ -379,7 +366,7 @@ impl<'ast> WriteChain<'ast> {
     ) -> Result<Value<'ctx, 'val>> {
         match self {
             WriteChain::Root { var, op: RootWriteOp::Signal } => {
-                self.get_root_signal(var, target, codegen, fc, location)
+                self.get_root_signal(var, fc)
             }
             WriteChain::Root { var, .. } => self.get_root_value(var, fc),
             WriteChain::Array { indices, prev } => self.get_array_value(

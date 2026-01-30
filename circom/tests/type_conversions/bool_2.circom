@@ -59,6 +59,7 @@ component main = A(555);
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_18:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[@x]>>, %[[VAL_19:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = poly.read_const @x : !felt.type
+// CHECK-NEXT:        %[[VAL_UNUSED:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_18]][@out] : <@A<[@x]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_22:[0-9a-zA-Z_\.]+]] = function.call @binop_bool(%[[VAL_19]], %[[VAL_20]]) : (!felt.type, !felt.type) -> !felt.type
 // CHECK-NEXT:        %[[VAL_23:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -70,7 +71,6 @@ component main = A(555);
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:          scf.yield %[[VAL_27]] : !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_18]][@out] : <@A<[@x]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

@@ -38,6 +38,7 @@ component main = A(1);
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[SELF:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[@n]>>, %[[V_14:[0-9a-zA-Z_\.]+]]: !array.type<3 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
+// CHECK-NEXT:        %[[V_26:[0-9a-zA-Z_\.]+]] = struct.readf %[[SELF]][@out] : <@A<[@n]>>, !felt.type
 // CHECK-NEXT:        %[[V_16:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_17:[0-9a-zA-Z_\.]+]] = array.new %[[V_16]], %[[V_16]], %[[V_16]] : <3 x !felt.type>
 // CHECK-NEXT:        %[[V_18:[0-9a-zA-Z_\.]+]] = felt.const  2
@@ -48,7 +49,6 @@ component main = A(1);
 // CHECK-NEXT:        %[[V_23:[0-9a-zA-Z_\.]+]] = array.read %[[V_A]]{{\[}}%[[V_22]]] : <3 x !felt.type>, !felt.type
 // CHECK-NEXT:        %[[V_24:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_23]]
 // CHECK-NEXT:        %[[V_25:[0-9a-zA-Z_\.]+]] = array.read %[[V_14]]{{\[}}%[[V_24]]] : <3 x !felt.type>, !felt.type
-// CHECK-NEXT:        %[[V_26:[0-9a-zA-Z_\.]+]] = struct.readf %[[SELF]][@out] : <@A<[@n]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

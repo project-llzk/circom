@@ -77,6 +77,7 @@ component main = NonZeroInit();
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@NonZeroInit<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_36:[0-9a-zA-Z_\.]+]]: !struct.type<@NonZeroInit<[]>>, %[[VAL_37:[0-9a-zA-Z_\.]+]]: !array.type<9 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readf %[[VAL_36]][@b] : <@NonZeroInit<[]>>, !array.type<9 x !felt.type>
 // CHECK-NEXT:        %[[VAL_38:[0-9a-zA-Z_\.]+]] = felt.const  4
 // CHECK-NEXT:        %[[VAL_39:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_40:[0-9a-zA-Z_\.]+]] = %[[VAL_38]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_41:[0-9a-zA-Z_\.]+]] = felt.const  7

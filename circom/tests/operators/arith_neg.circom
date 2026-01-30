@@ -24,8 +24,8 @@ component main = ArithNeg();
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[VAL_3:[0-9a-zA-Z_\.]+]]: !struct.type<@ArithNeg<[]>>, %[[VAL_4:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.neg %[[VAL_4]] : !felt.type
-// CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_3]][@x] : <@ArithNeg<[]>>, !felt.type
+// CHECK-DAG:         %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.neg %[[VAL_4]] : !felt.type
+// CHECK-DAG:         %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_3]][@x] : <@ArithNeg<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_6]], %[[VAL_5]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }

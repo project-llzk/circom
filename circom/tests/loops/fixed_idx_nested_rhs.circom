@@ -6,7 +6,7 @@ pragma circom 2.0.0;
 template FixIdxNested() {
     signal input in[16];
     signal output out[16];
-    
+
     var arr[16] = [0, 5, 10, 15, 4, 9, 14, 3, 8, 13, 2, 7, 12, 1, 6, 11];
 
     for (var i = 0; i < 16; i++) {
@@ -62,6 +62,7 @@ component main = FixIdxNested();
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@FixIdxNested<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_35:[0-9a-zA-Z_\.]+]]: !struct.type<@FixIdxNested<[]>>, %[[VAL_36:[0-9a-zA-Z_\.]+]]: !array.type<16 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_66:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_35]][@out] : <@FixIdxNested<[]>>, !array.type<16 x !felt.type>
 // CHECK-NEXT:        %[[VAL_37:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_38:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]] : <16 x !felt.type>
 // CHECK-NEXT:        %[[VAL_39:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -92,7 +93,6 @@ component main = FixIdxNested();
 // CHECK-NEXT:          %[[VAL_63:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_55]]{{\[}}%[[VAL_62]]] : <16 x !felt.type>, !felt.type
 // CHECK-NEXT:          %[[VAL_64:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_63]]
 // CHECK-NEXT:          %[[VAL_65:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_36]]{{\[}}%[[VAL_64]]] : <16 x !felt.type>, !felt.type
-// CHECK-NEXT:          %[[VAL_66:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_35]][@out] : <@FixIdxNested<[]>>, !array.type<16 x !felt.type>
 // CHECK-NEXT:          %[[VAL_67:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_61]]
 // CHECK-NEXT:          %[[VAL_68:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_66]]{{\[}}%[[VAL_67]]] : <16 x !felt.type>, !felt.type
 // CHECK-NEXT:          constrain.eq %[[VAL_68]], %[[VAL_65]] : !felt.type, !felt.type

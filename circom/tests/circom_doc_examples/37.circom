@@ -42,8 +42,8 @@ component main = Multiplier3();
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain
 // CHECK-SAME:      (%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@Multiplier2<[]>>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_6:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_5]], %[[VAL_6]] : !felt.type, !felt.type
-// CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@out] : <@Multiplier2<[]>>, !felt.type
+// CHECK-DAG:         %[[VAL_7:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_5]], %[[VAL_6]] : !felt.type, !felt.type
+// CHECK-DAG:         %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@out] : <@Multiplier2<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_8]], %[[VAL_7]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
@@ -68,11 +68,11 @@ component main = Multiplier3();
 // CHECK-SAME:      (%[[VAL_17:[0-9a-zA-Z_\.]+]]: !struct.type<@Multiplier3<[]>>, %[[VAL_18:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_19:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_20:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-DAG:         %[[VAL_21:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_17]][@mult2] : <@Multiplier3<[]>>, !struct.type<@Multiplier2<[]>>
 // CHECK-DAG:         %[[VAL_22:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_17]][@mult1] : <@Multiplier3<[]>>, !struct.type<@Multiplier2<[]>>
+// CHECK-DAG:         %[[VAL_25:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_17]][@out] : <@Multiplier3<[]>>, !felt.type
 // CHECK-NEXT:        function.call @Multiplier2::@constrain(%[[VAL_22]], %[[VAL_18]], %[[VAL_19]]) : (!struct.type<@Multiplier2<[]>>, !felt.type, !felt.type) -> ()
 // CHECK-NEXT:        %[[VAL_23:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_22]][@out] : <@Multiplier2<[]>>, !felt.type
 // CHECK-NEXT:        function.call @Multiplier2::@constrain(%[[VAL_21]], %[[VAL_23]], %[[VAL_20]]) : (!struct.type<@Multiplier2<[]>>, !felt.type, !felt.type) -> ()
 // CHECK-NEXT:        %[[VAL_24:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_21]][@out] : <@Multiplier2<[]>>, !felt.type
-// CHECK-NEXT:        %[[VAL_25:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_17]][@out] : <@Multiplier3<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_25]], %[[VAL_24]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }

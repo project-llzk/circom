@@ -17,7 +17,7 @@ template KnownFunctionArgs() {
 
     out[0] <-- funWithLoop(4); // 0 + 1 + 2 + 3 + 4 = 10
     out[1] <-- funWithLoop(5); // 0 + 1 + 2 + 3 + 4 + 5 = 15
-    
+
     var acc = 1;
     for (var i = 2; i <= funWithLoop(3); i++) { // 0 + 1 + 2 + 3 = 6
         acc *= i;
@@ -79,6 +79,7 @@ component main = KnownFunctionArgs();
 // CHECK-NEXT:        function.return %[[VAL_12]] : !struct.type<@KnownFunctionArgs<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_37:[0-9a-zA-Z_\.]+]]: !struct.type<@KnownFunctionArgs<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readf %[[VAL_37]][@out] : <@KnownFunctionArgs<[]>>, !array.type<3 x !felt.type>
 // CHECK-NEXT:        %[[VAL_38:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_39:[0-9a-zA-Z_\.]+]] = felt.const  2
 // CHECK-NEXT:        %[[VAL_40:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_41:[0-9a-zA-Z_\.]+]] = %[[VAL_38]], %[[VAL_42:[0-9a-zA-Z_\.]+]] = %[[VAL_39]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {

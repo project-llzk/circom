@@ -39,10 +39,10 @@ component main = ArithRemainder();
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@ArithRemainder<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !struct.type<@ArithRemainder<[]>>, %[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_8]][@inv] : <@ArithRemainder<[]>>, !felt.type
-// CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_8]][@out] : <@ArithRemainder<[]>>, !felt.type
+// CHECK-DAG:         %[[VAL_10:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_8]][@inv] : <@ArithRemainder<[]>>, !felt.type
+// CHECK-DAG:         %[[VAL_11:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_8]][@out] : <@ArithRemainder<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_11]], %[[VAL_10]] : !felt.type, !felt.type
-// CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_9]], %[[VAL_10]] : !felt.type, !felt.type
+// CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_9]], %[[VAL_11]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        constrain.eq %[[VAL_12]], %[[VAL_13]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return

@@ -4,11 +4,11 @@
 
 pragma circom 2.1.0;
 
-template Ex(n, m){ 
+template Ex(n, m){
    signal input in[n];
    signal output out[m];
    var i = 0;
-   while(i < n) { 
+   while(i < n) {
       out[i] <== in[i];
       i += 1;
    }
@@ -44,6 +44,7 @@ component main = Ex(3, 3);
 // CHECK-NEXT:      function.def @constrain(%[[VAL_15:[0-9a-zA-Z_\.]+]]: !struct.type<@Ex<[@n, @m]>>, %[[VAL_16:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
 // CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = poly.read_const @m : !felt.type
+// CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_15]][@out] : <@Ex<[@n, @m]>>, !array.type<@m x !felt.type>
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_21:[0-9a-zA-Z_\.]+]] = %[[VAL_19]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_21]], %[[VAL_17]])
@@ -52,7 +53,6 @@ component main = Ex(3, 3);
 // CHECK-NEXT:        ^bb0(%[[VAL_23:[0-9a-zA-Z_\.]+]]: !felt.type):
 // CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_23]]
 // CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_16]]{{\[}}%[[VAL_24]]] : <@n x !felt.type>, !felt.type
-// CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_15]][@out] : <@Ex<[@n, @m]>>, !array.type<@m x !felt.type>
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_23]]
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_26]]{{\[}}%[[VAL_27]]] : <@m x !felt.type>, !felt.type
 // CHECK-NEXT:          constrain.eq %[[VAL_28]], %[[VAL_25]] : !felt.type, !felt.type

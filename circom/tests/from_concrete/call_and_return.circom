@@ -44,8 +44,8 @@ component main = C();
 // CHECK-NEXT:        function.return %[[VAL_7]] : !struct.type<@C<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_10:[0-9a-zA-Z_\.]+]]: !struct.type<@C<[]>>, %[[VAL_11:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.const  12
-// CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_10]][@out] : <@C<[]>>, !felt.type
+// CHECK-DAG:         %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.const  12
+// CHECK-DAG:         %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_10]][@out] : <@C<[]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

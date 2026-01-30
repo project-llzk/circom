@@ -39,17 +39,17 @@ component main = B(3);
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_9:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[@n]>>, %[[VAL_10:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
-// CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_10]], %[[VAL_10]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_9]][@b] : <@A<[@n]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_9]][@c] : <@A<[@n]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_9]][@d] : <@A<[@n]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_10]], %[[VAL_10]] : !felt.type, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_13]], %[[VAL_12]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = felt.const  2
 // CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_10]], %[[VAL_14]] : !felt.type, !felt.type
-// CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_9]][@c] : <@A<[@n]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_16]], %[[VAL_15]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_10]], %[[VAL_10]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = felt.const  2
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_17]], %[[VAL_18]] : !felt.type, !felt.type
-// CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_9]][@d] : <@A<[@n]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_20]], %[[VAL_19]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
@@ -70,11 +70,11 @@ component main = B(3);
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_28:[0-9a-zA-Z_\.]+]]: !struct.type<@B<[@n]>>, %[[VAL_29:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
+// CHECK-NEXT:        %[[VAL_34:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_28]][@out1] : <@B<[@n]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_28]][@[[TEMP]]] : <@B<[@n]>>, !struct.type<@A<[@n]>>
 // CHECK-NEXT:        function.call @A::@constrain(%[[VAL_31]], %[[VAL_29]]) : (!struct.type<@A<[@n]>>, !felt.type) -> ()
 // CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_31]][@b] : <@A<[@n]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_33:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_31]][@c] : <@A<[@n]>>, !felt.type
-// CHECK-NEXT:        %[[VAL_34:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_28]][@out1] : <@B<[@n]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_34]], %[[VAL_33]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_35:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_31]][@d] : <@A<[@n]>>, !felt.type
 // CHECK-NEXT:        function.return

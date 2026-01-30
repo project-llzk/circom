@@ -689,20 +689,23 @@ pub fn set_operand_if_undef<'ctx, 'op>(
 /// If the operation the value comes from is in an inner block, moves the op right after the parent
 /// op that is in the same block as the op about to be moved.
 ///
+/// If the value is already before the op in a different but dominating block,
+/// this function does nothing.
+///
 /// # Panics
 ///
-/// If the parent search reaches the top, meaning that the value comes from an op in a block that
-/// is a 'parent' of the other op or that the value's op is not owned by a block.
+/// If the value's op is not owned by a block.
 pub fn insert_after_if_op_result<'ctx, 'val, 'op>(
     val: Value<'ctx, 'val>,
     op: OperationRef<'ctx, 'op>,
 ) -> Result<()> {
-    if let Ok(mut owner) = op_result_owner(val) {
+    if let Ok(owner) = op_result_owner(val) {
         anyhow::ensure!(owner.block().is_some(), "reference op must belong to a block");
         if let Some(op_block) = op.block() {
-            owner = find_parent_in_block(op_block, owner).expect("parent op not found");
-        };
-        move_op_after(&owner, &op);
+            if let Some(owner) = find_parent_in_block(op_block, owner) {
+                move_op_after(&owner, &op);
+            }
+        }
     }
     Ok(())
 }

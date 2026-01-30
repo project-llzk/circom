@@ -44,6 +44,7 @@ component main = ForUnknownIndex();
 // CHECK-NEXT:        function.return %[[VAL_2]] : !struct.type<@ForUnknownIndex<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@ForUnknownIndex<[]>>, %[[VAL_17:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_18:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_16]][@out] : <@ForUnknownIndex<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_22:[0-9a-zA-Z_\.]+]] = %[[VAL_19]], %[[VAL_23:[0-9a-zA-Z_\.]+]] = %[[VAL_20]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {
@@ -56,7 +57,6 @@ component main = ForUnknownIndex();
 // CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_26]], %[[VAL_28]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_27]], %[[VAL_29]] : !felt.type, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_16]][@out] : <@ForUnknownIndex<[]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

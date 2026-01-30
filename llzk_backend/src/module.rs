@@ -506,6 +506,23 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         })?;
     }
 
+    // Insert read operations for struct fields into constrain functions.
+    let location = Location::unknown(codegen.context);
+    let builder = OpBuilder::new(codegen.context);
+    for field in new_struct.get_field_defs() {
+        let field_name = field.field_name();
+        constrain_ctx.block_ctx.declare_name_if_not_present(field_name, || {
+            r#struct::readf(
+                &builder,
+                location,
+                field.field_type(),
+                constrain_func.self_value_of_constrain()?,
+                field_name,
+            )
+            .map_err(Into::into)
+        })?;
+    }
+
     // Insert the Operations created from variable Declaration statements and map the circom
     // variable name to LLZK op result Value (do this in each function).
     for (name, op) in declarations.decl_inits {

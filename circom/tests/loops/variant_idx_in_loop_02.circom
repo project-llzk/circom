@@ -57,6 +57,7 @@ component main = VariantIndex(2);
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_28:[0-9a-zA-Z_\.]+]]: !struct.type<@VariantIndex<[@n]>>, %[[VAL_29:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
+// CHECK-NEXT:        %[[VAL_49:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_28]][@out] : <@VariantIndex<[@n]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = array.new  : <@n x !felt.type>
 // CHECK-NEXT:        %[[VAL_33:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
@@ -79,7 +80,6 @@ component main = VariantIndex(2);
 // CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_43]], %[[VAL_47]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_48]], %[[VAL_44]] : !felt.type, !array.type<@n x !felt.type>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_49:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_28]][@out] : <@VariantIndex<[@n]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

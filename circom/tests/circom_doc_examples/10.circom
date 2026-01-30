@@ -42,6 +42,7 @@ component main = T14();
 // CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@T14<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_12:[0-9a-zA-Z_\.]+]]: !struct.type<@T14<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_24:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_12]][@out] : <@T14<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -56,7 +57,6 @@ component main = T14();
 // CHECK-NEXT:          scf.yield %[[VAL_13]], %[[VAL_13]] : !felt.type, !felt.type
 // CHECK-NEXT:        }
 // CHECK-NEXT:        %[[VAL_22:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_17]]#0, %[[VAL_17]]#1 : !felt.type, !felt.type
-// CHECK-NEXT:        %[[VAL_24:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_12]][@out] : <@T14<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_24]], %[[VAL_22]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }

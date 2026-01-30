@@ -46,13 +46,13 @@ component main = CmpLT(5);
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@CmpLT<[@n]>>, %[[VAL_17:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
+// CHECK-NEXT:        %[[VAL_24:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_16]][@b] : <@CmpLT<[@n]>>, !array.type<@n x !felt.type>
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_18]], %[[VAL_19]])
 // CHECK-NEXT:        scf.if %[[VAL_20]] {
 // CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_21]]
 // CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_17]]{{\[}}%[[VAL_22]]] : <@n x !felt.type>, !felt.type
-// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_16]][@b] : <@CmpLT<[@n]>>, !array.type<@n x !felt.type>
 // CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_25]]
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_24]]{{\[}}%[[VAL_26]]] : <@n x !felt.type>, !felt.type
@@ -61,10 +61,9 @@ component main = CmpLT(5);
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_28]]
 // CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_17]]{{\[}}%[[VAL_29]]] : <@n x !felt.type>, !felt.type
-// CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_16]][@b] : <@CmpLT<[@n]>>, !array.type<@n x !felt.type>
 // CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_32]]
-// CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_31]]{{\[}}%[[VAL_33]]] : <@n x !felt.type>, !felt.type
+// CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_24]]{{\[}}%[[VAL_33]]] : <@n x !felt.type>, !felt.type
 // CHECK-NEXT:          constrain.eq %[[VAL_34]], %[[VAL_30]] : !felt.type, !felt.type
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.return

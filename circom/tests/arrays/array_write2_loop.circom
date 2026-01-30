@@ -58,6 +58,7 @@ component main = Array1();
 // CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@Array1<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_24:[0-9a-zA-Z_\.]+]]: !struct.type<@Array1<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_24]][@out] : <@Array1<[]>>, !array.type<5,2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_25:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_26:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_27:[0-9a-zA-Z_\.]+]] = %[[VAL_25]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = felt.const  5
@@ -65,7 +66,6 @@ component main = Array1();
 // CHECK-NEXT:          scf.condition(%[[VAL_29]]) %[[VAL_27]] : !felt.type
 // CHECK-NEXT:        } do {
 // CHECK-NEXT:        ^bb0(%[[VAL_30:[0-9a-zA-Z_\.]+]]: !felt.type):
-// CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_24]][@out] : <@Array1<[]>>, !array.type<5,2 x !felt.type>
 // CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_30]]
 // CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_33]]
@@ -82,11 +82,10 @@ component main = Array1();
 // CHECK-NEXT:          scf.condition(%[[VAL_42]]) %[[VAL_40]] : !felt.type
 // CHECK-NEXT:        } do {
 // CHECK-NEXT:        ^bb0(%[[VAL_43:[0-9a-zA-Z_\.]+]]: !felt.type):
-// CHECK-NEXT:          %[[VAL_44:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_24]][@out] : <@Array1<[]>>, !array.type<5,2 x !felt.type>
 // CHECK-NEXT:          %[[VAL_45:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_43]]
 // CHECK-NEXT:          %[[VAL_46:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_46]]
-// CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_44]]{{\[}}%[[VAL_45]], %[[VAL_47]]] : <5,2 x !felt.type>, !felt.type
+// CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_31]]{{\[}}%[[VAL_45]], %[[VAL_47]]] : <5,2 x !felt.type>, !felt.type
 // CHECK-NEXT:          constrain.eq %[[VAL_48]], %[[VAL_43]] : !felt.type, !felt.type
 // CHECK-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_43]], %[[VAL_49]] : !felt.type, !felt.type

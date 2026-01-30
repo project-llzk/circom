@@ -60,6 +60,7 @@ component main = Template();
 // CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@Template<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_31:[0-9a-zA-Z_\.]+]]: !struct.type<@Template<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_62:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_31]][@ret] : <@Template<[]>>, !array.type<2,2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2,2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_33:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_34:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -100,7 +101,6 @@ component main = Template();
 // CHECK-NEXT:        %[[VAL_60:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_61:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_60]]
 // CHECK-NEXT:        array.insert %[[VAL_32]]{{\[}}%[[VAL_61]]] = %[[VAL_51]] : <2,2 x !felt.type>, <2 x !felt.type>
-// CHECK-NEXT:        %[[VAL_62:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_31]][@ret] : <@Template<[]>>, !array.type<2,2 x !felt.type>
 // CHECK-NEXT:        constrain.eq %[[VAL_62]], %[[VAL_32]] : !array.type<2,2 x !felt.type>, !array.type<2,2 x !felt.type>
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }

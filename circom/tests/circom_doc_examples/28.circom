@@ -34,9 +34,9 @@ component main = Caller();
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_2:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[]>>, %[[VAL_3:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_2]][@intermediate] : <@A<[]>>, !felt.type
-// CHECK-NEXT:        constrain.eq %[[VAL_4]], %[[VAL_3]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_2]][@out] : <@A<[]>>, !felt.type
-// CHECK-NEXT:        constrain.eq %[[VAL_5]], %[[VAL_3]] : !felt.type, !felt.type
+// CHECK-NEXT:        constrain.eq %[[VAL_4]], %[[VAL_3]] : !felt.type, !felt.type
+// CHECK-NEXT:        constrain.eq %[[VAL_5]], %[[VAL_4]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
@@ -52,10 +52,10 @@ component main = Caller();
 // CHECK-NEXT:        function.return %[[VAL_7]] : !struct.type<@Caller<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_10:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller<[]>>, %[[VAL_11:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_10]][@out] : <@Caller<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_10]][@a] : <@Caller<[]>>, !struct.type<@A<[]>>
 // CHECK-NEXT:        function.call @A::@constrain(%[[VAL_12]], %[[VAL_11]]) : (!struct.type<@A<[]>>, !felt.type) -> ()
 // CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_12]][@out] : <@A<[]>>, !felt.type
-// CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_10]][@out] : <@Caller<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_14]], %[[VAL_13]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }

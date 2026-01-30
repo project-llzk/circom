@@ -43,20 +43,20 @@ component main = Array3(5);
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_14:[0-9a-zA-Z_\.]+]]: !struct.type<@Array3<[@n]>>, %[[VAL_15:[0-9a-zA-Z_\.]+]]: !array.type<@n,@n x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
-// CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_19:[0-9a-zA-Z_\.]+]] = %[[VAL_17]]) : (!felt.type) -> !felt.type {
-// CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_19]], %[[VAL_16]])
-// CHECK-NEXT:          scf.condition(%[[VAL_20]]) %[[VAL_19]] : !felt.type
+// CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_14]][@out] : <@Array3<[@n]>>, !array.type<@n,@n x !felt.type>
+// CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_20:[0-9a-zA-Z_\.]+]] = %[[VAL_18]]) : (!felt.type) -> !felt.type {
+// CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_20]], %[[VAL_16]])
+// CHECK-NEXT:          scf.condition(%[[VAL_21]]) %[[VAL_20]] : !felt.type
 // CHECK-NEXT:        } do {
-// CHECK-NEXT:        ^bb0(%[[VAL_21:[0-9a-zA-Z_\.]+]]: !felt.type):
-// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_21]]
-// CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = array.extract %[[VAL_15]]{{\[}}%[[VAL_22]]] : <@n,@n x !felt.type>
-// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_14]][@out] : <@Array3<[@n]>>, !array.type<@n,@n x !felt.type>
-// CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_21]]
-// CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = array.extract %[[VAL_24]]{{\[}}%[[VAL_25]]] : <@n,@n x !felt.type>
-// CHECK-NEXT:          constrain.eq %[[VAL_26]], %[[VAL_23]] : !array.type<@n x !felt.type>, !array.type<@n x !felt.type>
+// CHECK-NEXT:        ^bb0(%[[VAL_22:[0-9a-zA-Z_\.]+]]: !felt.type):
+// CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_22]]
+// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = array.extract %[[VAL_15]]{{\[}}%[[VAL_23]]] : <@n,@n x !felt.type>
+// CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_22]]
+// CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = array.extract %[[VAL_17]]{{\[}}%[[VAL_25]]] : <@n,@n x !felt.type>
+// CHECK-NEXT:          constrain.eq %[[VAL_26]], %[[VAL_24]] : !array.type<@n x !felt.type>, !array.type<@n x !felt.type>
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_21]], %[[VAL_27]] : !felt.type, !felt.type
+// CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_22]], %[[VAL_27]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_28]] : !felt.type
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.return
