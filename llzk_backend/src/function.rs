@@ -1915,7 +1915,7 @@ where
                                 }
                                 #[allow(unused_variables)] // TODO: TEMP
                                 Access::ComponentAccess(name) => {
-                                    todo!("Handle component access in function")
+                                    todo!("Handle component access")
                                 }
                             }?;
                             function.cast_to_index_if_needed(location, idx)

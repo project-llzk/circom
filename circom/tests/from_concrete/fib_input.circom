@@ -26,11 +26,11 @@ template Fibonacci() {
 
 component main = Fibonacci();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Fibonacci<[]>>, veridise.lang = "llzk"} {
-// CHECK-NEXT:    struct.def @Fibonacci<[]> {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Fibonacci_0<[]>>, veridise.lang = "llzk"} {
+// CHECK-NEXT:    struct.def @Fibonacci_0<[]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
-// CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Fibonacci<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Fibonacci<[]>>
+// CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Fibonacci_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Fibonacci_0<[]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -58,16 +58,16 @@ component main = Fibonacci();
 // CHECK-NEXT:        %[[VAL_25:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_0]], %[[VAL_24]])
 // CHECK-NEXT:        %[[VAL_26:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_25]] -> (!felt.type) {
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:          struct.writef %[[VAL_1]][@out] = %[[VAL_27]] : <@Fibonacci<[]>>, !felt.type
+// CHECK-NEXT:          struct.writef %[[VAL_1]][@out] = %[[VAL_27]] : <@Fibonacci_0<[]>>, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_27]] : !felt.type
 // CHECK-NEXT:        } else {
-// CHECK-NEXT:          struct.writef %[[VAL_1]][@out] = %[[VAL_21]] : <@Fibonacci<[]>>, !felt.type
+// CHECK-NEXT:          struct.writef %[[VAL_1]][@out] = %[[VAL_21]] : <@Fibonacci_0<[]>>, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_21]] : !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@Fibonacci<[]>>
+// CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@Fibonacci_0<[]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_28:[0-9a-zA-Z_\.]+]]: !struct.type<@Fibonacci<[]>>, %[[VAL_29:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_28]][@out] : <@Fibonacci<[]>>, !felt.type
+// CHECK-NEXT:      function.def @constrain(%[[VAL_28:[0-9a-zA-Z_\.]+]]: !struct.type<@Fibonacci_0<[]>>, %[[VAL_29:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_28]][@out] : <@Fibonacci_0<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_33:[0-9a-zA-Z_\.]+]] = felt.const  0

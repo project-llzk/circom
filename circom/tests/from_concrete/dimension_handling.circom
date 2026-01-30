@@ -25,7 +25,7 @@ template A() {
 
 component main = A();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@A<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@A_0<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    function.def @myAdd_1(%[[V_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_1:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_2:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_3:[0-9a-zA-Z_\.]+]]: !felt.type) -> !array.type<2 x !felt.type> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[V_4:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
 // CHECK-NEXT:      %[[V_5:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -100,9 +100,9 @@ component main = A();
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.return %[[V_18]] : !array.type<1,1 x !felt.type>
 // CHECK-NEXT:    }
-// CHECK-NEXT:    struct.def @A<[]> {
-// CHECK-NEXT:      function.def @compute() -> !struct.type<@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:        %[[V_61:[0-9a-zA-Z_\.]+]] = struct.new : <@A<[]>>
+// CHECK-NEXT:    struct.def @A_0<[]> {
+// CHECK-NEXT:      function.def @compute() -> !struct.type<@A_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        %[[V_61:[0-9a-zA-Z_\.]+]] = struct.new : <@A_0<[]>>
 // CHECK-NEXT:        %[[V_62:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<1,1 x !felt.type>
 // CHECK-NEXT:        %[[V_63:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<1 x !felt.type>
 // CHECK-NEXT:        %[[V_64:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -113,9 +113,9 @@ component main = A();
 // CHECK-NEXT:        %[[V_68:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_67]]
 // CHECK-NEXT:        array.insert %[[V_62]]{{\[}}%[[V_68]]] = %[[V_63]] : <1,1 x !felt.type>, <1 x !felt.type>
 // CHECK-NEXT:        %[[V_69:[0-9a-zA-Z_\.]+]] = function.call @myFun_0() : () -> !array.type<1,1 x !felt.type>
-// CHECK-NEXT:        function.return %[[V_61]] : !struct.type<@A<[]>>
+// CHECK-NEXT:        function.return %[[V_61]] : !struct.type<@A_0<[]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[V_70:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:      function.def @constrain(%[[V_70:[0-9a-zA-Z_\.]+]]: !struct.type<@A_0<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[V_71:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<1,1 x !felt.type>
 // CHECK-NEXT:        %[[V_72:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<1 x !felt.type>
 // CHECK-NEXT:        %[[V_73:[0-9a-zA-Z_\.]+]] = felt.const  0

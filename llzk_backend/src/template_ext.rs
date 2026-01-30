@@ -166,7 +166,7 @@ impl TemplateLike for TemplateInstance {
         codegen.location_unknown()
     }
     fn get_name(&self) -> &str {
-        &self.template_name
+        &self.template_header // this one is unique, but `template_name` is not
     }
     fn get_name_of_params(&self) -> &[String] {
         &[]

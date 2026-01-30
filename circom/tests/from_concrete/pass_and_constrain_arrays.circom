@@ -51,7 +51,7 @@ template Main() {
 
 component main = Main();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Main<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Main_0<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    function.def @add_1(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_3:[0-9a-zA-Z_\.]+]]: !felt.type) -> !array.type<2 x !felt.type> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  168700
 // CHECK-NEXT:      %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  168696
@@ -257,10 +257,10 @@ component main = Main();
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.return %[[VAL_43]] : !array.type<16,2 x !felt.type>
 // CHECK-NEXT:    }
-// CHECK-NEXT:    struct.def @Main<[]> {
+// CHECK-NEXT:    struct.def @Main_0<[]> {
 // CHECK-NEXT:      struct.field @out : !array.type<16,2 x !felt.type> {llzk.pub}
-// CHECK-NEXT:      function.def @compute() -> !struct.type<@Main<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:        %[[VAL_173:[0-9a-zA-Z_\.]+]] = struct.new : <@Main<[]>>
+// CHECK-NEXT:      function.def @compute() -> !struct.type<@Main_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        %[[VAL_173:[0-9a-zA-Z_\.]+]] = struct.new : <@Main_0<[]>>
 // CHECK-NEXT:        %[[VAL_174:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<16,2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_175:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_176:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -366,11 +366,11 @@ component main = Main();
 // CHECK-NEXT:          %[[VAL_251:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_235]], %[[VAL_250]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_251]] : !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_173]][@out] = %[[VAL_174]] : <@Main<[]>>, !array.type<16,2 x !felt.type>
-// CHECK-NEXT:        function.return %[[VAL_173]] : !struct.type<@Main<[]>>
+// CHECK-NEXT:        struct.writef %[[VAL_173]][@out] = %[[VAL_174]] : <@Main_0<[]>>, !array.type<16,2 x !felt.type>
+// CHECK-NEXT:        function.return %[[VAL_173]] : !struct.type<@Main_0<[]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_252:[0-9a-zA-Z_\.]+]]: !struct.type<@Main<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_318:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_252]][@out] : <@Main<[]>>, !array.type<16,2 x !felt.type>
+// CHECK-NEXT:      function.def @constrain(%[[VAL_252:[0-9a-zA-Z_\.]+]]: !struct.type<@Main_0<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_318:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_252]][@out] : <@Main_0<[]>>, !array.type<16,2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_253:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_254:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_255:[0-9a-zA-Z_\.]+]] = felt.const  0

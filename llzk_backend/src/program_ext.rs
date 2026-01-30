@@ -155,7 +155,7 @@ impl ProgramLike for VCPPlus<'_> {
     fn get_main_component_info(&self) -> MainComponentInfo {
         MainComponentInfo {
             file_location: self.parse_info.main_expr_location.clone(),
-            name: self.vcp.templates[self.vcp.main_id].template_name.clone(),
+            name: self.vcp.templates[self.vcp.main_id].template_header.clone(),
             params: vec![],
         }
     }
