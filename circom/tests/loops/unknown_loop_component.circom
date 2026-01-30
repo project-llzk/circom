@@ -40,10 +40,10 @@ component main = UnknownLoopComponent();
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@UnknownLoopComponent<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@UnknownLoopComponent<[]>>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@bits] : <@UnknownLoopComponent<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@nb] : <@UnknownLoopComponent<[]>>, !struct.type<@nbits<[]>>
 // CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
 // CHECK-NEXT:        function.call @nbits::@constrain(%[[VAL_6]], %[[VAL_7]]) : (!struct.type<@nbits<[]>>, !felt.type) -> ()
-// CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@bits] : <@UnknownLoopComponent<[]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
@@ -70,6 +70,7 @@ component main = UnknownLoopComponent();
 // CHECK-NEXT:        function.return %[[VAL_10]] : !struct.type<@nbits<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_25:[0-9a-zA-Z_\.]+]]: !struct.type<@nbits<[]>>, %[[VAL_26:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_41:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_25]][@out] : <@nbits<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_27:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_28:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_29:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_30:[0-9a-zA-Z_\.]+]] = %[[VAL_27]], %[[VAL_31:[0-9a-zA-Z_\.]+]] = %[[VAL_28]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {
@@ -85,7 +86,6 @@ component main = UnknownLoopComponent();
 // CHECK-NEXT:          %[[VAL_40:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_35]], %[[VAL_39]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_40]], %[[VAL_38]] : !felt.type, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_41:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_25]][@out] : <@nbits<[]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

@@ -53,6 +53,7 @@ component main = InnerConditional3(3);
 // CHECK-NEXT:        function.return %[[SELF]] : !struct.type<@InnerConditional3<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[SELF:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerConditional3<[]>>, %[[V_19:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[V_36:[0-9a-zA-Z_\.]+]] = struct.readf %[[SELF]][@out] : <@InnerConditional3<[]>>, !felt.type
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = felt.const  3
 // CHECK-NEXT:        %[[V_A0:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_I0:[0-9a-zA-Z_\.]+]] = felt.const  1
@@ -75,7 +76,6 @@ component main = InnerConditional3(3);
 // CHECK-NEXT:          %[[V_35:[0-9a-zA-Z_\.]+]] = felt.add %[[V_I2]], %[[V_34]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[V_31]], %[[V_35]] : !felt.type, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[V_36:[0-9a-zA-Z_\.]+]] = struct.readf %[[SELF]][@out] : <@InnerConditional3<[]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

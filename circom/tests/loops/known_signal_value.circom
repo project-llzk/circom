@@ -38,10 +38,10 @@ component main = KnownLoopViaSignal();
 // CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@KnownLoopViaSignal<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@KnownLoopViaSignal<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@y] : <@KnownLoopViaSignal<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@a] : <@KnownLoopViaSignal<[]>>, !struct.type<@accumulate<[]>>
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
 // CHECK-NEXT:        function.call @accumulate::@constrain(%[[VAL_5]], %[[VAL_6]]) : (!struct.type<@accumulate<[]>>, !felt.type) -> ()
-// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@y] : <@KnownLoopViaSignal<[]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
@@ -63,6 +63,7 @@ component main = KnownLoopViaSignal();
 // CHECK-NEXT:        function.return %[[VAL_9]] : !struct.type<@accumulate<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_17:[0-9a-zA-Z_\.]+]]: !struct.type<@accumulate<[]>>, %[[VAL_18:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_17]][@o] : <@accumulate<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_21:[0-9a-zA-Z_\.]+]] = %[[VAL_19]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_21]], %[[VAL_18]])
@@ -73,9 +74,7 @@ component main = KnownLoopViaSignal();
 // CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_23]], %[[VAL_24]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_25]] : !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_17]][@o] : <@accumulate<[]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }
-

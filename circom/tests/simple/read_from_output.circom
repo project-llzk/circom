@@ -28,9 +28,9 @@ component main = ReadFromOutput();
 // CHECK-LABEL:    function.def @constrain
 // CHECK-SAME:     (%[[VAL_3:[0-9a-zA-Z_\.]+]]: !struct.type<@ReadFromOutput<[]>>, %[[VAL_4:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:       %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_3]][@outp] : <@ReadFromOutput<[]>>, !felt.type
-// CHECK-NEXT:       constrain.eq %[[VAL_6]], %[[VAL_4]] : !felt.type, !felt.type
 // CHECK-NEXT:       %[[VAL_7:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_3]][@intermediate] : <@ReadFromOutput<[]>>, !felt.type
-// CHECK-NEXT:       constrain.eq %[[VAL_7]], %[[VAL_4]] : !felt.type, !felt.type
+// CHECK-NEXT:       constrain.eq %[[VAL_6]], %[[VAL_4]] : !felt.type, !felt.type
+// CHECK-NEXT:       constrain.eq %[[VAL_7]], %[[VAL_6]] : !felt.type, !felt.type
 // CHECK-NEXT:       function.return
 // CHECK-NEXT:     }
 // CHECK-NEXT:   }

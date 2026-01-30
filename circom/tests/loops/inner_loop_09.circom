@@ -67,6 +67,8 @@ component main = InnerLoops(2);
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_34:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerLoops<[@N]>>, %[[VAL_35:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_36:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readf %[[VAL_34]][@out] : <@InnerLoops<[@N]>>, !felt.type
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readf %[[VAL_34]][@out2] : <@InnerLoops<[@N]>>, !array.type<@N x !felt.type>
 // CHECK-NEXT:        %[[VAL_37:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_38:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_39:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -93,7 +95,6 @@ component main = InnerLoops(2);
 // CHECK-NEXT:          %[[VAL_62:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_47]], %[[VAL_61]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_49]]#0, %[[VAL_60]], %[[VAL_62]] : !felt.type, !felt.type, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_63:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_34]][@out] : <@InnerLoops<[@N]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

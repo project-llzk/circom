@@ -65,11 +65,12 @@ component main = Fibonacci();
 // CHECK-NEXT:        struct.writef %[[VAL_1]][@out] = %[[VAL_21]] : <@Fibonacci<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@Fibonacci<[]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_29:[0-9a-zA-Z_\.]+]]: !struct.type<@Fibonacci<[]>>, %[[VAL_30:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:      function.def @constrain(%[[VAL_28:[0-9a-zA-Z_\.]+]]: !struct.type<@Fibonacci<[]>>, %[[VAL_29:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_28]][@out] : <@Fibonacci<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_33:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:        %[[VAL_34:[0-9a-zA-Z_\.]+]]:4 = scf.while (%[[VAL_35:[0-9a-zA-Z_\.]+]] = %[[VAL_31]], %[[VAL_36:[0-9a-zA-Z_\.]+]] = %[[VAL_32]], %[[VAL_37:[0-9a-zA-Z_\.]+]] = %[[VAL_30]], %[[VAL_38:[0-9a-zA-Z_\.]+]] = %[[VAL_33]]) : (!felt.type, !felt.type, !felt.type, !felt.type) -> (!felt.type, !felt.type, !felt.type, !felt.type) {
+// CHECK-NEXT:        %[[VAL_34:[0-9a-zA-Z_\.]+]]:4 = scf.while (%[[VAL_35:[0-9a-zA-Z_\.]+]] = %[[VAL_31]], %[[VAL_36:[0-9a-zA-Z_\.]+]] = %[[VAL_32]], %[[VAL_37:[0-9a-zA-Z_\.]+]] = %[[VAL_29]], %[[VAL_38:[0-9a-zA-Z_\.]+]] = %[[VAL_33]]) : (!felt.type, !felt.type, !felt.type, !felt.type) -> (!felt.type, !felt.type, !felt.type, !felt.type) {
 // CHECK-NEXT:          %[[VAL_39:[0-9a-zA-Z_\.]+]] = felt.const  2
 // CHECK-NEXT:          %[[VAL_40:[0-9a-zA-Z_\.]+]] = bool.cmp gt(%[[VAL_37]], %[[VAL_39]])
 // CHECK-NEXT:          scf.condition(%[[VAL_40]]) %[[VAL_35]], %[[VAL_36]], %[[VAL_37]], %[[VAL_38]] : !felt.type, !felt.type, !felt.type, !felt.type
@@ -80,7 +81,6 @@ component main = Fibonacci();
 // CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = felt.sub %[[VAL_43]], %[[VAL_46]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_42]], %[[VAL_45]], %[[VAL_47]], %[[VAL_45]] : !felt.type, !felt.type, !felt.type, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_48:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_29]][@out] : <@Fibonacci<[]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

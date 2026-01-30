@@ -142,17 +142,16 @@ component main = EarlyReturn();
 // CHECK-NEXT:        function.return %[[VAL_62]] : !struct.type<@EarlyReturn<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_70:[0-9a-zA-Z_\.]+]]: !struct.type<@EarlyReturn<[]>>, %[[VAL_71:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_72:[0-9a-zA-Z_\.]+]] = function.call @noEarlyReturnFn(%[[VAL_71]]) : (!felt.type) -> !felt.type
-// CHECK-NEXT:        %[[VAL_73:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_70]][@outp] : <@EarlyReturn<[]>>, !array.type<2 x !felt.type>
+// CHECK-DAG:         %[[VAL_72:[0-9a-zA-Z_\.]+]] = function.call @noEarlyReturnFn(%[[VAL_71]]) : (!felt.type) -> !felt.type
+// CHECK-DAG:         %[[VAL_73:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_70]][@outp] : <@EarlyReturn<[]>>, !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_74:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_75:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_74]]
 // CHECK-NEXT:        %[[VAL_76:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_73]]{{\[}}%[[VAL_75]]] : <2 x !felt.type>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_76]], %[[VAL_72]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_77:[0-9a-zA-Z_\.]+]] = function.call @earlyReturnFn(%[[VAL_71]]) : (!felt.type) -> !felt.type
-// CHECK-NEXT:        %[[VAL_78:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_70]][@outp] : <@EarlyReturn<[]>>, !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_79:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_80:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_79]]
-// CHECK-NEXT:        %[[VAL_81:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_78]]{{\[}}%[[VAL_80]]] : <2 x !felt.type>, !felt.type
+// CHECK-NEXT:        %[[VAL_81:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_73]]{{\[}}%[[VAL_80]]] : <2 x !felt.type>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_81]], %[[VAL_77]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }

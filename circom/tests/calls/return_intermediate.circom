@@ -42,7 +42,7 @@ component main = Foo();
 // CHECK-NEXT:        function.return %[[VAL_4]] : !struct.type<@Foo<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_15:[0-9a-zA-Z_\.]+]]: !struct.type<@Foo<[]>>, %[[VAL_16:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<1 x !felt.type>
+// CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_15]][@outp] : <@Foo<[]>>, !array.type<1 x !felt.type>
 // CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_18]]
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_17]]{{\[}}%[[VAL_19]]] : <1 x !felt.type>, !felt.type

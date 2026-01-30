@@ -32,6 +32,7 @@ component main = A();
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@A<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_9:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[]>>, %[[VAL_10:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_9]][@out] : <@A<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_11]], %[[VAL_11]], %[[VAL_11]], %[[VAL_11]], %[[VAL_11]] : <5 x !felt.type>
 // CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -39,7 +40,6 @@ component main = A();
 // CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.const  3
 // CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_15]]
 // CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_10]]{{\[}}%[[VAL_16]]] : <5 x !felt.type>, !felt.type
-// CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_9]][@out] : <@A<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_18]], %[[VAL_17]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }

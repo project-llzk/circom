@@ -52,6 +52,8 @@ component main = MultByInv();
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@MultByInv<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_13:[0-9a-zA-Z_\.]+]]: !struct.type<@MultByInv<[]>>, %[[VAL_14:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_23:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_13]][@out] : <@MultByInv<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_22:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_13]][@inv] : <@MultByInv<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = bool.cmp ne(%[[VAL_14]], %[[VAL_16]])
@@ -63,10 +65,8 @@ component main = MultByInv();
 // CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:          scf.yield %[[VAL_21]] : !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_22:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_13]][@inv] : <@MultByInv<[]>>, !felt.type
-// CHECK-NEXT:        %[[VAL_23:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_13]][@out] : <@MultByInv<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_23]], %[[VAL_22]] : !felt.type, !felt.type
-// CHECK-NEXT:        %[[VAL_24:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_14]], %[[VAL_22]] : !felt.type, !felt.type
+// CHECK-NEXT:        %[[VAL_24:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_14]], %[[VAL_23]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_25:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        constrain.eq %[[VAL_24]], %[[VAL_25]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return

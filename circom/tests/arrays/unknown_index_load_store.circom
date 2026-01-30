@@ -70,6 +70,7 @@ component main = UnknownIndexLoadStore();
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@UnknownIndexLoadStore<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_45:[0-9a-zA-Z_\.]+]]: !struct.type<@UnknownIndexLoadStore<[]>>, %[[VAL_46:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readf %[[VAL_45]][@out] : <@UnknownIndexLoadStore<[]>>, !array.type<8 x !felt.type>
 // CHECK-NEXT:        %[[VAL_47:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_48:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_47]], %[[VAL_47]], %[[VAL_47]], %[[VAL_47]], %[[VAL_47]], %[[VAL_47]], %[[VAL_47]], %[[VAL_47]], %[[VAL_47]] : <9 x !felt.type>
 // CHECK-NEXT:        %[[VAL_49:[0-9a-zA-Z_\.]+]] = felt.const  0

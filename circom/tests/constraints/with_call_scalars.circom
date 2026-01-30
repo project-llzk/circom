@@ -53,6 +53,7 @@ component main = ComputeFee();
 // CHECK-NEXT:        function.return %[[VAL_8]] : !struct.type<@ComputeFee<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_20:[0-9a-zA-Z_\.]+]]: !struct.type<@ComputeFee<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_20]][@feeOut] : <@ComputeFee<[]>>, !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_22:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_23:[0-9a-zA-Z_\.]+]] = %[[VAL_21]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = felt.const  2
@@ -61,7 +62,6 @@ component main = ComputeFee();
 // CHECK-NEXT:        } do {
 // CHECK-NEXT:        ^bb0(%[[VAL_26:[0-9a-zA-Z_\.]+]]: !felt.type):
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = function.call @feeShiftTable(%[[VAL_26]]) : (!felt.type) -> !felt.type
-// CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_20]][@feeOut] : <@ComputeFee<[]>>, !array.type<2 x !felt.type>
 // CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_26]]
 // CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_28]]{{\[}}%[[VAL_29]]] : <2 x !felt.type>, !felt.type
 // CHECK-NEXT:          constrain.eq %[[VAL_30]], %[[VAL_27]] : !felt.type, !felt.type

@@ -370,6 +370,7 @@ component main = Main();
 // CHECK-NEXT:        function.return %[[VAL_173]] : !struct.type<@Main<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_252:[0-9a-zA-Z_\.]+]]: !struct.type<@Main<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_318:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_252]][@out] : <@Main<[]>>, !array.type<16,2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_253:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_254:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_255:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -458,7 +459,6 @@ component main = Main();
 // CHECK-NEXT:          %[[VAL_315:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:          %[[VAL_316:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_315]]
 // CHECK-NEXT:          %[[VAL_317:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_307]]{{\[}}%[[VAL_314]], %[[VAL_316]]] : <16,2 x !felt.type>, !felt.type
-// CHECK-NEXT:          %[[VAL_318:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_252]][@out] : <@Main<[]>>, !array.type<16,2 x !felt.type>
 // CHECK-NEXT:          %[[VAL_319:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_313]]
 // CHECK-NEXT:          %[[VAL_320:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:          %[[VAL_321:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_320]]
@@ -468,11 +468,10 @@ component main = Main();
 // CHECK-NEXT:          %[[VAL_324:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:          %[[VAL_325:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_324]]
 // CHECK-NEXT:          %[[VAL_326:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_307]]{{\[}}%[[VAL_323]], %[[VAL_325]]] : <16,2 x !felt.type>, !felt.type
-// CHECK-NEXT:          %[[VAL_327:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_252]][@out] : <@Main<[]>>, !array.type<16,2 x !felt.type>
 // CHECK-NEXT:          %[[VAL_328:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_313]]
 // CHECK-NEXT:          %[[VAL_329:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:          %[[VAL_330:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_329]]
-// CHECK-NEXT:          %[[VAL_331:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_327]]{{\[}}%[[VAL_328]], %[[VAL_330]]] : <16,2 x !felt.type>, !felt.type
+// CHECK-NEXT:          %[[VAL_331:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_318]]{{\[}}%[[VAL_328]], %[[VAL_330]]] : <16,2 x !felt.type>, !felt.type
 // CHECK-NEXT:          constrain.eq %[[VAL_331]], %[[VAL_326]] : !felt.type, !felt.type
 // CHECK-NEXT:          %[[VAL_332:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:          %[[VAL_333:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_313]], %[[VAL_332]] : !felt.type, !felt.type

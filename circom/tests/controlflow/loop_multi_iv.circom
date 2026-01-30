@@ -50,8 +50,8 @@ component main = LoopMultiIV();
 // CHECK-NEXT:        function.return %[[VAL_20]] : !struct.type<@LoopMultiIV<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_22:[0-9a-zA-Z_\.]+]]: !struct.type<@LoopMultiIV<[]>>, %[[VAL_23:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_24:[0-9a-zA-Z_\.]+]] = function.call @complicatedLoopFn(%[[VAL_23]]) : (!felt.type) -> !felt.type
-// CHECK-NEXT:        %[[VAL_25:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_22]][@outp] : <@LoopMultiIV<[]>>, !felt.type
+// CHECK-DAG:         %[[VAL_24:[0-9a-zA-Z_\.]+]] = function.call @complicatedLoopFn(%[[VAL_23]]) : (!felt.type) -> !felt.type
+// CHECK-DAG:         %[[VAL_25:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_22]][@outp] : <@LoopMultiIV<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_25]], %[[VAL_24]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }

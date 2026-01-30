@@ -25,7 +25,6 @@ component main = Template();
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_2]][@outp] : <@Template<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  7
 // CHECK-NEXT:        constrain.eq %[[VAL_3]], %[[VAL_4]] : !felt.type, !felt.type
-// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_2]][@outp] : <@Template<[]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

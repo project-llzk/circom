@@ -35,8 +35,9 @@ component main = Simple5();
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@Simple5<[]>>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_6:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_7:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@x] : <@Simple5<[]>>, !felt.type
-// CHECK-NEXT:        constrain.eq %[[VAL_8]], %[[VAL_5]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@y] : <@Simple5<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_Z:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@z] : <@Simple5<[]>>, !felt.type
+// CHECK-NEXT:        constrain.eq %[[VAL_8]], %[[VAL_5]] : !felt.type, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_9]], %[[VAL_6]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
