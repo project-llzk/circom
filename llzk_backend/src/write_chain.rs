@@ -365,9 +365,7 @@ impl<'ast> WriteChain<'ast> {
         target: WriteTarget,
     ) -> Result<Value<'ctx, 'val>> {
         match self {
-            WriteChain::Root { var, op: RootWriteOp::Signal } => {
-                self.get_root_signal(var, fc)
-            }
+            WriteChain::Root { var, op: RootWriteOp::Signal } => self.get_root_signal(var, fc),
             WriteChain::Root { var, .. } => self.get_root_value(var, fc),
             WriteChain::Array { indices, prev } => self.get_array_value(
                 indices,

@@ -507,7 +507,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     }
 
     // Insert read operations for struct fields into constrain functions.
-    let location = Location::unknown(codegen.context);
+    let location = codegen.location_unknown();
     let builder = OpBuilder::new(codegen.context);
     for field in new_struct.get_field_defs() {
         let field_name = field.field_name();
