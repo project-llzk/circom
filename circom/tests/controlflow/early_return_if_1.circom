@@ -21,7 +21,7 @@ template EarlyReturn() {
 
 component main = EarlyReturn();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@EarlyReturn<[]>>, veridise.lang = "llzk"} {
 // CHECK-LABEL:   function.def @earlyReturnFn(
 // CHECK-SAME:                                %[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type,
 // CHECK-SAME:                                %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {

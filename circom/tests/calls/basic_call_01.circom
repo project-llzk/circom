@@ -26,7 +26,7 @@ template Call1() {
 
 component main = Call1();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Call1<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @B<[]> {
 // CHECK-NEXT:      struct.field @x : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute

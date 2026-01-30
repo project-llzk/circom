@@ -22,7 +22,7 @@ component main = A();
 // WARN-NEXT: 14 │   log(1658);
 // WARN-NEXT:    │   ^^^^^^^^^^ here
 
-//IR-LABEL:  module attributes {veridise.lang = "llzk"} {
+//IR-LABEL:  module attributes {llzk.main = !struct.type<@A<[]>>, veridise.lang = "llzk"} {
 // IR-NEXT:    struct.def @A<[]> {
 // IR-NEXT:      function.def @compute() -> !struct.type<@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // IR-NEXT:        %self = struct.new : <@A<[]>>

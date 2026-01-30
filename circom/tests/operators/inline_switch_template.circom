@@ -22,7 +22,7 @@ template MultByInv() {
 
 component main = MultByInv();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@MultByInv<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @MultByInv<[]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      struct.field @inv : !felt.type

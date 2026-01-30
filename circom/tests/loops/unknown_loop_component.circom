@@ -27,7 +27,7 @@ template UnknownLoopComponent() {
 
 component main = UnknownLoopComponent();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@UnknownLoopComponent<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @UnknownLoopComponent<[]> {
 // CHECK-NEXT:      struct.field @bits : !felt.type {llzk.pub}
 // CHECK-NEXT:      struct.field @nb : !struct.type<@nbits<[]>>
@@ -90,4 +90,3 @@ component main = UnknownLoopComponent();
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }
-

@@ -20,7 +20,7 @@ template Foo(N) {
 
 component main = Foo(2);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Foo<[2]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @Foo<[@N]> {
 // CHECK-NEXT:      struct.field @c : !struct.type<@Sum<[@N]>>
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>) -> !struct.type<@Foo<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

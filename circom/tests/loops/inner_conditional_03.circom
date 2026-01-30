@@ -22,7 +22,7 @@ template InnerConditional3(N) {
 
 component main = InnerConditional3(3);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@InnerConditional3<[3]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @InnerConditional3<[@N]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute

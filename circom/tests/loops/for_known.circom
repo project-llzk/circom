@@ -17,7 +17,7 @@ template ForKnown(N) {
 
 component main = ForKnown(10);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@ForKnown<[10]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @ForKnown<[@N]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@ForKnown<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

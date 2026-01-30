@@ -19,7 +19,7 @@ template Foo() {
 
 component main = Foo();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Foo<[]>>, veridise.lang = "llzk"} {
 // CHECK-LABEL:   function.def @f(
 // CHECK-SAME:                    %[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type

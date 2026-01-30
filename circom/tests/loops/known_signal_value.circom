@@ -24,7 +24,7 @@ template KnownLoopViaSignal() {
 
 component main = KnownLoopViaSignal();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@KnownLoopViaSignal<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @KnownLoopViaSignal<[]> {
 // CHECK-NEXT:      struct.field @y : !felt.type {llzk.pub}
 // CHECK-NEXT:      struct.field @a : !struct.type<@accumulate<[]>>

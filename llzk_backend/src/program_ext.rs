@@ -3,19 +3,34 @@
 use crate::function_ext::FunctionLike;
 use crate::template_ext::TemplateLike;
 use compiler::compiler_interface::VCP;
+use program_structure::ast::Expression;
 use program_structure::file_definition::FileID;
 use program_structure::file_definition::FileLibrary;
+use program_structure::file_definition::FileLocation;
 use program_structure::program_archive::ProgramArchive;
+
+/// Specification of the main component of a circom program.
+#[derive(Debug)]
+pub struct MainComponentInfo {
+    /// Location of the main component declaration.
+    pub file_location: FileLocation,
+    /// Name of the main component template.
+    pub name: String,
+    /// Parameters of the main component template.
+    pub params: Vec<Expression>,
+}
 
 /// A trait that allows common handling of the structs used to represent a circom
 /// program at different stages in the compilation process.
 pub trait ProgramLike: std::fmt::Debug {
     /// Get the file library of the program.
     fn get_file_library(&self) -> &FileLibrary;
-    /// Get the FileID of the file containing the "main" declaration.
+    /// Get the FileID of the file containing the "main" component declaration.
     fn get_main_file_id(&self) -> &FileID;
+    /// Get information specifying the main component.
+    fn get_main_component_info(&self) -> MainComponentInfo;
     /// Get the names of public inputs of the main component.
-    fn get_main_public_inputs(&self) -> &Vec<String>;
+    fn get_main_public_inputs(&self) -> &[String];
     /// Get an iterator over all functions in the program.
     fn get_functions(&self, sorted: bool) -> impl IntoIterator<Item = &impl FunctionLike>;
     /// Returns true if the program contains a function with the given name.
@@ -59,7 +74,17 @@ impl ProgramLike for ProgramArchive {
     fn get_main_file_id(&self) -> &FileID {
         self.get_file_id_main()
     }
-    fn get_main_public_inputs(&self) -> &Vec<String> {
+    fn get_main_component_info(&self) -> MainComponentInfo {
+        match self.get_main_expression() {
+            c @ Expression::Call { id, args, .. } => MainComponentInfo {
+                file_location: c.get_meta().location.clone(),
+                name: id.clone(),
+                params: args.clone(),
+            },
+            _ => unreachable!("Main component expression must be `Call`"),
+        }
+    }
+    fn get_main_public_inputs(&self) -> &[String] {
         self.get_public_inputs_main_component()
     }
     fn get_functions(&self, sorted: bool) -> impl IntoIterator<Item = &impl FunctionLike> {
@@ -90,13 +115,34 @@ impl ProgramLike for ProgramArchive {
     }
 }
 
+/// Caches info from the [ProgramArchive] that is not present in the [VCP].
+#[derive(Debug)]
+pub struct CachedParseInfo {
+    /// Names of public inputs of the "main" component.
+    pub public_inputs: Vec<String>,
+    /// ID of the file containing the "main" component declaration.
+    pub main_file_id: FileID,
+    /// Location of the "main" component declaration expression.
+    pub main_expr_location: FileLocation,
+}
+
+impl From<&ProgramArchive> for CachedParseInfo {
+    fn from(program: &ProgramArchive) -> Self {
+        Self {
+            public_inputs: program.get_public_inputs_main_component().clone(),
+            main_file_id: *program.get_file_id_main(),
+            main_expr_location: program.get_main_expression().get_meta().file_location(),
+        }
+    }
+}
+
 /// A wrapper around a VCP that also includes the public inputs for the main component.
 #[derive(Debug)]
-pub struct VCPPlus<'ctx> {
+pub struct VCPPlus<'vcp> {
     /// Reference to the [VCP].
-    pub vcp: &'ctx VCP,
-    /// Names of public inputs of the main component.
-    pub public_inputs: Vec<String>,
+    pub vcp: &'vcp VCP,
+    /// Additional information cached from the [ProgramArchive] before it was consumed.
+    pub parse_info: CachedParseInfo,
 }
 
 impl ProgramLike for VCPPlus<'_> {
@@ -104,10 +150,17 @@ impl ProgramLike for VCPPlus<'_> {
         &self.vcp.file_library
     }
     fn get_main_file_id(&self) -> &FileID {
-        &self.vcp.main_id
+        &self.parse_info.main_file_id
     }
-    fn get_main_public_inputs(&self) -> &Vec<String> {
-        &self.public_inputs
+    fn get_main_component_info(&self) -> MainComponentInfo {
+        MainComponentInfo {
+            file_location: self.parse_info.main_expr_location.clone(),
+            name: self.vcp.templates[self.vcp.main_id].template_name.clone(),
+            params: vec![],
+        }
+    }
+    fn get_main_public_inputs(&self) -> &[String] {
+        &self.parse_info.public_inputs
     }
     fn get_functions(&self, sorted: bool) -> impl IntoIterator<Item = &impl FunctionLike> {
         let mut functions: Vec<_> = self.vcp.functions.iter().collect();

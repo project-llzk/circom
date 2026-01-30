@@ -14,7 +14,7 @@ template BitwiseAnd() {
 
 component main = BitwiseAnd();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@BitwiseAnd<[]>>, veridise.lang = "llzk"} {
 // CHECK-LABEL:   struct.def @BitwiseAnd<[]> {
 // CHECK-NEXT:      struct.field @type : !felt.type {llzk.pub}
 // CHECK-NEXT:      struct.field @check_v : !felt.type

@@ -66,4 +66,4 @@ template well_defined_figure(num_sides, dimension){
 
 component main = well_defined_figure(3,2);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {

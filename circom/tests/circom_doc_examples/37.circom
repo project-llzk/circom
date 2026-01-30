@@ -30,7 +30,7 @@ template Multiplier3() {
 
 component main = Multiplier3();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Multiplier3<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @Multiplier2<[]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute

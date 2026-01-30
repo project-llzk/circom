@@ -20,7 +20,7 @@ template Simple5() {
 
 component main = Simple5();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Simple5<[]>>, veridise.lang = "llzk"} {
 // CHECK-LABEL:   struct.def @Simple5<[]> {
 // CHECK-NEXT:      struct.field @x : !felt.type {llzk.pub}
 // CHECK-NEXT:      struct.field @y : !felt.type {llzk.pub}

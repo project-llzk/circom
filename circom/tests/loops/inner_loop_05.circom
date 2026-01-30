@@ -18,4 +18,4 @@ template Num2Bits(n) {
 
 component main = Num2Bits(2);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {

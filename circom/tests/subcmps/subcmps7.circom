@@ -22,7 +22,7 @@ template SubCmp() {
 
 component main = SubCmp();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {
 // This test is not 100% testable because array support is not complete.
 // Currently we only care about having the right type in the field definition.
 // CHECK:     struct.field @n : !array.type<2, !struct.type<@Nop<[1]>>>

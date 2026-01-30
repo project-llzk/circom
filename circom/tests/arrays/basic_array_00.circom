@@ -13,7 +13,7 @@ template Array00() {
 
 component main = Array00();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Array00<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @Array00<[]> {
 // CHECK-NEXT:      struct.field @b : !array.type<1 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<1 x !felt.type>) -> !struct.type<@Array00<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

@@ -24,7 +24,7 @@ component main = Foo(3);
 // COM: Lit variables cannot be set at the "undef : !array.type<@N x !felt.type>" instances because their
 // COM: ordering is non-deterministic. The lit variable is instead set at the first use of the MLIR value.
 //
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Foo<[3]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @Foo<[@N]> {
 // CHECK-NEXT:      struct.field @outp : !array.type<@N x !felt.type> {llzk.pub}
 // CHECK-NEXT:      struct.field @internal : !array.type<@N x !felt.type>

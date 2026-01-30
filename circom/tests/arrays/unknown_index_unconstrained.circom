@@ -17,7 +17,7 @@ template UnknownIndex() {
 
 component main = UnknownIndex();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@UnknownIndex<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @UnknownIndex<[]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@UnknownIndex<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

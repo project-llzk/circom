@@ -23,7 +23,7 @@ template A(n) {
 
 component main = A(3);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@A<[3]>>, veridise.lang = "llzk"} {
 // CHECK-LABEL:   struct.def @A<[@n]> {
 // CHECK-DAG:       struct.field @aux : !felt.type
 // CHECK-DAG:       struct.field @out : !felt.type
