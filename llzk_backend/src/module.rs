@@ -191,7 +191,11 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         self.visit_component_decl(codegen, meta, name, dimensions)
                     }
                     VariableType::AnonymousComponent => {
-                        unreachable!("removed by 'syntax_sugar_remover'")
+                        // The 'syntax_sugar_remover' will convert anonymous components to normal
+                        // components unless they appear within a loop. In that case, the anonymous
+                        // component is just refactored to the top level, outside the loop.
+                        // See: circom/tests/circom_doc_examples/34.circom
+                        todo!("handle AnonymousComponent declaration")
                     }
                 }
             }
