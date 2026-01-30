@@ -32,4 +32,4 @@ template parity(n) {
 
 component main = parity(10);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {

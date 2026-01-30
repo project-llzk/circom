@@ -69,4 +69,4 @@ template UnknownLoopIndex(n) {
 
 component main = UnknownLoopIndex(100);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {

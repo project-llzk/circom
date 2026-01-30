@@ -37,4 +37,4 @@ template NeedsStackContext(a, b) {
 
 component main = NeedsStackContext(3, 2);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {

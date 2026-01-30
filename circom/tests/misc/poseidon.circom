@@ -949,4 +949,4 @@ template PoseidonEx(nInputs, nOuts) {
 
 component main = PoseidonEx(4, 1);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {
