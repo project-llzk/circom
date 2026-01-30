@@ -512,14 +512,14 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     for field in new_struct.get_field_defs() {
         let field_name = field.field_name();
         constrain_ctx.block_ctx.declare_name_if_not_present(field_name, || {
-            let readf = r#struct::readf(
+            r#struct::readf(
                 &builder,
                 location,
                 field.field_type(),
                 constrain_func.self_value_of_constrain()?,
                 field_name,
-            )?;
-            Ok(readf)
+            )
+            .map_err(Into::into)
         })?;
     }
 

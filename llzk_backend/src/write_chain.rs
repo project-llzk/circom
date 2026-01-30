@@ -251,7 +251,7 @@ impl<'ast> WriteChain<'ast> {
         var: &str,
         fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
-        // Both compute and constrain functions hshould have the `var` defined:
+        // Both compute and constrain functions should have the `var` defined:
         // compute from an existing assignment, or constrain from pre-generation
         // of the `readf` in `gen_template_llzk`.
         fc.block_ctx.get_named_value(var).copied()
