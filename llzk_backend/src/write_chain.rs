@@ -123,7 +123,7 @@ impl<'ast> WriteChain<'ast> {
     ) -> Result<()> {
         let arr_ref = prev.get_value(codegen, fc, location, target)?;
         let indices = gen_index_ops(indices, codegen, fc, location)?;
-        fc.append_array_write(arr_ref, &indices, location, val, None)?;
+        fc.append_array_write(codegen, arr_ref, &indices, location, val, None)?;
         prev.write(arr_ref, target, codegen, fc, location, template)
     }
 
