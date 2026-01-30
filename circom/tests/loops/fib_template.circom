@@ -31,7 +31,7 @@ template FibonacciTmpl(N) {
 
 component main = FibonacciTmpl(5);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@FibonacciTmpl<[5]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @FibonacciTmpl<[@N]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute

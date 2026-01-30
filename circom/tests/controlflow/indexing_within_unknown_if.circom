@@ -18,7 +18,7 @@ template TestSetAllUnknownWithinUnknownCondition(k) {
 
 component main = TestSetAllUnknownWithinUnknownCondition(1);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@TestSetAllUnknownWithinUnknownCondition<[1]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @TestSetAllUnknownWithinUnknownCondition<[@k]> {
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@TestSetAllUnknownWithinUnknownCondition<[@k]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@TestSetAllUnknownWithinUnknownCondition<[@k]>>

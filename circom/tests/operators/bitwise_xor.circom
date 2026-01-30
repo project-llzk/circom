@@ -14,7 +14,7 @@ template BitwiseXOR() {
 
 component main = BitwiseXOR();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@BitwiseXOR<[]>>, veridise.lang = "llzk"} {
 // CHECK-LABEL:   struct.def @BitwiseXOR<[]> {
 // CHECK-NEXT:      struct.field @type : !felt.type {llzk.pub}
 // CHECK-NEXT:      struct.field @check_v : !felt.type

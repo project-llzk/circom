@@ -11,7 +11,7 @@ template Van276() {
 
 component main = Van276();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Van276<[]>>, veridise.lang = "llzk"} {
 // CHECK-LABEL:   struct.def @Van276<[]> {
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      () -> !struct.type<@Van276<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

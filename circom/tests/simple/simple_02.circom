@@ -19,7 +19,7 @@ template Simple4(a) {
 
 component main = Simple4(10);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Simple4<[10]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @Simple4<[@a]> {
 // CHECK-NEXT:      struct.field @b : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Simple4<[@a]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

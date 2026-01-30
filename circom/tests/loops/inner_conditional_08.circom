@@ -29,7 +29,7 @@ template InnerConditional8(N) {
 
 component main = InnerConditional8(4);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@InnerConditional8<[4]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @InnerConditional8<[@N]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute

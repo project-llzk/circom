@@ -16,7 +16,7 @@ template Conditional() {
 
 component main = Conditional();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Conditional<[]>>, veridise.lang = "llzk"} {
 // CHECK-LABEL:   struct.def @Conditional<[]> {
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      (%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Conditional<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

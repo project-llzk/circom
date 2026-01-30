@@ -28,7 +28,7 @@ template Caller(n) {
 
 component main = Caller(5);
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Caller<[5]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @Caller<[@n]> {
 // CHECK-NEXT:      struct.field @outp : !felt.type
 // CHECK-NEXT:      struct.field @op : !struct.type<@Sum<[@n]>>

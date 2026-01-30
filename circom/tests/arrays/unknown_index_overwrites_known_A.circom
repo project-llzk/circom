@@ -26,7 +26,7 @@ template UnknownIndexOverwriteKnown() {
 
 component main = UnknownIndexOverwriteKnown();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@UnknownIndexOverwriteKnown<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @UnknownIndexOverwriteKnown<[]> {
 // CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@UnknownIndexOverwriteKnown<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

@@ -12,7 +12,7 @@ template Template() {
 
 component main = Template();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Template<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @Template<[]> {
 // CHECK-NEXT:      struct.field @outp : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@Template<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

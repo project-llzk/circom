@@ -18,7 +18,7 @@ template ImplicitExtension() {
 
 component main = ImplicitExtension();
 
-// CHECK-LABEL: module attributes {veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.main = !struct.type<@ImplicitExtension<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @ImplicitExtension<[]> {
 // CHECK-NEXT:      struct.field @out : !array.type<10 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@ImplicitExtension<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
