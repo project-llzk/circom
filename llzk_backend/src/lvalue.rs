@@ -6,6 +6,7 @@ use crate::program_ext::ProgramLike;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::SubcmpInfo;
 use crate::write_chain::NoSignalsInfo;
+use anyhow::Context as _;
 use anyhow::Result;
 use llzk::prelude::pod;
 use llzk::prelude::PodType;
@@ -155,17 +156,21 @@ impl<'ast> Lvalue<'ast> {
         fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
+        let result_type = PodType::try_from(subcmp_value.r#type())
+            .with_context(|| format!("subcomponent signal '{signal_name}' has unexpected type"))?
+            .get_type_of_record(signal_name)
+            .ok_or_else(|| {
+                anyhow::anyhow!("subcomponent signal '{signal_name}' not found: {subcmp_value:?}")
+            })?;
         fc.append_op_unnamed_result(pod::read(
             location,
             subcmp_value,
             codegen.flat_sym(signal_name),
-            PodType::try_from(subcmp_value.r#type())?.get_type_of_record(signal_name).ok_or_else(
-                || anyhow::anyhow!("subcomponent signal {signal_name} not found: {subcmp_value:?}"),
-            )?,
+            result_type,
         ))
     }
 
-    /// Returns a SSA representing the op.
+    /// Returns the SSA [`Value`] representing the op.
     ///
     /// It could be a placeholder operation at this point (usually represented with `undef.undef`).
     pub fn get_value<'ctx, 'val>(
@@ -207,6 +212,7 @@ impl<'ast> Lvalue<'ast> {
                         "variable '{root}' is not a subcomponent but it was accessed like one"
                     );
                 }
+
                 /// Overrides the input if the flag is set to true.
                 /// It will only apply if no decorator was passed.
                 struct OverrideIfInput {
@@ -214,12 +220,12 @@ impl<'ast> Lvalue<'ast> {
                     /// "{var}$inputs"
                     do_override: bool,
                 }
-
                 impl OverrideVar for OverrideIfInput {
                     fn override_var(&self, var: &str, op: Root) -> Option<String> {
                         (self.do_override && op == Root::Signal).then(|| format!("{var}$inputs"))
                     }
                 }
+
                 let info = subcmp_info.subcmp_info(root, codegen)?;
                 let ovii = OverrideIfInput { do_override: info.signal_is_input(signal_name) };
 
