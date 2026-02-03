@@ -1097,8 +1097,8 @@ where
 
     /// Creates a loop nest from a list of dimensions.
     ///
-    /// The body of the inner-most loop is defined by the given closure, which accepts a list of values
-    /// representing the current value of each loop's induction variable.
+    /// The body of the inner-most loop is defined by the given closure, which accepts a list of
+    /// values representing the current value of each loop's induction variable.
     pub fn gen_loop_nest(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -1151,8 +1151,8 @@ where
 
         // Unwrap the block after creating the loop nest.
         let mut block = block.ok_or_else(|| anyhow::anyhow!("no loops created"))?;
-        // Push the block of the inner-most loop s.t. the user can use `self` and ops will get added to
-        // the right block.
+        // Push the block of the inner-most loop s.t. the user can use `self` and ops will get added
+        // to the right block.
         self.block_ctx.push(block);
         body(self, &loop_vars)?;
         self.block_ctx.pop();

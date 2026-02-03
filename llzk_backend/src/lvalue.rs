@@ -1,19 +1,28 @@
 //! Types for handling location values (a.k.a. lvalues).
 
+use crate::function::FunctionContext;
 use crate::function::InfoProviders;
+use crate::program_ext::ProgramLike;
+use crate::shared::LlzkCodegen;
+use crate::subcmp::SubcmpInfo;
+use crate::template::TemplateContext;
 use crate::template_ext::TemplateLike as _;
 use crate::write_chain::NoSignalsInfo;
-use crate::{
-    function::FunctionContext, program_ext::ProgramLike, shared::LlzkCodegen, subcmp::SubcmpInfo,
-    template::TemplateContext,
-};
 use anyhow::Result;
-use llzk::prelude::{pod, PodType};
-use melior::ir::{Location, Value, ValueLike as _};
-use program_structure::ast::{
-    Access, AssignOp, Expression, ExpressionInfixOpcode, ExpressionPrefixOpcode,
-};
-use std::{borrow::Cow, cmp, convert::TryFrom as _, fmt};
+use llzk::prelude::pod;
+use llzk::prelude::PodType;
+use melior::ir::Location;
+use melior::ir::Value;
+use melior::ir::ValueLike as _;
+use program_structure::ast::Access;
+use program_structure::ast::AssignOp;
+use program_structure::ast::Expression;
+use program_structure::ast::ExpressionInfixOpcode;
+use program_structure::ast::ExpressionPrefixOpcode;
+use std::borrow::Cow;
+use std::cmp;
+use std::convert::TryFrom as _;
+use std::fmt;
 
 /// Decorator trait that can modify the name of the root variable.
 pub trait OverrideVar {
