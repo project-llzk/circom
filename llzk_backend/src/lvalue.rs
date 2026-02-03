@@ -150,11 +150,11 @@ impl<'ast> Lvalue<'ast> {
     /// Handle [Lvalue::Subcmp]  in [`Lvalue::get_value`].
     fn get_subcmp<'ctx, 'val>(
         &self,
-        signal_name: &str,
-        subcmp_value: Value<'ctx, 'val>,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
+        signal_name: &str,
+        subcmp_value: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
         let result_type = PodType::try_from(subcmp_value.r#type())
             .with_context(|| format!("subcomponent signal '{signal_name}' has unexpected type"))?
@@ -213,26 +213,25 @@ impl<'ast> Lvalue<'ast> {
                     );
                 }
 
-                /// Overrides the input if the flag is set to true.
-                /// It will only apply if no decorator was passed.
-                struct OverrideIfInput {
-                    /// If true then the inner layers of this lvalue will replace "{var}" with
-                    /// "{var}$inputs"
-                    do_override: bool,
-                }
+                /// Overrides the input if the root is Signal. Only used if no decorator was passed.
+                /// Replaces "{var}" with "{var}$inputs" in the inner layers of this lvalue.
+                struct OverrideIfInput {}
                 impl OverrideVar for OverrideIfInput {
                     fn override_var(&self, var: &str, op: Root) -> Option<String> {
-                        (self.do_override && op == Root::Signal).then(|| format!("{var}$inputs"))
+                        (op == Root::Signal).then(|| format!("{var}$inputs"))
                     }
                 }
-
+                let ovii = OverrideIfInput {};
                 let info = subcmp_info.subcmp_info(root, codegen)?;
-                let ovii = OverrideIfInput { do_override: info.signal_is_input(signal_name) };
 
-                let subcmp_value =
-                    prev.get_value(codegen, fc, subcmp_info, location, ov.or(Some(&ovii)))?;
-
-                self.get_subcmp(signal_name, subcmp_value, codegen, fc, location)
+                let subcmp_value = prev.get_value(
+                    codegen,
+                    fc,
+                    subcmp_info,
+                    location,
+                    ov.or_else(|| info.signal_is_input(signal_name).then_some(&ovii)),
+                )?;
+                self.get_subcmp(codegen, fc, location, signal_name, subcmp_value)
             }
         }
     }
