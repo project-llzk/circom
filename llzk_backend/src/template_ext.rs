@@ -220,16 +220,10 @@ impl TemplateLike for TemplateInstance {
                         todo!("Support mixed type subcomponent instantiations")
                     }
                     ClusterType::Uniform { header, .. } => {
-                        // See ExecutedTemplate::export_to_circuit for header construction
-                        let last_underscore = header
-                            .rfind("_")
-                            .ok_or_else(|| anyhow!("unexpected header string format"))?;
-                        let (template_name, _) = header.split_at(last_underscore);
-                        let struct_type = StructType::new(
-                            FlatSymbolRefAttribute::new(codegen.context, template_name),
+                        subcmp_decl.instances_mut().push(StructType::new(
+                            FlatSymbolRefAttribute::new(codegen.context, header),
                             &[],
-                        );
-                        subcmp_decl.instances_mut().push(struct_type);
+                        ));
                     }
                 }
             }
