@@ -1,6 +1,5 @@
 //! Shared code generation utilities.
 
-use crate::function::FunctionContext;
 use crate::module::DeclarationInfo;
 use crate::program_ext::ProgramLike;
 use crate::subcmp::names::COMP;
@@ -27,8 +26,6 @@ use llzk::prelude::AttributeLike;
 use llzk::prelude::BlockLike;
 use llzk::prelude::BlockRef;
 use llzk::prelude::BoolAttribute;
-use llzk::prelude::CallOpLike as _;
-use llzk::prelude::CallOpRef;
 use llzk::prelude::FeltConstAttribute;
 use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
@@ -58,11 +55,9 @@ use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
-use llzk::value_ext::get_single_user;
 use llzk::value_ext::replace_all_uses_in_block_with;
 use llzk::value_ext::OwningValueRange;
 use llzk::value_ext::ValueRange;
-use melior::dialect::scf;
 use melior::ir::Block;
 use melior::ir::Region;
 use melior::ir::RegionLike as _;
@@ -320,7 +315,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     pub fn pod_type(&self, records: &[(&str, Type<'ctx>)]) -> PodType<'ctx> {
         let records = records
             .iter()
-            .map(|(name, r#type)| PodRecordAttribute::new(*name, *r#type))
+            .map(|(name, r#type)| PodRecordAttribute::new(name, *r#type))
             .collect::<Vec<_>>();
         PodType::new(self.context, &records)
     }
@@ -846,28 +841,28 @@ pub fn op_result_owner<'ctx, 'val, 'op: 'val>(
         .ok_or_else(|| anyhow::anyhow!("owner of {value} is not a valid operation"))
 }
 
-/// Looks for a call op to a constrain function where the given value is the first argument.
-///
-/// Fails if:
-///     - The value has more than one use.
-///     - The use is not a constrain call.
-///     - The used value is not the first operand.
-#[inline]
-pub fn get_constrain_call<'ctx, 'op, 'val>(
-    value: Value<'ctx, 'val>,
-) -> Result<OperationRef<'ctx, 'op>> {
-    let owner: CallOpRef<'ctx, 'op> = get_single_user(value)?.try_into()?;
-    if !owner.callee_is_constrain() {
-        anyhow::bail!("operation {owner} is not a call to a constrain function");
-    }
-
-    let fst_operand = owner.operand(0)?;
-    if fst_operand != value {
-        anyhow::bail!("first operand {fst_operand} does not match target: {value}");
-    }
-
-    Ok(owner.into())
-}
+///// Looks for a call op to a constrain function where the given value is the first argument.
+/////
+///// Fails if:
+/////     - The value has more than one use.
+/////     - The use is not a constrain call.
+/////     - The used value is not the first operand.
+//#[inline]
+//pub fn get_constrain_call<'ctx, 'op, 'val>(
+//    value: Value<'ctx, 'val>,
+//) -> Result<OperationRef<'ctx, 'op>> {
+//    let owner: CallOpRef<'ctx, 'op> = get_single_user(value)?.try_into()?;
+//    if !owner.callee_is_constrain() {
+//        anyhow::bail!("operation {owner} is not a call to a constrain function");
+//    }
+//
+//    let fst_operand = owner.operand(0)?;
+//    if fst_operand != value {
+//        anyhow::bail!("first operand {fst_operand} does not match target: {value}");
+//    }
+//
+//    Ok(owner.into())
+//}
 
 /// Convert unsigned field elements into relational values used for comparisons.
 ///
@@ -1341,5 +1336,5 @@ macro_rules! type_switch {
 /// Returns the type of a subcomponent as defined in its memory.
 pub fn comp_type<'ctx>(pod: PodType<'ctx>) -> Result<Type<'ctx>> {
     pod.get_type_of_record(COMP)
-        .ok_or_else(|| anyhow::anyhow!("missing {} record in memory struct: {pod:?}", COMP))
+        .ok_or_else(|| anyhow::anyhow!("missing {COMP} record in memory struct: {pod:?}"))
 }

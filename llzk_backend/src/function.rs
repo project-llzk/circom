@@ -314,7 +314,7 @@ where
         var_name: Option<&str>,
     ) -> Result<()> {
         let arr_ty = ArrayType::try_from(arr_ref.r#type()).with_context(|| {
-            let v = var_name.map_or(String::from("array"), |s| format!("'{}'", s));
+            let v = var_name.map_or(String::from("array"), |s| format!("'{s}'"));
             format!("Conflicting types to write {v} at {location}")
         })?;
         let arr_ty_dims = arr_ty.dims();
@@ -334,7 +334,7 @@ where
                 array::insert(location, arr_ref, indices, rvalue)
             }
             std::cmp::Ordering::Greater => {
-                let v = var_name.map_or(String::from("array"), |s| format!("'{}'", s));
+                let v = var_name.map_or(String::from("array"), |s| format!("'{s}'"));
                 anyhow::bail!("Too many indices to write {v} at {location}");
             }
         };
@@ -351,7 +351,7 @@ where
         var_name: Option<&str>,
     ) -> Result<Value<'ctx, 'val>> {
         let arr_ty = ArrayType::try_from(arr_ref.r#type()).with_context(|| {
-            let v = var_name.map_or(String::from("array"), |s| format!("'{}'", s));
+            let v = var_name.map_or(String::from("array"), |s| format!("'{s}'"));
             format!("Conflicting types to read {v} at {location}")
         })?;
         let arr_ty_dims = arr_ty.dims();
@@ -368,7 +368,7 @@ where
                 array::extract(location, reduced_type.into(), arr_ref, indices)
             }
             std::cmp::Ordering::Greater => {
-                let v = var_name.map_or(String::from("array"), |s| format!("'{}'", s));
+                let v = var_name.map_or(String::from("array"), |s| format!("'{s}'"));
                 anyhow::bail!("Too many indices to read {v} at {location}");
             }
         };
@@ -850,7 +850,7 @@ where
             .map(|name| {
                 self.block_ctx
                     .get_named_value(name)
-                    .inspect_err(|e| eprintln!("\nERROR: {:?}", e))
+                    .inspect_err(|e| eprintln!("\nERROR: {e:?}"))
                     .map(|v| v.r#type())
             })
             .collect::<Result<Vec<_>, _>>()?;

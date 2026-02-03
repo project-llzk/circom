@@ -160,15 +160,6 @@ impl<'ctx> SubcmpCallsMap<'ctx> {
         self.map.get(&value.to_raw().ptr).map(String::as_str)
     }
 
-    /// Updates the mapping with the new key.
-    ///
-    /// The new key must not be already mapped to another name.
-    pub fn update_keys(&mut self, key: impl ValueLike<'ctx>, new: impl ValueLike<'ctx>) {
-        if let Some(name) = self.map.remove(&key.to_raw().ptr) {
-            self.insert(&new, name)
-        }
-    }
-
     /// If the left value exists in the map, adds the right value with the same name.
     ///
     /// Returns the right value.

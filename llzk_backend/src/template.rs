@@ -7,19 +7,15 @@
 //! actual code generation within [GenerateLLZKInTemplate] a lot simpler.
 
 use crate::function::FunctionContext;
-use crate::function::InfoProviders;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::lvalue::Lvalue;
-use crate::lvalue::NoOverride;
 use crate::lvalue::Root;
 use crate::program_ext::ProgramInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::comp_type;
-use crate::shared::get_constrain_call;
 use crate::shared::map_array_inner_type;
-use crate::shared::op_result_owner;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
@@ -28,8 +24,6 @@ use crate::subcmp::names::COUNT;
 use crate::subcmp::names::PARAMS;
 use crate::subcmp::SubcmpInfo;
 use crate::template_ext::SignalDeclarations;
-use crate::template_ext::TemplateLike;
-use crate::template_ext::TemplateLike as _;
 use crate::write_chain::WriteChain;
 use crate::write_chain::WriteTarget;
 use anyhow::anyhow;
@@ -39,33 +33,25 @@ use llzk::dialect::array::ArrayCtor::MapDimSlice;
 use llzk::dialect::cast;
 use llzk::prelude::array;
 use llzk::prelude::constrain;
-use llzk::prelude::function;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::pod;
 use llzk::prelude::r#struct;
 use llzk::prelude::ArrayType;
 use llzk::prelude::BlockRef;
-use llzk::prelude::CallOpLike as _;
-use llzk::prelude::CallOpRef;
-use llzk::prelude::FeltType;
 use llzk::prelude::FieldDefOpLike;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::LoopBoundsAttribute;
-use llzk::prelude::OperationLike;
 use llzk::prelude::PodRecordAttribute;
 use llzk::prelude::PodType;
 use llzk::prelude::RecordValue;
 use llzk::prelude::StructDefOpLike;
 use llzk::prelude::StructDefOpRefMut;
-use llzk::prelude::StructType;
-use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
 use melior::StringRef;
-use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -201,7 +187,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
         Ok(self
             .struct_def
             .get_field_def(name)
-            .ok_or_else(|| anyhow!("no field '{}' in struct", name))?
+            .ok_or_else(|| anyhow!("no field '{name}' in struct"))?
             .field_type())
     }
 

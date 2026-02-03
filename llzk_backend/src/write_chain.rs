@@ -1,45 +1,26 @@
 //! Helper type for constructing operations that write using [`Access`].
 
 use crate::function::FunctionContext;
-use crate::function::GenerateLLZKInFunction;
 use crate::function::InfoProviders;
 use crate::lvalue::Lvalue;
 use crate::lvalue::OverrideVar;
 use crate::lvalue::Root;
 use crate::program_ext::ProgramLike;
 use crate::shared::comp_type;
-use crate::shared::region_with_block;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COMP;
-use crate::subcmp::names::COUNT;
 use crate::subcmp::SubcmpInfo;
 use crate::template::TemplateContext;
 use anyhow::Result;
-use llzk::builder::OpBuilder;
-use llzk::dialect::cast;
 use llzk::dialect::r#struct;
-use llzk::prelude::function;
-use llzk::prelude::pod;
-use llzk::prelude::ArrayType;
-use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::PodType;
 use llzk::prelude::StructType;
-use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
-use melior::dialect::arith;
-use melior::dialect::scf;
-use melior::ir::BlockLike as _;
-use melior::ir::RegionLike as _;
-use melior::ir::Type;
 use program_structure::ast::Access;
-use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
-use program_structure::ast::ExpressionInfixOpcode;
-use program_structure::ast::ExpressionPrefixOpcode;
-use std::cmp;
 use std::convert::TryFrom as _;
 use std::fmt;
 
@@ -120,6 +101,7 @@ impl OverrideVar for Override<'_> {
 /// Helper type that defines a chain of write operations.
 #[derive(Debug)]
 pub struct WriteChain<'ast> {
+    /// Location value this write action takes place on.
     lvalue: Lvalue<'ast>,
     /// If true, means that the write chain is storing the result of a call to compute.
     compute_result: bool,
@@ -235,6 +217,7 @@ impl<'ast> WriteChain<'ast> {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     /// Emits the write operations.
     pub fn write<'ctx, 'val>(
         self,
@@ -327,6 +310,8 @@ impl<'ast> WriteChain<'ast> {
         }
     }
 
+    /// Creates an override configuration for the given template and the internal `compute_result`
+    /// state.
     fn ov<'info>(&self, template: &'info dyn SubcmpInfo) -> Override<'info> {
         Override { compute_result: self.compute_result, subcmp_info: template }
     }

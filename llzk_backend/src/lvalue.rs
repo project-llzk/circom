@@ -5,8 +5,6 @@ use crate::function::InfoProviders;
 use crate::program_ext::ProgramLike;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::SubcmpInfo;
-use crate::template::TemplateContext;
-use crate::template_ext::TemplateLike as _;
 use crate::write_chain::NoSignalsInfo;
 use anyhow::Result;
 use llzk::prelude::pod;
@@ -106,7 +104,7 @@ impl<'ast> Lvalue<'ast> {
     /// Returns the root var name of the lvalue.
     fn root_var(&self) -> &str {
         match self {
-            Lvalue::Root { var, .. } => *var,
+            Lvalue::Root { var, .. } => var,
             Lvalue::Array { prev, .. } | Lvalue::Subcmp { prev, .. } => prev.root_var(),
         }
     }
@@ -212,6 +210,8 @@ impl<'ast> Lvalue<'ast> {
                 /// Overrides the input if the flag is set to true.
                 /// It will only apply if no decorator was passed.
                 struct OverrideIfInput {
+                    /// If true then the inner layers of this lvalue will replace "{var}" with
+                    /// "{var}$inputs"
                     do_override: bool,
                 }
 
@@ -221,7 +221,7 @@ impl<'ast> Lvalue<'ast> {
                     }
                 }
                 let info = subcmp_info.subcmp_info(root, codegen)?;
-                let ovii = OverrideIfInput { do_override: info.signal_is_input(*signal_name) };
+                let ovii = OverrideIfInput { do_override: info.signal_is_input(signal_name) };
 
                 let subcmp_value =
                     prev.get_value(codegen, fc, subcmp_info, location, ov.or(Some(&ovii)))?;
