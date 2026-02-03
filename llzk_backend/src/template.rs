@@ -7,6 +7,7 @@
 //! actual code generation within [GenerateLLZKInTemplate] a lot simpler.
 
 use crate::function::FunctionContext;
+use crate::function::InfoProviders;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
 use crate::lvalue::Lvalue;
@@ -1338,88 +1339,6 @@ where
         // This function handles the special cases that happen in templates and any other kind of
         // expression is delegated.
         match self {
-            Expression::Variable { meta, name, access }
-                if { matches!(access[..], [Access::ComponentAccess(_)]) } =>
-            {
-                match access.as_slice() {
-                    [Access::ComponentAccess(signal_name)] => template.and_then(
-                        |fc, _| {
-                            let subcmp_value = fc.block_ctx.get_named_value(name)?;
-                            let template_data = fc
-                                .subcmp_calls
-                                .get(subcmp_value)
-                                .ok_or_else(|| {
-                                    anyhow::anyhow!(
-                                        "subcomponent call for {subcmp_value} not found"
-                                    )
-                                })
-                                .and_then(|name| {
-                                    codegen.find_template_data(name).ok_or_else(|| {
-                                        anyhow::anyhow!("template {name:?} not found")
-                                    })
-                                })?;
-                            if template_data.get_outputs().contains_key(signal_name) {
-                                fc.append_op_unnamed_result(r#struct::readf(
-                                    &OpBuilder::new(codegen.context),
-                                    codegen.location_from_meta(meta),
-                                    FeltType::new(codegen.context).into(),
-                                    *subcmp_value,
-                                    signal_name,
-                                )?)
-                            } else if template_data.get_inputs().contains_key(signal_name) {
-                                let idx = template_data
-                                    .get_declaration_input_idx(signal_name)
-                                    .expect("signal from mapping");
-                                let call = CallOpRef::try_from(op_result_owner(*subcmp_value)?)?;
-                                assert!(call.callee_is_struct_compute());
-                                Ok(call.operand(idx)?)
-                            } else {
-                                anyhow::bail!(
-                                    "signal {signal_name} of subcomponent {name} is internal"
-                                );
-                            }
-                        },
-                        |fc, _| {
-                            let subcmp_value = fc.block_ctx.get_named_value(name)?;
-                            let template_data = fc
-                                .subcmp_calls
-                                .get(subcmp_value)
-                                .ok_or_else(|| {
-                                    anyhow::anyhow!(
-                                        "subcomponent call for {subcmp_value} not found"
-                                    )
-                                })
-                                .and_then(|name| {
-                                    codegen.find_template_data(name).ok_or_else(|| {
-                                        anyhow::anyhow!("template {name:?} not found")
-                                    })
-                                })?;
-                            if template_data.get_outputs().contains_key(signal_name) {
-                                fc.append_op_unnamed_result(r#struct::readf(
-                                    &OpBuilder::new(codegen.context),
-                                    codegen.location_from_meta(meta),
-                                    FeltType::new(codegen.context).into(),
-                                    *subcmp_value,
-                                    signal_name,
-                                )?)
-                            } else if template_data.get_inputs().contains_key(signal_name) {
-                                let idx = template_data
-                                    .get_declaration_input_idx(signal_name)
-                                    .expect("signal from mapping");
-                                let call = get_constrain_call(*subcmp_value)?;
-                                Ok(call.operand(idx + 1)?)
-                            } else {
-                                anyhow::bail!(
-                                    "signal {signal_name} of subcomponent {name} is internal"
-                                );
-                            }
-                        },
-                    ),
-                    _ => {
-                        unreachable!()
-                    }
-                }
-            }
             Expression::ParallelOp { rhe, .. } => {
                 // `parallel` is a tag used to generate parallelized code for the C++
                 // witness generator. Since LLZK currently has no such hint,
@@ -1487,7 +1406,14 @@ where
                     // The import is here rather than top level because it is very important that
                     // `gen_llzk_in_function()` is not used while translating statements.
                     use crate::function::GenerateLLZKInFunction;
-                    expr.gen_llzk_in_function(codegen, fc)
+                    expr.gen_llzk_in_function(
+                        codegen,
+                        fc,
+                        crate::function::InfoProviders {
+                            subcmp_info: template,
+                            signal_write_info: template,
+                        },
+                    )
                 })
             }
         }

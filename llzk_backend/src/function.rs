@@ -10,6 +10,8 @@ use crate::function_ext::FunctionLike;
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
+use crate::lvalue::Lvalue;
+use crate::lvalue::Root;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::insert_after_if_op_result;
@@ -31,6 +33,7 @@ use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COUNT;
 use crate::subcmp::SubcmpCallsMap;
 use crate::subcmp::SubcmpInfo;
+use crate::template::TemplateContext;
 use crate::template_ext::TemplateLike as _;
 use crate::try_for_loop_heuristic;
 use crate::write_chain::SignalWriteInfo;
@@ -112,12 +115,40 @@ const CIRCOM_RETURN_MARKER_ATTR: &str = "from_circom_return";
 const OPERAND_VAL_NAMES: &str = "operand_val_names";
 
 /// Contains references to information providers.
+///
+/// This information is required by [`Lvalue`] for properly constructing the IR representing the
+/// read in the case of subcomponents. The information it needs is:
+/// - Is the variable a subcomponent?
+/// - Is the field read with dot-notation an input or an output?
+///
+/// To answer that information it needs the [`TemplateContext`] since subcomponents can only occur
+/// inside a template. However, the logic in this file lowers [expressions](Expression) in both
+/// functions and templates so is necessary to provide that information in such a way that is
+/// transparent to that.
+///
+/// This type holds dyn references to two traits that give just enough information necessary for
+/// lowering using [`Lvalue`]. Both traits are implemented by [`TemplateContext`] and by a couple
+/// [Null objects](https://en.wikipedia.org/wiki/Null_object_pattern). The former is used while
+/// lowering expressions inside a template and the latter used while lowering inside a function.
 #[derive(Copy, Clone, Debug)]
 pub struct InfoProviders<'info> {
     /// Subcomponent information.
     pub subcmp_info: &'info dyn SubcmpInfo,
     /// Signals write information.
+    ///
+    /// We may be able to remove this field if the lowering in this file does not need to use
+    /// `WriteChain`. Since that type aims to be generic it may be reusable in the context of
+    /// lowering freestanding functions, in which case it needs an empty implementation of this
+    /// interface. This field is already here in preparation for reusing WriteChain.
     pub signal_write_info: &'info dyn SignalWriteInfo,
+}
+
+impl<'tmpl, 'ctx, 'str, 'func, 'blk, 'val>
+    From<&'tmpl TemplateContext<'ctx, 'str, 'func, 'blk, 'val>> for InfoProviders<'tmpl>
+{
+    fn from(template: &'tmpl TemplateContext<'ctx, 'str, 'func, 'blk, 'val>) -> Self {
+        Self { subcmp_info: template, signal_write_info: template }
+    }
 }
 
 /// Stores ref to the current function while generating LLZK IR for the function.
@@ -2022,7 +2053,7 @@ where
             Statement::Block { meta, stmts } => {
                 function.gen_in_current_block_with_new_circom_scope_and_merge_overwrites(
                     |function| {
-                        try_for_loop_heuristic!(codegen, function, info, meta, stmts);
+                        try_for_loop_heuristic!(codegen, function, meta, stmts, info);
                         // Fallback to standard block handling.
                         stmts.gen_llzk_in_function(codegen, function, info)?;
                         Ok(false)
@@ -2150,32 +2181,20 @@ where
                     codegen.new_felt_const_op(big_int, codegen.location_from_meta(meta))?,
                 )
             }
-            Expression::Variable { meta, name, access } => match access.as_slice() {
-                [] => {
-                    let v = function.block_ctx.get_named_value(name)?;
-                    Ok(*v)
-                }
-                a => {
-                    let location = codegen.location_from_meta(meta);
-                    let indices = a
-                        .iter()
-                        .map(|access| {
-                            let idx = match access {
-                                Access::ArrayAccess(index_expr) => {
-                                    index_expr.gen_llzk_in_function(codegen, function, info)
-                                }
-                                #[allow(unused_variables)] // TODO: TEMP
-                                Access::ComponentAccess(name) => {
-                                    todo!("Handle component access")
-                                }
-                            }?;
-                            function.cast_to_index_if_needed(location, idx)
-                        })
-                        .collect::<Result<Vec<Value<'_, '_>>>>()?;
-                    let arr_ref = function.block_ctx.get_named_value(name)?;
-                    function.append_array_read(*arr_ref, &indices, location, Some(name))
-                }
-            },
+            Expression::Variable { meta, name, access } => {
+                let lvalue = Lvalue::new(
+                    name,
+                    if info.subcmp_info.is_subcmp(name) { Root::Signal } else { Root::Var },
+                    access,
+                );
+                lvalue.get_value(
+                    codegen,
+                    function,
+                    info.subcmp_info,
+                    codegen.location_from_meta(meta),
+                    None,
+                )
+            }
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {
                 let lhs = lhe.gen_llzk_in_function(codegen, function, info)?;
                 let rhs = rhe.gen_llzk_in_function(codegen, function, info)?;

@@ -23,6 +23,7 @@ impl<P: ProgramLike> ProgramInfo for LlzkCodegen<'_, '_, P> {
             .get_templates(false)
             .into_iter()
             .find(|t| t.get_name() == name)
+            .map(|t| -> &dyn SignalDeclarations { t })
             .ok_or_else(|| anyhow::anyhow!("template '{name}' not found"))
     }
 }

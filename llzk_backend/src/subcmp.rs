@@ -34,6 +34,24 @@ pub trait SubcmpInfo: std::fmt::Debug {
     ) -> Result<&'i dyn SignalDeclarations>;
 }
 
+/// Empty implementation for [`SubcmpInfo`].
+#[derive(Debug)]
+pub struct NoSubcmps;
+
+impl SubcmpInfo for NoSubcmps {
+    fn is_subcmp(&self, var: &str) -> bool {
+        false
+    }
+
+    fn subcmp_info<'i>(
+        &self,
+        var: &str,
+        info: &'i dyn ProgramInfo,
+    ) -> Result<&'i dyn SignalDeclarations> {
+        unreachable!()
+    }
+}
+
 /// Information collected about a subcomponent.
 #[derive(Debug)]
 pub struct SubcmpDeclInfo<'ctx> {

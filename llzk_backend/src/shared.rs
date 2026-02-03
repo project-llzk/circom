@@ -896,7 +896,7 @@ pub fn relational_val(a: &BigUint, p: &BigUint) -> Result<BigInt> {
 /// `scf.while` loop.
 #[macro_export]
 macro_rules! try_for_loop_heuristic {
-    ($codegen:expr, $gen_context:expr,$info:expr, $meta:expr, $stmts:expr) => {
+    ($codegen:expr, $gen_context:expr, $meta:expr, $stmts:expr $(, $info:expr)? $(,)?) => {
         if let [program_structure::ast::Statement::InitializationBlock {
             xtype: program_structure::ast::VariableType::Var,
             initializations,
@@ -912,8 +912,8 @@ macro_rules! try_for_loop_heuristic {
             // fail when this is added since the lit checks only do line prefix by default).
             let loop_bounds = None;
 
-            gen_init_block($codegen, $gen_context, initializations, $info)?;
-            return gen_while($codegen, $gen_context, $meta, $info, cond, stmt, loop_bounds);
+            gen_init_block($codegen, $gen_context, $($info,)* initializations)?;
+            return gen_while($codegen, $gen_context, $($info,)* $meta, cond, stmt, loop_bounds);
         }
     };
 }

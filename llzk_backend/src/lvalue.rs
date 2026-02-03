@@ -134,7 +134,7 @@ impl<'ast> Lvalue<'ast> {
         location: Location<'ctx>,
         info: InfoProviders<'_>,
     ) -> Result<Value<'ctx, 'val>> {
-        let indices = fc.gen_index_ops(indices.iter().copied(), codegen, location, &info)?;
+        let indices = fc.gen_index_ops(indices.iter().copied(), codegen, location, info)?;
         fc.append_array_read(prev, &indices, location, None)
             .map(|v| fc.subcmp_calls.propagate(&prev, v))
     }
@@ -152,9 +152,9 @@ impl<'ast> Lvalue<'ast> {
             location,
             subcmp_value,
             codegen.flat_sym(signal_name),
-            PodType::try_from(subcmp_value.r#type())?
-                .get_type_of_record(signal_name)
-                .ok_or_else(|| anyhow::anyhow!("subcomponent signal {signal_name} not found"))?,
+            PodType::try_from(subcmp_value.r#type())?.get_type_of_record(signal_name).ok_or_else(
+                || anyhow::anyhow!("subcomponent signal {signal_name} not found: {subcmp_value:?}"),
+            )?,
         ))
     }
 

@@ -20,6 +20,7 @@ use llzk::dialect::cast;
 use llzk::dialect::r#struct;
 use llzk::prelude::function;
 use llzk::prelude::pod;
+use llzk::prelude::ArrayType;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
@@ -62,6 +63,7 @@ impl SignalWriteInfo for TemplateContext<'_, '_, '_, '_, '_> {
 }
 
 /// Implementation of [`SignalWriteInfo`] for when no signals are allowed.
+#[derive(Debug)]
 pub struct NoSignalsInfo;
 
 impl SignalWriteInfo for NoSignalsInfo {
@@ -126,12 +128,12 @@ pub struct WriteChain<'ast> {
 impl<'ast> WriteChain<'ast> {
     /// Creates a new write chain.
     pub fn new(var: &'ast str, op: Root, access: &'ast [Access]) -> Self {
-        Self::from_lvalue(Lvalue::new(var, op, access))
+        Self::from_lvalue(Lvalue::new(var, op, access), false)
     }
 
     /// Creates a write chain from a lvalue.
-    fn from_lvalue(lvalue: Lvalue<'ast>) -> Self {
-        Self { lvalue, compute_result: false }
+    fn from_lvalue(lvalue: Lvalue<'ast>, compute_result: bool) -> Self {
+        Self { lvalue, compute_result }
     }
 
     /// Creates a copy of the chain with the `compute_result` flag set to true.
@@ -302,7 +304,7 @@ impl<'ast> WriteChain<'ast> {
             }
             Lvalue::Array { indices, prev } => Self::write_array(
                 indices,
-                Self::from_lvalue(*prev),
+                Self::from_lvalue(*prev, self.compute_result),
                 val,
                 target,
                 codegen,
@@ -313,7 +315,7 @@ impl<'ast> WriteChain<'ast> {
             ),
             Lvalue::Subcmp { name, prev } => Self::write_subcmp(
                 name,
-                Self::from_lvalue(*prev),
+                Self::from_lvalue(*prev, self.compute_result),
                 val,
                 target,
                 codegen,

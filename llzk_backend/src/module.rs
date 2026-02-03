@@ -15,11 +15,13 @@ use crate::subcmp::names::COMP;
 use crate::subcmp::names::COUNT;
 use crate::subcmp::names::PARAMS;
 use crate::subcmp::unique_instance_types;
+use crate::subcmp::NoSubcmps;
 use crate::subcmp::SubcmpDeclInfo;
 use crate::subcmp::SubcmpPrologueData;
 use crate::template::GenerateLLZKInTemplate as _;
 use crate::template::TemplateContext;
 use crate::template_ext::TemplateLike;
+use crate::write_chain::NoSignalsInfo;
 use anyhow::bail;
 use anyhow::Result;
 use llzk::attributes::NamedAttribute;
@@ -472,7 +474,14 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
 
     // Visit the body of the function and generate LLZK IR for it.
     let mut func_context = FunctionContext::new::<true>(codegen, func, name_to_value)?;
-    func_like.get_body().gen_llzk_in_function(codegen, &mut func_context)?;
+    func_like.get_body().gen_llzk_in_function(
+        codegen,
+        &mut func_context,
+        crate::function::InfoProviders {
+            subcmp_info: &NoSubcmps,
+            signal_write_info: &NoSignalsInfo,
+        },
+    )?;
     func_context.finalize(codegen)
 }
 
