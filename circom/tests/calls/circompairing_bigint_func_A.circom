@@ -242,7 +242,7 @@ function mod_exp(n, k, a, p, e) {
         // multiply by a if bit is 0
         if (eBits[i] == 1) {
             var temp[200]; // length 2 * k
-            temp = prod(n, k, out, a);
+            temp = prod(n, k, out, a); // NOTE: assigns [100] to [200], remaining positions are not modified
             var temp2[2][100];
             temp2 = long_div(n, k, temp, p);
             out = temp2[1];
@@ -251,7 +251,7 @@ function mod_exp(n, k, a, p, e) {
         // square, unless we're at the end
         if (i > 0) {
             var temp[200]; // length 2 * k
-            temp = prod(n, k, out, out);
+            temp = prod(n, k, out, out); // NOTE: assigns [100] to [200], remaining positions are not modified
             var temp2[2][100];
             temp2 = long_div(n, k, temp, p);
             out = temp2[1];
