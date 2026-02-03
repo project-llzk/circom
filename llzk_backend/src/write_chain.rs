@@ -167,7 +167,7 @@ impl<'ast> WriteChain<'ast> {
             location,
             InfoProviders { subcmp_info, signal_write_info },
         )?;
-        fc.append_array_write(arr_ref, &indices, location, val, None)?;
+        fc.append_array_write(codegen, arr_ref, &indices, location, val, None)?;
         prev.write(arr_ref, target, codegen, fc, location, signal_write_info, subcmp_info)
     }
 

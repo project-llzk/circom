@@ -276,6 +276,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                                     struct_type
                                 ))?;
                                 fc.append_array_write(
+                                    codegen,
                                     comp_array,
                                     indices,
                                     location,

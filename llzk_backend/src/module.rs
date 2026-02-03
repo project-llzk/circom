@@ -702,7 +702,14 @@ where
                             FlatSymbolRefAttribute::new(codegen.context, COUNT),
                             count,
                         ))?;
-                        fc.append_array_write(comp_memory, indices, location, comp_memory_pod, None)
+                        fc.append_array_write(
+                            codegen,
+                            comp_memory,
+                            indices,
+                            location,
+                            comp_memory_pod,
+                            None,
+                        )
                     })?;
                 }
                 None => compute_ctx.block_ctx.declare_name_ensure_not_present(

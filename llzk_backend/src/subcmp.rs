@@ -39,14 +39,14 @@ pub trait SubcmpInfo: std::fmt::Debug {
 pub struct NoSubcmps;
 
 impl SubcmpInfo for NoSubcmps {
-    fn is_subcmp(&self, var: &str) -> bool {
+    fn is_subcmp(&self, _var: &str) -> bool {
         false
     }
 
     fn subcmp_info<'i>(
         &self,
-        var: &str,
-        info: &'i dyn ProgramInfo,
+        _var: &str,
+        _info: &'i dyn ProgramInfo,
     ) -> Result<&'i dyn SignalDeclarations> {
         unreachable!()
     }
