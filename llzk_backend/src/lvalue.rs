@@ -7,7 +7,6 @@ use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COMP;
 use crate::subcmp::SubcmpInfo;
 use crate::write_chain::NoSignalsInfo;
-use anyhow::Context as _;
 use anyhow::Result;
 use llzk::dialect::r#struct;
 use llzk::prelude::pod;
@@ -150,60 +149,67 @@ impl<'ast> Lvalue<'ast> {
             .map(|v| fc.subcmp_calls.propagate(&prev, v))
     }
 
-    /// Handle [Lvalue::Subcmp]  in [`Lvalue::get_value`].
-    fn get_subcmp<'ctx, 'val>(
+    /// Handle [Lvalue::Subcmp]  in [`Lvalue::get_value`] when the signal is an output of the
+    /// subcomponent.
+    fn get_subcmp_output<'ctx, 'val>(
         &self,
         signal_name: &str,
         subcmp_value: Value<'ctx, 'val>,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
-        is_input: bool,
     ) -> Result<Value<'ctx, 'val>> {
-        if is_input {
-            fc.append_op_unnamed_result(pod::read(
-                location,
-                subcmp_value,
-                codegen.flat_sym(signal_name),
-                PodType::try_from(subcmp_value.r#type())
-                    .map_err(|e| {
-                        anyhow::anyhow!("not a pod type '{e}' coming from {subcmp_value}")
-                    })?
-                    .get_type_of_record(signal_name)
-                    .ok_or_else(|| {
-                        anyhow::anyhow!(
-                            "subcomponent input signal {signal_name} not found: {subcmp_value}"
-                        )
-                    })?,
-            ))
-        } else {
-            let comp_value = type_switch! { ty = subcmp_value.r#type(),
-                PodType => {
-                    fc.append_op_unnamed_result(pod::read(
-                        location,
-                        subcmp_value,
-                        codegen.flat_sym(COMP),
-                        ty
-                            .get_type_of_record(COMP)
-                            .ok_or_else(|| {
-                                anyhow::anyhow!(
-                                    "subcomponent output signal {signal_name} not found: {subcmp_value}"
-                                )
-                            })?,
-                    ))?
-                }
-                StructType =>  subcmp_value,
-            };
-            fc.append_op_unnamed_result(r#struct::readf(
-                codegen.op_builder(),
-                location,
-                // TODO: Put the right type here based on the field, because it could be something
-                // more complex like an array or a bus.
-                codegen.felt_type().into(),
-                comp_value,
-                signal_name,
-            )?)
-        }
+        let comp_value = type_switch! { ty = subcmp_value.r#type(),
+            PodType => {
+                fc.append_op_unnamed_result(pod::read(
+                    location,
+                    subcmp_value,
+                    codegen.flat_sym(COMP),
+                    ty
+                        .get_type_of_record(COMP)
+                        .ok_or_else(|| {
+                            anyhow::anyhow!(
+                                "subcomponent output signal {signal_name} not found: {subcmp_value}"
+                            )
+                        })?,
+                ))?
+            }
+            StructType as _ =>  subcmp_value,
+        };
+        fc.append_op_unnamed_result(r#struct::readf(
+            codegen.op_builder(),
+            location,
+            // TODO: Put the right type here based on the field, because it could be something
+            // more complex like an array or a bus.
+            codegen.felt_type().into(),
+            comp_value,
+            signal_name,
+        )?)
+    }
+
+    /// Handle [Lvalue::Subcmp]  in [`Lvalue::get_value`] when the signal is an input of the
+    /// subcomponent.
+    fn get_subcmp_input<'ctx, 'val>(
+        &self,
+        signal_name: &str,
+        subcmp_value: Value<'ctx, 'val>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, 'val>> {
+        fc.append_op_unnamed_result(pod::read(
+            location,
+            subcmp_value,
+            codegen.flat_sym(signal_name),
+            PodType::try_from(subcmp_value.r#type())
+                .map_err(|e| anyhow::anyhow!("not a pod type '{e}' coming from {subcmp_value}"))?
+                .get_type_of_record(signal_name)
+                .ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "subcomponent input signal {signal_name} not found: {subcmp_value}"
+                    )
+                })?,
+        ))
     }
 
     /// Returns the SSA [`Value`] representing the op.
@@ -272,7 +278,11 @@ impl<'ast> Lvalue<'ast> {
                 let subcmp_value =
                     prev.get_value(codegen, fc, subcmp_info, location, ov.or(Some(&ovii)))?;
 
-                self.get_subcmp(signal_name, subcmp_value, codegen, fc, location, is_input)
+                if is_input {
+                    self.get_subcmp_input(signal_name, subcmp_value, codegen, fc, location)
+                } else {
+                    self.get_subcmp_output(signal_name, subcmp_value, codegen, fc, location)
+                }
             }
         }
     }
