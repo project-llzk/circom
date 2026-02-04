@@ -153,56 +153,57 @@ impl<'ast> Lvalue<'ast> {
     /// Handle [Lvalue::Subcmp]  in [`Lvalue::get_value`].
     fn get_subcmp<'ctx, 'val>(
         &self,
+        signal_name: &str,
+        subcmp_value: Value<'ctx, 'val>,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
-        signal_name: &str,
-        subcmp_value: Value<'ctx, 'val>,
+        is_input: bool,
     ) -> Result<Value<'ctx, 'val>> {
-        // Handle the case where we have a struct to read from.
-        if StructType::try_from(subcmp_value.r#type()).is_ok() {
-            return fc.append_op_unnamed_result(r#struct::readf(
-                codegen.op_builder(),
-                location,
-                codegen.felt_type().into(), // TODO: what is the type of the struct field?
-                subcmp_value,
-                signal_name,
-            )?);
-        }
-
-        // Otherwise, we expect a pod type.
-        let pod_type = PodType::try_from(subcmp_value.r#type())
-            .with_context(|| format!("subcomponent signal '{signal_name}' has unexpected type"))?;
-
-        // Input signals are stored directly in the pod, so read directly from the pod.
-        if let Some(result_type) = pod_type.get_type_of_record(signal_name) {
-            return fc.append_op_unnamed_result(pod::read(
+        if is_input {
+            fc.append_op_unnamed_result(pod::read(
                 location,
                 subcmp_value,
                 codegen.flat_sym(signal_name),
-                result_type,
-            ));
-        }
-
-        // Output signals are stored in the `@comp` record, so first read that record from the pod
-        // and then read the output signal from the struct.
-        if let Some(result_type) = pod_type.get_type_of_record(COMP) {
-            let component = fc.append_op_unnamed_result(pod::read(
-                location,
-                subcmp_value,
-                codegen.flat_sym(COMP),
-                result_type,
-            ))?;
-            return fc.append_op_unnamed_result(r#struct::readf(
+                PodType::try_from(subcmp_value.r#type())
+                    .map_err(|e| {
+                        anyhow::anyhow!("not a pod type '{e}' coming from {subcmp_value}")
+                    })?
+                    .get_type_of_record(signal_name)
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "subcomponent input signal {signal_name} not found: {subcmp_value}"
+                        )
+                    })?,
+            ))
+        } else {
+            let comp_value = type_switch! { ty = subcmp_value.r#type(),
+                PodType => {
+                    fc.append_op_unnamed_result(pod::read(
+                        location,
+                        subcmp_value,
+                        codegen.flat_sym(COMP),
+                        ty
+                            .get_type_of_record(COMP)
+                            .ok_or_else(|| {
+                                anyhow::anyhow!(
+                                    "subcomponent output signal {signal_name} not found: {subcmp_value}"
+                                )
+                            })?,
+                    ))?
+                }
+                StructType =>  subcmp_value,
+            };
+            fc.append_op_unnamed_result(r#struct::readf(
                 codegen.op_builder(),
                 location,
-                codegen.felt_type().into(), // TODO: what is the type of the struct field?
-                component,
+                // TODO: Put the right type here based on the field, because it could be something
+                // more complex like an array or a bus.
+                codegen.felt_type().into(),
+                comp_value,
                 signal_name,
-            )?);
+            )?)
         }
-
-        Err(anyhow::anyhow!("expected signal '{signal_name}' or '{COMP}' in {subcmp_value:?}"))
     }
 
     /// Returns the SSA [`Value`] representing the op.
@@ -250,23 +251,28 @@ impl<'ast> Lvalue<'ast> {
 
                 /// Overrides the input if the root is Signal. Only used if no decorator was passed.
                 /// Replaces "{var}" with "{var}$inputs" in the inner layers of this lvalue.
-                struct OverrideIfInput {}
+                struct OverrideIfInput {
+                    do_override: bool,
+                }
                 impl OverrideVar for OverrideIfInput {
                     fn override_var(&self, var: &str, op: Root) -> Option<String> {
-                        (op == Root::Signal).then(|| format!("{var}$inputs"))
+                        let will_override = self.do_override && op == Root::Signal;
+                        eprintln!("[OverrideIfInput::override_var({var:?}, {op:?})] do_override = {} | will_override = {will_override}", self.do_override);
+                        (will_override).then(|| format!("{var}$inputs"))
                     }
                 }
-                let ovii = OverrideIfInput {};
                 let info = subcmp_info.subcmp_info(root, codegen)?;
+                let is_input = info.signal_is_input(signal_name);
+                let ovii = OverrideIfInput { do_override: is_input };
 
-                let subcmp_value = prev.get_value(
-                    codegen,
-                    fc,
-                    subcmp_info,
-                    location,
-                    ov.or_else(|| info.signal_is_input(signal_name).then_some(&ovii)),
-                )?;
-                self.get_subcmp(codegen, fc, location, signal_name, subcmp_value)
+                eprintln!(
+                    "[Lvalue::get_value({location})] prev = {prev} | self = {self} | ov? {}",
+                    ov.is_some()
+                );
+                let subcmp_value =
+                    prev.get_value(codegen, fc, subcmp_info, location, ov.or(Some(&ovii)))?;
+
+                self.get_subcmp(signal_name, subcmp_value, codegen, fc, location, is_input)
             }
         }
     }
