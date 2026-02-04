@@ -268,7 +268,6 @@ impl<'ast> Lvalue<'ast> {
                 impl OverrideVar for OverrideIfInput {
                     fn override_var(&self, var: &str, op: Root) -> Option<String> {
                         let will_override = self.do_override && op == Root::Signal;
-                        eprintln!("[OverrideIfInput::override_var({var:?}, {op:?})] do_override = {} | will_override = {will_override}", self.do_override);
                         (will_override).then(|| format!("{var}$inputs"))
                     }
                 }
@@ -276,10 +275,6 @@ impl<'ast> Lvalue<'ast> {
                 let is_input = info.signal_is_input(signal_name);
                 let ovii = OverrideIfInput { do_override: is_input };
 
-                eprintln!(
-                    "[Lvalue::get_value({location})] prev = {prev} | self = {self} | ov? {}",
-                    ov.is_some()
-                );
                 let subcmp_value =
                     prev.get_value(codegen, fc, subcmp_info, location, ov.or(Some(&ovii)))?;
 
