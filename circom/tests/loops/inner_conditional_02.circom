@@ -96,10 +96,10 @@ component main = runner();
 // CHECK-LABEL:     function.def @compute() -> !struct.type<@runner<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_37:[0-9a-zA-Z_\.]+]] = struct.new : <@runner<[]>>
 // CHECK-DAG:         %[[VAL_38:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-DAG:         %[[VAL_39:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_38]] }  : <[@count: index, @comp: !struct.type<@InnerConditional2<[4, 0]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:        %[[VAL_39:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_38]] } : <[@count: index, @comp: !struct.type<@InnerConditional2<[4, 0]>>, @params: !pod.type<[]>]>
 // CHECK-DAG:         %[[VAL_40:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-DAG:         %[[VAL_41:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-DAG:         %[[VAL_42:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_41]] }  : <[@count: index, @comp: !struct.type<@InnerConditional2<[5, 1]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:        %[[VAL_42:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_41]] } : <[@count: index, @comp: !struct.type<@InnerConditional2<[5, 1]>>, @params: !pod.type<[]>]>
 // CHECK-DAG:         %[[VAL_43:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-DAG:         %[[VAL_44:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_39]][@comp] : <[@count: index, @comp: !struct.type<@InnerConditional2<[4, 0]>>, @params: !pod.type<[]>]>, !struct.type<@InnerConditional2<[4, 0]>>
 // CHECK-DAG:         %[[VAL_45:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_44]][@out] : <@InnerConditional2<[4, 0]>>, !felt.type

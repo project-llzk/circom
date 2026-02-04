@@ -55,7 +55,7 @@ component main = A();
 // CHECK-DAG:         %[[VAL_19:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_18]]
 // CHECK-DAG:         array.write %[[VAL_2]]{{\[}}%[[VAL_17]], %[[VAL_19]]] = %[[VAL_15]] : <2,1 x !pod.type<[@count: index, @comp: !struct.type<@C<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@C<[]>>, @params: !pod.type<[]>]>
 // CHECK-DAG:         %[[VAL_20:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-DAG:         %[[VAL_21:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_20]] }  : <[@count: index, @comp: !struct.type<@C<[]>>, @params: !pod.type<[]>]>
+// CHECK-DAG:         %[[VAL_21:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_20]] } : <[@count: index, @comp: !struct.type<@C<[]>>, @params: !pod.type<[]>]>
 // CHECK-DAG:         %[[VAL_22:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-DAG:         %[[VAL_23:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_22]]
 // CHECK-DAG:         %[[VAL_24:[0-9a-zA-Z_\.]+]] = felt.const  0
