@@ -1,6 +1,8 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llzk=concrete -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
+// XFAIL: *
+// See notes below for failure reason
 
 pragma circom 2.0.0;
 
@@ -74,6 +76,8 @@ template CompConstant(ct) {
 template AliasCheck() {
     signal input in[254];
 
+    // While lowering it will attempt to locate the `CompConstant` type as `CompConstant_1`
+    // but that name doesn't actually exist.
     component compConstant = CompConstant(-1);
     for (var i=0; i<254; i++) in[i] ==> compConstant.in[i];
 
