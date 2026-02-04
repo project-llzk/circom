@@ -4,12 +4,15 @@ use crate::function::FunctionContext;
 use crate::function::InfoProviders;
 use crate::program_ext::ProgramLike;
 use crate::shared::LlzkCodegen;
+use crate::subcmp::names::COMP;
 use crate::subcmp::SubcmpInfo;
 use crate::write_chain::NoSignalsInfo;
 use anyhow::Context as _;
 use anyhow::Result;
+use llzk::dialect::r#struct;
 use llzk::prelude::pod;
 use llzk::prelude::PodType;
+use llzk::prelude::StructType;
 use melior::ir::Location;
 use melior::ir::Value;
 use melior::ir::ValueLike as _;
@@ -156,18 +159,50 @@ impl<'ast> Lvalue<'ast> {
         signal_name: &str,
         subcmp_value: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
-        let result_type = PodType::try_from(subcmp_value.r#type())
-            .with_context(|| format!("subcomponent signal '{signal_name}' has unexpected type"))?
-            .get_type_of_record(signal_name)
-            .ok_or_else(|| {
-                anyhow::anyhow!("subcomponent signal '{signal_name}' not found: {subcmp_value:?}")
-            })?;
-        fc.append_op_unnamed_result(pod::read(
-            location,
-            subcmp_value,
-            codegen.flat_sym(signal_name),
-            result_type,
-        ))
+        // Handle the case where we have a struct to read from.
+        if StructType::try_from(subcmp_value.r#type()).is_ok() {
+            return fc.append_op_unnamed_result(r#struct::readf(
+                codegen.op_builder(),
+                location,
+                codegen.felt_type().into(), // TODO: what is the type of the struct field?
+                subcmp_value,
+                signal_name,
+            )?);
+        }
+
+        // Otherwise, we expect a pod type.
+        let pod_type = PodType::try_from(subcmp_value.r#type())
+            .with_context(|| format!("subcomponent signal '{signal_name}' has unexpected type"))?;
+
+        // Input signals are stored directly in the pod, so read directly from the pod.
+        if let Some(result_type) = pod_type.get_type_of_record(signal_name) {
+            return fc.append_op_unnamed_result(pod::read(
+                location,
+                subcmp_value,
+                codegen.flat_sym(signal_name),
+                result_type,
+            ));
+        }
+
+        // Output signals are stored in the `@comp` record, so first read that record from the pod
+        // and then read the output signal from the struct.
+        if let Some(result_type) = pod_type.get_type_of_record(COMP) {
+            let component = fc.append_op_unnamed_result(pod::read(
+                location,
+                subcmp_value,
+                codegen.flat_sym(COMP),
+                result_type,
+            ))?;
+            return fc.append_op_unnamed_result(r#struct::readf(
+                codegen.op_builder(),
+                location,
+                codegen.felt_type().into(), // TODO: what is the type of the struct field?
+                component,
+                signal_name,
+            )?);
+        }
+
+        Err(anyhow::anyhow!("expected signal '{signal_name}' or '{COMP}' in {subcmp_value:?}"))
     }
 
     /// Returns the SSA [`Value`] representing the op.
