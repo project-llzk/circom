@@ -21,7 +21,7 @@ template Call1() {
     component a = B();
     a.a <== m;
     a.b <== n;
-    // Call to A should happen here
+    // Call to B::compute should happen here
     y <== a.x;
 }
 
