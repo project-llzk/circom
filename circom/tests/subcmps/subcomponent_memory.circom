@@ -28,8 +28,7 @@ component main = A();
 // CHECK-DAG:       struct.field @c$inputs : !array.type<2,1 x !pod.type<[@f: !felt.type]>>
 // CHECK-DAG:       struct.field @b : !struct.type<@B<[]>>
 // CHECK-DAG:       struct.field @b$inputs : !pod.type<[@x: !felt.type, @y: !array.type<10 x !felt.type>]>
-// CHECK-LABEL:     function.def @compute
-// CHECK-SAME:      () -> !struct.type<@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-LABEL:     function.def @compute() -> !struct.type<@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@A<[]>>
 // CHECK-DAG:         %[[VAL_1:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-DAG:         %[[VAL_2:[0-9a-zA-Z_\.]+]] = array.new  : <2,1 x !pod.type<[@count: index, @comp: !struct.type<@C<[]>>, @params: !pod.type<[]>]>>
@@ -46,10 +45,10 @@ component main = A();
 // CHECK-DAG:         }
 // CHECK-DAG:         %[[VAL_10:[0-9a-zA-Z_\.]+]] = array.new  : <2,1 x !pod.type<[@f: !felt.type]>>
 // CHECK-DAG:         %[[VAL_11:[0-9a-zA-Z_\.]+]] = arith.constant 11 : index
-// CHECK-DAG:         %[[VAL_12:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_11]] }  : <[@count: index, @comp: !struct.type<@B<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_11]] } : <[@count: index, @comp: !struct.type<@B<[]>>, @params: !pod.type<[]>]>
 // CHECK-DAG:         %[[VAL_13:[0-9a-zA-Z_\.]+]] = pod.new : <[@x: !felt.type, @y: !array.type<10 x !felt.type>]>
 // CHECK-DAG:         %[[VAL_14:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-DAG:         %[[VAL_15:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_14]] }  : <[@count: index, @comp: !struct.type<@C<[]>>, @params: !pod.type<[]>]>
+// CHECK-DAG:         %[[VAL_15:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_14]] } : <[@count: index, @comp: !struct.type<@C<[]>>, @params: !pod.type<[]>]>
 // CHECK-DAG:         %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-DAG:         %[[VAL_17:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_16]]
 // CHECK-DAG:         %[[VAL_18:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -82,7 +81,7 @@ component main = A();
 // CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@A<[]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
-// CHECK-SAME:      (%[[VAL_36:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-SAME:            (%[[VAL_36:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-DAG:         %[[VAL_37:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_36]][@c] : <@A<[]>>, !array.type<2,1 x !struct.type<@C<[]>>>
 // CHECK-DAG:         %[[VAL_38:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_36]][@c$inputs] : <@A<[]>>, !array.type<2,1 x !pod.type<[@f: !felt.type]>>
 // CHECK-DAG:         %[[VAL_39:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_36]][@b] : <@A<[]>>, !struct.type<@B<[]>>
@@ -109,22 +108,3 @@ component main = A();
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-NEXT:    struct.def @B<[]> {
-// CHECK-NEXT:      function.def @compute(%[[VAL_56:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_57:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type>) -> !struct.type<@B<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:        %[[VAL_58:[0-9a-zA-Z_\.]+]] = struct.new : <@B<[]>>
-// CHECK-NEXT:        function.return %[[VAL_58]] : !struct.type<@B<[]>>
-// CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_59:[0-9a-zA-Z_\.]+]]: !struct.type<@B<[]>>, %[[VAL_60:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_61:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        function.return
-// CHECK-NEXT:      }
-// CHECK-NEXT:    }
-// CHECK-NEXT:    struct.def @C<[]> {
-// CHECK-NEXT:      function.def @compute(%[[VAL_62:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@C<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:        %[[VAL_63:[0-9a-zA-Z_\.]+]] = struct.new : <@C<[]>>
-// CHECK-NEXT:        function.return %[[VAL_63]] : !struct.type<@C<[]>>
-// CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_64:[0-9a-zA-Z_\.]+]]: !struct.type<@C<[]>>, %[[VAL_65:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        function.return
-// CHECK-NEXT:      }
-// CHECK-NEXT:    }
-// CHECK-NEXT:  }
