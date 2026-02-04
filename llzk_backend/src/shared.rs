@@ -1262,6 +1262,20 @@ macro_rules! type_switch {
         type_switch!(@parse $name, $( $body )+);
     };
 
+        // Entry point
+    { let $name:ident = $value:expr ; $( $body:tt )+ } => {{
+        // Evaluate once
+        let $name = $value;
+
+        type_switch!(@parse $name, $( $body )+)
+    }};
+
+    // Entry point
+    { let $name:ident ; $( $body:tt )+ } => {
+        type_switch!(@parse $name, $( $body )+);
+    };
+
+
     // Parsing
 
     (@parse $name:ident, $ty:ty => $body:block $( $rest:tt )*) => {

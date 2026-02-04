@@ -159,7 +159,7 @@ impl<'ast> Lvalue<'ast> {
         fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
-        let comp_value = type_switch! { ty = subcmp_value.r#type(),
+        let comp_value = type_switch! { let ty = subcmp_value.r#type();
             PodType => {
                 fc.append_op_unnamed_result(pod::read(
                     location,
@@ -174,7 +174,7 @@ impl<'ast> Lvalue<'ast> {
                         })?,
                 ))?
             }
-            StructType as _ =>  subcmp_value,
+            StructType as _ => subcmp_value,
         };
         fc.append_op_unnamed_result(r#struct::readf(
             codegen.op_builder(),
