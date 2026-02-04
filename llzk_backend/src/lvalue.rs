@@ -10,7 +10,10 @@ use crate::write_chain::NoSignalsInfo;
 use anyhow::Result;
 use llzk::dialect::r#struct;
 use llzk::prelude::pod;
+use llzk::prelude::FieldDefOpLike as _;
 use llzk::prelude::PodType;
+use llzk::prelude::StructDefOpLike as _;
+use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructType;
 use melior::ir::Location;
 use melior::ir::Value;
@@ -169,19 +172,29 @@ impl<'ast> Lvalue<'ast> {
                         .get_type_of_record(COMP)
                         .ok_or_else(|| {
                             anyhow::anyhow!(
-                                "subcomponent output signal {signal_name} not found: {subcmp_value}"
+                                "record {COMP} not found in subcomponent memory pod: {subcmp_value}"
                             )
                         })?,
                 ))?
             }
             StructType as _ => subcmp_value,
         };
+        let comp_value_type = StructType::try_from(comp_value.r#type())?;
+        let field_ty = {
+            let lookup = comp_value_type.get_definition_from_module(&codegen.module)?;
+            let struct_def_op = StructDefOpRef::try_from(lookup.get_operation().ok_or_else(|| anyhow::anyhow!("lookup of type {comp_value_type} succeded but the operation reference was empty"))?)?;
+            let field_def_op = struct_def_op.get_field_def(signal_name).ok_or_else(|| {
+                anyhow::anyhow!("field '{signal_name}' not found for type {comp_value_type}")
+            })?;
+            field_def_op.field_type()
+        };
+
         fc.append_op_unnamed_result(r#struct::readf(
             codegen.op_builder(),
             location,
             // TODO: Put the right type here based on the field, because it could be something
             // more complex like an array or a bus.
-            codegen.felt_type().into(),
+            field_ty,
             comp_value,
             signal_name,
         )?)
