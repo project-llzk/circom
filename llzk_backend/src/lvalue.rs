@@ -262,6 +262,7 @@ impl<'ast> Lvalue<'ast> {
                 /// Overrides the input if the root is Signal. Only used if no decorator was passed.
                 /// Replaces "{var}" with "{var}$inputs" in the inner layers of this lvalue.
                 struct OverrideIfInput {
+                    /// If true, and if the root is Signal, replaces the variable with the `$inputs` version.
                     do_override: bool,
                 }
                 impl OverrideVar for OverrideIfInput {
