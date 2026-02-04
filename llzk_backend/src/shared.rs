@@ -81,7 +81,7 @@ use program_structure::wire_data::WireType;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::convert::TryInto;
+use std::convert::TryInto as _;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
@@ -840,29 +840,6 @@ pub fn op_result_owner<'ctx, 'val, 'op: 'val>(
     unsafe { OperationRef::from_option_raw(mlir_sys::mlirOpResultGetOwner(value.to_raw())) }
         .ok_or_else(|| anyhow::anyhow!("owner of {value} is not a valid operation"))
 }
-
-///// Looks for a call op to a constrain function where the given value is the first argument.
-/////
-///// Fails if:
-/////     - The value has more than one use.
-/////     - The use is not a constrain call.
-/////     - The used value is not the first operand.
-//#[inline]
-//pub fn get_constrain_call<'ctx, 'op, 'val>(
-//    value: Value<'ctx, 'val>,
-//) -> Result<OperationRef<'ctx, 'op>> {
-//    let owner: CallOpRef<'ctx, 'op> = get_single_user(value)?.try_into()?;
-//    if !owner.callee_is_constrain() {
-//        anyhow::bail!("operation {owner} is not a call to a constrain function");
-//    }
-//
-//    let fst_operand = owner.operand(0)?;
-//    if fst_operand != value {
-//        anyhow::bail!("first operand {fst_operand} does not match target: {value}");
-//    }
-//
-//    Ok(owner.into())
-//}
 
 /// Convert unsigned field elements into relational values used for comparisons.
 ///

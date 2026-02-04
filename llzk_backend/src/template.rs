@@ -218,7 +218,6 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
         let location = codegen.location_unknown();
         let comp_sym = codegen.flat_sym(COMP);
 
-        let builder = OpBuilder::new(codegen.context);
         self.and_then::<_, _, GenResultUnit>(|fc, _| {
                 // Write the subcomponent declarations to self.
                 let self_value = fc.func.self_value_of_compute()?;
@@ -242,7 +241,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                             let struct_type = comp_type(ty.element_type().try_into()?)?;
 
                             let comp_array = fc.append_op_unnamed_result(array::new(
-                                &builder,
+                                codegen.op_builder(),
                                 location,
                                 map_array_inner_type(ty.into(), struct_type).try_into()?,
                                 MapDimSlice(&[], &[])
@@ -312,13 +311,13 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                                         subcmp,
                                         indices,
                                         location,
-                                    None
+                                        None
                                     )?;
                                 let subcmp_inputs = fc.append_array_read(
                                         inputs,
                                         indices,
                                         location,
-                                    None
+                                        None
                                     )?;
                                 fc.gen_constrain_call(
                                    subcmp_instance,
@@ -1183,43 +1182,6 @@ where
                                     },
                                 )
                             }
-                            //[Access::ComponentAccess(subcmp_signal)] => {
-                            //    // Assigning to a subcomponent signal is translated into replacing
-                            //    // the corresponding argument of the `@compute` and `@constrain`
-                            //    // calls.
-                            //    //
-                            //    // The value representing the call is mapped to the name of
-                            //    // the subcomponent and mapped to the name of
-                            //    // the subcomponent's template. For `@compute` that value is the
-                            //    // call op to `@compute` and in `@constrain` is the first operand
-                            //    // to the `@constrain` call.
-                            //    //
-                            //    // We use that name to look for the signal's declaration index and
-                            //    // use it to locate the corresponding operand and
-                            //    // replace it with the given `rhe`.
-                            //    rhe.gen_llzk_in_template(codegen, template)?.and_then(
-                            //        |fc, rhe| {
-                            //            fc.assign_subcmp(
-                            //                rhe,
-                            //                var,
-                            //                subcmp_signal,
-                            //                codegen,
-                            //                0,
-                            //                op_result_owner,
-                            //            )
-                            //        },
-                            //        |fc, rhe| {
-                            //            fc.assign_subcmp(
-                            //                rhe,
-                            //                var,
-                            //                subcmp_signal,
-                            //                codegen,
-                            //                1,
-                            //                get_constrain_call,
-                            //            )
-                            //        },
-                            //    )
-                            //}
                             access => rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                 |fc, rhv| {
                                     WriteChain::new(var, Root::Signal, access).write(

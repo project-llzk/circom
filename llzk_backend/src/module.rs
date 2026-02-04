@@ -607,7 +607,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
                     anyhow::anyhow!("could not deduce the type of subcomponent '{subcmp}'")
                 })
         })
-        .collect::<Result<_, _>>()?;
+        .collect::<Result<_>>()?;
 
     // Visit the body of the template and generate LLZK IR for it within the struct functions.
     let template_context =

@@ -40,15 +40,6 @@ impl OverrideVar for Option<&dyn OverrideVar> {
     }
 }
 
-/// Null decorator that never modifies the var name.
-pub struct NoOverride;
-
-impl OverrideVar for NoOverride {
-    fn override_var(&self, _: &str, _: Root) -> Option<String> {
-        None
-    }
-}
-
 /// Type of data at the root of the lvalue
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Root {

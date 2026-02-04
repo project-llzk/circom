@@ -18,7 +18,7 @@ use llzk::prelude::Location;
 use llzk::prelude::PodType;
 use llzk::prelude::StructType;
 use llzk::prelude::Value;
-use llzk::prelude::ValueLike;
+use llzk::prelude::ValueLike as _;
 use program_structure::ast::Access;
 use program_structure::ast::Expression;
 use std::convert::TryFrom as _;

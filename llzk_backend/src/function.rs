@@ -84,6 +84,8 @@ use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use llzk::prelude::WalkOrder;
 use llzk::prelude::WalkResult;
+use llzk::prelude::FUNC_NAME_COMPUTE;
+use llzk::prelude::FUNC_NAME_CONSTRAIN;
 use llzk::value_ext::has_uses;
 use melior::dialect::ods::math;
 use num_bigint_dig::BigInt;
@@ -1054,8 +1056,11 @@ where
     ) -> Result<Value<'ctx, 'val>> {
         let input_values = self.gen_decompose_pod(inputs, codegen, location)?;
 
-        let func_name =
-            SymbolRefAttribute::new(codegen.context, struct_type.name().value(), &["compute"]);
+        let func_name = SymbolRefAttribute::new(
+            codegen.context,
+            struct_type.name().value(),
+            &[FUNC_NAME_COMPUTE.as_ref()],
+        );
 
         self.append_op_unnamed_result(
             function::call(
@@ -1086,7 +1091,7 @@ where
         let func_name = SymbolRefAttribute::new(
             codegen.context,
             StructType::try_from(call_args[0].r#type())?.name().value(),
-            &["constrain"],
+            &[FUNC_NAME_CONSTRAIN.as_ref()],
         );
         let return_types: [Type; 0] = [];
         self.append_op_no_result(
@@ -1126,7 +1131,7 @@ where
                 }
                 unreachable!("Unhandled attribute in array dimensions {}", attr)
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>>>()?;
 
         let loop_block_args = [(codegen.index_type(), location)];
         let top_block = *self.block_ctx.top_block();
