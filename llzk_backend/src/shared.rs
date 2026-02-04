@@ -97,7 +97,7 @@ enum DeclInfo<'ctx> {
     /// Complete declaration info computed initially.
     Full(DeclarationInfo<'ctx>),
     /// Just the map of signal name to type left behind after generating LLZK for a template.
-    Remnant(HashMap<String, Type<'ctx>>),
+    Remnant { inputs: HashMap<String, Type<'ctx>>, outputs: HashMap<String, Type<'ctx>> },
 }
 
 /// Convert circom location information to MLIR location.
@@ -171,7 +171,8 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     pub fn take_template_decl(&self, name: &str) -> Result<DeclarationInfo<'ctx>> {
         let mut borrow = self.template_decls.borrow_mut();
         if let Some((name, DeclInfo::Full(decl_info))) = borrow.remove_entry(name) {
-            borrow.insert(name, DeclInfo::Remnant(decl_info.build_input_name_to_type_map()));
+            let (inputs, outputs) = decl_info.build_input_and_output_name_to_type_map();
+            borrow.insert(name, DeclInfo::Remnant { inputs, outputs });
             return Ok(decl_info);
         }
         Err(anyhow!("No full declaration info for {name}"))
@@ -187,9 +188,24 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         match borrow.get(template_name) {
             None => anyhow::bail!("No declaration info for {template_name}"),
             Some(DeclInfo::Full(info)) => info.get_input_type(signal_name),
-            Some(DeclInfo::Remnant(map)) => map.get(signal_name).copied(),
+            Some(DeclInfo::Remnant { inputs, .. }) => inputs.get(signal_name).copied(),
         }
         .ok_or_else(|| anyhow!("No input signal with name {signal_name}"))
+    }
+
+    /// Get the type of an output signal with the given name in the given template, if it exists.
+    pub fn get_output_signal_type(
+        &self,
+        template_name: &str,
+        signal_name: &str,
+    ) -> Result<Type<'ctx>> {
+        let borrow = self.template_decls.borrow();
+        match borrow.get(template_name) {
+            None => anyhow::bail!("No declaration info for {template_name}"),
+            Some(DeclInfo::Full(info)) => info.get_output_type(signal_name),
+            Some(DeclInfo::Remnant { outputs, .. }) => outputs.get(signal_name).copied(),
+        }
+        .ok_or_else(|| anyhow!("No output signal with name {signal_name}"))
     }
 
     /// Get the width of the scalar prime field in bits.

@@ -41,6 +41,7 @@ use program_structure::ast::VariableType;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryFrom;
+use std::convert::TryInto as _;
 
 /// Information needed to create an LLZK struct function parameter collected from the input signal
 /// Declaration statements within a circom template.
@@ -56,6 +57,29 @@ struct InputSignalInfo<'ctx> {
     attrs: Vec<NamedAttribute<'ctx>>,
 }
 
+/// Information neeeded to create a struct member representing either an output signal, an internal
+/// signal or a subcomponent.
+#[derive(Debug)]
+struct MemberInfo<'ctx> {
+    /// Name of the member.
+    name: String,
+    /// Type of the member.
+    decl_type: Type<'ctx>,
+    /// Location of the member.
+    location: Location<'ctx>,
+    /// Wether it's a publicly facing member of the struct
+    public: bool,
+}
+
+impl<'ctx> TryFrom<MemberInfo<'ctx>> for Operation<'ctx> {
+    type Error = Error;
+
+    fn try_from(value: MemberInfo<'ctx>) -> std::result::Result<Self, Self::Error> {
+        r#struct::field(value.location, &value.name, value.decl_type, false, value.public)
+            .map(Into::into)
+    }
+}
+
 /// Information collected from Declaration statements within a template that is used to setup LLZK
 /// struct fields and parameters to the functions with the struct.
 ///
@@ -65,7 +89,7 @@ pub struct DeclarationInfo<'ctx> {
     /// Input Signal declarations to use as parameters to the LLZK struct functions.
     inputs: Vec<InputSignalInfo<'ctx>>,
     /// Output and Intermediate declarations to use as LLZK struct fields.
-    struct_fields: Vec<Result<Operation<'ctx>, Error>>,
+    struct_fields: Vec<MemberInfo<'ctx>>,
     /// Map var/signal name to its LLZK declaration Operation (usually `undef.undef`).
     decl_inits: HashMap<String, Operation<'ctx>>,
     /// Map `component` name to its declaration information.
@@ -75,14 +99,29 @@ pub struct DeclarationInfo<'ctx> {
 }
 
 impl<'ctx> DeclarationInfo<'ctx> {
-    /// Returns a mapping of input signal names to their types.
-    pub(crate) fn build_input_name_to_type_map(&self) -> HashMap<String, Type<'ctx>> {
-        self.inputs.iter().map(|i| (i.name.clone(), i.type_and_loc.0)).collect()
+    /// Returns a mapping of input and output signal names to their types.
+    pub(crate) fn build_input_and_output_name_to_type_map(
+        &self,
+    ) -> (HashMap<String, Type<'ctx>>, HashMap<String, Type<'ctx>>) {
+        (
+            self.inputs.iter().map(|i| (i.name.clone(), i.type_and_loc.0)).collect(),
+            self.struct_fields
+                .iter()
+                .filter_map(|info| info.public.then(|| (info.name.clone(), info.decl_type)))
+                .collect(),
+        )
     }
 
     /// Returns the type of the input signal with the given name, if it exists.
     pub(crate) fn get_input_type(&self, signal_name: &str) -> Option<Type<'ctx>> {
         self.inputs.iter().find_map(|i| (i.name == signal_name).then_some(i.type_and_loc.0))
+    }
+
+    /// Returns the type of the input signal with the given name, if it exists.
+    pub(crate) fn get_output_type(&self, signal_name: &str) -> Option<Type<'ctx>> {
+        self.struct_fields.iter().find_map(|member| {
+            (member.name == signal_name && member.public).then_some(member.decl_type)
+        })
     }
 
     /// Completes the declaration information from the information collected from the
@@ -136,14 +175,20 @@ impl<'ctx> DeclarationInfo<'ctx> {
             let inputs = extend_dims(PodType::new(codegen.context, &inputs).into());
 
             let field_type = extend_dims(types[0].into());
-            self.struct_fields.push(
-                r#struct::field(info.location(), name, field_type, false, false).map(Into::into),
-            );
+            self.struct_fields.push(MemberInfo {
+                name: name.clone(),
+                decl_type: field_type,
+                location: info.location(),
+                public: false,
+            });
+
             let name_inputs = format!("{name}$inputs");
-            self.struct_fields.push(
-                r#struct::field(info.location(), &name_inputs, inputs, false, false)
-                    .map(Into::into),
-            );
+            self.struct_fields.push(MemberInfo {
+                name: name_inputs,
+                decl_type: inputs,
+                location: info.location(),
+                public: false,
+            });
             ops.push(SubcmpPrologueData {
                 name: name.clone(),
                 subcmp: field_type,
@@ -328,14 +373,12 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 attrs,
             });
         } else {
-            let new = r#struct::field(
-                location,
-                name,
+            self.struct_fields.push(MemberInfo {
+                name: name.clone(),
                 decl_type,
-                false,
-                SignalType::Output == *signal_type,
-            );
-            self.struct_fields.push(new.map(Into::into));
+                location,
+                public: SignalType::Output == *signal_type,
+            });
         }
         // Create an `undef` of the appropriate type. When the actual assignment is
         // processed later, this is replaced with the appropriate value.
@@ -509,7 +552,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         struct_loc,
         template_like.get_name(),
         &struct_params,
-        declarations.struct_fields,
+        declarations.struct_fields.into_iter().map(|m| m.try_into()),
     )?;
     let new_struct = codegen.add_struct(struct_def)?;
 
