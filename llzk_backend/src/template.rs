@@ -28,7 +28,6 @@ use crate::write_chain::WriteChain;
 use crate::write_chain::WriteTarget;
 use anyhow::anyhow;
 use anyhow::Result;
-use llzk::builder::OpBuilder;
 use llzk::dialect::array::ArrayCtor::MapDimSlice;
 use llzk::dialect::cast;
 use llzk::prelude::array;
@@ -43,7 +42,6 @@ use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::LoopBoundsAttribute;
-use llzk::prelude::PodRecordAttribute;
 use llzk::prelude::PodType;
 use llzk::prelude::RecordValue;
 use llzk::prelude::StructDefOpLike;
@@ -1312,23 +1310,41 @@ where
                 let records = [
                     // Counts the number of inputs pending an assignment. When it reaches 0 it's
                     // safe to call the corresponding `@compute` function.
-                    PodRecordAttribute::new(COUNT, codegen.index_type()),
+                    (COUNT, codegen.index_type()),
                     // Holds the output of calling `@compute`. Before the call, this value is
                     // undefined and should not be read from.
-                    PodRecordAttribute::new(COMP, subcmp_type.into()),
+                    (COMP, subcmp_type.into()),
                     // Holds the affine map operands of the subcomponents, if any.
-                    PodRecordAttribute::new(PARAMS, PodType::new(codegen.context, &[]).into()),
+                    (PARAMS, codegen.pod_type(&[]).into()),
                 ];
+
                 // Create a `pod.new` operation with the memory for the subcomponent.
                 template.and_then_same(|fc, _| {
-                    let count = fc.append_op_unnamed_result(
-                        codegen.new_index_const_op(i64::try_from(count)?, location),
-                    )?;
+                    let pod_type = Some(codegen.pod_type(&records));
+                    // If the count == 0 means that the subcomponent has no inputs. In that case we
+                    // call `@compute` here directly and store it into COMP.
+                    let (name, value) = if count == 0 {
+                        let empty_inputs = fc.append_op_unnamed_result(pod::new(
+                            codegen.op_builder(),
+                            location,
+                            &[],
+                            Some(codegen.pod_type(&[])),
+                        ))?;
+                        let instance =
+                            fc.gen_compute_call(subcmp_type, empty_inputs, location, codegen)?;
+                        (COMP, instance)
+                    } else {
+                        let count = fc.append_op_unnamed_result(
+                            codegen.new_index_const_op(i64::try_from(count)?, location),
+                        )?;
+                        (COUNT, count)
+                    };
+
                     fc.append_op_unnamed_result(pod::new(
-                        &OpBuilder::new(codegen.context),
+                        codegen.op_builder(),
                         location,
-                        &[RecordValue::new(StringRef::new(COUNT), count)],
-                        Some(PodType::new(codegen.context, &records)),
+                        &[RecordValue::new(StringRef::new(name), value)],
+                        pod_type,
                     ))
                 })
             }
