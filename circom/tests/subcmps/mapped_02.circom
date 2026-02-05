@@ -1,5 +1,5 @@
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
 // XFAIL:.*
 
@@ -27,14 +27,14 @@ template B(n, m, j) {
 	var k;
 	for (k = 0; k < j; k++) {
 		as[0][k] = A(n);
-	}	
+	}
 	for (i = 0; i < n; i++) {
 		for (k = 0; k < j; k++) {
 			as[0][k].a[i] <== a[i][k];
 		}
 	}
 
-		
+
 	for (k = 0; k < j; k++) {
 		as[1][k] = A(m);
 	}

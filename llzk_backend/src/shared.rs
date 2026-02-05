@@ -135,6 +135,8 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     pub prime: BigUint,
     /// State of the `--verbose` flag.
     pub verbose: bool,
+    /// State of the `--stabilize` flag.
+    pub stabilize: bool,
     /// Declaration info pre-computed for all templates.
     template_decls: RefCell<HashMap<String, DeclInfo<'ctx>>>,
     /// Operation builder
@@ -149,6 +151,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         module: Module<'ctx>,
         prime: BigUint,
         verbose: bool,
+        stabilize: bool,
     ) -> Self {
         LlzkCodegen {
             program,
@@ -156,6 +159,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
             module,
             prime,
             verbose,
+            stabilize,
             template_decls: RefCell::new(Default::default()),
             builder: OpBuilder::new(context),
         }
