@@ -286,31 +286,31 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:      function.def @compute(%[[VAL_168:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type>, %[[VAL_169:[0-9a-zA-Z_\.]+]]: !array.type<3,2 x !felt.type>) -> !struct.type<@matMul_2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_170:[0-9a-zA-Z_\.]+]] = struct.new : <@matMul_2<[]>>
 // CHECK-NEXT:        %[[VAL_171:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2,2 x !felt.type>
-// CHECK-NEXT:        %[[VAL_172:[0-9a-zA-Z_\.]+]] = arith.constant 6 : index
-// CHECK-NEXT:        %[[VAL_173:[0-9a-zA-Z_\.]+]] = array.new  : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>
-// CHECK-NEXT:        %[[VAL_174:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:        %[[VAL_175:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
+// CHECK-NEXT:        %[[VAL_172:[0-9a-zA-Z_\.]+]] = array.new  : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>
+// CHECK-NEXT:        %[[VAL_173:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
+// CHECK-NEXT:        %[[VAL_174:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
+// CHECK-NEXT:        %[[VAL_175:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
 // CHECK-NEXT:        %[[VAL_176:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CHECK-NEXT:        %[[VAL_177:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CHECK-NEXT:        scf.for %[[VAL_178:[0-9a-zA-Z_\.]+]] = %[[VAL_174]] to %[[VAL_176]] step %[[VAL_175]] {
-// CHECK-NEXT:          scf.for %[[VAL_179:[0-9a-zA-Z_\.]+]] = %[[VAL_174]] to %[[VAL_177]] step %[[VAL_175]] {
-// CHECK-NEXT:            %[[VAL_180:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_173]]{{\[}}%[[VAL_178]], %[[VAL_179]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:            pod.write %[[VAL_180]][@count] = %[[VAL_172]] : <[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>, index
-// CHECK-NEXT:            array.write %[[VAL_173]]{{\[}}%[[VAL_178]], %[[VAL_179]]] = %[[VAL_180]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:        scf.for %[[VAL_177:[0-9a-zA-Z_\.]+]] = %[[VAL_173]] to %[[VAL_175]] step %[[VAL_174]] {
+// CHECK-NEXT:          scf.for %[[VAL_178:[0-9a-zA-Z_\.]+]] = %[[VAL_173]] to %[[VAL_176]] step %[[VAL_174]] {
+// CHECK-NEXT:            %[[VAL_179:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_172]]{{\[}}%[[VAL_177]], %[[VAL_178]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:            %[[VAL_180:[0-9a-zA-Z_\.]+]] = arith.constant 6 : index
+// CHECK-NEXT:            pod.write %[[VAL_179]][@count] = %[[VAL_180]] : <[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>, index
+// CHECK-NEXT:            array.write %[[VAL_172]]{{\[}}%[[VAL_177]], %[[VAL_178]]] = %[[VAL_179]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          }
 // CHECK-NEXT:        }
 // CHECK-NEXT:        %[[VAL_181:[0-9a-zA-Z_\.]+]] = array.new  : <2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>, @b: !array.type<1,3 x !felt.type>]>>
-// CHECK-NEXT:        %[[VAL_182:[0-9a-zA-Z_\.]+]] = arith.constant 3 : index
-// CHECK-NEXT:        %[[VAL_183:[0-9a-zA-Z_\.]+]] = array.new  : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>>
-// CHECK-NEXT:        %[[VAL_184:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:        %[[VAL_185:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
+// CHECK-NEXT:        %[[VAL_182:[0-9a-zA-Z_\.]+]] = array.new  : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>>
+// CHECK-NEXT:        %[[VAL_183:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
+// CHECK-NEXT:        %[[VAL_184:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
+// CHECK-NEXT:        %[[VAL_185:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
 // CHECK-NEXT:        %[[VAL_186:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CHECK-NEXT:        %[[VAL_187:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CHECK-NEXT:        scf.for %[[VAL_188:[0-9a-zA-Z_\.]+]] = %[[VAL_184]] to %[[VAL_186]] step %[[VAL_185]] {
-// CHECK-NEXT:          scf.for %[[VAL_189:[0-9a-zA-Z_\.]+]] = %[[VAL_184]] to %[[VAL_187]] step %[[VAL_185]] {
-// CHECK-NEXT:            %[[VAL_190:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_183]]{{\[}}%[[VAL_188]], %[[VAL_189]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:            pod.write %[[VAL_190]][@count] = %[[VAL_182]] : <[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>, index
-// CHECK-NEXT:            array.write %[[VAL_183]]{{\[}}%[[VAL_188]], %[[VAL_189]]] = %[[VAL_190]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:        scf.for %[[VAL_187:[0-9a-zA-Z_\.]+]] = %[[VAL_183]] to %[[VAL_185]] step %[[VAL_184]] {
+// CHECK-NEXT:          scf.for %[[VAL_188:[0-9a-zA-Z_\.]+]] = %[[VAL_183]] to %[[VAL_186]] step %[[VAL_184]] {
+// CHECK-NEXT:            %[[VAL_189:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_182]]{{\[}}%[[VAL_187]], %[[VAL_188]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:            %[[VAL_190:[0-9a-zA-Z_\.]+]] = arith.constant 3 : index
+// CHECK-NEXT:            pod.write %[[VAL_189]][@count] = %[[VAL_190]] : <[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>, index
+// CHECK-NEXT:            array.write %[[VAL_182]]{{\[}}%[[VAL_187]], %[[VAL_188]]] = %[[VAL_189]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          }
 // CHECK-NEXT:        }
 // CHECK-NEXT:        %[[VAL_191:[0-9a-zA-Z_\.]+]] = array.new  : <2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>]>>
@@ -358,7 +358,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:              array.write %[[VAL_222]]{{\[}}%[[VAL_236]], %[[VAL_237]]] = %[[VAL_235]] : <2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>, @b: !array.type<1,3 x !felt.type>]>>, !pod.type<[@a: !array.type<1,3 x !felt.type>, @b: !array.type<1,3 x !felt.type>]>
 // CHECK-NEXT:              %[[VAL_238:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_202]]
 // CHECK-NEXT:              %[[VAL_239:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_212]]
-// CHECK-NEXT:              %[[VAL_240:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_173]]{{\[}}%[[VAL_238]], %[[VAL_239]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:              %[[VAL_240:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_172]]{{\[}}%[[VAL_238]], %[[VAL_239]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:              %[[VAL_241:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_240]][@count] : <[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>, index
 // CHECK-NEXT:              %[[VAL_242:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:              %[[VAL_243:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_241]], %[[VAL_242]] : index
@@ -372,7 +372,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:                pod.write %[[VAL_240]][@comp] = %[[VAL_248]] : <[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@matElemMul_0<[]>>
 // CHECK-NEXT:                %[[VAL_249:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_202]]
 // CHECK-NEXT:                %[[VAL_250:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_212]]
-// CHECK-NEXT:                array.write %[[VAL_173]]{{\[}}%[[VAL_249]], %[[VAL_250]]] = %[[VAL_240]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:                array.write %[[VAL_172]]{{\[}}%[[VAL_249]], %[[VAL_250]]] = %[[VAL_240]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:              } else {
 // CHECK-NEXT:              }
 // CHECK-NEXT:              %[[VAL_251:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_221]]
@@ -395,7 +395,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:              array.write %[[VAL_222]]{{\[}}%[[VAL_264]], %[[VAL_265]]] = %[[VAL_263]] : <2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>, @b: !array.type<1,3 x !felt.type>]>>, !pod.type<[@a: !array.type<1,3 x !felt.type>, @b: !array.type<1,3 x !felt.type>]>
 // CHECK-NEXT:              %[[VAL_266:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_202]]
 // CHECK-NEXT:              %[[VAL_267:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_212]]
-// CHECK-NEXT:              %[[VAL_268:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_173]]{{\[}}%[[VAL_266]], %[[VAL_267]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:              %[[VAL_268:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_172]]{{\[}}%[[VAL_266]], %[[VAL_267]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:              %[[VAL_269:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_268]][@count] : <[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>, index
 // CHECK-NEXT:              %[[VAL_270:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:              %[[VAL_271:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_269]], %[[VAL_270]] : index
@@ -409,7 +409,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:                pod.write %[[VAL_268]][@comp] = %[[VAL_276]] : <[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@matElemMul_0<[]>>
 // CHECK-NEXT:                %[[VAL_277:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_202]]
 // CHECK-NEXT:                %[[VAL_278:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_212]]
-// CHECK-NEXT:                array.write %[[VAL_173]]{{\[}}%[[VAL_277]], %[[VAL_278]]] = %[[VAL_268]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:                array.write %[[VAL_172]]{{\[}}%[[VAL_277]], %[[VAL_278]]] = %[[VAL_268]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:              } else {
 // CHECK-NEXT:              }
 // CHECK-NEXT:              %[[VAL_279:[0-9a-zA-Z_\.]+]] = felt.const  1
@@ -425,7 +425,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:            ^bb0(%[[VAL_287:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_288:[0-9a-zA-Z_\.]+]]: !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>]>>):
 // CHECK-NEXT:              %[[VAL_289:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_202]]
 // CHECK-NEXT:              %[[VAL_290:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_212]]
-// CHECK-NEXT:              %[[VAL_291:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_173]]{{\[}}%[[VAL_289]], %[[VAL_290]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:              %[[VAL_291:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_172]]{{\[}}%[[VAL_289]], %[[VAL_290]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:              %[[VAL_292:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_291]][@comp] : <[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@matElemMul_0<[]>>
 // CHECK-NEXT:              %[[VAL_293:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_292]][@out] : <@matElemMul_0<[]>>, !array.type<1,3 x !felt.type>
 // CHECK-NEXT:              %[[VAL_294:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -449,7 +449,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:              array.write %[[VAL_288]]{{\[}}%[[VAL_308]], %[[VAL_309]]] = %[[VAL_307]] : <2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>]>>, !pod.type<[@a: !array.type<1,3 x !felt.type>]>
 // CHECK-NEXT:              %[[VAL_310:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_202]]
 // CHECK-NEXT:              %[[VAL_311:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_212]]
-// CHECK-NEXT:              %[[VAL_312:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_183]]{{\[}}%[[VAL_310]], %[[VAL_311]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:              %[[VAL_312:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_182]]{{\[}}%[[VAL_310]], %[[VAL_311]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:              %[[VAL_313:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_312]][@count] : <[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>, index
 // CHECK-NEXT:              %[[VAL_314:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:              %[[VAL_315:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_313]], %[[VAL_314]] : index
@@ -462,7 +462,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:                pod.write %[[VAL_312]][@comp] = %[[VAL_319]] : <[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>, !struct.type<@matElemSum_1<[]>>
 // CHECK-NEXT:                %[[VAL_320:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_202]]
 // CHECK-NEXT:                %[[VAL_321:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_212]]
-// CHECK-NEXT:                array.write %[[VAL_183]]{{\[}}%[[VAL_320]], %[[VAL_321]]] = %[[VAL_312]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:                array.write %[[VAL_182]]{{\[}}%[[VAL_320]], %[[VAL_321]]] = %[[VAL_312]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:              } else {
 // CHECK-NEXT:              }
 // CHECK-NEXT:              %[[VAL_322:[0-9a-zA-Z_\.]+]] = felt.const  1
@@ -471,7 +471,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:            }
 // CHECK-NEXT:            %[[VAL_324:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_202]]
 // CHECK-NEXT:            %[[VAL_325:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_212]]
-// CHECK-NEXT:            %[[VAL_326:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_183]]{{\[}}%[[VAL_324]], %[[VAL_325]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:            %[[VAL_326:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_182]]{{\[}}%[[VAL_324]], %[[VAL_325]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_327:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_326]][@comp] : <[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>, !struct.type<@matElemSum_1<[]>>
 // CHECK-NEXT:            %[[VAL_328:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_327]][@out] : <@matElemSum_1<[]>>, !felt.type
 // CHECK-NEXT:            %[[VAL_329:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_202]]
@@ -493,7 +493,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:        %[[VAL_339:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
 // CHECK-NEXT:        scf.for %[[VAL_340:[0-9a-zA-Z_\.]+]] = %[[VAL_336]] to %[[VAL_338]] step %[[VAL_337]] {
 // CHECK-NEXT:          scf.for %[[VAL_341:[0-9a-zA-Z_\.]+]] = %[[VAL_336]] to %[[VAL_339]] step %[[VAL_337]] {
-// CHECK-NEXT:            %[[VAL_342:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_173]]{{\[}}%[[VAL_340]], %[[VAL_341]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:            %[[VAL_342:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_172]]{{\[}}%[[VAL_340]], %[[VAL_341]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_343:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_342]][@comp] : <[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@matElemMul_0<[]>>
 // CHECK-NEXT:            array.write %[[VAL_335]]{{\[}}%[[VAL_340]], %[[VAL_341]]] = %[[VAL_343]] : <2,2 x !struct.type<@matElemMul_0<[]>>>, !struct.type<@matElemMul_0<[]>>
 // CHECK-NEXT:          }
@@ -507,7 +507,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:        %[[VAL_348:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
 // CHECK-NEXT:        scf.for %[[VAL_349:[0-9a-zA-Z_\.]+]] = %[[VAL_345]] to %[[VAL_347]] step %[[VAL_346]] {
 // CHECK-NEXT:          scf.for %[[VAL_350:[0-9a-zA-Z_\.]+]] = %[[VAL_345]] to %[[VAL_348]] step %[[VAL_346]] {
-// CHECK-NEXT:            %[[VAL_351:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_183]]{{\[}}%[[VAL_349]], %[[VAL_350]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:            %[[VAL_351:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_182]]{{\[}}%[[VAL_349]], %[[VAL_350]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_352:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_351]][@comp] : <[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>, !struct.type<@matElemSum_1<[]>>
 // CHECK-NEXT:            array.write %[[VAL_344]]{{\[}}%[[VAL_349]], %[[VAL_350]]] = %[[VAL_352]] : <2,2 x !struct.type<@matElemSum_1<[]>>>, !struct.type<@matElemSum_1<[]>>
 // CHECK-NEXT:          }

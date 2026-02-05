@@ -95,34 +95,36 @@ component main = runner();
 // CHECK-NEXT:      struct.field @b$inputs : !pod.type<[]>
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@runner<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_37:[0-9a-zA-Z_\.]+]] = struct.new : <@runner<[]>>
-// CHECK-NEXT:        %[[VAL_38:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:        %[[VAL_39:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_38]] }  : <[@count: index, @comp: !struct.type<@InnerConditional2<[4, 0]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:        %[[VAL_40:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:        %[[VAL_41:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:        %[[VAL_42:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_41]] }  : <[@count: index, @comp: !struct.type<@InnerConditional2<[5, 1]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:        %[[VAL_43:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:        %[[VAL_44:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_39]][@comp] : <[@count: index, @comp: !struct.type<@InnerConditional2<[4, 0]>>, @params: !pod.type<[]>]>, !struct.type<@InnerConditional2<[4, 0]>>
-// CHECK-NEXT:        %[[VAL_45:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_44]][@out] : <@InnerConditional2<[4, 0]>>, !felt.type
-// CHECK-NEXT:        %[[VAL_46:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_42]][@comp] : <[@count: index, @comp: !struct.type<@InnerConditional2<[5, 1]>>, @params: !pod.type<[]>]>, !struct.type<@InnerConditional2<[5, 1]>>
-// CHECK-NEXT:        %[[VAL_47:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_46]][@out] : <@InnerConditional2<[5, 1]>>, !felt.type
-// CHECK-NEXT:        %[[VAL_48:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_45]], %[[VAL_47]] : !felt.type, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_37]][@out] = %[[VAL_48]] : <@runner<[]>>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_37]][@a$inputs] = %[[VAL_40]] : <@runner<[]>>, !pod.type<[]>
-// CHECK-NEXT:        %[[VAL_49:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_39]][@comp] : <[@count: index, @comp: !struct.type<@InnerConditional2<[4, 0]>>, @params: !pod.type<[]>]>, !struct.type<@InnerConditional2<[4, 0]>>
-// CHECK-NEXT:        struct.writef %[[VAL_37]][@a] = %[[VAL_49]] : <@runner<[]>>, !struct.type<@InnerConditional2<[4, 0]>>
-// CHECK-NEXT:        struct.writef %[[VAL_37]][@b$inputs] = %[[VAL_43]] : <@runner<[]>>, !pod.type<[]>
-// CHECK-NEXT:        %[[VAL_50:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_42]][@comp] : <[@count: index, @comp: !struct.type<@InnerConditional2<[5, 1]>>, @params: !pod.type<[]>]>, !struct.type<@InnerConditional2<[5, 1]>>
-// CHECK-NEXT:        struct.writef %[[VAL_37]][@b] = %[[VAL_50]] : <@runner<[]>>, !struct.type<@InnerConditional2<[5, 1]>>
+// CHECK-NEXT:        %[[VAL_38:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
+// CHECK-NEXT:        %[[VAL_39:[0-9a-zA-Z_\.]+]] = function.call @InnerConditional2::@compute() : () -> !struct.type<@InnerConditional2<[4, 0]>>
+// CHECK-NEXT:        %[[VAL_40:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_39]] }  : <[@count: index, @comp: !struct.type<@InnerConditional2<[4, 0]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:        %[[VAL_41:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
+// CHECK-NEXT:        %[[VAL_42:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
+// CHECK-NEXT:        %[[VAL_43:[0-9a-zA-Z_\.]+]] = function.call @InnerConditional2::@compute() : () -> !struct.type<@InnerConditional2<[5, 1]>>
+// CHECK-NEXT:        %[[VAL_44:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_43]] }  : <[@count: index, @comp: !struct.type<@InnerConditional2<[5, 1]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:        %[[VAL_45:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
+// CHECK-NEXT:        %[[VAL_46:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_40]][@comp] : <[@count: index, @comp: !struct.type<@InnerConditional2<[4, 0]>>, @params: !pod.type<[]>]>, !struct.type<@InnerConditional2<[4, 0]>>
+// CHECK-NEXT:        %[[VAL_47:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_46]][@out] : <@InnerConditional2<[4, 0]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_48:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_44]][@comp] : <[@count: index, @comp: !struct.type<@InnerConditional2<[5, 1]>>, @params: !pod.type<[]>]>, !struct.type<@InnerConditional2<[5, 1]>>
+// CHECK-NEXT:        %[[VAL_49:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_48]][@out] : <@InnerConditional2<[5, 1]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_50:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_47]], %[[VAL_49]] : !felt.type, !felt.type
+// CHECK-NEXT:        struct.writef %[[VAL_37]][@out] = %[[VAL_50]] : <@runner<[]>>, !felt.type
+// CHECK-NEXT:        struct.writef %[[VAL_37]][@a$inputs] = %[[VAL_41]] : <@runner<[]>>, !pod.type<[]>
+// CHECK-NEXT:        %[[VAL_51:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_40]][@comp] : <[@count: index, @comp: !struct.type<@InnerConditional2<[4, 0]>>, @params: !pod.type<[]>]>, !struct.type<@InnerConditional2<[4, 0]>>
+// CHECK-NEXT:        struct.writef %[[VAL_37]][@a] = %[[VAL_51]] : <@runner<[]>>, !struct.type<@InnerConditional2<[4, 0]>>
+// CHECK-NEXT:        struct.writef %[[VAL_37]][@b$inputs] = %[[VAL_45]] : <@runner<[]>>, !pod.type<[]>
+// CHECK-NEXT:        %[[VAL_52:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_44]][@comp] : <[@count: index, @comp: !struct.type<@InnerConditional2<[5, 1]>>, @params: !pod.type<[]>]>, !struct.type<@InnerConditional2<[5, 1]>>
+// CHECK-NEXT:        struct.writef %[[VAL_37]][@b] = %[[VAL_52]] : <@runner<[]>>, !struct.type<@InnerConditional2<[5, 1]>>
 // CHECK-NEXT:        function.return %[[VAL_37]] : !struct.type<@runner<[]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_51:[0-9a-zA-Z_\.]+]]: !struct.type<@runner<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_52:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_51]][@out] : <@runner<[]>>, !felt.type
-// CHECK-NEXT:        %[[VAL_53:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_51]][@a] : <@runner<[]>>, !struct.type<@InnerConditional2<[4, 0]>>
-// CHECK-NEXT:        %[[VAL_54:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_51]][@a$inputs] : <@runner<[]>>, !pod.type<[]>
-// CHECK-NEXT:        %[[VAL_55:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_51]][@b] : <@runner<[]>>, !struct.type<@InnerConditional2<[5, 1]>>
-// CHECK-NEXT:        %[[VAL_56:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_51]][@b$inputs] : <@runner<[]>>, !pod.type<[]>
-// CHECK-NEXT:        function.call @InnerConditional2::@constrain(%[[VAL_53]]) : (!struct.type<@InnerConditional2<[4, 0]>>) -> ()
-// CHECK-NEXT:        function.call @InnerConditional2::@constrain(%[[VAL_55]]) : (!struct.type<@InnerConditional2<[5, 1]>>) -> ()
+// CHECK-NEXT:      function.def @constrain(%[[VAL_53:[0-9a-zA-Z_\.]+]]: !struct.type<@runner<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_54:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_53]][@out] : <@runner<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_55:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_53]][@a] : <@runner<[]>>, !struct.type<@InnerConditional2<[4, 0]>>
+// CHECK-NEXT:        %[[VAL_56:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_53]][@a$inputs] : <@runner<[]>>, !pod.type<[]>
+// CHECK-NEXT:        %[[VAL_57:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_53]][@b] : <@runner<[]>>, !struct.type<@InnerConditional2<[5, 1]>>
+// CHECK-NEXT:        %[[VAL_58:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_53]][@b$inputs] : <@runner<[]>>, !pod.type<[]>
+// CHECK-NEXT:        function.call @InnerConditional2::@constrain(%[[VAL_55]]) : (!struct.type<@InnerConditional2<[4, 0]>>) -> ()
+// CHECK-NEXT:        function.call @InnerConditional2::@constrain(%[[VAL_57]]) : (!struct.type<@InnerConditional2<[5, 1]>>) -> ()
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

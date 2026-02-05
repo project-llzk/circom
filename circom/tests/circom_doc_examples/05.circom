@@ -30,18 +30,19 @@ component main = UsingExample();
 // CHECK-NEXT:      struct.field @example$inputs : !pod.type<[]>
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@UsingExample<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@UsingExample<[]>>
-// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_3]] }  : <[@count: index, @comp: !struct.type<@Example<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:        struct.writef %[[VAL_2]][@example$inputs] = %[[VAL_5]] : <@UsingExample<[]>>, !pod.type<[]>
-// CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_4]][@comp] : <[@count: index, @comp: !struct.type<@Example<[]>>, @params: !pod.type<[]>]>, !struct.type<@Example<[]>>
-// CHECK-NEXT:        struct.writef %[[VAL_2]][@example] = %[[VAL_6]] : <@UsingExample<[]>>, !struct.type<@Example<[]>>
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
+// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = function.call @Example::@compute() : () -> !struct.type<@Example<[]>>
+// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_4]] }  : <[@count: index, @comp: !struct.type<@Example<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
+// CHECK-NEXT:        struct.writef %[[VAL_2]][@example$inputs] = %[[VAL_6]] : <@UsingExample<[]>>, !pod.type<[]>
+// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_5]][@comp] : <[@count: index, @comp: !struct.type<@Example<[]>>, @params: !pod.type<[]>]>, !struct.type<@Example<[]>>
+// CHECK-NEXT:        struct.writef %[[VAL_2]][@example] = %[[VAL_7]] : <@UsingExample<[]>>, !struct.type<@Example<[]>>
 // CHECK-NEXT:        function.return %[[VAL_2]] : !struct.type<@UsingExample<[]>>
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_7:[0-9a-zA-Z_\.]+]]: !struct.type<@UsingExample<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_7]][@example] : <@UsingExample<[]>>, !struct.type<@Example<[]>>
-// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_7]][@example$inputs] : <@UsingExample<[]>>, !pod.type<[]>
-// CHECK-NEXT:        function.call @Example::@constrain(%[[VAL_8]]) : (!struct.type<@Example<[]>>) -> ()
+// CHECK-NEXT:      function.def @constrain(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !struct.type<@UsingExample<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_8]][@example] : <@UsingExample<[]>>, !struct.type<@Example<[]>>
+// CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_8]][@example$inputs] : <@UsingExample<[]>>, !pod.type<[]>
+// CHECK-NEXT:        function.call @Example::@constrain(%[[VAL_9]]) : (!struct.type<@Example<[]>>) -> ()
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

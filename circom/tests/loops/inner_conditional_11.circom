@@ -34,15 +34,15 @@ component main = Poseidon();
 // CHECK-NEXT:      struct.field @sigmaF$inputs : !array.type<2 x !pod.type<[@inp: !felt.type]>>
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Poseidon<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Poseidon<[]>>
-// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = array.new  : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>
-// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CHECK-NEXT:        scf.for %[[VAL_7:[0-9a-zA-Z_\.]+]] = %[[VAL_4]] to %[[VAL_6]] step %[[VAL_5]] {
-// CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_3]]{{\[}}%[[VAL_7]]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:          pod.write %[[VAL_8]][@count] = %[[VAL_2]] : <[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>, index
-// CHECK-NEXT:          array.write %[[VAL_3]]{{\[}}%[[VAL_7]]] = %[[VAL_8]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = array.new  : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
+// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
+// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
+// CHECK-NEXT:        scf.for %[[VAL_6:[0-9a-zA-Z_\.]+]] = %[[VAL_3]] to %[[VAL_5]] step %[[VAL_4]] {
+// CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_2]]{{\[}}%[[VAL_6]]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
+// CHECK-NEXT:          pod.write %[[VAL_7]][@count] = %[[VAL_8]] : <[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>, index
+// CHECK-NEXT:          array.write %[[VAL_2]]{{\[}}%[[VAL_6]]] = %[[VAL_7]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = array.new  : <2 x !pod.type<[@inp: !felt.type]>>
 // CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -59,7 +59,7 @@ component main = Poseidon();
 // CHECK-NEXT:            %[[VAL_22:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_21]] }  : <[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_23:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:            %[[VAL_24:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_23]]
-// CHECK-NEXT:            array.write %[[VAL_3]]{{\[}}%[[VAL_24]]] = %[[VAL_22]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:            array.write %[[VAL_2]]{{\[}}%[[VAL_24]]] = %[[VAL_22]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_25:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:            %[[VAL_26:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_25]]
 // CHECK-NEXT:            %[[VAL_27:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_17]]{{\[}}%[[VAL_26]]] : <2 x !pod.type<[@inp: !felt.type]>>, !pod.type<[@inp: !felt.type]>
@@ -69,7 +69,7 @@ component main = Poseidon();
 // CHECK-NEXT:            array.write %[[VAL_17]]{{\[}}%[[VAL_29]]] = %[[VAL_27]] : <2 x !pod.type<[@inp: !felt.type]>>, !pod.type<[@inp: !felt.type]>
 // CHECK-NEXT:            %[[VAL_30:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:            %[[VAL_31:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_30]]
-// CHECK-NEXT:            %[[VAL_32:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_3]]{{\[}}%[[VAL_31]]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:            %[[VAL_32:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_2]]{{\[}}%[[VAL_31]]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_33:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_32]][@count] : <[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>, index
 // CHECK-NEXT:            %[[VAL_34:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:            %[[VAL_35:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_33]], %[[VAL_34]] : index
@@ -82,7 +82,7 @@ component main = Poseidon();
 // CHECK-NEXT:              pod.write %[[VAL_32]][@comp] = %[[VAL_39]] : <[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>, !struct.type<@Sigma<[]>>
 // CHECK-NEXT:              %[[VAL_40:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:              %[[VAL_41:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_40]]
-// CHECK-NEXT:              array.write %[[VAL_3]]{{\[}}%[[VAL_41]]] = %[[VAL_32]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:              array.write %[[VAL_2]]{{\[}}%[[VAL_41]]] = %[[VAL_32]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            } else {
 // CHECK-NEXT:            }
 // CHECK-NEXT:            scf.yield %[[VAL_17]] : !array.type<2 x !pod.type<[@inp: !felt.type]>>
@@ -94,7 +94,7 @@ component main = Poseidon();
 // CHECK-NEXT:              %[[VAL_46:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_45]] }  : <[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:              %[[VAL_47:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:              %[[VAL_48:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_47]]
-// CHECK-NEXT:              array.write %[[VAL_3]]{{\[}}%[[VAL_48]]] = %[[VAL_46]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:              array.write %[[VAL_2]]{{\[}}%[[VAL_48]]] = %[[VAL_46]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:              %[[VAL_49:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:              %[[VAL_50:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_49]]
 // CHECK-NEXT:              %[[VAL_51:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_17]]{{\[}}%[[VAL_50]]] : <2 x !pod.type<[@inp: !felt.type]>>, !pod.type<[@inp: !felt.type]>
@@ -104,7 +104,7 @@ component main = Poseidon();
 // CHECK-NEXT:              array.write %[[VAL_17]]{{\[}}%[[VAL_53]]] = %[[VAL_51]] : <2 x !pod.type<[@inp: !felt.type]>>, !pod.type<[@inp: !felt.type]>
 // CHECK-NEXT:              %[[VAL_54:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:              %[[VAL_55:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_54]]
-// CHECK-NEXT:              %[[VAL_56:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_3]]{{\[}}%[[VAL_55]]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:              %[[VAL_56:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_2]]{{\[}}%[[VAL_55]]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:              %[[VAL_57:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_56]][@count] : <[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>, index
 // CHECK-NEXT:              %[[VAL_58:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:              %[[VAL_59:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_57]], %[[VAL_58]] : index
@@ -117,7 +117,7 @@ component main = Poseidon();
 // CHECK-NEXT:                pod.write %[[VAL_56]][@comp] = %[[VAL_63]] : <[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>, !struct.type<@Sigma<[]>>
 // CHECK-NEXT:                %[[VAL_64:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:                %[[VAL_65:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_64]]
-// CHECK-NEXT:                array.write %[[VAL_3]]{{\[}}%[[VAL_65]]] = %[[VAL_56]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:                array.write %[[VAL_2]]{{\[}}%[[VAL_65]]] = %[[VAL_56]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:              } else {
 // CHECK-NEXT:              }
 // CHECK-NEXT:              scf.yield %[[VAL_17]] : !array.type<2 x !pod.type<[@inp: !felt.type]>>
@@ -136,7 +136,7 @@ component main = Poseidon();
 // CHECK-NEXT:        %[[VAL_70:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:        %[[VAL_71:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
 // CHECK-NEXT:        scf.for %[[VAL_72:[0-9a-zA-Z_\.]+]] = %[[VAL_69]] to %[[VAL_71]] step %[[VAL_70]] {
-// CHECK-NEXT:          %[[VAL_73:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_3]]{{\[}}%[[VAL_72]]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:          %[[VAL_73:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_2]]{{\[}}%[[VAL_72]]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_74:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_73]][@comp] : <[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>, !struct.type<@Sigma<[]>>
 // CHECK-NEXT:          array.write %[[VAL_68]]{{\[}}%[[VAL_72]]] = %[[VAL_74]] : <2 x !struct.type<@Sigma<[]>>>, !struct.type<@Sigma<[]>>
 // CHECK-NEXT:        }
