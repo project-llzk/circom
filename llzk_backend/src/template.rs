@@ -19,8 +19,7 @@ use crate::shared::map_array_inner_type;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
-use crate::shared::TypeSizeExpr;
-use crate::shared::TypeSizeExprEnv;
+use crate::shared::TmplParamsInstance;
 use crate::subcmp::names::COMP;
 use crate::subcmp::names::COUNT;
 use crate::subcmp::names::PARAMS;
@@ -52,7 +51,6 @@ use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
-use melior::ir::Attribute;
 use melior::StringRef;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
@@ -1349,7 +1347,7 @@ where
                                 codegen,
                                 fc,
                                 location,
-                                Some(&TypeSizeExprEnv::new(params_formals, &dimensions)),
+                                Some(&TmplParamsInstance::new(params_formals, &dimensions)),
                             )?,
                         )
                     };

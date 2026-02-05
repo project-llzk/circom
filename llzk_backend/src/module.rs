@@ -11,8 +11,8 @@ use crate::shared::map_name_to_arg_value;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
+use crate::shared::TmplParamsInstance;
 use crate::shared::TypeSizeExpr;
-use crate::shared::TypeSizeExprEnv;
 use crate::subcmp::names::COMP;
 use crate::subcmp::names::COUNT;
 use crate::subcmp::names::PARAMS;
@@ -134,10 +134,10 @@ impl<'ctx> DeclarationInfo<'ctx> {
     ///
     /// Currently handles declaration of scalar subcomponents and array subcomponents of the same
     /// type.
-    fn complete(
+    fn complete<'ast>(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    ) -> Result<Vec<SubcmpPrologueData<'ctx>>> {
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    ) -> Result<Vec<SubcmpPrologueData<'ast, 'ctx>>> {
         let mut ops = vec![];
         let mut subcmps: Vec<_> = self.subcmp_decls.keys().cloned().collect();
         if codegen.stabilize {
@@ -165,9 +165,13 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 .into_iter()
                 .find(|t| t.get_name() == template_name)
                 .ok_or_else(|| anyhow::anyhow!("template '{template_name}' not found"))?;
+            let template_params =
+                TmplParamsInstance::new(template.get_name_of_params(), types[0].params_vec());
+
             let mut inputs = vec![];
             for (signal_name, _) in template.get_declaration_inputs().iter() {
-                let signal_type = codegen.get_input_signal_type(template_name, signal_name)?;
+                let signal_type = template_params
+                    .map_type(codegen.get_input_signal_type(template_name, signal_name)?)?;
                 inputs_size = inputs_size.add(codegen.count_input_signals(signal_type)?);
                 inputs.push(PodRecordAttribute::new(signal_name, signal_type));
             }
@@ -190,7 +194,13 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 location: info.location(),
                 public: false,
             });
-            ops.push(SubcmpPrologueData { name, subcmp: field_type, inputs, inputs_size });
+            ops.push(SubcmpPrologueData {
+                name,
+                subcmp: field_type,
+                inputs,
+                inputs_size,
+                template_params,
+            });
         }
         Ok(ops)
     }
@@ -662,11 +672,11 @@ fn scalar_or_inner<'ctx>(t: Type<'ctx>) -> Type<'ctx> {
 }
 
 /// Generates the prologue related to subcomponents in a template body.
-fn gen_subcmps_prologue_in_template<'ctx, 'func, 'blk, 'val>(
-    subcmps: impl IntoIterator<Item = SubcmpPrologueData<'ctx>>,
+fn gen_subcmps_prologue_in_template<'ast, 'ctx, 'func, 'blk, 'val>(
+    subcmps: impl IntoIterator<Item = SubcmpPrologueData<'ast, 'ctx>>,
     compute_ctx: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     constrain_ctx: &mut FunctionContext<'ctx, '_, '_, '_>,
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     subcmp_decls: &HashMap<String, SubcmpDeclInfo<'ctx>>,
 ) -> Result<()>
 where
@@ -678,6 +688,7 @@ where
         subcmp: subcmp_type,
         inputs: subcmp_inputs_type,
         inputs_size: count,
+        template_params,
     } in subcmps
     {
         let name_inputs = format!("{name}$inputs");
@@ -718,20 +729,11 @@ where
                 // Holds the affine map operands of the subcomponents, if any.
                 (PARAMS, codegen.pod_type(&[]).into()),
             ];
-            let subcmp_struct_type = StructType::try_from(subcmp_struct_type)?;
-            let params = codegen
-                .program
-                .get_template_data(subcmp_struct_type.name().value())
-                .get_name_of_params();
 
             let comp_pod = map_array_inner_type(subcmp_type, codegen.pod_type(&records).into());
             let location = codegen.location_unknown();
-            let count = count.to_index_value(
-                codegen,
-                compute_ctx,
-                location,
-                Some(&TypeSizeExprEnv::new(params, subcmp_struct_type.params_vec())),
-            )?;
+            let count =
+                count.to_index_value(codegen, compute_ctx, location, Some(&template_params))?;
             match ArrayType::try_from(comp_pod).ok() {
                 Some(comp_pod) => {
                     let dims = comp_pod.dims();

@@ -104,7 +104,7 @@ macro_rules! type_switch {
 
     // Entry point
     { $name:ident, $( $body:tt )+ } => {
-        type_switch!(@parse $name, $( $body )+);
+        type_switch!(@parse $name, $( $body )+)
     };
 
         // Entry point
@@ -117,7 +117,7 @@ macro_rules! type_switch {
 
     // Entry point
     { let $name:ident ; $( $body:tt )+ } => {
-        type_switch!(@parse $name, $( $body )+);
+        type_switch!(@parse $name, $( $body )+)
     };
 
 
@@ -247,14 +247,14 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     builder: OpBuilder<'ctx>,
 }
 
-/// Environment type for [`TypeSizeExpr::to_index_value`] that maps parameter symbols
-/// to the attributes assigned to a concrete instances of a template.
+/// Maps parameter symbols to the attributes assigned to a concrete instances of a template.
 #[derive(Debug)]
-pub struct TypeSizeExprEnv<'ast, 'ctx> {
+pub struct TmplParamsInstance<'ast, 'ctx> {
     map: HashMap<&'ast str, Attribute<'ctx>>,
 }
 
-impl<'ast, 'ctx> TypeSizeExprEnv<'ast, 'ctx> {
+impl<'ast, 'ctx> TmplParamsInstance<'ast, 'ctx> {
+    /// Creates a new mapping of template parameter formals to attributes.
     pub fn new(
         params: impl IntoIterator<Item = &'ast String>,
         attrs: impl IntoIterator<Item = Attribute<'ctx>>,
@@ -262,8 +262,47 @@ impl<'ast, 'ctx> TypeSizeExprEnv<'ast, 'ctx> {
         Self { map: std::iter::zip(params.into_iter().map(|s| s.as_str()), attrs).collect() }
     }
 
+    /// Returns the attribute mapped by the given symbol.
     fn get(&self, sym: SymbolRefAttribute<'ctx>) -> Result<Option<Attribute<'ctx>>> {
         Ok(self.map.get(sym.root().as_str()?).copied())
+    }
+
+    /// Converts the given attribute if it is a [`SymbolRefAttribute`] and its symbol has a
+    /// mapping. 
+    ///
+    /// If the attribute is not of that type returns it as is.
+    pub fn map_attr(&self, attr: Attribute<'ctx>) -> Result<Attribute<'ctx>> {
+        type_switch! { attr, 
+            SymbolRefAttribute => {
+                self.get(attr)?.ok_or_else(|| anyhow!("symbol {attr} was not found in the mapping"))
+            }
+            else => Ok(attr)
+        }
+    }
+
+    /// Converts the given type using the mapping, replacing the symbols found in the map with the
+    /// corresponding attribute.
+    pub fn map_type(&self, ty: Type<'ctx>)-> Result<Type<'ctx>> {
+        type_switch! { ty, 
+            ArrayType => self.handle_array_type(ty),
+            FeltType => self.handle_passthrough(ty),
+            else => { 
+                todo!("Unhandled type {ty} while mapping through template parameters.")
+            }
+        }
+    }
+
+    /// Handler for array type.
+    fn handle_array_type(&self, ty: ArrayType<'ctx>) -> Result<Type<'ctx>> {
+        let dims = ty.dims().into_iter().map(|attr| self.map_attr(attr)).collect::<Result<Vec<_>>>()?;
+        let inner = self.map_type(ty.element_type())?;
+        Ok(ArrayType::new(inner, &dims).into())
+    }
+    
+
+    /// Handler for mapping types that don't actually require mapping.
+    fn handle_passthrough(&self, ty: impl Into<Type<'ctx>>) -> Result<Type<'ctx>> {
+        Ok(ty.into())
     }
 }
 
@@ -392,7 +431,7 @@ impl<'ctx> TypeSizeExpr<'ctx> {
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
         location: Location<'ctx>,
-        env: Option<&TypeSizeExprEnv<'ast, 'ctx>>,
+        env: Option<&TmplParamsInstance<'ast, 'ctx>>,
     ) -> Result<Value<'ctx, 'val>> {
         match self.simplified() {
             TypeSizeExpr::Const(a) => {

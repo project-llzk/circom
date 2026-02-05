@@ -1,6 +1,7 @@
 //! Helper types for handling subcomponents.
 
 use crate::program_ext::ProgramInfo;
+use crate::shared::TmplParamsInstance;
 use crate::shared::TypeSizeExpr;
 use crate::template_ext::SignalDeclarations;
 use anyhow::Result;
@@ -182,7 +183,7 @@ impl Default for SubcmpCallsMap<'_> {
 
 /// Holds the information required for generating the IR to support subcomponents in the prologue
 /// of the template's functions.
-pub struct SubcmpPrologueData<'ctx> {
+pub struct SubcmpPrologueData<'ast, 'ctx> {
     /// Name of the subcomponent.
     pub name: String,
     /// Type of the subcomponent.
@@ -191,4 +192,6 @@ pub struct SubcmpPrologueData<'ctx> {
     pub inputs: Type<'ctx>,
     /// Number of inputs in the subcomponent.
     pub inputs_size: TypeSizeExpr<'ctx>,
+    /// Maps the params to attributes.
+    pub template_params: TmplParamsInstance<'ast, 'ctx>,
 }
