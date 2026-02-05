@@ -137,7 +137,13 @@ impl<'ctx> DeclarationInfo<'ctx> {
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Result<Vec<SubcmpPrologueData<'ctx>>> {
         let mut ops = vec![];
-        for (name, info) in &mut self.subcmp_decls {
+        let mut subcmps: Vec<_> = self.subcmp_decls.keys().cloned().collect();
+        if codegen.stabilize {
+            // Sort by circom subcomponent names to ensure a stable order of struct fields.
+            subcmps.sort_by(Ord::cmp);
+        }
+        for name in subcmps {
+            let info = self.subcmp_decls.get_mut(&name).unwrap();
             let instances = info.instances();
 
             let types = unique_instance_types(instances);
@@ -182,20 +188,13 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 location: info.location(),
                 public: false,
             });
-
-            let name_inputs = format!("{name}$inputs");
             self.struct_fields.push(MemberInfo {
-                name: name_inputs,
+                name: format!("{name}$inputs"),
                 decl_type: inputs,
                 location: info.location(),
                 public: false,
             });
-            ops.push(SubcmpPrologueData {
-                name: name.clone(),
-                subcmp: field_type,
-                inputs,
-                inputs_size,
-            });
+            ops.push(SubcmpPrologueData { name, subcmp: field_type, inputs, inputs_size });
         }
         Ok(ops)
     }
