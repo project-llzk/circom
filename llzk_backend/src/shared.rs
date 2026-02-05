@@ -91,6 +91,108 @@ use std::ops::Deref;
 use std::os::raw::c_void;
 use std::path::Path;
 
+/// This macro allows writing type switches with a syntax similar to match expressions.
+#[macro_export]
+macro_rules! type_switch {
+    // Entry point
+    { $name:ident = $value:expr, $( $body:tt )+ } => {{
+        // Evaluate once
+        let $name = $value;
+
+        type_switch!(@parse $name, $( $body )+)
+    }};
+
+    // Entry point
+    { $name:ident, $( $body:tt )+ } => {
+        type_switch!(@parse $name, $( $body )+);
+    };
+
+        // Entry point
+    { let $name:ident = $value:expr ; $( $body:tt )+ } => {{
+        // Evaluate once
+        let $name = $value;
+
+        type_switch!(@parse $name, $( $body )+)
+    }};
+
+    // Entry point
+    { let $name:ident ; $( $body:tt )+ } => {
+        type_switch!(@parse $name, $( $body )+);
+    };
+
+
+    // Parsing
+
+    (@parse $name:ident, $ty:ty => $body:block $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, $name, $body) $( $rest )*)
+    };
+
+    (@parse $name:ident, $ty:ty as $bind:ident => $body:block $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, $bind, $body) $( $rest )*)
+    };
+
+    (@parse $name:ident, $ty:ty as  => $body:block $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, _, $body) $( $rest )*)
+    };
+
+    (@parse $name:ident, $ty:ty  => $body:expr, $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, $name, {$body}) $( $rest )*)
+    };
+
+    (@parse $name:ident, $ty:ty as $bind:ident  => $body:expr, $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, $bind, {$body}) $( $rest )*)
+    };
+
+    (@parse $name:ident, $ty:ty as _  => $body:expr, $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, _, {$body}) $( $rest )*)
+    };
+
+    // Inner implementation
+
+    // Last arm without default case
+    (@inner $name:ident, ( $ty:ty, $bind:ident, $body:block) $(,)?) => {
+        type_switch!(@inner $name, ( $ty, $bind, $body) else => {panic!("unhandled type {}", $name)})
+    };
+    (@inner $name:ident, ( $ty:ty, _, $body:block) $(,)?) => {
+        type_switch!(@inner $name, ( $ty, _, $body) else => {panic!("unhandled type {}", $name)})
+    };
+
+    // Last arm with default case
+    (@inner $name:ident, ( $ty:ty, $bind:ident, $body:block ) else => $else_body:expr $(,)?) => {
+        if let Ok($bind) = <$ty>::try_from($name) {
+            $body
+        } else {
+            $else_body
+        }
+    };
+
+    (@inner $name:ident, ( $ty:ty, _, $body:block ) else => $else_body:expr $(,)?) => {
+        if let Ok(_) = <$ty>::try_from($name) {
+            $body
+        } else {
+            $else_body
+        }
+    };
+
+    // Recursive case
+    (@inner $name:ident, ( $ty:ty, $bind:ident, $body:block ) $( $rest:tt )+ ) => {
+        if let Ok($bind) = <$ty>::try_from($name) {
+            $body
+        } else {
+            type_switch!(@parse $name, $( $rest )+)
+        }
+    };
+
+    (@inner $name:ident, ( $ty:ty, _, $body:block ) $( $rest:tt )+ ) => {
+        if let Ok(_) = <$ty>::try_from($name) {
+            $body
+        } else {
+            type_switch!(@parse $name, $( $rest )+)
+        }
+    };
+}
+
+
 /// Information about a template's declaration, either full before LLZK IR is generated for the
 /// template or, after the template is processed, just the minimal information needed to support
 /// queries about input signal types that other templates may need.
@@ -143,6 +245,26 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     template_decls: RefCell<HashMap<String, DeclInfo<'ctx>>>,
     /// Operation builder
     builder: OpBuilder<'ctx>,
+}
+
+/// Environment type for [`TypeSizeExpr::to_index_value`] that maps parameter symbols
+/// to the attributes assigned to a concrete instances of a template.
+#[derive(Debug)]
+pub struct TypeSizeExprEnv<'ast, 'ctx> {
+    map: HashMap<&'ast str, Attribute<'ctx>>,
+}
+
+impl<'ast, 'ctx> TypeSizeExprEnv<'ast, 'ctx> {
+    pub fn new(
+        params: impl IntoIterator<Item = &'ast String>,
+        attrs: impl IntoIterator<Item = Attribute<'ctx>>,
+    ) -> Self {
+        Self { map: std::iter::zip(params.into_iter().map(|s| s.as_str()), attrs).collect() }
+    }
+
+    fn get(&self, sym: SymbolRefAttribute<'ctx>) -> Result<Option<Attribute<'ctx>>> {
+        Ok(self.map.get(sym.root().as_str()?).copied())
+    }
 }
 
 /// Represents the size of a Type as an expression of its parts.
@@ -270,30 +392,62 @@ impl<'ctx> TypeSizeExpr<'ctx> {
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
         location: Location<'ctx>,
+        env: Option<&TypeSizeExprEnv<'ast, 'ctx>>,
     ) -> Result<Value<'ctx, 'val>> {
         match self.simplified() {
             TypeSizeExpr::Const(a) => {
                 fc.append_op_unnamed_result(codegen.new_index_const_op(i64::try_from(a)?, location))
             }
             TypeSizeExpr::Sym(a) => {
-                if a.nested().is_empty() {
-                    todo!("This symbol ref is from the remote template, not local!");
-                    // let v = fc.block_ctx.get_named_value(a.root().as_str()?)?;
-                    // fc.cast_to_index_if_needed(location, *v)
-                } else {
+                if !a.nested().is_empty() {
                     unreachable!("we don't generate any nested symbols, i.e. reference to globals");
+                }
+                match env {
+                    Some(env) => env
+                        .get(a)
+                        .and_then(|attr| {
+                            attr.ok_or_else(|| {
+                                anyhow!(
+                                    "Symbol ref {a} was not found in the list of template parameters"
+                                )
+                            })
+                        })
+                        .and_then(Self::try_from_attr)
+                        .and_then(|e| 
+                            // The call to this new expression should happen in the context of 
+                            // the caller since we mapped the formal to its parameter.
+                            e.to_index_value(codegen, fc, location, None)),
+                    None => {
+                        let v = fc.block_ctx.get_named_value(a.root().as_str()?)?;
+                        fc.cast_to_index_if_needed(location, *v)
+                    }
                 }
             }
             TypeSizeExpr::Add(lhs, rhs) => {
-                let lhs = lhs.to_index_value(codegen, fc, location)?;
-                let rhs = rhs.to_index_value(codegen, fc, location)?;
+                let lhs = lhs.to_index_value(codegen, fc, location, env)?;
+                let rhs = rhs.to_index_value(codegen, fc, location, env)?;
                 fc.append_op_unnamed_result(arith::addi(lhs, rhs, location))
             }
             TypeSizeExpr::Mul(lhs, rhs) => {
-                let lhs = lhs.to_index_value(codegen, fc, location)?;
-                let rhs = rhs.to_index_value(codegen, fc, location)?;
+                let lhs = lhs.to_index_value(codegen, fc, location, env)?;
+                let rhs = rhs.to_index_value(codegen, fc, location, env)?;
                 fc.append_op_unnamed_result(arith::muli(lhs, rhs, location))
             }
+        }
+    }
+
+    /// Creates a new expression based on an attribute.
+    fn try_from_attr(attr: Attribute<'ctx>) -> Result<Self> {
+        type_switch! { attr, 
+            IntegerAttribute => {
+                let value = attr.value();
+                if value < 0 {
+                    anyhow::bail!("Negative value {value} in attribute: {attr}");
+                }
+                return Ok(Self::const_val(value.try_into()?));
+            }
+            SymbolRefAttribute => return Ok(Self::Sym(attr)),
+            else => anyhow::bail!("Unsupported attribute: {attr}")
         }
     }
 }
@@ -1296,6 +1450,16 @@ impl<'ast, 'ctx, 'val> ArrayDimensions<'ctx, 'val> {
     }
 }
 
+impl<'ctx> IntoIterator for &ArrayDimensions<'ctx, '_> {
+    type Item = Attribute<'ctx>;
+
+    type IntoIter = <Vec<Attribute<'ctx>> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.attrs().into_iter()
+    }
+}
+
 /// Constructs a new [ArrayDimensions] if all input [ArrayDimensionResult] are
 /// [ArrayDimensionResult::Computed], returns [Err] otherwise.
 impl<'ctx, 'val> TryFrom<&[ArrayDimensionResult<'ctx, 'val>]> for ArrayDimensions<'ctx, 'val> {
@@ -1403,106 +1567,6 @@ pub fn region_with_block<'ctx>(arguments: &[(Type<'ctx>, Location<'ctx>)]) -> Re
     region
 }
 
-/// This macro allows writing type switches with a syntax similar to match expressions.
-#[macro_export]
-macro_rules! type_switch {
-    // Entry point
-    { $name:ident = $value:expr, $( $body:tt )+ } => {{
-        // Evaluate once
-        let $name = $value;
-
-        type_switch!(@parse $name, $( $body )+)
-    }};
-
-    // Entry point
-    { $name:ident, $( $body:tt )+ } => {
-        type_switch!(@parse $name, $( $body )+);
-    };
-
-        // Entry point
-    { let $name:ident = $value:expr ; $( $body:tt )+ } => {{
-        // Evaluate once
-        let $name = $value;
-
-        type_switch!(@parse $name, $( $body )+)
-    }};
-
-    // Entry point
-    { let $name:ident ; $( $body:tt )+ } => {
-        type_switch!(@parse $name, $( $body )+);
-    };
-
-
-    // Parsing
-
-    (@parse $name:ident, $ty:ty => $body:block $( $rest:tt )*) => {
-        type_switch!(@inner $name, ($ty, $name, $body) $( $rest )*)
-    };
-
-    (@parse $name:ident, $ty:ty as $bind:ident => $body:block $( $rest:tt )*) => {
-        type_switch!(@inner $name, ($ty, $bind, $body) $( $rest )*)
-    };
-
-    (@parse $name:ident, $ty:ty as  => $body:block $( $rest:tt )*) => {
-        type_switch!(@inner $name, ($ty, _, $body) $( $rest )*)
-    };
-
-    (@parse $name:ident, $ty:ty  => $body:expr, $( $rest:tt )*) => {
-        type_switch!(@inner $name, ($ty, $name, {$body}) $( $rest )*)
-    };
-
-    (@parse $name:ident, $ty:ty as $bind:ident  => $body:expr, $( $rest:tt )*) => {
-        type_switch!(@inner $name, ($ty, $bind, {$body}) $( $rest )*)
-    };
-
-    (@parse $name:ident, $ty:ty as _  => $body:expr, $( $rest:tt )*) => {
-        type_switch!(@inner $name, ($ty, _, {$body}) $( $rest )*)
-    };
-
-    // Inner implementation
-
-    // Last arm without default case
-    (@inner $name:ident, ( $ty:ty, $bind:ident, $body:block) $(,)?) => {
-        type_switch!(@inner $name, ( $ty, $bind, $body) else => {panic!("unhandled type {}", $name)})
-    };
-    (@inner $name:ident, ( $ty:ty, _, $body:block) $(,)?) => {
-        type_switch!(@inner $name, ( $ty, _, $body) else => {panic!("unhandled type {}", $name)})
-    };
-
-    // Last arm with default case
-    (@inner $name:ident, ( $ty:ty, $bind:ident, $body:block ) else => $else_body:expr $(,)?) => {
-        if let Ok($bind) = <$ty>::try_from($name) {
-            $body
-        } else {
-            $else_body
-        }
-    };
-
-    (@inner $name:ident, ( $ty:ty, _, $body:block ) else => $else_body:expr $(,)?) => {
-        if let Ok(_) = <$ty>::try_from($name) {
-            $body
-        } else {
-            $else_body
-        }
-    };
-
-    // Recursive case
-    (@inner $name:ident, ( $ty:ty, $bind:ident, $body:block ) $( $rest:tt )+ ) => {
-        if let Ok($bind) = <$ty>::try_from($name) {
-            $body
-        } else {
-            type_switch!(@parse $name, $( $rest )+)
-        }
-    };
-
-    (@inner $name:ident, ( $ty:ty, _, $body:block ) $( $rest:tt )+ ) => {
-        if let Ok(_) = <$ty>::try_from($name) {
-            $body
-        } else {
-            type_switch!(@parse $name, $( $rest )+)
-        }
-    };
-}
 
 /// Returns the type of a subcomponent as defined in its memory.
 pub fn comp_type<'ctx>(pod: PodType<'ctx>) -> Result<Type<'ctx>> {

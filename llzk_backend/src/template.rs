@@ -19,11 +19,14 @@ use crate::shared::map_array_inner_type;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
+use crate::shared::TypeSizeExpr;
+use crate::shared::TypeSizeExprEnv;
 use crate::subcmp::names::COMP;
 use crate::subcmp::names::COUNT;
 use crate::subcmp::names::PARAMS;
 use crate::subcmp::SubcmpInfo;
 use crate::template_ext::SignalDeclarations;
+use crate::template_ext::TemplateLike as _;
 use crate::write_chain::WriteChain;
 use crate::write_chain::WriteTarget;
 use anyhow::anyhow;
@@ -49,6 +52,7 @@ use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
+use melior::ir::Attribute;
 use melior::StringRef;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
@@ -1307,6 +1311,9 @@ where
                 }
                 let location = codegen.location_from_meta(meta);
                 let dimensions = template.get_dimensions(codegen, args)?;
+
+                // Names of the template parameters
+                let params_formals = codegen.program.get_template_data(id).get_name_of_params();
                 let subcmp_type = dimensions.struct_type_with_concrete_dimensions(codegen, id);
                 let count = codegen.count_input_signals(subcmp_type.into())?;
                 let records = [
@@ -1336,7 +1343,15 @@ where
                             fc.gen_compute_call(subcmp_type, empty_inputs, location, codegen)?;
                         (COMP, instance)
                     } else {
-                        (COUNT, count.to_index_value(codegen, fc, location)?)
+                        (
+                            COUNT,
+                            count.to_index_value(
+                                codegen,
+                                fc,
+                                location,
+                                Some(&TypeSizeExprEnv::new(params_formals, &dimensions)),
+                            )?,
+                        )
                     };
 
                     fc.append_op_unnamed_result(pod::new(

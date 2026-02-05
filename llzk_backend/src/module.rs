@@ -12,6 +12,7 @@ use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
 use crate::shared::TypeSizeExpr;
+use crate::shared::TypeSizeExprEnv;
 use crate::subcmp::names::COMP;
 use crate::subcmp::names::COUNT;
 use crate::subcmp::names::PARAMS;
@@ -717,9 +718,20 @@ where
                 // Holds the affine map operands of the subcomponents, if any.
                 (PARAMS, codegen.pod_type(&[]).into()),
             ];
+            let subcmp_struct_type = StructType::try_from(subcmp_struct_type)?;
+            let params = codegen
+                .program
+                .get_template_data(subcmp_struct_type.name().value())
+                .get_name_of_params();
+
             let comp_pod = map_array_inner_type(subcmp_type, codegen.pod_type(&records).into());
             let location = codegen.location_unknown();
-            let count = count.to_index_value(codegen, compute_ctx, location)?;
+            let count = count.to_index_value(
+                codegen,
+                compute_ctx,
+                location,
+                Some(&TypeSizeExprEnv::new(params, subcmp_struct_type.params_vec())),
+            )?;
             match ArrayType::try_from(comp_pod).ok() {
                 Some(comp_pod) => {
                     let dims = comp_pod.dims();
