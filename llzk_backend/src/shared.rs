@@ -192,7 +192,6 @@ macro_rules! type_switch {
     };
 }
 
-
 /// Information about a template's declaration, either full before LLZK IR is generated for the
 /// template or, after the template is processed, just the minimal information needed to support
 /// queries about input signal types that other templates may need.
@@ -269,11 +268,11 @@ impl<'ast, 'ctx> TmplParamsInstance<'ast, 'ctx> {
     }
 
     /// Converts the given attribute if it is a [`SymbolRefAttribute`] and its symbol has a
-    /// mapping. 
+    /// mapping.
     ///
     /// If the attribute is not of that type returns it as is.
     pub fn map_attr(&self, attr: Attribute<'ctx>) -> Result<Attribute<'ctx>> {
-        type_switch! { attr, 
+        type_switch! { attr,
             SymbolRefAttribute => {
                 self.get(attr)?.ok_or_else(|| anyhow!("symbol {attr} was not found in the mapping"))
             }
@@ -283,11 +282,11 @@ impl<'ast, 'ctx> TmplParamsInstance<'ast, 'ctx> {
 
     /// Converts the given type using the mapping, replacing the symbols found in the map with the
     /// corresponding attribute.
-    pub fn map_type(&self, ty: Type<'ctx>)-> Result<Type<'ctx>> {
-        type_switch! { ty, 
+    pub fn map_type(&self, ty: Type<'ctx>) -> Result<Type<'ctx>> {
+        type_switch! { ty,
             ArrayType => self.handle_array_type(ty),
             FeltType => self.handle_passthrough(ty),
-            else => { 
+            else => {
                 todo!("Unhandled type {ty} while mapping through template parameters.")
             }
         }
@@ -295,11 +294,11 @@ impl<'ast, 'ctx> TmplParamsInstance<'ast, 'ctx> {
 
     /// Handler for array type.
     fn handle_array_type(&self, ty: ArrayType<'ctx>) -> Result<Type<'ctx>> {
-        let dims = ty.dims().into_iter().map(|attr| self.map_attr(attr)).collect::<Result<Vec<_>>>()?;
+        let dims =
+            ty.dims().into_iter().map(|attr| self.map_attr(attr)).collect::<Result<Vec<_>>>()?;
         let inner = self.map_type(ty.element_type())?;
         Ok(ArrayType::new(inner, &dims).into())
     }
-    
 
     /// Handler for mapping types that don't actually require mapping.
     fn handle_passthrough(&self, ty: impl Into<Type<'ctx>>) -> Result<Type<'ctx>> {
@@ -453,8 +452,8 @@ impl<'ctx> TypeSizeExpr<'ctx> {
                             })
                         })
                         .and_then(Self::try_from_attr)
-                        .and_then(|e| 
-                            // The call to this new expression should happen in the context of 
+                        .and_then(|e|
+                            // The call to this new expression should happen in the context of
                             // the caller since we mapped the formal to its parameter.
                             e.to_index_value(codegen, fc, location, None)),
                     None => {
@@ -478,7 +477,7 @@ impl<'ctx> TypeSizeExpr<'ctx> {
 
     /// Creates a new expression based on an attribute.
     fn try_from_attr(attr: Attribute<'ctx>) -> Result<Self> {
-        type_switch! { attr, 
+        type_switch! { attr,
             IntegerAttribute => {
                 let value = attr.value();
                 if value < 0 {
@@ -1606,7 +1605,6 @@ pub fn region_with_block<'ctx>(arguments: &[(Type<'ctx>, Location<'ctx>)]) -> Re
     region.append_block(Block::new(arguments));
     region
 }
-
 
 /// Returns the type of a subcomponent as defined in its memory.
 pub fn comp_type<'ctx>(pod: PodType<'ctx>) -> Result<Type<'ctx>> {
