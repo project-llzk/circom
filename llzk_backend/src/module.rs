@@ -732,8 +732,6 @@ where
 
             let comp_pod = map_array_inner_type(subcmp_type, codegen.pod_type(&records).into());
             let location = codegen.location_unknown();
-            let count =
-                count.to_index_value(codegen, compute_ctx, location, Some(&template_params))?;
             match ArrayType::try_from(comp_pod).ok() {
                 Some(comp_pod) => {
                     let dims = comp_pod.dims();
@@ -746,12 +744,37 @@ where
                     compute_ctx.gen_loop_nest(codegen, location, &dims, |fc, indices| {
                         let comp_memory_pod =
                             fc.append_array_read(comp_memory, indices, location, None)?;
+
+                        let (record_name, record_value) = if count.is_const_zero() {
+                            let empty_inputs = fc.append_op_unnamed_result(pod::new(
+                                codegen.op_builder(),
+                                location,
+                                &[],
+                                Some(codegen.pod_type(&[])),
+                            ))?;
+                            let instance = fc.gen_compute_call(
+                                subcmp_struct_type.try_into()?,
+                                empty_inputs,
+                                location,
+                                codegen,
+                            )?;
+                            (COMP, instance)
+                        } else {
+                            let count_value = count.to_index_value(
+                                codegen,
+                                fc,
+                                location,
+                                Some(&template_params),
+                            )?;
+                            (COUNT, count_value)
+                        };
                         fc.append_op_no_result(pod::write(
                             location,
                             comp_memory_pod,
-                            FlatSymbolRefAttribute::new(codegen.context, COUNT),
-                            count,
+                            FlatSymbolRefAttribute::new(codegen.context, record_name),
+                            record_value,
                         ))?;
+
                         fc.append_array_write(
                             codegen,
                             comp_memory,
@@ -762,15 +785,40 @@ where
                         )
                     })?;
                 }
-                None => compute_ctx.block_ctx.declare_name_ensure_not_present(
-                    &name,
-                    pod::new(
-                        &op_builder,
-                        location,
-                        &[RecordValue::new(StringRef::new(COUNT), count)],
-                        Some(PodType::try_from(comp_pod)?),
-                    ),
-                )?,
+                None => {
+                    let (record_name, record_value) = if count.is_const_zero() {
+                        let empty_inputs = compute_ctx.append_op_unnamed_result(pod::new(
+                            codegen.op_builder(),
+                            location,
+                            &[],
+                            Some(codegen.pod_type(&[])),
+                        ))?;
+                        let instance = compute_ctx.gen_compute_call(
+                            subcmp_struct_type.try_into()?,
+                            empty_inputs,
+                            location,
+                            codegen,
+                        )?;
+                        (COMP, instance)
+                    } else {
+                        let count_value = count.to_index_value(
+                            codegen,
+                            compute_ctx,
+                            location,
+                            Some(&template_params),
+                        )?;
+                        (COUNT, count_value)
+                    };
+                    compute_ctx.block_ctx.declare_name_ensure_not_present(
+                        &name,
+                        pod::new(
+                            &op_builder,
+                            location,
+                            &[RecordValue::new(StringRef::new(record_name), record_value)],
+                            Some(PodType::try_from(comp_pod)?),
+                        ),
+                    )?
+                }
             };
             compute_ctx.block_ctx.declare_name_ensure_not_present(
                 &name_inputs,
