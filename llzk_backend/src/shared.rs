@@ -335,7 +335,8 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     pub fn take_template_decl(&self, name: &str) -> Result<DeclarationInfo<'ctx>> {
         let mut borrow = self.template_decls.borrow_mut();
         if let Some((name, DeclInfo::Full(decl_info))) = borrow.remove_entry(name) {
-            let (inputs, outputs) = decl_info.build_input_and_output_name_to_type_map();
+            let inputs = decl_info.build_input_name_to_type_map();
+            let outputs = decl_info.build_output_name_to_type_map();
             borrow.insert(name, DeclInfo::Remnant { inputs, outputs });
             return Ok(decl_info);
         }

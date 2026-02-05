@@ -138,7 +138,7 @@ pub struct InfoProviders<'info> {
     pub subcmp_info: &'info dyn SubcmpInfo,
     /// Signals write information.
     ///
-    /// We may be able to remove this field if the lowering in this file does not need to use
+    /// TODO: We may be able to remove this field if the lowering in this file does not need to use
     /// `WriteChain`. Since that type aims to be generic it may be reusable in the context of
     /// lowering freestanding functions, in which case it needs an empty implementation of this
     /// interface. This field is already here in preparation for reusing WriteChain.
@@ -1092,7 +1092,7 @@ where
 
         let func_name = SymbolRefAttribute::new(
             codegen.context,
-            StructType::try_from(call_args[0].r#type())?.name().value(),
+            StructType::try_from(subcmp.r#type())?.name().value(),
             &[FUNC_NAME_CONSTRAIN.as_ref()],
         );
         let return_types: [Type; 0] = [];

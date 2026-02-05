@@ -100,18 +100,18 @@ pub struct DeclarationInfo<'ctx> {
 }
 
 impl<'ctx> DeclarationInfo<'ctx> {
-    /// Returns a mapping of input and output signal names to their types.
-    pub(crate) fn build_input_and_output_name_to_type_map(
-        &self,
-    ) -> (HashMap<String, Type<'ctx>>, HashMap<String, Type<'ctx>>) {
-        (
-            self.inputs.iter().map(|i| (i.name.clone(), i.type_and_loc.0)).collect(),
-            self.struct_fields
-                .iter()
-                .filter(|info| info.public)
-                .map(|info| (info.name.clone(), info.decl_type))
-                .collect(),
-        )
+    /// Returns a mapping of input signal names to their types.
+    pub(crate) fn build_input_name_to_type_map(&self) -> HashMap<String, Type<'ctx>> {
+        self.inputs.iter().map(|i| (i.name.clone(), i.type_and_loc.0)).collect()
+    }
+
+    /// Returns a mapping of output signal names to their types.
+    pub(crate) fn build_output_name_to_type_map(&self) -> HashMap<String, Type<'ctx>> {
+        self.struct_fields
+            .iter()
+            .filter(|info| info.public)
+            .map(|info| (info.name.clone(), info.decl_type))
+            .collect()
     }
 
     /// Returns the type of the input signal with the given name, if it exists.
