@@ -760,10 +760,12 @@ where
 
         // Split `then_block_info.var_overwrites` into ordered lists of names and values. The
         // ordering of names here defines the ordering of results from the `scf.if` op and
-        // thus the ordering of operands to `scf.yield` ops in both branches. Sort by circom
-        // variable names to ensure a stable order.
+        // thus the ordering of operands to `scf.yield` ops in both branches.
         let mut overwrites_sorted: Vec<_> = then_info.var_overwrites.into_iter().collect();
-        overwrites_sorted.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
+        if codegen.stabilize {
+            // Sort by circom variable names to ensure a stable order.
+            overwrites_sorted.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
+        }
         let (overwrite_names, then_values): (Vec<_>, Vec<_>) =
             overwrites_sorted.into_iter().unzip();
 
@@ -1021,10 +1023,12 @@ where
 
         // Split `loop_body_info.var_overwrites` into ordered lists of names and values. The
         // ordering of names here defines the ordering of the loop-carried variables for the
-        // `scf.while` op and thus the ordering of operands for the `scf.yield` and
-        // `scf.condition` ops. Sort by circom variable names to ensure a stable order.
+        // `scf.while` op and thus the ordering of operands for `scf.yield` and `scf.condition`.
         let mut overwrites_sorted: Vec<_> = loop_body_info.var_overwrites.into_iter().collect();
-        overwrites_sorted.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
+        if codegen.stabilize {
+            // Sort by circom variable names to ensure a stable order.
+            overwrites_sorted.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
+        }
         let (loop_carried_var_names, body_yield_values): (Vec<_>, Vec<_>) =
             overwrites_sorted.into_iter().unzip();
 
