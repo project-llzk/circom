@@ -38,6 +38,7 @@ pub struct Input {
     pub flag_old_heuristics: bool,
     pub inspect_constraints_flag: bool,
     pub no_rounds: usize,
+    pub flag_stabilize: bool,
     pub flag_verbose: bool,
     pub flag_no_init: bool,
     pub prime: String,
@@ -128,6 +129,7 @@ impl Input {
             flag_old_heuristics: input_processing::get_flag_old_heuristics(&matches),
             flag_verbose: input_processing::get_flag_verbose(&matches), 
             flag_no_init: input_processing::get_flag_no_init(&matches), 
+            flag_stabilize: input_processing::get_flag_stabilize(&matches),
             prime: input_processing::get_prime(&matches)?,
             link_libraries
         })
@@ -244,6 +246,9 @@ impl Input {
     }
     pub fn inspect_constraints_flag(&self) -> bool {
         self.inspect_constraints_flag
+    }
+    pub fn flag_stabilize(&self) -> bool {
+        self.flag_stabilize
     }
     pub fn flag_verbose(&self) -> bool {
         self.flag_verbose
@@ -389,6 +394,10 @@ mod input_processing {
     }
     pub fn get_inspect_constraints(matches: &ArgMatches) -> bool {
         matches.is_present("inspect_constraints")
+    }
+
+    pub fn get_flag_stabilize(matches: &ArgMatches) -> bool {
+        matches.is_present("flag_stabilize")
     }
 
     pub fn get_flag_verbose(matches: &ArgMatches) -> bool {
@@ -615,6 +624,13 @@ mod input_processing {
                     .hidden(true)
                     .display_order(210)
                     .help("Produces a log_inputs.txt file"),
+            )
+            .arg(
+                Arg::with_name("flag_stabilize")
+                    .long("stabilize")
+                    .takes_value(false)
+                    .display_order(790)
+                    .help("Attempt to stabilize operation ordering in LLZK IR output"),
             )
             .arg(
                 Arg::with_name("flag_verbose")

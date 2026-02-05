@@ -1,5 +1,5 @@
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
 // XFAIL:.*
 
@@ -15,7 +15,7 @@ template IsZero() {
 template SubCmps0A(n) {
     signal input ins[n];
     signal output outs[n];
-    
+
     component zeros[n];
     for (var i = 0; i < n; i++) {
         zeros[i] = IsZero();

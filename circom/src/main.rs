@@ -40,6 +40,7 @@ fn start() -> Result<(), ()> {
             &user_input.llzk_pass_pipeline(),
             &user_input.prime(),
             user_input.flag_verbose(),
+            user_input.flag_stabilize(),
         );
     }
 
@@ -86,6 +87,7 @@ fn start() -> Result<(), ()> {
             &user_input.llzk_pass_pipeline(),
             &user_input.prime(),
             user_input.flag_verbose(),
+            user_input.flag_stabilize(),
         );
     }
 

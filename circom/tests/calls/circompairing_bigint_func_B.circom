@@ -1,5 +1,5 @@
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
 // COM: Adapted from `bigint_func.circom` in https://github.com/yi-sun/circom-pairing
 // XFAIL:.*
@@ -246,7 +246,7 @@ function short_div(n, k, a, b) {
     var norm_a[50] = long_scalar_mult(n, k + 1, scale, a);
     // k + 1 registers now
     var norm_b[50] = long_scalar_mult(n, k, scale, b);
-    
+
     var ret;
     if (norm_b[k] != 0) {
 	ret = short_div_norm(n, k + 1, norm_a, norm_b);
@@ -257,8 +257,8 @@ function short_div(n, k, a, b) {
 }
 
 // a = a0 + a1 * X + ... + a[k-1] * X^{k-1} with X = 2^n
-//  a_i can be "negative" assume a_i in (-2^251, 2^251) 
-// output is the value of a with a_i all of the same sign 
+//  a_i can be "negative" assume a_i in (-2^251, 2^251)
+// output is the value of a with a_i all of the same sign
 // out[50] = 0 if positive, 1 if negative
 function signed_long_to_short(n, k, a){
     var out[51];
@@ -269,13 +269,13 @@ function signed_long_to_short(n, k, a){
     for(var i=0; i<k; i++) temp[i] = a[i];
     for(var i=k; i<=MAXL; i++) temp[i] = 0;
 
-    var X = (1<<n); 
+    var X = (1<<n);
     for(var i=0; i<MAXL; i++){
-        if(temp[i] >= 0){ // circom automatically takes care of signs in comparator 
+        if(temp[i] >= 0){ // circom automatically takes care of signs in comparator
             out[i] = temp[i] % X;
             temp[i+1] += temp[i] \ X;
         }else{
-            var borrow = (-temp[i] + X - 1 ) \ X; 
+            var borrow = (-temp[i] + X - 1 ) \ X;
             out[i] = temp[i] + borrow * X;
             temp[i+1] -= borrow;
         }
@@ -285,23 +285,23 @@ function signed_long_to_short(n, k, a){
         out[MAXL] = 0;
         return out;
     }
-    
+
     // must be negative then, reset
     for(var i=0; i<k; i++) temp[i] = a[i];
     for(var i=k; i<=MAXL; i++) temp[i] = 0;
 
     for(var i=0; i<MAXL; i++){
         if(temp[i] < 0){
-            var carry = (-temp[i]) \ X; 
+            var carry = (-temp[i]) \ X;
             out[i] = temp[i] + carry * X;
             temp[i+1] -= carry;
         }else{
-            var borrow = (temp[i] + X - 1 ) \ X; 
+            var borrow = (temp[i] + X - 1 ) \ X;
             out[i] = temp[i] - borrow * X;
             temp[i+1] += borrow;
         }
     }
-    assert( temp[MAXL] == 0 ); 
+    assert( temp[MAXL] == 0 );
     out[MAXL] = 1;
     return out;
 }
@@ -412,7 +412,7 @@ function prod2D(n, k, l, a, b) {
 // Put all modular arithmetic, aka F_p field stuff, at the end
 
 function long_add_mod(n, k, a, b, p) {
-    var sum[50] = long_add(n,k,a,b); 
+    var sum[50] = long_add(n,k,a,b);
     var temp[2][50] = long_div2(n,k,1,sum,p);
     return temp[1];
 }
@@ -440,7 +440,7 @@ function prod_mod(n, k, a, b, p) {
 // computes a^e mod p
 function mod_exp(n, k, a, p, e) {
     var eBits[500]; // length is k * n
-    var bitlength; 
+    var bitlength;
     for (var i = 0; i < k; i++) {
         for (var j = 0; j < n; j++) {
             eBits[j + n * i] = (e[i] >> j) & 1;

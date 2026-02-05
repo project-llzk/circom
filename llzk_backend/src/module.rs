@@ -588,17 +588,14 @@ pub trait GenerateLLZKInModule<'ctx, P: ProgramLike> {
 
 impl<'ctx, P: ProgramLike> GenerateLLZKInModule<'ctx, P> for P {
     fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx, P>) -> Result<()> {
-        // Sort functions and templates by name for deterministic output (this is only needed
-        // for the lit tests since the order in a HashMap is non-deterministic and thus could
-        // be triggered only based on a debug flag or similar).
-        for f in self.get_functions(true) {
+        for f in self.get_functions(codegen.stabilize) {
             gen_function_llzk(f, codegen)?;
         }
         // Collect declaration information for all templates first to avoid duplicating work.
         for t in self.get_templates(false) {
             codegen.put_template_decl(t.get_name(), t.get_declarations(codegen)?);
         }
-        for t in self.get_templates(true) {
+        for t in self.get_templates(codegen.stabilize) {
             gen_template_llzk(t, codegen)?;
         }
         Ok(())
