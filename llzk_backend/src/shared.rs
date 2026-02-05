@@ -250,6 +250,7 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
 /// Maps parameter symbols to the attributes assigned to a concrete instances of a template.
 #[derive(Debug)]
 pub struct TmplParamsInstance<'ast, 'ctx> {
+    /// Maps a symbol name to an attribute used as template parameter.
     map: HashMap<&'ast str, Attribute<'ctx>>,
 }
 
@@ -483,9 +484,9 @@ impl<'ctx> TypeSizeExpr<'ctx> {
                 if value < 0 {
                     anyhow::bail!("Negative value {value} in attribute: {attr}");
                 }
-                return Ok(Self::const_val(value.try_into()?));
+                Ok(Self::const_val(value.try_into()?))
             }
-            SymbolRefAttribute => return Ok(Self::Sym(attr)),
+            SymbolRefAttribute => Ok(Self::Sym(attr)),
             else => anyhow::bail!("Unsupported attribute: {attr}")
         }
     }
