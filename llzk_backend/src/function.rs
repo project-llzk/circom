@@ -829,7 +829,7 @@ where
                     .get(name)
                     .map_or_else(|| self.block_ctx.get_named_value(name).cloned(), |v| Ok(*v))
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>>>()?;
 
         // Insert `scf.yield` at the end of each block.
         Self::append_multi_operand_yield_to_block(
@@ -857,7 +857,7 @@ where
                     .inspect_err(|e| eprintln!("\nERROR: {e:?}"))
                     .map(|v| v.r#type())
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>>>()?;
 
         // Cast condition value to bool type if needed.
         let condition = self.cast_to_bool_if_needed(codegen, location, condition)?;
@@ -1372,7 +1372,7 @@ where
         let initial_values = loop_carried_var_names
             .iter()
             .map(|name| self.block_ctx.get_named_value(name).cloned())
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>>>()?;
 
         // Generate the `scf.while` op for the circom `While` statement, adding `loopbounds`
         // attribute if given, and append it to the current block.

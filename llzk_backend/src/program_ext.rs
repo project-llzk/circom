@@ -199,7 +199,7 @@ impl ProgramLike for VCPPlus<'_> {
 
 /// Helper function to sort a vector of &FunctionLike by name.
 #[inline]
-fn sort_functions_by_name<T: FunctionLike>(functions: &mut [&T]) {
+fn sort_functions_by_name<F: FunctionLike>(functions: &mut [&F]) {
     functions.sort_by(|a, b| a.get_name().cmp(b.get_name()));
 }
 

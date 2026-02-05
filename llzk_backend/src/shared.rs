@@ -291,7 +291,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                         .map_err(Into::into)
                         .map(|c| Attribute::from(self.index_attr(c)))
                 })
-                .collect::<Result<Vec<_>, _>>()
+                .collect::<Result<Vec<_>>>()
                 .map(|dims| ArrayType::new(base_type, &dims).into())
         }
     }
@@ -758,7 +758,7 @@ pub fn map_name_to_arg_value<'ctx, 'val>(
         .map(|(i, name)| {
             func.deref().argument(i).map_err(Into::into).map(|a| (name, Value::from(a)))
         })
-        .collect::<Result<HashMap<_, _>, _>>()
+        .collect()
 }
 
 /// Return `true` iff the given Type is an `IndexType`.
