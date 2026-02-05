@@ -1,5 +1,5 @@
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
 // XFAIL:.*
 
@@ -49,7 +49,7 @@ template MultiplierN(N){
        comp[i+1].in2 <== in[i+2];
 
    }
-   out <== comp[N-2].out; 
+   out <== comp[N-2].out;
 }
 
 component main {public [in]} = MultiplierN(3);

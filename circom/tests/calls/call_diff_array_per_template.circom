@@ -1,5 +1,5 @@
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && %circom --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // XFAIL:.*
 
 pragma circom 2.1.0;
@@ -27,7 +27,7 @@ template Main() {
     signal input inB[8][3];
     signal input inC[8][5][2];
     signal input inD[8][2];
-    
+
     signal output outA[3];
     signal output outB;
     signal output outC[2];
