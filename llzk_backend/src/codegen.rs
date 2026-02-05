@@ -70,6 +70,7 @@ pub fn generate_llzk(
     pass_pipeline: &str,
     prime: &str,
     verbose: bool,
+    stabilize: bool,
 ) -> Result<(), ()> {
     let prime = UsefulConstants::new(&prime.to_string()).get_p().to_biguint();
     if prime.is_none() {
@@ -90,7 +91,7 @@ pub fn generate_llzk(
         }
         std::process::exit(20); // force exit to avoid hang if MLIR state is inconsistent
     })?;
-    let mut codegen = LlzkCodegen::new(program, &ctx, module, prime, verbose);
+    let mut codegen = LlzkCodegen::new(program, &ctx, module, prime, verbose, stabilize);
 
     program.gen_llzk(&codegen).map_err(|err| {
         if verbose {
