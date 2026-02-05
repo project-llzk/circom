@@ -67,7 +67,7 @@ struct MemberInfo<'ctx> {
     decl_type: Type<'ctx>,
     /// Location of the member.
     location: Location<'ctx>,
-    /// Wether it's a publicly facing member of the struct
+    /// Whether it's a publicly facing member of the struct
     public: bool,
 }
 
