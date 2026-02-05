@@ -212,14 +212,18 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
         // Required by `loop_nest`
         'val: 'blk,
     {
-        let subcmps = self.subcmps;
+        let mut subcmps: Vec<_> = self.subcmps.keys().collect();
+        if codegen.stabilize {
+            // Sort by circom subcomponent names to ensure a stable order of operations.
+            subcmps.sort_by(Ord::cmp);
+        }
         let location = codegen.location_unknown();
         let comp_sym = codegen.flat_sym(COMP);
 
         self.and_then::<_, _, GenResultUnit>(|fc, _| {
                 // Write the subcomponent declarations to self.
                 let self_value = fc.func.self_value_of_compute()?;
-                subcmps.iter().try_for_each(|(name, _)| {
+                subcmps.iter().try_for_each(|name| {
                     // Write the inputs of the subcomponent.
                     let name_inputs = format!("{name}$inputs");
                     let name_inputs_val = *fc.block_ctx.get_named_value(&name_inputs)?;
@@ -290,7 +294,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                 })
 
         }, |fc, _| {
-                subcmps.iter().try_for_each(|(name, _)| {
+                subcmps.iter().try_for_each(|name| {
                     // Read the subcomponent
                     let subcmp = *fc.block_ctx.get_named_value(name)?;
 
