@@ -552,7 +552,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         struct_loc,
         template_like.get_name(),
         &struct_params,
-        declarations.struct_fields.into_iter().map(|m| m.try_into()),
+        declarations.struct_fields.into_iter().map(MemberInfo::try_into),
     )?;
     let new_struct = codegen.add_struct(struct_def)?;
 
