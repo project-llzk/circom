@@ -1,13 +1,13 @@
 //! Helper types for handling subcomponents.
 
+use crate::program_ext::ProgramInfo;
+use crate::shared::TypeSizeExpr;
+use crate::template_ext::SignalDeclarations;
 use anyhow::Result;
 use llzk::prelude::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::marker::PhantomData;
-
-use crate::program_ext::ProgramInfo;
-use crate::template_ext::SignalDeclarations;
 
 /// Names used for `pod` records.
 pub mod names {
@@ -190,5 +190,5 @@ pub struct SubcmpPrologueData<'ctx> {
     /// Type representing the inputs of the subcomponent.
     pub inputs: Type<'ctx>,
     /// Number of inputs in the subcomponent.
-    pub inputs_size: usize,
+    pub inputs_size: TypeSizeExpr<'ctx>,
 }

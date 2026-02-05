@@ -1,5 +1,6 @@
 //! Shared code generation utilities.
 
+use crate::function::FunctionContext;
 use crate::module::DeclarationInfo;
 use crate::program_ext::ProgramLike;
 use crate::subcmp::names::COMP;
@@ -10,7 +11,7 @@ use crate::traversal::WalkCallbacks;
 use ansi_term::Color;
 use anyhow::anyhow;
 use anyhow::ensure;
-use anyhow::Context;
+use anyhow::Context as _;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
 use llzk::dialect::undef;
@@ -51,6 +52,7 @@ use llzk::prelude::StructDefOp;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::StructType;
+use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
@@ -141,6 +143,159 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     template_decls: RefCell<HashMap<String, DeclInfo<'ctx>>>,
     /// Operation builder
     builder: OpBuilder<'ctx>,
+}
+
+/// Represents the size of a Type as an expression of its parts.
+#[derive(Debug, Clone)]
+pub enum TypeSizeExpr<'ctx> {
+    /// Constant unsigned integer.
+    Const(usize),
+    /// Symbol reference.
+    Sym(SymbolRefAttribute<'ctx>),
+    /// Addition of two expressions.
+    Add(Box<Self>, Box<Self>),
+    /// Multiplication of two expressions.
+    Mul(Box<Self>, Box<Self>),
+}
+
+impl PartialEq for TypeSizeExpr<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (TypeSizeExpr::Const(a), TypeSizeExpr::Const(b)) => a == b,
+            (TypeSizeExpr::Sym(a), TypeSizeExpr::Sym(b)) => a.to_raw().ptr == b.to_raw().ptr,
+            (TypeSizeExpr::Add(lhs1, rhs1), TypeSizeExpr::Add(lhs2, rhs2)) => {
+                lhs1 == lhs2 && rhs1 == rhs2
+            }
+            (TypeSizeExpr::Mul(lhs1, rhs1), TypeSizeExpr::Mul(lhs2, rhs2)) => {
+                lhs1 == lhs2 && rhs1 == rhs2
+            }
+            _ => false,
+        }
+    }
+}
+
+impl<'ctx> TypeSizeExpr<'ctx> {
+    /// The zero expression.
+    #[inline]
+    pub fn zero() -> Self {
+        TypeSizeExpr::Const(0)
+    }
+    /// The one expression.
+    #[inline]
+    pub fn one() -> Self {
+        TypeSizeExpr::Const(1)
+    }
+    /// Creates a constant expression.
+    #[inline]
+    pub fn const_val(v: usize) -> Self {
+        TypeSizeExpr::Const(v)
+    }
+    /// Creates a symbol reference expression.
+    #[inline]
+    pub fn sym(a: SymbolRefAttribute<'ctx>) -> Self {
+        TypeSizeExpr::Sym(a)
+    }
+    /// Creates an addition expression.
+    #[inline]
+    pub fn add(self, other: Self) -> Self {
+        TypeSizeExpr::Add(Box::new(self), Box::new(other))
+    }
+    /// Creates a multiplication expression.
+    #[inline]
+    pub fn mul(self, other: Self) -> Self {
+        TypeSizeExpr::Mul(Box::new(self), Box::new(other))
+    }
+
+    /// Returns true if the expression is known to compute to constant zero.
+    pub fn is_const_zero(&self) -> bool {
+        match self {
+            TypeSizeExpr::Const(a) => *a == 0,
+            TypeSizeExpr::Add(lhs, rhs) => lhs.is_const_zero() && rhs.is_const_zero(),
+            TypeSizeExpr::Mul(lhs, rhs) => lhs.is_const_zero() || rhs.is_const_zero(),
+            _ => false,
+        }
+    }
+
+    /// Produce a simplified addition expression of the two operands.
+    fn simplify_add(lhs: &Self, rhs: &Self) -> Self {
+        match (lhs.simplified(), rhs.simplified()) {
+            (TypeSizeExpr::Const(0), x) => x.clone(),
+            (x, TypeSizeExpr::Const(0)) => x.clone(),
+            (TypeSizeExpr::Const(a), TypeSizeExpr::Const(b)) => {
+                TypeSizeExpr::Const(a.checked_add(b).expect("type size overflows usize max"))
+            }
+            (new_lhs, new_rhs) => {
+                if new_lhs == *lhs && new_rhs == *rhs {
+                    TypeSizeExpr::Add(Box::new(new_lhs), Box::new(new_rhs)) // unchanged
+                } else {
+                    Self::simplify_add(&new_lhs, &new_rhs)
+                }
+            }
+        }
+    }
+
+    /// Produce a simplified multiplication expression of the two operands.
+    fn simplify_mul(lhs: &Self, rhs: &Self) -> Self {
+        match (lhs.simplified(), rhs.simplified()) {
+            (TypeSizeExpr::Const(0), _) => TypeSizeExpr::Const(0),
+            (_, TypeSizeExpr::Const(0)) => TypeSizeExpr::Const(0),
+            (TypeSizeExpr::Const(1), x) => x.clone(),
+            (x, TypeSizeExpr::Const(1)) => x.clone(),
+            (TypeSizeExpr::Const(a), TypeSizeExpr::Const(b)) => {
+                TypeSizeExpr::Const(a.checked_mul(b).expect("type size overflows usize max"))
+            }
+            (new_lhs, new_rhs) => {
+                if new_lhs == *lhs && new_rhs == *rhs {
+                    TypeSizeExpr::Mul(Box::new(new_lhs), Box::new(new_rhs)) // unchanged
+                } else {
+                    Self::simplify_mul(&new_lhs, &new_rhs)
+                }
+            }
+        }
+    }
+
+    /// Returns a simplified version of the expression by applying arithmetic identities.
+    pub fn simplified(&self) -> Self {
+        match self {
+            s @ TypeSizeExpr::Const(_) => s.clone(),
+            s @ TypeSizeExpr::Sym(_) => s.clone(),
+            TypeSizeExpr::Add(lhs, rhs) => Self::simplify_add(lhs, rhs),
+            TypeSizeExpr::Mul(lhs, rhs) => Self::simplify_mul(lhs, rhs),
+        }
+    }
+
+    /// Generate code for the expression as an index value in LLZK IR.
+    pub fn to_index_value<'ast, 'func, 'blk, 'val>(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, 'val>> {
+        match self.simplified() {
+            TypeSizeExpr::Const(a) => {
+                fc.append_op_unnamed_result(codegen.new_index_const_op(i64::try_from(a)?, location))
+            }
+            TypeSizeExpr::Sym(a) => {
+                if a.nested().is_empty() {
+                    todo!("This symbol ref is from the remote template, not local!");
+                    // let v = fc.block_ctx.get_named_value(a.root().as_str()?)?;
+                    // fc.cast_to_index_if_needed(location, *v)
+                } else {
+                    unreachable!("we don't generate any nested symbols, i.e. reference to globals");
+                }
+            }
+            TypeSizeExpr::Add(lhs, rhs) => {
+                let lhs = lhs.to_index_value(codegen, fc, location)?;
+                let rhs = rhs.to_index_value(codegen, fc, location)?;
+                fc.append_op_unnamed_result(arith::addi(lhs, rhs, location))
+            }
+            TypeSizeExpr::Mul(lhs, rhs) => {
+                let lhs = lhs.to_index_value(codegen, fc, location)?;
+                let rhs = rhs.to_index_value(codegen, fc, location)?;
+                fc.append_op_unnamed_result(arith::muli(lhs, rhs, location))
+            }
+        }
+    }
 }
 
 impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
@@ -531,31 +686,29 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     /// Compute the size of the type in signals. A scalar signal has size 1, an array of 2 signals
     /// has size 2, a 2x3 matrix of signals has size 6, and so on. Structs have a size equal to the
     /// sum of its input sizes.
-    pub fn count_input_signals(&self, t: Type) -> Result<usize> {
+    pub fn count_input_signals(&self, t: Type<'ctx>) -> Result<TypeSizeExpr<'ctx>> {
         if is_felt_type(t) {
-            Ok(1)
+            Ok(TypeSizeExpr::one())
         } else if let Ok(at) = ArrayType::try_from(t) {
             let init = self.count_input_signals(at.element_type())?;
             at.dims().iter().try_fold(init, |acc, d| {
-                let s =
-                    IntegerAttribute::try_from(*d).context("array size is not a known constant")?;
-                let s = usize::try_from(s.value()).context("negative array size")?;
-                acc.checked_mul(s).ok_or_else(|| {
-                    anyhow::anyhow!("overflow while multiplying array dimension sizes")
-                })
+                if let Ok(a) = IntegerAttribute::try_from(*d) {
+                    let s = usize::try_from(a.value()).context("negative array size")?;
+                    Ok(acc.mul(TypeSizeExpr::const_val(s)))
+                } else if let Ok(a) = SymbolRefAttribute::try_from(*d) {
+                    Ok(acc.mul(TypeSizeExpr::sym(a)))
+                } else {
+                    Err(anyhow!("expected array dimension to be Int or SymRef but found: {d}"))
+                }
             })
         } else if let Ok(pt) = PodType::try_from(t) {
-            pt.get_records().iter().try_fold(0usize, |acc, r| {
-                let s = self.count_input_signals(r.r#type())?;
-                acc.checked_add(s)
-                    .ok_or_else(|| anyhow::anyhow!("overflow while adding pod record sizes"))
+            pt.get_records().iter().try_fold(TypeSizeExpr::zero(), |acc, r| {
+                Ok(acc.add(self.count_input_signals(r.r#type())?))
             })
         } else if let Ok(st) = StructType::try_from(t) {
-            self.get_template_input_types(st.name().value())?.iter().try_fold(0usize, |acc, t| {
-                let s = self.count_input_signals(*t)?;
-                acc.checked_add(s)
-                    .ok_or_else(|| anyhow::anyhow!("overflow while adding component input sizes"))
-            })
+            self.get_template_input_types(st.name().value())?
+                .iter()
+                .try_fold(TypeSizeExpr::zero(), |acc, t| Ok(acc.add(self.count_input_signals(*t)?)))
         } else {
             anyhow::bail!("unexpected type while counting signals: {t}");
         }

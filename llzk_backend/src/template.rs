@@ -1308,8 +1308,6 @@ where
                 let location = codegen.location_from_meta(meta);
                 let dimensions = template.get_dimensions(codegen, args)?;
                 let subcmp_type = dimensions.struct_type_with_concrete_dimensions(codegen, id);
-                // TODO: this static input count will only work in "concrete" mode. In "templated"
-                // mode, may need to generate IR to compute the input count.
                 let count = codegen.count_input_signals(subcmp_type.into())?;
                 let records = [
                     // Counts the number of inputs pending an assignment. When it reaches 0 it's
@@ -1327,7 +1325,7 @@ where
                     let pod_type = Some(codegen.pod_type(&records));
                     // If the count == 0 means that the subcomponent has no inputs. In that case we
                     // call `@compute` here directly and store it into COMP.
-                    let (name, value) = if count == 0 {
+                    let (name, value) = if count.is_const_zero() {
                         let empty_inputs = fc.append_op_unnamed_result(pod::new(
                             codegen.op_builder(),
                             location,
@@ -1338,10 +1336,7 @@ where
                             fc.gen_compute_call(subcmp_type, empty_inputs, location, codegen)?;
                         (COMP, instance)
                     } else {
-                        let count = fc.append_op_unnamed_result(
-                            codegen.new_index_const_op(i64::try_from(count)?, location),
-                        )?;
-                        (COUNT, count)
+                        (COUNT, count.to_index_value(codegen, fc, location)?)
                     };
 
                     fc.append_op_unnamed_result(pod::new(

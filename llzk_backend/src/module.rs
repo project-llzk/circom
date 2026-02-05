@@ -11,6 +11,7 @@ use crate::shared::map_name_to_arg_value;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
+use crate::shared::TypeSizeExpr;
 use crate::subcmp::names::COMP;
 use crate::subcmp::names::COUNT;
 use crate::subcmp::names::PARAMS;
@@ -153,9 +154,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
             if types.len() > 1 {
                 todo!("Handle subcomponents with different instantiations")
             }
-            // TODO: this static input count will only work in "concrete" mode. In "templated" mode,
-            // may need to generate IR to compute the input count from the template parameters, etc.
-            let mut inputs_size = 0;
+            let mut inputs_size = TypeSizeExpr::zero();
             let template_name = types[0].name().value();
             info.set_template(template_name.to_owned());
 
@@ -165,22 +164,18 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 .into_iter()
                 .find(|t| t.get_name() == template_name)
                 .ok_or_else(|| anyhow::anyhow!("template '{template_name}' not found"))?;
-            let inputs = template
-                .get_declaration_inputs()
-                .iter()
-                .map(|(signal_name, _)| {
-                    let signal_type = codegen.get_input_signal_type(template_name, signal_name)?;
-                    inputs_size += codegen.count_input_signals(signal_type)?;
-                    Ok(PodRecordAttribute::new(signal_name, signal_type))
-                })
-                .collect::<Result<Vec<_>>>()?;
+            let mut inputs = vec![];
+            for (signal_name, _) in template.get_declaration_inputs().iter() {
+                let signal_type = codegen.get_input_signal_type(template_name, signal_name)?;
+                inputs_size = inputs_size.add(codegen.count_input_signals(signal_type)?);
+                inputs.push(PodRecordAttribute::new(signal_name, signal_type));
+            }
+
             let extend_dims = |t: Type<'ctx>| match info.dimensions() {
                 [] => t,
                 dims => ArrayType::new(t, dims).into(),
             };
-
             let inputs = extend_dims(PodType::new(codegen.context, &inputs).into());
-
             let field_type = extend_dims(types[0].into());
             self.struct_fields.push(MemberInfo {
                 name: name.clone(),
@@ -724,9 +719,7 @@ where
             ];
             let comp_pod = map_array_inner_type(subcmp_type, codegen.pod_type(&records).into());
             let location = codegen.location_unknown();
-            let count = compute_ctx.append_op_unnamed_result(
-                codegen.new_index_const_op(i64::try_from(count)?, location),
-            )?;
+            let count = count.to_index_value(codegen, compute_ctx, location)?;
             match ArrayType::try_from(comp_pod).ok() {
                 Some(comp_pod) => {
                     let dims = comp_pod.dims();
