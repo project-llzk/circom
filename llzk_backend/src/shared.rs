@@ -96,8 +96,13 @@ use std::path::Path;
 enum DeclInfo<'ctx> {
     /// Complete declaration info computed initially.
     Full(DeclarationInfo<'ctx>),
-    /// Just the map of signal name to type left behind after generating LLZK for a template.
-    Remnant { inputs: HashMap<String, Type<'ctx>>, outputs: HashMap<String, Type<'ctx>> },
+    /// Minimal information left behind after generating LLZK for a template.
+    Remnant {
+        /// Map of signal name to type for input signals.
+        inputs: HashMap<String, Type<'ctx>>,
+        /// Map of signal name to type for output signals.
+        outputs: HashMap<String, Type<'ctx>>,
+    },
 }
 
 /// Convert circom location information to MLIR location.
@@ -791,6 +796,7 @@ pub fn set_operand_if_undef<'ctx, 'op>(
             anyhow::bail!("Argument {idx} was assigned twice: {arg}");
         }
     }
+    assert!(idx <= isize::MAX as usize, "cast to isize would overflow");
     unsafe { mlir_sys::mlirOperationSetOperand(op.to_raw(), idx as isize, value.to_raw()) }
     Ok(())
 }

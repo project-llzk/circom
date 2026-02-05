@@ -107,7 +107,8 @@ impl<'ctx> DeclarationInfo<'ctx> {
             self.inputs.iter().map(|i| (i.name.clone(), i.type_and_loc.0)).collect(),
             self.struct_fields
                 .iter()
-                .filter_map(|info| info.public.then(|| (info.name.clone(), info.decl_type)))
+                .filter(|info| info.public)
+                .map(|info| (info.name.clone(), info.decl_type))
                 .collect(),
         )
     }

@@ -4,8 +4,9 @@
 #![deny(missing_docs)]
 #![deny(clippy::missing_docs_in_private_items)]
 #![deny(rustdoc::broken_intra_doc_links)]
-#![warn(redundant_imports)]
 #![deny(unused_must_use)]
+#![warn(redundant_imports)]
+#![warn(clippy::cast_lossless)]
 #![allow(clippy::useless_conversion)]
 
 mod codegen;
