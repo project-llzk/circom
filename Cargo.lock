@@ -807,7 +807,7 @@ checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
 [[package]]
 name = "llzk"
 version = "0.1.0"
-source = "git+https://github.com/project-llzk/llzk-rs#e6aab2cee721a7aee18547f3cb428809a83e5a1f"
+source = "git+https://github.com/project-llzk/llzk-rs#ed69dcb5b953d15c2d29dde4abc57aac08b032d5"
 dependencies = [
  "llzk-macro",
  "llzk-sys",
@@ -821,7 +821,7 @@ dependencies = [
 [[package]]
 name = "llzk-macro"
 version = "0.1.0"
-source = "git+https://github.com/project-llzk/llzk-rs#e6aab2cee721a7aee18547f3cb428809a83e5a1f"
+source = "git+https://github.com/project-llzk/llzk-rs#ed69dcb5b953d15c2d29dde4abc57aac08b032d5"
 dependencies = [
  "convert_case",
  "proc-macro2",
@@ -833,7 +833,7 @@ dependencies = [
 [[package]]
 name = "llzk-sys"
 version = "0.1.0"
-source = "git+https://github.com/project-llzk/llzk-rs#e6aab2cee721a7aee18547f3cb428809a83e5a1f"
+source = "git+https://github.com/project-llzk/llzk-rs#ed69dcb5b953d15c2d29dde4abc57aac08b032d5"
 dependencies = [
  "anyhow",
  "llzk-sys-build-support",
@@ -843,7 +843,7 @@ dependencies = [
 [[package]]
 name = "llzk-sys-build-support"
 version = "0.1.0"
-source = "git+https://github.com/project-llzk/llzk-rs#e6aab2cee721a7aee18547f3cb428809a83e5a1f"
+source = "git+https://github.com/project-llzk/llzk-rs#ed69dcb5b953d15c2d29dde4abc57aac08b032d5"
 dependencies = [
  "anyhow",
  "bindgen 0.71.1",
