@@ -225,7 +225,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                 let self_value = fc.func.self_value_of_compute()?;
                 subcmps.iter().try_for_each(|name| {
                     // Write the inputs of the subcomponent.
-                    let name_inputs = format!("{name}$inputs");
+                    let name_inputs = crate::subcmp::names::inputs(name);
                     let name_inputs_val = *fc.block_ctx.get_named_value(&name_inputs)?;
                     fc.append_op_no_result(r#struct::writef(
                         location,
@@ -299,7 +299,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
 
                     // Read the subcomponent inputs. The pod records are in declaration order,
                     // which matches the order of the `@constrain` function.
-                    let inputs = *fc.block_ctx.get_named_value(&format!("{name}$inputs"))?;
+                    let inputs = *fc.block_ctx.get_named_value(&crate::subcmp::names::inputs(name))?;
                     // Call `@constrain`
                     type_switch! { inputs_type = inputs.r#type(),
                         ArrayType => {

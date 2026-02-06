@@ -257,7 +257,7 @@ impl<'ast> Lvalue<'ast> {
                 impl OverrideVar for OverrideIfInput {
                     fn override_var(&self, var: &str, op: Root) -> Option<String> {
                         let will_override = self.do_override && op == Root::Signal;
-                        (will_override).then(|| format!("{var}$inputs"))
+                        (will_override).then(|| crate::subcmp::names::inputs(var))
                     }
                 }
                 let info = subcmp_info.subcmp_info(root, codegen)?;

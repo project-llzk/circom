@@ -186,7 +186,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 public: false,
             });
             self.struct_fields.push(MemberInfo {
-                name: format!("{name}$inputs"),
+                name: crate::subcmp::names::inputs(&name),
                 decl_type: inputs,
                 location: info.location(),
                 public: false,
@@ -679,7 +679,7 @@ where
         template_params,
     } in subcmps
     {
-        let name_inputs = format!("{name}$inputs");
+        let name_inputs = crate::subcmp::names::inputs(&name);
         // Constrain function
         // Do this one first to avoid cloning `name` and `name_inputs` unnecessarily.
         {

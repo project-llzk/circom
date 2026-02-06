@@ -20,6 +20,12 @@ pub mod names {
     pub const COMP: &str = "comp";
     /// Holds the affine map operands of the subcomponents, if any.
     pub const PARAMS: &str = "params";
+
+    /// Returns the inputs field name for a subcomponent by appending "$inputs" suffix.
+    #[inline]
+    pub fn inputs(name: &str) -> String {
+        format!("{name}$inputs")
+    }
 }
 
 /// Gives information about subcomponents.

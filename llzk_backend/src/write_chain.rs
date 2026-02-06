@@ -94,7 +94,7 @@ struct Override<'info> {
 impl OverrideVar for Override<'_> {
     fn override_var(&self, var: &str, op: Root) -> Option<String> {
         (!self.compute_result && self.subcmp_info.is_subcmp(var) && op == Root::Signal)
-            .then(|| format!("{var}$inputs"))
+            .then(|| crate::subcmp::names::inputs(var))
     }
 }
 
