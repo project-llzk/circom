@@ -245,7 +245,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                             let comp_array = fc.append_op_unnamed_result(codegen.new_array_new_op(
                                 location,
                                 map_array_inner_type(ty.into(), struct_type).try_into()?,
-                                ArrayCtor::Values(&[])
+                                ArrayCtor::Empty
                             ))?;
 
                             fc.gen_loop_nest(codegen, codegen.location_unknown(), &ty.dims(), |fc, indices| {

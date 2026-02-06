@@ -1226,7 +1226,7 @@ where
                 symbols_sto.push(symbols);
                 ArrayCtor::MapDimSlice(&symbols_sto, &[0])
             } else {
-                ArrayCtor::Values(&[])
+                ArrayCtor::Empty
             };
             let new_arr =
                 self.append_op_unnamed_result(codegen.new_array_new_op(location, arr_ty, ctor))?;
@@ -1269,7 +1269,7 @@ where
                     v_sto.push(v);
                     ArrayCtor::MapDimSlice(&v_sto, &[0])
                 } else {
-                    ArrayCtor::Values(&[])
+                    ArrayCtor::Empty
                 };
                 let array_ref = self
                     .append_op_unnamed_result(codegen.new_array_new_op(location, arr_ty, ctor))?;
@@ -2260,7 +2260,7 @@ where
                     let new_arr = function.append_op_unnamed_result(codegen.new_array_new_op(
                         location,
                         arr_ty,
-                        ArrayCtor::Values(&[]),
+                        ArrayCtor::Empty,
                     ))?;
                     for (idx, val) in values.iter().enumerate() {
                         let idx_val = function.append_op_unnamed_result(
