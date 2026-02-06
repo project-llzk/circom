@@ -14,6 +14,8 @@ use anyhow::ensure;
 use anyhow::Context as _;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
+use llzk::dialect::array;
+use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::undef;
 use llzk::operation::move_op_after;
 use llzk::prelude::felt;
@@ -768,6 +770,17 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         T: Into<i64>,
     {
         arith::constant(self.context, self.index_attr(val).into(), location)
+    }
+
+    /// Create an LLZK `array.new` operation with the given element type and dimensions.
+    #[inline]
+    pub fn new_array_new_op(
+        &self,
+        location: Location<'ctx>,
+        r#type: ArrayType<'ctx>,
+        ctor: ArrayCtor<'ctx, '_, '_, '_>,
+    ) -> Operation<'ctx> {
+        array::new(&self.builder, location, r#type, ctor)
     }
 
     /// Generate a `felt.const` operation from a BigInt. Returns an `Err` result if unsuccessful

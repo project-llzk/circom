@@ -1228,12 +1228,8 @@ where
             } else {
                 ArrayCtor::Values(&[])
             };
-            let new_arr = self.append_op_unnamed_result(array::new(
-                codegen.op_builder(),
-                location,
-                arr_ty,
-                ctor,
-            ))?;
+            let new_arr =
+                self.append_op_unnamed_result(codegen.new_array_new_op(location, arr_ty, ctor))?;
             if let Ok(const_dim) = const_dim {
                 for idx in 0..const_dim.value() {
                     let idx_val =
@@ -1262,12 +1258,10 @@ where
             let arr_ty = dimension.new_array_type(&value.r#type());
             if let Ok(const_dim) = const_dim {
                 let values = vec![value; usize::try_from(const_dim.value())?];
-                let ctor = ArrayCtor::Values(&values);
-                self.append_op_unnamed_result(array::new(
-                    codegen.op_builder(),
+                self.append_op_unnamed_result(codegen.new_array_new_op(
                     location,
                     arr_ty,
-                    ctor,
+                    ArrayCtor::Values(&values),
                 ))
             } else {
                 let mut v_sto = vec![];
@@ -1277,12 +1271,8 @@ where
                 } else {
                     ArrayCtor::Values(&[])
                 };
-                let array_ref = self.append_op_unnamed_result(array::new(
-                    codegen.op_builder(),
-                    location,
-                    arr_ty,
-                    ctor,
-                ))?;
+                let array_ref = self
+                    .append_op_unnamed_result(codegen.new_array_new_op(location, arr_ty, ctor))?;
                 let dim = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
                 let array_len =
                     self.append_op_unnamed_result(array::len(location, array_ref, dim))?;
@@ -2267,11 +2257,10 @@ where
                     // For subarrays, we need to create a new array then insert the values
                     let dim = codegen.index_attr(i64::try_from(values.len())?);
                     let arr_ty = new_array_type(dim.into(), &subarr_ty);
-                    let new_arr = function.append_op_unnamed_result(array::new(
-                        codegen.op_builder(),
+                    let new_arr = function.append_op_unnamed_result(codegen.new_array_new_op(
                         location,
                         arr_ty,
-                        llzk::dialect::array::ArrayCtor::Values(&[]),
+                        ArrayCtor::Values(&[]),
                     ))?;
                     for (idx, val) in values.iter().enumerate() {
                         let idx_val = function.append_op_unnamed_result(
@@ -2290,11 +2279,10 @@ where
                 } else {
                     let dim = codegen.index_attr(i64::try_from(values.len())?);
                     let arr_ty = ArrayType::new(value_ty.into(), &[dim.into()]);
-                    function.append_op_unnamed_result(array::new(
-                        codegen.op_builder(),
+                    function.append_op_unnamed_result(codegen.new_array_new_op(
                         location,
                         arr_ty,
-                        llzk::dialect::array::ArrayCtor::Values(&values),
+                        ArrayCtor::Values(&values),
                     ))
                 }
             }

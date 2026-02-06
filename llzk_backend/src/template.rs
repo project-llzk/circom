@@ -30,9 +30,8 @@ use crate::write_chain::WriteChain;
 use crate::write_chain::WriteTarget;
 use anyhow::anyhow;
 use anyhow::Result;
-use llzk::dialect::array::ArrayCtor::MapDimSlice;
+use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::cast;
-use llzk::prelude::array;
 use llzk::prelude::constrain;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::pod;
@@ -243,11 +242,10 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                             // Copy the components into an array of the same dimensions.
                             let struct_type = comp_type(ty.element_type().try_into()?)?;
 
-                            let comp_array = fc.append_op_unnamed_result(array::new(
-                                codegen.op_builder(),
+                            let comp_array = fc.append_op_unnamed_result(codegen.new_array_new_op(
                                 location,
                                 map_array_inner_type(ty.into(), struct_type).try_into()?,
-                                MapDimSlice(&[], &[])
+                                ArrayCtor::Values(&[])
                             ))?;
 
                             fc.gen_loop_nest(codegen, codegen.location_unknown(), &ty.dims(), |fc, indices| {

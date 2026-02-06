@@ -25,7 +25,7 @@ use crate::template_ext::TemplateLike;
 use anyhow::bail;
 use anyhow::Result;
 use llzk::attributes::NamedAttribute;
-use llzk::dialect::array::ArrayCtor::MapDimSlice;
+use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::pod;
 use llzk::error::Error;
 use llzk::prelude::r#struct::helpers::compute_fn;
@@ -725,7 +725,7 @@ where
                     let dims = comp_pod.dims();
                     compute_ctx.block_ctx.declare_name_ensure_not_present(
                         &name,
-                        array::new(op_builder, location, comp_pod, MapDimSlice(&[], &[])),
+                        array::new(op_builder, location, comp_pod, ArrayCtor::Values(&[])),
                     )?;
                     let comp_memory = *compute_ctx.block_ctx.get_named_value(&name)?;
 
@@ -812,7 +812,7 @@ where
                 &name_inputs,
                 match ArrayType::try_from(subcmp_inputs_type) {
                     Ok(subcmp_inputs_type) => {
-                        array::new(op_builder, location, subcmp_inputs_type, MapDimSlice(&[], &[]))
+                        array::new(op_builder, location, subcmp_inputs_type, ArrayCtor::Values(&[]))
                     }
                     Err(_) => pod::new(
                         op_builder,
