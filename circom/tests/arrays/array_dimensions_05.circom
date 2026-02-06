@@ -15,9 +15,9 @@ template ArrayDims(N) {
 component main = ArrayDims(7);
 
 // CHECK: #[[$ATTR_0:[0-9a-zA-Z_\.]+]] = affine_map<()[s0] -> (s0)>
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@ArrayDims<[7]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArrayDims<[7]>>} {
 // CHECK-NEXT:    struct.def @ArrayDims<[@N]> {
-// CHECK-NEXT:      struct.field @outp : !array.type<#[[$ATTR_0]] x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @outp : !array.type<#[[$ATTR_0]] x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@ArrayDims<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@ArrayDims<[@N]>>
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
@@ -27,7 +27,7 @@ component main = ArrayDims(7);
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@ArrayDims<[@N]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@outp] : <@ArrayDims<[@N]>>, !array.type<#[[$ATTR_0]] x !felt.type>
+// CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_4]][@outp] : <@ArrayDims<[@N]>>, !array.type<#[[$ATTR_0]] x !felt.type>
 // CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_5]], %[[VAL_7]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return

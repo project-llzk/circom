@@ -5,7 +5,7 @@ use crate::module::DeclarationInfo;
 use crate::program_ext::ProgramLike;
 use crate::subcmp::names::COMP;
 use crate::template_ext::TemplateLike;
-use crate::template_ext::WireLike;
+use crate::template_ext::WireLike as _;
 use crate::traversal::walk_from_block;
 use crate::traversal::WalkCallbacks;
 use ansi_term::Color;
@@ -14,26 +14,27 @@ use anyhow::ensure;
 use anyhow::Context as _;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
+use llzk::dialect;
 use llzk::dialect::array;
 use llzk::dialect::array::ArrayCtor;
-use llzk::dialect::undef;
+use llzk::dialect::felt;
+use llzk::dialect::pod;
 use llzk::operation::move_op_after;
-use llzk::prelude::felt;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
-use llzk::prelude::pod;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
-use llzk::prelude::AttributeLike;
-use llzk::prelude::BlockLike;
+use llzk::prelude::AttributeLike as _;
+use llzk::prelude::Block;
+use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
 use llzk::prelude::BoolAttribute;
 use llzk::prelude::FeltConstAttribute;
 use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOp;
-use llzk::prelude::FuncDefOpLike;
+use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::FuncDefOpRef;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::IntegerAttribute;
@@ -44,11 +45,14 @@ use llzk::prelude::Location;
 use llzk::prelude::Module;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike;
+use llzk::prelude::OperationMutLike;
 use llzk::prelude::OperationRef;
 use llzk::prelude::OperationResult;
 use llzk::prelude::PassManager;
 use llzk::prelude::PodRecordAttribute;
 use llzk::prelude::PodType;
+use llzk::prelude::Region;
+use llzk::prelude::RegionLike as _;
 use llzk::prelude::StringAttribute;
 use llzk::prelude::StructDefOp;
 use llzk::prelude::StructDefOpRef;
@@ -62,9 +66,6 @@ use llzk::prelude::ValueLike;
 use llzk::value_ext::replace_all_uses_in_block_with;
 use llzk::value_ext::OwningValueRange;
 use llzk::value_ext::ValueRange;
-use melior::ir::Block;
-use melior::ir::Region;
-use melior::ir::RegionLike as _;
 use melior::utility;
 use num_bigint_dig::BigInt;
 use num_bigint_dig::BigUint;
@@ -653,7 +654,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         location: Location<'ctx>,
         result_type: Type<'ctx>,
     ) -> Result<Operation<'ctx>> {
-        Ok(undef::undef(location, result_type))
+        Ok(dialect::llzk::nondet(location, result_type))
     }
 
     /// Get the integer type of the given bitwidth.
@@ -1153,14 +1154,14 @@ pub fn replace_uses_with_new_block_argument<'ctx, 'val>(
 }
 
 /// Sets the n-th operand of the operation to the given value if the current value is an
-/// `undef.undef` op.
-pub fn set_operand_if_undef<'ctx, 'op>(
+/// `llzk.nondet` op.
+pub fn set_operand_if_nondet<'ctx, 'op>(
     op: OperationRef<'ctx, 'op>,
     idx: usize,
     value: impl ValueLike<'ctx>,
 ) -> Result<()> {
     if let Ok(arg) = OperationResult::try_from(op.operand(idx)?) {
-        if !undef::is_undef_op(&arg.owner()) {
+        if !dialect::llzk::is_nondet(&arg.owner()) {
             anyhow::bail!("Argument {idx} was assigned twice: {arg}");
         }
     }
@@ -1215,7 +1216,7 @@ pub fn new_array_type<'c>(dim: Attribute<'c>, subarr_ty: &ArrayType<'c>) -> Arra
     ArrayType::new(subarr_ty.element_type(), &dims)
 }
 
-/// Tries to obtain the owner operation of a [`Value`](melior::ir::Value).
+/// Tries to obtain the owner operation of a [`Value`](Value).
 ///
 /// This function works around a lifetime issue in [`OperationResult::owner`] that
 /// is resolved in [mlir-sys/melior#784](https://github.com/mlir-rs/melior/pull/784) but that
@@ -1309,9 +1310,7 @@ pub fn next_in_block_mut<'c: 'a, 'a>(
 }
 
 /// Removes itself from a parent block and returns the owned [Operation].
-pub fn remove_from_parent<'c: 'a, 'a>(
-    op: &mut impl melior::ir::operation::OperationMutLike<'c, 'a>,
-) -> Operation<'c> {
+pub fn remove_from_parent<'c: 'a, 'a>(op: &mut impl OperationMutLike<'c, 'a>) -> Operation<'c> {
     unsafe {
         mlir_sys::mlirOperationRemoveFromParent(op.to_raw());
     }

@@ -17,13 +17,13 @@ template SimpleVariantIdx(n) {
 
 component main = SimpleVariantIdx(3);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@SimpleVariantIdx<[3]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@SimpleVariantIdx<[3]>>} {
 // CHECK-NEXT:    struct.def @SimpleVariantIdx<[@n]> {
-// CHECK-NEXT:      struct.field @out : !array.type<@n x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !array.type<@n x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@SimpleVariantIdx<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@SimpleVariantIdx<[@n]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
-// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<@n x !felt.type>
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<@n x !felt.type>
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_7:[0-9a-zA-Z_\.]+]] = %[[VAL_5]], %[[VAL_8:[0-9a-zA-Z_\.]+]] = %[[VAL_4]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {
@@ -39,12 +39,12 @@ component main = SimpleVariantIdx(3);
 // CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_10]], %[[VAL_15]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_16]], %[[VAL_14]] : !felt.type, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@out] = %[[VAL_3]] : <@SimpleVariantIdx<[@n]>>, !array.type<@n x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@out] = %[[VAL_3]] : <@SimpleVariantIdx<[@n]>>, !array.type<@n x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@SimpleVariantIdx<[@n]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_17:[0-9a-zA-Z_\.]+]]: !struct.type<@SimpleVariantIdx<[@n]>>, %[[VAL_18:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
-// CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_17]][@out] : <@SimpleVariantIdx<[@n]>>, !array.type<@n x !felt.type>
+// CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_17]][@out] : <@SimpleVariantIdx<[@n]>>, !array.type<@n x !felt.type>
 // CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_22:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_23:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_24:[0-9a-zA-Z_\.]+]] = %[[VAL_22]], %[[VAL_25:[0-9a-zA-Z_\.]+]] = %[[VAL_21]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {

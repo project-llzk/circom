@@ -16,7 +16,7 @@ template right(N1,N2){
 
 component main = right(10, 5);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@right<[10, 5]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@right<[10, 5]>>} {
 // CHECK-NEXT:    struct.def @right<[@N1, @N2]> {
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@right<[@N1, @N2]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@right<[@N1, @N2]>>

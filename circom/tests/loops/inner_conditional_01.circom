@@ -33,9 +33,9 @@ template InnerConditional1(N) {
 
 component main = InnerConditional1(10);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@InnerConditional1<[10]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerConditional1<[10]>>} {
 // CHECK-NEXT:    struct.def @InnerConditional1<[@N]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      () -> !struct.type<@InnerConditional1<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[SELF:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerConditional1<[@N]>>
@@ -60,13 +60,13 @@ component main = InnerConditional1(10);
 // CHECK-NEXT:          %[[V_16:[0-9a-zA-Z_\.]+]] = felt.add %[[V_I2]], %[[V_15]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[V_12]], %[[V_16]] : !felt.type, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[SELF]][@out] = %[[V_4]]#0 : <@InnerConditional1<[@N]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[SELF]][@out] = %[[V_4]]#0 : <@InnerConditional1<[@N]>>, !felt.type
 // CHECK-NEXT:        function.return %[[SELF]] : !struct.type<@InnerConditional1<[@N]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[SELF:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerConditional1<[@N]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readf %[[SELF]][@out] : <@InnerConditional1<[@N]>>, !felt.type
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readm %[[SELF]][@out] : <@InnerConditional1<[@N]>>, !felt.type
 // CHECK-NEXT:        %[[V_A0:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_I0:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[V_21:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[V_A1:[0-9a-zA-Z_\.]+]] = %[[V_A0]], %[[V_I1:[0-9a-zA-Z_\.]+]] = %[[V_I0]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {

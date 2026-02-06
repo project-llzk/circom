@@ -11,7 +11,7 @@ template Arrays() {
 
 component main = Arrays();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Arrays<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Arrays<[]>>} {
 // CHECK-NEXT:    struct.def @Arrays<[]> {
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@Arrays<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@Arrays<[]>>

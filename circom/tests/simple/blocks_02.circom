@@ -19,7 +19,7 @@ template B() {
 
 component main = B();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@B<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@B<[]>>} {
 // CHECK-LABEL:   struct.def @B<[]> {
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      () -> !struct.type<@B<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

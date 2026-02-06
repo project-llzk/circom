@@ -11,7 +11,7 @@ template A(n) {
 
 component main = A(5);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@A<[5]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A<[5]>>} {
 // CHECK-LABEL:   struct.def @A<[@n]> {
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      (%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@A<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

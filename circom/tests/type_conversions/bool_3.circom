@@ -19,9 +19,9 @@ template A(x) {
 
 component main = A(99);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@A<[99]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A<[99]>>} {
 // CHECK-NEXT:    struct.def @A<[@x]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@A<[@x]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@A<[@x]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @x : !felt.type
@@ -37,12 +37,12 @@ component main = A(99);
 // CHECK-NEXT:        } else {
 // CHECK-NEXT:          scf.yield %[[VAL_3]] : !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@out] = %[[VAL_9]] : <@A<[@x]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@out] = %[[VAL_9]] : <@A<[@x]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@A<[@x]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_11:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[@x]>>, %[[VAL_12:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = poly.read_const @x : !felt.type
-// CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_11]][@out] : <@A<[@x]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_11]][@out] : <@A<[@x]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = bool.cmp ne(%[[VAL_12]], %[[VAL_16]])

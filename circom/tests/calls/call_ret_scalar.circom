@@ -18,24 +18,24 @@ template CallRetTest() {
 
 component main = CallRetTest();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@CallRetTest<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@CallRetTest<[]>>} {
 // CHECK-LABEL:   function.def @sum(
 // CHECK-SAME:                      %[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      function.return %[[VAL_0]] : !felt.type
 // CHECK-NEXT:    }
 //
 // CHECK-LABEL:   struct.def @CallRetTest<[]> {
-// CHECK-NEXT:      struct.field @y : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @y : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      (%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@CallRetTest<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@CallRetTest<[]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = function.call @sum(%[[VAL_0]]) : (!felt.type) -> !felt.type
-// CHECK-NEXT:        struct.writef %self[@y] = %[[VAL_2]] : <@CallRetTest<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %self[@y] = %[[VAL_2]] : <@CallRetTest<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@CallRetTest<[]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[VAL_3:[0-9a-zA-Z_\.]+]]: !struct.type<@CallRetTest<[]>>, %[[VAL_4:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_3]][@y] : <@CallRetTest<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_3]][@y] : <@CallRetTest<[]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

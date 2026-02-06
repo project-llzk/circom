@@ -32,24 +32,24 @@ use anyhow::anyhow;
 use anyhow::Result;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::cast;
-use llzk::prelude::constrain;
+use llzk::dialect::constrain;
+use llzk::dialect::pod;
+use llzk::dialect::r#struct;
 use llzk::prelude::is_felt_type;
-use llzk::prelude::pod;
-use llzk::prelude::r#struct;
 use llzk::prelude::ArrayType;
 use llzk::prelude::BlockRef;
-use llzk::prelude::FieldDefOpLike;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::LoopBoundsAttribute;
+use llzk::prelude::MemberDefOpLike as _;
 use llzk::prelude::PodType;
 use llzk::prelude::RecordValue;
-use llzk::prelude::StructDefOpLike;
+use llzk::prelude::StringRef;
+use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
-use llzk::prelude::ValueLike;
-use melior::StringRef;
+use llzk::prelude::ValueLike as _;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -123,7 +123,7 @@ where
     constrain: ShouldGenerate<Rc<RefCell<FunctionContext<'ctx, 'func, 'blk, 'val>>>>,
     /// Map of subcomponent names to their types.
     subcmps: &'str HashMap<String, String>,
-    /// Tracks for what component signals we have created their `struct.writef` op already.
+    /// Tracks for what component signals we have created their `struct.writem` op already.
     written_signals: Rc<RefCell<HashSet<String>>>,
 }
 
@@ -169,7 +169,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
         }
     }
 
-    /// Returns true if we already generated a `struct.writef` op for the given signal.
+    /// Returns true if we already generated a `struct.writem` op for the given signal.
     pub fn signal_already_written(&self, name: &str) -> bool {
         self.written_signals.borrow().contains(name)
     }
@@ -184,9 +184,9 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
     pub fn get_signal_type(&self, name: &str) -> Result<Type<'ctx>> {
         Ok(self
             .struct_def
-            .get_field_def(name)
+            .get_member_def(name)
             .ok_or_else(|| anyhow!("no field '{name}' in struct"))?
-            .field_type())
+            .member_type())
     }
 
     /// Part of the finalization procedure that emits the pending operations in the queue.
@@ -227,7 +227,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                     // Write the inputs of the subcomponent.
                     let name_inputs = crate::subcmp::names::inputs(name);
                     let name_inputs_val = *fc.block_ctx.get_named_value(&name_inputs)?;
-                    fc.append_op_no_result(r#struct::writef(
+                    fc.append_op_no_result(r#struct::writem(
                         location,
                         self_value,
                         &name_inputs,
@@ -245,7 +245,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                             let comp_array = fc.append_op_unnamed_result(codegen.new_array_new_op(
                                 location,
                                 map_array_inner_type(ty.into(), struct_type).try_into()?,
-                                ArrayCtor::Values(&[])
+                                ArrayCtor::Empty
                             ))?;
 
                             fc.gen_loop_nest(codegen, codegen.location_unknown(), &ty.dims(), |fc, indices| {
@@ -283,7 +283,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                         }
                     };
 
-                    fc.append_op_no_result(r#struct::writef(
+                    fc.append_op_no_result(r#struct::writem(
                         location,
                         self_value,
                         name,
@@ -1109,7 +1109,7 @@ where
                                         )?;
                                         // Write value to field of "self" struct.
                                         fc.append_op_no_result(
-                                            r#struct::writef(
+                                            r#struct::writem(
                                                 location,
                                                 fc.func.self_value_of_compute()?,
                                                 var,
@@ -1151,7 +1151,7 @@ where
                                         )?;
                                         // Write value to field of "self" struct.
                                         fc.append_op_no_result(
-                                            r#struct::writef(
+                                            r#struct::writem(
                                                 location,
                                                 fc.func.self_value_of_compute()?,
                                                 var,

@@ -18,9 +18,9 @@ template ForUnknown() {
 
 component main = ForUnknown();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@ForUnknown<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ForUnknown<[]>>} {
 // CHECK-LABEL:   struct.def @ForUnknown<[]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      (%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@ForUnknown<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@ForUnknown<[]>>
@@ -37,12 +37,12 @@ component main = ForUnknown();
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_9]], %[[VAL_11]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_10]], %[[VAL_12]] : !felt.type, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@out] = %[[VAL_5]]#0 : <@ForUnknown<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@out] = %[[VAL_5]]#0 : <@ForUnknown<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@ForUnknown<[]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[VAL_14:[0-9a-zA-Z_\.]+]]: !struct.type<@ForUnknown<[]>>, %[[VAL_15:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_27:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_14]][@out] : <@ForUnknown<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_27:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_14]][@out] : <@ForUnknown<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_20:[0-9a-zA-Z_\.]+]] = %[[VAL_16]], %[[VAL_21:[0-9a-zA-Z_\.]+]] = %[[VAL_17]])

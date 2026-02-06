@@ -36,14 +36,14 @@ template Caller() {
 
 component main = Caller();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Caller<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Caller<[]>>} {
 // CHECK-NEXT:    function.def @nop(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      function.return %[[VAL_0]] : !felt.type
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @Caller<[]> {
-// CHECK-NEXT:      struct.field @outp : !felt.type {llzk.pub}
-// CHECK-NEXT:      struct.field @s : !struct.type<@Sum<[4]>>
-// CHECK-NEXT:      struct.field @s$inputs : !pod.type<[@inp: !array.type<4 x !felt.type>]>
+// CHECK-NEXT:      struct.member @outp : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @s : !struct.type<@Sum<[4]>>
+// CHECK-NEXT:      struct.member @s$inputs : !pod.type<[@inp: !array.type<4 x !felt.type>]>
 // CHECK-NEXT:      function.def @compute(%[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<4 x !felt.type>) -> !struct.type<@Caller<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@Caller<[]>>
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = arith.constant 4 : index
@@ -80,17 +80,17 @@ component main = Caller();
 // CHECK-NEXT:          scf.yield %[[VAL_27]], %[[VAL_13]] : !felt.type, !pod.type<[@inp: !array.type<4 x !felt.type>]>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        %[[VAL_28:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_4]][@comp] : <[@count: index, @comp: !struct.type<@Sum<[4]>>, @params: !pod.type<[]>]>, !struct.type<@Sum<[4]>>
-// CHECK-NEXT:        %[[VAL_29:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_28]][@outp] : <@Sum<[4]>>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_2]][@outp] = %[[VAL_29]] : <@Caller<[]>>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_2]][@s$inputs] = %[[VAL_7]]#1 : <@Caller<[]>>, !pod.type<[@inp: !array.type<4 x !felt.type>]>
+// CHECK-NEXT:        %[[VAL_29:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_28]][@outp] : <@Sum<[4]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_2]][@outp] = %[[VAL_29]] : <@Caller<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_2]][@s$inputs] = %[[VAL_7]]#1 : <@Caller<[]>>, !pod.type<[@inp: !array.type<4 x !felt.type>]>
 // CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_4]][@comp] : <[@count: index, @comp: !struct.type<@Sum<[4]>>, @params: !pod.type<[]>]>, !struct.type<@Sum<[4]>>
-// CHECK-NEXT:        struct.writef %[[VAL_2]][@s] = %[[VAL_30]] : <@Caller<[]>>, !struct.type<@Sum<[4]>>
+// CHECK-NEXT:        struct.writem %[[VAL_2]][@s] = %[[VAL_30]] : <@Caller<[]>>, !struct.type<@Sum<[4]>>
 // CHECK-NEXT:        function.return %[[VAL_2]] : !struct.type<@Caller<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_31:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller<[]>>, %[[VAL_32:[0-9a-zA-Z_\.]+]]: !array.type<4 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_33:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_31]][@outp] : <@Caller<[]>>, !felt.type
-// CHECK-NEXT:        %[[VAL_34:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_31]][@s] : <@Caller<[]>>, !struct.type<@Sum<[4]>>
-// CHECK-NEXT:        %[[VAL_35:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_31]][@s$inputs] : <@Caller<[]>>, !pod.type<[@inp: !array.type<4 x !felt.type>]>
+// CHECK-NEXT:        %[[VAL_33:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_31]][@outp] : <@Caller<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_34:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_31]][@s] : <@Caller<[]>>, !struct.type<@Sum<[4]>>
+// CHECK-NEXT:        %[[VAL_35:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_31]][@s$inputs] : <@Caller<[]>>, !pod.type<[@inp: !array.type<4 x !felt.type>]>
 // CHECK-NEXT:        %[[VAL_36:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_37:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_38:[0-9a-zA-Z_\.]+]] = %[[VAL_36]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_39:[0-9a-zA-Z_\.]+]] = felt.const  4
@@ -109,7 +109,7 @@ component main = Caller();
 // CHECK-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_41]], %[[VAL_48]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_49]] : !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_50:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_34]][@outp] : <@Sum<[4]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_50:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_34]][@outp] : <@Sum<[4]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_33]], %[[VAL_50]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_51:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_35]][@inp] : <[@inp: !array.type<4 x !felt.type>]>, !array.type<4 x !felt.type>
 // CHECK-NEXT:        function.call @Sum::@constrain(%[[VAL_34]], %[[VAL_51]]) : (!struct.type<@Sum<[4]>>, !array.type<4 x !felt.type>) -> ()
@@ -117,7 +117,7 @@ component main = Caller();
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @Sum<[@n]> {
-// CHECK-NEXT:      struct.field @outp : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @outp : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_52:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) -> !struct.type<@Sum<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_53:[0-9a-zA-Z_\.]+]] = struct.new : <@Sum<[@n]>>
 // CHECK-NEXT:        %[[VAL_54:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
@@ -135,12 +135,12 @@ component main = Caller();
 // CHECK-NEXT:          %[[VAL_67:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_61]], %[[VAL_66]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_67]], %[[VAL_65]] : !felt.type, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_53]][@outp] = %[[VAL_57]]#1 : <@Sum<[@n]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_53]][@outp] = %[[VAL_57]]#1 : <@Sum<[@n]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_53]] : !struct.type<@Sum<[@n]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_68:[0-9a-zA-Z_\.]+]]: !struct.type<@Sum<[@n]>>, %[[VAL_69:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_70:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
-// CHECK-NEXT:        %[[VAL_71:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_68]][@outp] : <@Sum<[@n]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_71:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_68]][@outp] : <@Sum<[@n]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_72:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_73:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_74:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_75:[0-9a-zA-Z_\.]+]] = %[[VAL_73]], %[[VAL_76:[0-9a-zA-Z_\.]+]] = %[[VAL_72]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {

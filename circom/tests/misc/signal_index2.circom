@@ -31,13 +31,13 @@ template A() {
 
 component main {public [a, b]} = A();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@A<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A<[]>>} {
 // CHECK-NEXT:    struct.def @A<[]> {
-// CHECK-NEXT:      struct.field @c : !array.type<4 x !felt.type> {llzk.pub}
-// CHECK-NEXT:      struct.field @x : !felt.type
+// CHECK-NEXT:      struct.member @c : !array.type<4 x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @x : !felt.type
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type> {llzk.pub}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type> {llzk.pub}) -> !struct.type<@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@A<[]>>
-// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<4 x !felt.type>
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<4 x !felt.type>
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_6:[0-9a-zA-Z_\.]+]] = %[[VAL_4]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = felt.const  4
@@ -71,13 +71,13 @@ component main {public [a, b]} = A();
 // CHECK-NEXT:        %[[VAL_26:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_27:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_26]]
 // CHECK-NEXT:        %[[VAL_28:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_3]]{{\[}}%[[VAL_27]]] : <4 x !felt.type>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_2]][@x] = %[[VAL_28]] : <@A<[]>>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_2]][@c] = %[[VAL_3]] : <@A<[]>>, !array.type<4 x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_2]][@x] = %[[VAL_28]] : <@A<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_2]][@c] = %[[VAL_3]] : <@A<[]>>, !array.type<4 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_2]] : !struct.type<@A<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_29:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[]>>, %[[VAL_30:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type> {llzk.pub}, %[[VAL_31:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type> {llzk.pub}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_47:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_29]][@c] : <@A<[]>>, !array.type<4 x !felt.type>
-// CHECK-NEXT:        %[[VAL_62:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_29]][@x] : <@A<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_47:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_29]][@c] : <@A<[]>>, !array.type<4 x !felt.type>
+// CHECK-NEXT:        %[[VAL_62:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_29]][@x] : <@A<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_33:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_34:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_35:[0-9a-zA-Z_\.]+]] = %[[VAL_33]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = felt.const  4

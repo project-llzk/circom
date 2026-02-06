@@ -51,11 +51,11 @@ template Main() {
 
 component main = Main();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Main_0<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Main_0<[]>>} {
 // CHECK-NEXT:    function.def @add_1(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_3:[0-9a-zA-Z_\.]+]]: !felt.type) -> !array.type<2 x !felt.type> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  168700
 // CHECK-NEXT:      %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  168696
-// CHECK-NEXT:      %[[VAL_6:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
+// CHECK-NEXT:      %[[VAL_6:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:      %[[VAL_7:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_9:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_8]]
@@ -97,8 +97,8 @@ component main = Main();
 // CHECK-NEXT:      function.return %[[VAL_6]] : !array.type<2 x !felt.type>
 // CHECK-NEXT:    }
 // CHECK-NEXT:    function.def @mul_0(%[[VAL_41:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type>, %[[VAL_42:[0-9a-zA-Z_\.]+]]: !felt.type) -> !array.type<16,2 x !felt.type> attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:      %[[VAL_43:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<16,2 x !felt.type>
-// CHECK-NEXT:      %[[VAL_44:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
+// CHECK-NEXT:      %[[VAL_43:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<16,2 x !felt.type>
+// CHECK-NEXT:      %[[VAL_44:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:      %[[VAL_45:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_46:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_47:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_46]]
@@ -156,7 +156,7 @@ component main = Main();
 // CHECK-NEXT:      %[[VAL_82:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_81]]
 // CHECK-NEXT:      array.insert %[[VAL_43]]{{\[}}%[[VAL_82]]] = %[[VAL_44]] : <16,2 x !felt.type>, <2 x !felt.type>
 // CHECK-NEXT:      %[[VAL_83:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:      %[[VAL_84:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
+// CHECK-NEXT:      %[[VAL_84:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:      %[[VAL_85:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_86:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_87:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_86]]
@@ -165,7 +165,7 @@ component main = Main();
 // CHECK-NEXT:      %[[VAL_89:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:      %[[VAL_90:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_89]]
 // CHECK-NEXT:      array.write %[[VAL_84]]{{\[}}%[[VAL_90]]] = %[[VAL_88]] : <2 x !felt.type>, !felt.type
-// CHECK-NEXT:      %[[VAL_91:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
+// CHECK-NEXT:      %[[VAL_91:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:      %[[VAL_92:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_93:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_94:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_93]]
@@ -258,11 +258,11 @@ component main = Main();
 // CHECK-NEXT:      function.return %[[VAL_43]] : !array.type<16,2 x !felt.type>
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @Main_0<[]> {
-// CHECK-NEXT:      struct.field @out : !array.type<16,2 x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !array.type<16,2 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@Main_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_173:[0-9a-zA-Z_\.]+]] = struct.new : <@Main_0<[]>>
-// CHECK-NEXT:        %[[VAL_174:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<16,2 x !felt.type>
-// CHECK-NEXT:        %[[VAL_175:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_174:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<16,2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_175:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_176:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_177:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_178:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_177]]
@@ -279,8 +279,8 @@ component main = Main();
 // CHECK-NEXT:        %[[VAL_186:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_187:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_186]]
 // CHECK-NEXT:        array.write %[[VAL_175]]{{\[}}%[[VAL_187]]] = %[[VAL_185]] : <2 x !felt.type>, !felt.type
-// CHECK-NEXT:        %[[VAL_188:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<16,2 x !felt.type>
-// CHECK-NEXT:        %[[VAL_189:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_188:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<16,2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_189:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_190:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_191:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_192:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_191]]
@@ -366,12 +366,12 @@ component main = Main();
 // CHECK-NEXT:          %[[VAL_251:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_235]], %[[VAL_250]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_251]] : !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_173]][@out] = %[[VAL_174]] : <@Main_0<[]>>, !array.type<16,2 x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_173]][@out] = %[[VAL_174]] : <@Main_0<[]>>, !array.type<16,2 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_173]] : !struct.type<@Main_0<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_252:[0-9a-zA-Z_\.]+]]: !struct.type<@Main_0<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_318:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_252]][@out] : <@Main_0<[]>>, !array.type<16,2 x !felt.type>
-// CHECK-NEXT:        %[[VAL_253:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_318:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_252]][@out] : <@Main_0<[]>>, !array.type<16,2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_253:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_254:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_255:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_256:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_255]]
@@ -388,8 +388,8 @@ component main = Main();
 // CHECK-NEXT:        %[[VAL_264:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_265:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_264]]
 // CHECK-NEXT:        array.write %[[VAL_253]]{{\[}}%[[VAL_265]]] = %[[VAL_263]] : <2 x !felt.type>, !felt.type
-// CHECK-NEXT:        %[[VAL_266:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<16,2 x !felt.type>
-// CHECK-NEXT:        %[[VAL_267:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_266:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<16,2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_267:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_268:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_269:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_270:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_269]]

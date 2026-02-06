@@ -16,12 +16,12 @@ template FixIdxNested() {
 
 component main = FixIdxNested();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@FixIdxNested<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@FixIdxNested<[]>>} {
 // CHECK-NEXT:    struct.def @FixIdxNested<[]> {
-// CHECK-NEXT:      struct.field @out : !array.type<16 x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !array.type<16 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<16 x !felt.type>) -> !struct.type<@FixIdxNested<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@FixIdxNested<[]>>
-// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<16 x !felt.type>
+// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<16 x !felt.type>
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]] : <16 x !felt.type>
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -58,11 +58,11 @@ component main = FixIdxNested();
 // CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_27]], %[[VAL_33]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_34]] : !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@out] = %[[VAL_2]] : <@FixIdxNested<[]>>, !array.type<16 x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@out] = %[[VAL_2]] : <@FixIdxNested<[]>>, !array.type<16 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@FixIdxNested<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_35:[0-9a-zA-Z_\.]+]]: !struct.type<@FixIdxNested<[]>>, %[[VAL_36:[0-9a-zA-Z_\.]+]]: !array.type<16 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_66:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_35]][@out] : <@FixIdxNested<[]>>, !array.type<16 x !felt.type>
+// CHECK-NEXT:        %[[VAL_66:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_35]][@out] : <@FixIdxNested<[]>>, !array.type<16 x !felt.type>
 // CHECK-NEXT:        %[[VAL_37:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_38:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]], %[[VAL_37]] : <16 x !felt.type>
 // CHECK-NEXT:        %[[VAL_39:[0-9a-zA-Z_\.]+]] = felt.const  0

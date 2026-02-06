@@ -25,12 +25,36 @@ use crate::template_ext::TemplateLike;
 use anyhow::bail;
 use anyhow::Result;
 use llzk::attributes::NamedAttribute;
+use llzk::dialect::array;
 use llzk::dialect::array::ArrayCtor;
+use llzk::dialect::function;
 use llzk::dialect::pod;
+use llzk::dialect::poly;
+use llzk::dialect::r#struct;
+use llzk::dialect::r#struct::helpers::compute_fn;
+use llzk::dialect::r#struct::helpers::constrain_fn;
 use llzk::error::Error;
-use llzk::prelude::r#struct::helpers::compute_fn;
-use llzk::prelude::r#struct::helpers::constrain_fn;
-use llzk::prelude::*;
+use llzk::prelude::ArrayType;
+use llzk::prelude::Block;
+use llzk::prelude::BlockLike as _;
+use llzk::prelude::FuncDefOpLike as _;
+use llzk::prelude::FuncDefOpRef;
+use llzk::prelude::FuncDefOpRefMut;
+use llzk::prelude::FunctionType;
+use llzk::prelude::Location;
+use llzk::prelude::MemberDefOpLike as _;
+use llzk::prelude::Operation;
+use llzk::prelude::OperationLike as _;
+use llzk::prelude::PodRecordAttribute;
+use llzk::prelude::PodType;
+use llzk::prelude::PublicAttribute;
+use llzk::prelude::RecordValue;
+use llzk::prelude::RegionLike as _;
+use llzk::prelude::StringRef;
+use llzk::prelude::StructDefOpLike as _;
+use llzk::prelude::StructType;
+use llzk::prelude::Type;
+use llzk::prelude::Value;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -74,7 +98,7 @@ impl<'ctx> TryFrom<MemberInfo<'ctx>> for Operation<'ctx> {
     type Error = Error;
 
     fn try_from(value: MemberInfo<'ctx>) -> std::result::Result<Self, Self::Error> {
-        r#struct::field(value.location, &value.name, value.decl_type, false, value.public)
+        r#struct::member(value.location, &value.name, value.decl_type, false, value.public)
             .map(Into::into)
     }
 }
@@ -89,7 +113,7 @@ pub struct DeclarationInfo<'ctx> {
     inputs: Vec<InputSignalInfo<'ctx>>,
     /// Output and Intermediate declarations to use as LLZK struct fields.
     struct_fields: Vec<MemberInfo<'ctx>>,
-    /// Map var/signal name to its LLZK declaration Operation (usually `undef.undef`).
+    /// Map var/signal name to its LLZK declaration Operation (usually `llzk.nondet`).
     decl_inits: HashMap<String, Operation<'ctx>>,
     /// Map `component` name to its declaration information.
     subcmp_decls: HashMap<String, SubcmpDeclInfo<'ctx>>,
@@ -178,10 +202,10 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 dims => ArrayType::new(t, dims).into(),
             };
             let inputs = extend_dims(PodType::new(codegen.context, &inputs).into());
-            let field_type = extend_dims(types[0].into());
+            let member_type = extend_dims(types[0].into());
             self.struct_fields.push(MemberInfo {
                 name: name.clone(),
-                decl_type: field_type,
+                decl_type: member_type,
                 location: info.location(),
                 public: false,
             });
@@ -193,7 +217,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
             });
             ops.push(SubcmpPrologueData {
                 name,
-                subcmp: field_type,
+                subcmp: member_type,
                 inputs,
                 inputs_size,
                 template_params,
@@ -271,8 +295,8 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         codegen.struct_type(bus_name).into(),
                     ),
                     VariableType::Var => {
-                        // Create an `undef` of the appropriate type. When the actual assignment is
-                        // processed later, this is replaced with the appropriate value.
+                        // Create `llzk.nondet` of the appropriate type. When the actual assignment
+                        // is processed later, this is replaced with the appropriate value.
                         let dimensions = self.get_dimensions(codegen, dimensions)?;
                         self.decl_inits.insert(
                             name.clone(),
@@ -383,8 +407,8 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 public: SignalType::Output == *signal_type,
             });
         }
-        // Create an `undef` of the appropriate type. When the actual assignment is
-        // processed later, this is replaced with the appropriate value.
+        // Create `llzk.nondet` of the appropriate type. When the actual assignment
+        // is processed later, this is replaced with the appropriate value.
         codegen.new_nondet_at_location(location, decl_type).map(|op| {
             self.decl_inits.insert(name.clone(), op);
         })
@@ -602,15 +626,15 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
 
     // Insert read operations for struct fields into constrain functions.
     let location = codegen.location_unknown();
-    for field in new_struct.get_field_defs() {
-        let field_name = field.field_name();
-        constrain_ctx.block_ctx.declare_name_if_not_present(field_name, || {
-            r#struct::readf(
+    for member in new_struct.get_member_defs() {
+        let member_name = member.member_name();
+        constrain_ctx.block_ctx.declare_name_if_not_present(member_name, || {
+            r#struct::readm(
                 codegen.op_builder(),
                 location,
-                field.field_type(),
+                member.member_type(),
                 constrain_func.self_value_of_constrain()?,
-                field_name,
+                member_name,
             )
             .map_err(Into::into)
         })?;
@@ -685,7 +709,7 @@ where
         {
             let self_ref = constrain_ctx.func.self_value_of_constrain()?;
             constrain_ctx.block_ctx.declare_name_if_not_present(&name, || {
-                Ok(r#struct::readf(
+                Ok(r#struct::readm(
                     op_builder,
                     subcmp_decls[&name].location(),
                     subcmp_type,
@@ -694,7 +718,7 @@ where
                 )?)
             })?;
             constrain_ctx.block_ctx.declare_name_if_not_present(&name_inputs, || {
-                Ok(r#struct::readf(
+                Ok(r#struct::readm(
                     op_builder,
                     subcmp_decls[&name].location(),
                     subcmp_inputs_type,
@@ -725,7 +749,7 @@ where
                     let dims = comp_pod.dims();
                     compute_ctx.block_ctx.declare_name_ensure_not_present(
                         &name,
-                        array::new(op_builder, location, comp_pod, ArrayCtor::Values(&[])),
+                        array::new(op_builder, location, comp_pod, ArrayCtor::Empty),
                     )?;
                     let comp_memory = *compute_ctx.block_ctx.get_named_value(&name)?;
 
@@ -812,7 +836,7 @@ where
                 &name_inputs,
                 match ArrayType::try_from(subcmp_inputs_type) {
                     Ok(subcmp_inputs_type) => {
-                        array::new(op_builder, location, subcmp_inputs_type, ArrayCtor::Values(&[]))
+                        array::new(op_builder, location, subcmp_inputs_type, ArrayCtor::Empty)
                     }
                     Err(_) => pod::new(
                         op_builder,

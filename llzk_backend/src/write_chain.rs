@@ -26,7 +26,7 @@ use std::fmt;
 
 /// Gives information about signals written into the component.
 pub trait SignalWriteInfo: std::fmt::Debug {
-    /// Returns true if we already generated a `struct.writef` op for the given signal.
+    /// Returns true if we already generated a `struct.writem` op for the given signal.
     fn signal_already_written(&self, name: &str) -> bool;
 
     /// Marks the given signal as written.
@@ -244,7 +244,7 @@ impl<'ast> WriteChain<'ast> {
                 let self_value = fc.func.self_value_of_compute()?;
                 // Write value to field of "self" struct.
                 fc.block_ctx.enqueue_in_block(
-                    r#struct::writef(location, self_value, &var, val)?.into(),
+                    r#struct::writem(location, self_value, &var, val)?.into(),
                     block,
                 )?;
                 fc.block_ctx.set_named_value_at_declaration(var.clone(), val)?;

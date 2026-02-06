@@ -8,7 +8,7 @@ template EmptyTemplate() {
 }
 component main = EmptyTemplate();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@EmptyTemplate<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@EmptyTemplate<[]>>} {
 // CHECK-NEXT:    struct.def @EmptyTemplate<[]> {
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@EmptyTemplate<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[SELF:[0-9a-zA-Z_\.]+]] = struct.new : <@EmptyTemplate<[]>>

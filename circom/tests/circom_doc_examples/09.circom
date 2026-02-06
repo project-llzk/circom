@@ -20,13 +20,13 @@ template Num2Bits(n) {
 
 component main {public [in]}= Num2Bits(3);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Num2Bits<[3]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Num2Bits<[3]>>} {
 // CHECK-NEXT:    struct.def @Num2Bits<[@n]> {
-// CHECK-NEXT:      struct.field @out : !array.type<@n x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !array.type<@n x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}) -> !struct.type<@Num2Bits<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Num2Bits<[@n]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
-// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<@n x !felt.type>
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<@n x !felt.type>
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -49,12 +49,12 @@ component main {public [in]}= Num2Bits(3);
 // CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_13]], %[[VAL_24]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_23]], %[[VAL_25]], %[[VAL_22]] : !felt.type, !felt.type, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@out] = %[[VAL_3]] : <@Num2Bits<[@n]>>, !array.type<@n x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@out] = %[[VAL_3]] : <@Num2Bits<[@n]>>, !array.type<@n x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@Num2Bits<[@n]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_26:[0-9a-zA-Z_\.]+]]: !struct.type<@Num2Bits<[@n]>>, %[[VAL_27:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_28:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
-// CHECK-NEXT:        %[[VAL_29:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_26]][@out] : <@Num2Bits<[@n]>>, !array.type<@n x !felt.type>
+// CHECK-NEXT:        %[[VAL_29:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_26]][@out] : <@Num2Bits<[@n]>>, !array.type<@n x !felt.type>
 // CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = felt.const  0

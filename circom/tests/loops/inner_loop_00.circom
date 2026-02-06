@@ -19,9 +19,9 @@ template InnerLoops(n, m) {
 
 component main = InnerLoops(2, 3);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@InnerLoops<[2, 3]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerLoops<[2, 3]>>} {
 // CHECK-NEXT:    struct.def @InnerLoops<[@n, @m]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      (%[[V_IN:[0-9a-zA-Z_\.]+]]: !array.type<@m x !felt.type>) -> !struct.type<@InnerLoops<[@n, @m]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[V_1:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerLoops<[@n, @m]>>
@@ -63,14 +63,14 @@ component main = InnerLoops(2, 3);
 // CHECK-NEXT:        %[[V_32:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_33:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_32]]
 // CHECK-NEXT:        %[[V_34:[0-9a-zA-Z_\.]+]] = array.read %[[V_12]]#0{{\[}}%[[V_33]]] : <@n x !felt.type>, !felt.type
-// CHECK-NEXT:        struct.writef %[[V_1]][@out] = %[[V_34]] : <@InnerLoops<[@n, @m]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[V_1]][@out] = %[[V_34]] : <@InnerLoops<[@n, @m]>>, !felt.type
 // CHECK-NEXT:        function.return %[[V_1]] : !struct.type<@InnerLoops<[@n, @m]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[V_IN:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerLoops<[@n, @m]>>, %[[V_36:[0-9a-zA-Z_\.]+]]: !array.type<@m x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
 // CHECK-NEXT:        %[[V_M:[0-9a-zA-Z_\.]+]] = poly.read_const @m : !felt.type
-// CHECK-NEXT:        %[[V_67:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_IN]][@out] : <@InnerLoops<[@n, @m]>>, !felt.type
+// CHECK-NEXT:        %[[V_67:[0-9a-zA-Z_\.]+]] = struct.readm %[[V_IN]][@out] : <@InnerLoops<[@n, @m]>>, !felt.type
 // CHECK-NEXT:        %[[V_39:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_B:[0-9a-zA-Z_\.]+]] = array.new  : <@n x !felt.type>
 // CHECK-NEXT:        %[[V_41:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index

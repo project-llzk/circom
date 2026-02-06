@@ -17,9 +17,9 @@ template UnknownIndex() {
 
 component main = UnknownIndex();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@UnknownIndex<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@UnknownIndex<[]>>} {
 // CHECK-NEXT:    struct.def @UnknownIndex<[]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@UnknownIndex<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@UnknownIndex<[]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -37,11 +37,11 @@ component main = UnknownIndex();
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_4]], %[[VAL_5]], %[[VAL_6]], %[[VAL_7]], %[[VAL_8]], %[[VAL_9]], %[[VAL_10]], %[[VAL_11]], %[[VAL_12]], %[[VAL_13]] : <10 x !felt.type>
 // CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_0]]
 // CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_14]]{{\[}}%[[VAL_15]]] : <10 x !felt.type>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@out] = %[[VAL_16]] : <@UnknownIndex<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@out] = %[[VAL_16]] : <@UnknownIndex<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@UnknownIndex<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_17:[0-9a-zA-Z_\.]+]]: !struct.type<@UnknownIndex<[]>>, %[[VAL_18:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_17]][@out] : <@UnknownIndex<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_17]][@out] : <@UnknownIndex<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_19]], %[[VAL_19]], %[[VAL_19]], %[[VAL_19]], %[[VAL_19]], %[[VAL_19]], %[[VAL_19]], %[[VAL_19]], %[[VAL_19]], %[[VAL_19]] : <10 x !felt.type>
 // CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = felt.const  0

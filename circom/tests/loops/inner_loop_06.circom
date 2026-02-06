@@ -17,7 +17,7 @@ template InnerLoops(n) {
 
 component main = InnerLoops(2);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@InnerLoops<[2]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerLoops<[2]>>} {
 // CHECK-NEXT:    struct.def @InnerLoops<[@n]> {
 // CHECK-NEXT:      function.def @compute
 // CHECK-SAME:      (%[[V_0:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) -> !struct.type<@InnerLoops<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

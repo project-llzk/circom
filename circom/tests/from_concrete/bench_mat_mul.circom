@@ -65,12 +65,12 @@ template matMul (m,n,p) {
 
 component main = matMul(2,3,2);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@matMul_2<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@matMul_2<[]>>} {
 // CHECK-NEXT:    struct.def @matElemMul_0<[]> {
-// CHECK-NEXT:      struct.field @out : !array.type<1,3 x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !array.type<1,3 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type>, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type>) -> !struct.type<@matElemMul_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@matElemMul_0<[]>>
-// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<1,3 x !felt.type>
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1,3 x !felt.type>
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  3
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -107,11 +107,11 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:          scf.yield %[[VAL_32]] : !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_2]][@out] = %[[VAL_3]] : <@matElemMul_0<[]>>, !array.type<1,3 x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_2]][@out] = %[[VAL_3]] : <@matElemMul_0<[]>>, !array.type<1,3 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_2]] : !struct.type<@matElemMul_0<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_33:[0-9a-zA-Z_\.]+]]: !struct.type<@matElemMul_0<[]>>, %[[VAL_34:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type>, %[[VAL_35:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_36:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_33]][@out] : <@matElemMul_0<[]>>, !array.type<1,3 x !felt.type>
+// CHECK-NEXT:        %[[VAL_36:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_33]][@out] : <@matElemMul_0<[]>>, !array.type<1,3 x !felt.type>
 // CHECK-NEXT:        %[[VAL_37:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_38:[0-9a-zA-Z_\.]+]] = felt.const  3
 // CHECK-NEXT:        %[[VAL_39:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -153,11 +153,11 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @matElemSum_1<[]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
-// CHECK-NEXT:      struct.field @sum : !array.type<3 x !felt.type>
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @sum : !array.type<3 x !felt.type>
 // CHECK-NEXT:      function.def @compute(%[[VAL_67:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type>) -> !struct.type<@matElemSum_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_68:[0-9a-zA-Z_\.]+]] = struct.new : <@matElemSum_1<[]>>
-// CHECK-NEXT:        %[[VAL_69:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<3 x !felt.type>
+// CHECK-NEXT:        %[[VAL_69:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type>
 // CHECK-NEXT:        %[[VAL_70:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_71:[0-9a-zA-Z_\.]+]] = felt.const  3
 // CHECK-NEXT:        %[[VAL_72:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -211,13 +211,13 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:        %[[VAL_113:[0-9a-zA-Z_\.]+]] = felt.const  2
 // CHECK-NEXT:        %[[VAL_114:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_113]]
 // CHECK-NEXT:        %[[VAL_115:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_69]]{{\[}}%[[VAL_114]]] : <3 x !felt.type>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_68]][@out] = %[[VAL_115]] : <@matElemSum_1<[]>>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_68]][@sum] = %[[VAL_69]] : <@matElemSum_1<[]>>, !array.type<3 x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_68]][@out] = %[[VAL_115]] : <@matElemSum_1<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_68]][@sum] = %[[VAL_69]] : <@matElemSum_1<[]>>, !array.type<3 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_68]] : !struct.type<@matElemSum_1<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_116:[0-9a-zA-Z_\.]+]]: !struct.type<@matElemSum_1<[]>>, %[[VAL_117:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_118:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_116]][@out] : <@matElemSum_1<[]>>, !felt.type
-// CHECK-NEXT:        %[[VAL_119:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_116]][@sum] : <@matElemSum_1<[]>>, !array.type<3 x !felt.type>
+// CHECK-NEXT:        %[[VAL_118:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_116]][@out] : <@matElemSum_1<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_119:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_116]][@sum] : <@matElemSum_1<[]>>, !array.type<3 x !felt.type>
 // CHECK-NEXT:        %[[VAL_120:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_121:[0-9a-zA-Z_\.]+]] = felt.const  3
 // CHECK-NEXT:        %[[VAL_122:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -278,14 +278,14 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @matMul_2<[]> {
-// CHECK-NEXT:      struct.field @out : !array.type<2,2 x !felt.type> {llzk.pub}
-// CHECK-NEXT:      struct.field @matElemMulComp : !array.type<2,2 x !struct.type<@matElemMul_0<[]>>>
-// CHECK-NEXT:      struct.field @matElemMulComp$inputs : !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>, @b: !array.type<1,3 x !felt.type>]>>
-// CHECK-NEXT:      struct.field @matElemSumComp : !array.type<2,2 x !struct.type<@matElemSum_1<[]>>>
-// CHECK-NEXT:      struct.field @matElemSumComp$inputs : !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>]>>
+// CHECK-NEXT:      struct.member @out : !array.type<2,2 x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @matElemMulComp : !array.type<2,2 x !struct.type<@matElemMul_0<[]>>>
+// CHECK-NEXT:      struct.member @matElemMulComp$inputs : !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>, @b: !array.type<1,3 x !felt.type>]>>
+// CHECK-NEXT:      struct.member @matElemSumComp : !array.type<2,2 x !struct.type<@matElemSum_1<[]>>>
+// CHECK-NEXT:      struct.member @matElemSumComp$inputs : !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>]>>
 // CHECK-NEXT:      function.def @compute(%[[VAL_168:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type>, %[[VAL_169:[0-9a-zA-Z_\.]+]]: !array.type<3,2 x !felt.type>) -> !struct.type<@matMul_2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_170:[0-9a-zA-Z_\.]+]] = struct.new : <@matMul_2<[]>>
-// CHECK-NEXT:        %[[VAL_171:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2,2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_171:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2,2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_172:[0-9a-zA-Z_\.]+]] = array.new  : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>
 // CHECK-NEXT:        %[[VAL_173:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:        %[[VAL_174:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -427,7 +427,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:              %[[VAL_290:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_212]]
 // CHECK-NEXT:              %[[VAL_291:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_172]]{{\[}}%[[VAL_289]], %[[VAL_290]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:              %[[VAL_292:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_291]][@comp] : <[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@matElemMul_0<[]>>
-// CHECK-NEXT:              %[[VAL_293:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_292]][@out] : <@matElemMul_0<[]>>, !array.type<1,3 x !felt.type>
+// CHECK-NEXT:              %[[VAL_293:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_292]][@out] : <@matElemMul_0<[]>>, !array.type<1,3 x !felt.type>
 // CHECK-NEXT:              %[[VAL_294:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:              %[[VAL_295:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_294]]
 // CHECK-NEXT:              %[[VAL_296:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_287]]
@@ -473,7 +473,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:            %[[VAL_325:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_212]]
 // CHECK-NEXT:            %[[VAL_326:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_182]]{{\[}}%[[VAL_324]], %[[VAL_325]]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_327:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_326]][@comp] : <[@count: index, @comp: !struct.type<@matElemSum_1<[]>>, @params: !pod.type<[]>]>, !struct.type<@matElemSum_1<[]>>
-// CHECK-NEXT:            %[[VAL_328:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_327]][@out] : <@matElemSum_1<[]>>, !felt.type
+// CHECK-NEXT:            %[[VAL_328:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_327]][@out] : <@matElemSum_1<[]>>, !felt.type
 // CHECK-NEXT:            %[[VAL_329:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_202]]
 // CHECK-NEXT:            %[[VAL_330:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_212]]
 // CHECK-NEXT:            array.write %[[VAL_171]]{{\[}}%[[VAL_329]], %[[VAL_330]]] = %[[VAL_328]] : <2,2 x !felt.type>, !felt.type
@@ -485,7 +485,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:          %[[VAL_334:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_202]], %[[VAL_333]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_334]], %[[VAL_206]]#1, %[[VAL_206]]#2 : !felt.type, !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>, @b: !array.type<1,3 x !felt.type>]>>, !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_170]][@matElemMulComp$inputs] = %[[VAL_196]]#1 : <@matMul_2<[]>>, !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>, @b: !array.type<1,3 x !felt.type>]>>
+// CHECK-NEXT:        struct.writem %[[VAL_170]][@matElemMulComp$inputs] = %[[VAL_196]]#1 : <@matMul_2<[]>>, !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>, @b: !array.type<1,3 x !felt.type>]>>
 // CHECK-NEXT:        %[[VAL_335:[0-9a-zA-Z_\.]+]] = array.new  : <2,2 x !struct.type<@matElemMul_0<[]>>>
 // CHECK-NEXT:        %[[VAL_336:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:        %[[VAL_337:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -498,8 +498,8 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:            array.write %[[VAL_335]]{{\[}}%[[VAL_340]], %[[VAL_341]]] = %[[VAL_343]] : <2,2 x !struct.type<@matElemMul_0<[]>>>, !struct.type<@matElemMul_0<[]>>
 // CHECK-NEXT:          }
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_170]][@matElemMulComp] = %[[VAL_335]] : <@matMul_2<[]>>, !array.type<2,2 x !struct.type<@matElemMul_0<[]>>>
-// CHECK-NEXT:        struct.writef %[[VAL_170]][@matElemSumComp$inputs] = %[[VAL_196]]#2 : <@matMul_2<[]>>, !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>]>>
+// CHECK-NEXT:        struct.writem %[[VAL_170]][@matElemMulComp] = %[[VAL_335]] : <@matMul_2<[]>>, !array.type<2,2 x !struct.type<@matElemMul_0<[]>>>
+// CHECK-NEXT:        struct.writem %[[VAL_170]][@matElemSumComp$inputs] = %[[VAL_196]]#2 : <@matMul_2<[]>>, !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>]>>
 // CHECK-NEXT:        %[[VAL_344:[0-9a-zA-Z_\.]+]] = array.new  : <2,2 x !struct.type<@matElemSum_1<[]>>>
 // CHECK-NEXT:        %[[VAL_345:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:        %[[VAL_346:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -512,16 +512,16 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:            array.write %[[VAL_344]]{{\[}}%[[VAL_349]], %[[VAL_350]]] = %[[VAL_352]] : <2,2 x !struct.type<@matElemSum_1<[]>>>, !struct.type<@matElemSum_1<[]>>
 // CHECK-NEXT:          }
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_170]][@matElemSumComp] = %[[VAL_344]] : <@matMul_2<[]>>, !array.type<2,2 x !struct.type<@matElemSum_1<[]>>>
-// CHECK-NEXT:        struct.writef %[[VAL_170]][@out] = %[[VAL_171]] : <@matMul_2<[]>>, !array.type<2,2 x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_170]][@matElemSumComp] = %[[VAL_344]] : <@matMul_2<[]>>, !array.type<2,2 x !struct.type<@matElemSum_1<[]>>>
+// CHECK-NEXT:        struct.writem %[[VAL_170]][@out] = %[[VAL_171]] : <@matMul_2<[]>>, !array.type<2,2 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_170]] : !struct.type<@matMul_2<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_353:[0-9a-zA-Z_\.]+]]: !struct.type<@matMul_2<[]>>, %[[VAL_354:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type>, %[[VAL_355:[0-9a-zA-Z_\.]+]]: !array.type<3,2 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_356:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_353]][@out] : <@matMul_2<[]>>, !array.type<2,2 x !felt.type>
-// CHECK-NEXT:        %[[VAL_357:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_353]][@matElemMulComp] : <@matMul_2<[]>>, !array.type<2,2 x !struct.type<@matElemMul_0<[]>>>
-// CHECK-NEXT:        %[[VAL_358:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_353]][@matElemMulComp$inputs] : <@matMul_2<[]>>, !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>, @b: !array.type<1,3 x !felt.type>]>>
-// CHECK-NEXT:        %[[VAL_359:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_353]][@matElemSumComp] : <@matMul_2<[]>>, !array.type<2,2 x !struct.type<@matElemSum_1<[]>>>
-// CHECK-NEXT:        %[[VAL_360:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_353]][@matElemSumComp$inputs] : <@matMul_2<[]>>, !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>]>>
+// CHECK-NEXT:        %[[VAL_356:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_353]][@out] : <@matMul_2<[]>>, !array.type<2,2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_357:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_353]][@matElemMulComp] : <@matMul_2<[]>>, !array.type<2,2 x !struct.type<@matElemMul_0<[]>>>
+// CHECK-NEXT:        %[[VAL_358:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_353]][@matElemMulComp$inputs] : <@matMul_2<[]>>, !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>, @b: !array.type<1,3 x !felt.type>]>>
+// CHECK-NEXT:        %[[VAL_359:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_353]][@matElemSumComp] : <@matMul_2<[]>>, !array.type<2,2 x !struct.type<@matElemSum_1<[]>>>
+// CHECK-NEXT:        %[[VAL_360:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_353]][@matElemSumComp$inputs] : <@matMul_2<[]>>, !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>]>>
 // CHECK-NEXT:        %[[VAL_361:[0-9a-zA-Z_\.]+]] = felt.const  2
 // CHECK-NEXT:        %[[VAL_362:[0-9a-zA-Z_\.]+]] = felt.const  3
 // CHECK-NEXT:        %[[VAL_363:[0-9a-zA-Z_\.]+]] = felt.const  2
@@ -584,7 +584,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:              %[[VAL_412:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_369]]
 // CHECK-NEXT:              %[[VAL_413:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_375]]
 // CHECK-NEXT:              %[[VAL_414:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_357]]{{\[}}%[[VAL_412]], %[[VAL_413]]] : <2,2 x !struct.type<@matElemMul_0<[]>>>, !struct.type<@matElemMul_0<[]>>
-// CHECK-NEXT:              %[[VAL_415:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_414]][@out] : <@matElemMul_0<[]>>, !array.type<1,3 x !felt.type>
+// CHECK-NEXT:              %[[VAL_415:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_414]][@out] : <@matElemMul_0<[]>>, !array.type<1,3 x !felt.type>
 // CHECK-NEXT:              %[[VAL_416:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:              %[[VAL_417:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_416]]
 // CHECK-NEXT:              %[[VAL_418:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_411]]
@@ -605,7 +605,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:            %[[VAL_430:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_369]]
 // CHECK-NEXT:            %[[VAL_431:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_375]]
 // CHECK-NEXT:            %[[VAL_432:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_359]]{{\[}}%[[VAL_430]], %[[VAL_431]]] : <2,2 x !struct.type<@matElemSum_1<[]>>>, !struct.type<@matElemSum_1<[]>>
-// CHECK-NEXT:            %[[VAL_433:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_432]][@out] : <@matElemSum_1<[]>>, !felt.type
+// CHECK-NEXT:            %[[VAL_433:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_432]][@out] : <@matElemSum_1<[]>>, !felt.type
 // CHECK-NEXT:            %[[VAL_434:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_369]]
 // CHECK-NEXT:            %[[VAL_435:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_375]]
 // CHECK-NEXT:            %[[VAL_436:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_356]]{{\[}}%[[VAL_434]], %[[VAL_435]]] : <2,2 x !felt.type>, !felt.type

@@ -17,9 +17,9 @@ template ForKnown(N) {
 
 component main = ForKnown(10);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@ForKnown<[10]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ForKnown<[10]>>} {
 // CHECK-NEXT:    struct.def @ForKnown<[@N]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@ForKnown<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@ForKnown<[@N]>>
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
@@ -35,12 +35,12 @@ component main = ForKnown(10);
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_9]], %[[VAL_11]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_10]], %[[VAL_12]] : !felt.type, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_0]][@out] = %[[VAL_4]]#0 : <@ForKnown<[@N]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_0]][@out] = %[[VAL_4]]#0 : <@ForKnown<[@N]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@ForKnown<[@N]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_13:[0-9a-zA-Z_\.]+]]: !struct.type<@ForKnown<[@N]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_13]][@out] : <@ForKnown<[@N]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_13]][@out] : <@ForKnown<[@N]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_18:[0-9a-zA-Z_\.]+]] = %[[VAL_15]], %[[VAL_19:[0-9a-zA-Z_\.]+]] = %[[VAL_16]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {

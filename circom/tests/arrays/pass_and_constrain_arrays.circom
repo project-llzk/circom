@@ -52,4 +52,4 @@ template Main() {
 
 component main = Main();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Main<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Main<[]>>} {

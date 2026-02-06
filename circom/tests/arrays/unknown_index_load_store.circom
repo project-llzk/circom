@@ -17,12 +17,12 @@ template UnknownIndexLoadStore() {
 
 component main = UnknownIndexLoadStore();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@UnknownIndexLoadStore<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@UnknownIndexLoadStore<[]>>} {
 // CHECK-NEXT:    struct.def @UnknownIndexLoadStore<[]> {
-// CHECK-NEXT:      struct.field @out : !array.type<8 x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !array.type<8 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@UnknownIndexLoadStore<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@UnknownIndexLoadStore<[]>>
-// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<8 x !felt.type>
+// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<8 x !felt.type>
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]] : <9 x !felt.type>
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -66,11 +66,11 @@ component main = UnknownIndexLoadStore();
 // CHECK-NEXT:        %[[VAL_43:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_27]]{{\[}}%[[VAL_42]]] : <10 x !felt.type>, !felt.type
 // CHECK-NEXT:        %[[VAL_44:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_0]]
 // CHECK-NEXT:        array.write %[[VAL_2]]{{\[}}%[[VAL_44]]] = %[[VAL_43]] : <8 x !felt.type>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@out] = %[[VAL_2]] : <@UnknownIndexLoadStore<[]>>, !array.type<8 x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@out] = %[[VAL_2]] : <@UnknownIndexLoadStore<[]>>, !array.type<8 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@UnknownIndexLoadStore<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_45:[0-9a-zA-Z_\.]+]]: !struct.type<@UnknownIndexLoadStore<[]>>, %[[VAL_46:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readf %[[VAL_45]][@out] : <@UnknownIndexLoadStore<[]>>, !array.type<8 x !felt.type>
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readm %[[VAL_45]][@out] : <@UnknownIndexLoadStore<[]>>, !array.type<8 x !felt.type>
 // CHECK-NEXT:        %[[VAL_47:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_48:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_47]], %[[VAL_47]], %[[VAL_47]], %[[VAL_47]], %[[VAL_47]], %[[VAL_47]], %[[VAL_47]], %[[VAL_47]], %[[VAL_47]] : <9 x !felt.type>
 // CHECK-NEXT:        %[[VAL_49:[0-9a-zA-Z_\.]+]] = felt.const  0

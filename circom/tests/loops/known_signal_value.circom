@@ -24,11 +24,11 @@ template KnownLoopViaSignal() {
 
 component main = KnownLoopViaSignal();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@KnownLoopViaSignal<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@KnownLoopViaSignal<[]>>} {
 // CHECK-NEXT:    struct.def @KnownLoopViaSignal<[]> {
-// CHECK-NEXT:      struct.field @y : !felt.type {llzk.pub}
-// CHECK-NEXT:      struct.field @a : !struct.type<@accumulate<[]>>
-// CHECK-NEXT:      struct.field @a$inputs : !pod.type<[@i: !felt.type]>
+// CHECK-NEXT:      struct.member @y : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @a : !struct.type<@accumulate<[]>>
+// CHECK-NEXT:      struct.member @a$inputs : !pod.type<[@i: !felt.type]>
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@KnownLoopViaSignal<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@KnownLoopViaSignal<[]>>
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -49,24 +49,24 @@ component main = KnownLoopViaSignal();
 // CHECK-NEXT:        } else {
 // CHECK-NEXT:        }
 // CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_2]][@comp] : <[@count: index, @comp: !struct.type<@accumulate<[]>>, @params: !pod.type<[]>]>, !struct.type<@accumulate<[]>>
-// CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_12]][@o] : <@accumulate<[]>>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_0]][@y] = %[[VAL_13]] : <@KnownLoopViaSignal<[]>>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_0]][@a$inputs] = %[[VAL_3]] : <@KnownLoopViaSignal<[]>>, !pod.type<[@i: !felt.type]>
+// CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_12]][@o] : <@accumulate<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_0]][@y] = %[[VAL_13]] : <@KnownLoopViaSignal<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_0]][@a$inputs] = %[[VAL_3]] : <@KnownLoopViaSignal<[]>>, !pod.type<[@i: !felt.type]>
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_2]][@comp] : <[@count: index, @comp: !struct.type<@accumulate<[]>>, @params: !pod.type<[]>]>, !struct.type<@accumulate<[]>>
-// CHECK-NEXT:        struct.writef %[[VAL_0]][@a] = %[[VAL_14]] : <@KnownLoopViaSignal<[]>>, !struct.type<@accumulate<[]>>
+// CHECK-NEXT:        struct.writem %[[VAL_0]][@a] = %[[VAL_14]] : <@KnownLoopViaSignal<[]>>, !struct.type<@accumulate<[]>>
 // CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@KnownLoopViaSignal<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_15:[0-9a-zA-Z_\.]+]]: !struct.type<@KnownLoopViaSignal<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_15]][@y] : <@KnownLoopViaSignal<[]>>, !felt.type
-// CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_15]][@a] : <@KnownLoopViaSignal<[]>>, !struct.type<@accumulate<[]>>
-// CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_15]][@a$inputs] : <@KnownLoopViaSignal<[]>>, !pod.type<[@i: !felt.type]>
+// CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_15]][@y] : <@KnownLoopViaSignal<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_15]][@a] : <@KnownLoopViaSignal<[]>>, !struct.type<@accumulate<[]>>
+// CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_15]][@a$inputs] : <@KnownLoopViaSignal<[]>>, !pod.type<[@i: !felt.type]>
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_18]][@i] : <[@i: !felt.type]>, !felt.type
 // CHECK-NEXT:        function.call @accumulate::@constrain(%[[VAL_17]], %[[VAL_19]]) : (!struct.type<@accumulate<[]>>, !felt.type) -> ()
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @accumulate<[]> {
-// CHECK-NEXT:      struct.field @o : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @o : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_20:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@accumulate<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = struct.new : <@accumulate<[]>>
 // CHECK-NEXT:        %[[VAL_22:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -79,11 +79,11 @@ component main = KnownLoopViaSignal();
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_26]], %[[VAL_27]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_28]] : !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_21]][@o] = %[[VAL_23]] : <@accumulate<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_21]][@o] = %[[VAL_23]] : <@accumulate<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_21]] : !struct.type<@accumulate<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_29:[0-9a-zA-Z_\.]+]]: !struct.type<@accumulate<[]>>, %[[VAL_30:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_29]][@o] : <@accumulate<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_29]][@o] : <@accumulate<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_33:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_34:[0-9a-zA-Z_\.]+]] = %[[VAL_32]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_35:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_34]], %[[VAL_30]])

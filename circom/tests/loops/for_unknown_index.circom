@@ -21,9 +21,9 @@ template ForUnknownIndex() {
 
 component main = ForUnknownIndex();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@ForUnknownIndex<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ForUnknownIndex<[]>>} {
 // CHECK-NEXT:    struct.def @ForUnknownIndex<[]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type>) -> !struct.type<@ForUnknownIndex<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@ForUnknownIndex<[]>>
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -40,11 +40,11 @@ component main = ForUnknownIndex();
 // CHECK-NEXT:        }
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_5]]#0
 // CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_1]]{{\[}}%[[VAL_14]]] : <10 x !felt.type>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_2]][@out] = %[[VAL_15]] : <@ForUnknownIndex<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_2]][@out] = %[[VAL_15]] : <@ForUnknownIndex<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_2]] : !struct.type<@ForUnknownIndex<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@ForUnknownIndex<[]>>, %[[VAL_17:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_18:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_16]][@out] : <@ForUnknownIndex<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_16]][@out] : <@ForUnknownIndex<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_22:[0-9a-zA-Z_\.]+]] = %[[VAL_19]], %[[VAL_23:[0-9a-zA-Z_\.]+]] = %[[VAL_20]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {

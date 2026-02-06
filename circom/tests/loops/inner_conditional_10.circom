@@ -24,10 +24,10 @@ template Poseidon() {
 
 component main = Poseidon();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Poseidon<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Poseidon<[]>>} {
 // CHECK-NEXT:    struct.def @Poseidon<[]> {
-// CHECK-NEXT:      struct.field @sigmaF : !array.type<2 x !struct.type<@Sigma<[]>>>
-// CHECK-NEXT:      struct.field @sigmaF$inputs : !array.type<2 x !pod.type<[@inp: !felt.type]>>
+// CHECK-NEXT:      struct.member @sigmaF : !array.type<2 x !struct.type<@Sigma<[]>>>
+// CHECK-NEXT:      struct.member @sigmaF$inputs : !array.type<2 x !pod.type<[@inp: !felt.type]>>
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Poseidon<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Poseidon<[]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = array.new  : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>>
@@ -96,7 +96,7 @@ component main = Poseidon();
 // CHECK-NEXT:          %[[VAL_46:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_16]], %[[VAL_45]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_46]], %[[VAL_23]] : !felt.type, !array.type<2 x !pod.type<[@inp: !felt.type]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@sigmaF$inputs] = %[[VAL_11]]#1 : <@Poseidon<[]>>, !array.type<2 x !pod.type<[@inp: !felt.type]>>
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@sigmaF$inputs] = %[[VAL_11]]#1 : <@Poseidon<[]>>, !array.type<2 x !pod.type<[@inp: !felt.type]>>
 // CHECK-NEXT:        %[[VAL_47:[0-9a-zA-Z_\.]+]] = array.new  : <2 x !struct.type<@Sigma<[]>>>
 // CHECK-NEXT:        %[[VAL_48:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:        %[[VAL_49:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -106,12 +106,12 @@ component main = Poseidon();
 // CHECK-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_52]][@comp] : <[@count: index, @comp: !struct.type<@Sigma<[]>>, @params: !pod.type<[]>]>, !struct.type<@Sigma<[]>>
 // CHECK-NEXT:          array.write %[[VAL_47]]{{\[}}%[[VAL_51]]] = %[[VAL_53]] : <2 x !struct.type<@Sigma<[]>>>, !struct.type<@Sigma<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@sigmaF] = %[[VAL_47]] : <@Poseidon<[]>>, !array.type<2 x !struct.type<@Sigma<[]>>>
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@sigmaF] = %[[VAL_47]] : <@Poseidon<[]>>, !array.type<2 x !struct.type<@Sigma<[]>>>
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@Poseidon<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_54:[0-9a-zA-Z_\.]+]]: !struct.type<@Poseidon<[]>>, %[[VAL_55:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_56:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_54]][@sigmaF] : <@Poseidon<[]>>, !array.type<2 x !struct.type<@Sigma<[]>>>
-// CHECK-NEXT:        %[[VAL_57:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_54]][@sigmaF$inputs] : <@Poseidon<[]>>, !array.type<2 x !pod.type<[@inp: !felt.type]>>
+// CHECK-NEXT:        %[[VAL_56:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_54]][@sigmaF] : <@Poseidon<[]>>, !array.type<2 x !struct.type<@Sigma<[]>>>
+// CHECK-NEXT:        %[[VAL_57:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_54]][@sigmaF$inputs] : <@Poseidon<[]>>, !array.type<2 x !pod.type<[@inp: !felt.type]>>
 // CHECK-NEXT:        %[[VAL_58:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_59:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_60:[0-9a-zA-Z_\.]+]] = %[[VAL_58]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_61:[0-9a-zA-Z_\.]+]] = felt.const  4
@@ -159,13 +159,13 @@ component main = Poseidon();
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @Sigma<[]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_88:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Sigma<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_89:[0-9a-zA-Z_\.]+]] = struct.new : <@Sigma<[]>>
 // CHECK-NEXT:        function.return %[[VAL_89]] : !struct.type<@Sigma<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_90:[0-9a-zA-Z_\.]+]]: !struct.type<@Sigma<[]>>, %[[VAL_91:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_92:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_90]][@out] : <@Sigma<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_92:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_90]][@out] : <@Sigma<[]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

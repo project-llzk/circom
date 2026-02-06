@@ -10,7 +10,7 @@ template ArrayDims(N) {
 
 component main = ArrayDims(7);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@ArrayDims<[7]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArrayDims<[7]>>} {
 // CHECK-NEXT:    struct.def @ArrayDims<[@N]> {
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>) -> !struct.type<@ArrayDims<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@ArrayDims<[@N]>>

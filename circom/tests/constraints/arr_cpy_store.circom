@@ -20,10 +20,10 @@ template Foo(N) {
 
 component main = Foo(2);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Foo<[2]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Foo<[2]>>} {
 // CHECK-NEXT:    struct.def @Foo<[@N]> {
-// CHECK-NEXT:      struct.field @c : !struct.type<@Sum<[@N]>>
-// CHECK-NEXT:      struct.field @c$inputs : !pod.type<[@inp: !array.type<@N x !felt.type>]>
+// CHECK-NEXT:      struct.member @c : !struct.type<@Sum<[@N]>>
+// CHECK-NEXT:      struct.member @c$inputs : !pod.type<[@inp: !array.type<@N x !felt.type>]>
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>) -> !struct.type<@Foo<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@Foo<[@N]>>
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
@@ -52,15 +52,15 @@ component main = Foo(2);
 // CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_12]], %[[VAL_20]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_11]], %[[VAL_21]] : !pod.type<[@inp: !array.type<@N x !felt.type>]>, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_2]][@c$inputs] = %[[VAL_7]]#0 : <@Foo<[@N]>>, !pod.type<[@inp: !array.type<@N x !felt.type>]>
+// CHECK-NEXT:        struct.writem %[[VAL_2]][@c$inputs] = %[[VAL_7]]#0 : <@Foo<[@N]>>, !pod.type<[@inp: !array.type<@N x !felt.type>]>
 // CHECK-NEXT:        %[[VAL_22:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_5]][@comp] : <[@count: index, @comp: !struct.type<@Sum<[@N]>>, @params: !pod.type<[]>]>, !struct.type<@Sum<[@N]>>
-// CHECK-NEXT:        struct.writef %[[VAL_2]][@c] = %[[VAL_22]] : <@Foo<[@N]>>, !struct.type<@Sum<[@N]>>
+// CHECK-NEXT:        struct.writem %[[VAL_2]][@c] = %[[VAL_22]] : <@Foo<[@N]>>, !struct.type<@Sum<[@N]>>
 // CHECK-NEXT:        function.return %[[VAL_2]] : !struct.type<@Foo<[@N]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_23:[0-9a-zA-Z_\.]+]]: !struct.type<@Foo<[@N]>>, %[[VAL_24:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>, %[[VAL_25:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_26:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %[[VAL_27:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_23]][@c] : <@Foo<[@N]>>, !struct.type<@Sum<[@N]>>
-// CHECK-NEXT:        %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_23]][@c$inputs] : <@Foo<[@N]>>, !pod.type<[@inp: !array.type<@N x !felt.type>]>
+// CHECK-NEXT:        %[[VAL_27:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_23]][@c] : <@Foo<[@N]>>, !struct.type<@Sum<[@N]>>
+// CHECK-NEXT:        %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_23]][@c$inputs] : <@Foo<[@N]>>, !pod.type<[@inp: !array.type<@N x !felt.type>]>
 // CHECK-NEXT:        %[[VAL_29:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_30:[0-9a-zA-Z_\.]+]] = %[[VAL_26]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = bool.cmp le(%[[VAL_30]], %[[VAL_30]])
 // CHECK-NEXT:          scf.condition(%[[VAL_31]]) %[[VAL_30]] : !felt.type

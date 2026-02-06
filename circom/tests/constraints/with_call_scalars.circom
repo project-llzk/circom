@@ -19,7 +19,7 @@ template ComputeFee() {
 
 component main = ComputeFee();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@ComputeFee<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ComputeFee<[]>>} {
 // CHECK-NEXT:    function.def @feeShiftTable(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_1]], %[[VAL_1]] : <2 x !felt.type>
@@ -31,10 +31,10 @@ component main = ComputeFee();
 // CHECK-NEXT:      function.return %[[VAL_7]] : !felt.type
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @ComputeFee<[]> {
-// CHECK-NEXT:      struct.field @feeOut : !array.type<2 x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @feeOut : !array.type<2 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@ComputeFee<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.new : <@ComputeFee<[]>>
-// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_12:[0-9a-zA-Z_\.]+]] = %[[VAL_10]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  2
@@ -49,11 +49,11 @@ component main = ComputeFee();
 // CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_15]], %[[VAL_18]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_19]] : !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_8]][@feeOut] = %[[VAL_9]] : <@ComputeFee<[]>>, !array.type<2 x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_8]][@feeOut] = %[[VAL_9]] : <@ComputeFee<[]>>, !array.type<2 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_8]] : !struct.type<@ComputeFee<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_20:[0-9a-zA-Z_\.]+]]: !struct.type<@ComputeFee<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_20]][@feeOut] : <@ComputeFee<[]>>, !array.type<2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_20]][@feeOut] : <@ComputeFee<[]>>, !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_22:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_23:[0-9a-zA-Z_\.]+]] = %[[VAL_21]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = felt.const  2

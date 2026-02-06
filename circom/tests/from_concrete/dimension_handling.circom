@@ -25,9 +25,9 @@ template A() {
 
 component main = A();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@A_0<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A_0<[]>>} {
 // CHECK-NEXT:    function.def @myAdd_1(%[[V_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_1:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_2:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_3:[0-9a-zA-Z_\.]+]]: !felt.type) -> !array.type<2 x !felt.type> attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:      %[[V_4:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
+// CHECK-NEXT:      %[[V_4:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:      %[[V_5:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[V_6:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[V_7:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_6]]
@@ -48,8 +48,8 @@ component main = A();
 // CHECK-NEXT:      function.return %[[V_4]] : !array.type<2 x !felt.type>
 // CHECK-NEXT:    }
 // CHECK-NEXT:    function.def @myFun_0() -> !array.type<1,1 x !felt.type> attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:      %[[V_18:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<1,1 x !felt.type>
-// CHECK-NEXT:      %[[V_19:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<1 x !felt.type>
+// CHECK-NEXT:      %[[V_18:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1,1 x !felt.type>
+// CHECK-NEXT:      %[[V_19:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1 x !felt.type>
 // CHECK-NEXT:      %[[V_20:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[V_21:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[V_22:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_21]]
@@ -57,7 +57,7 @@ component main = A();
 // CHECK-NEXT:      %[[V_23:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[V_24:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_23]]
 // CHECK-NEXT:      array.insert %[[V_18]]{{\[}}%[[V_24]]] = %[[V_19]] : <1,1 x !felt.type>, <1 x !felt.type>
-// CHECK-NEXT:      %[[V_25:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
+// CHECK-NEXT:      %[[V_25:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:      %[[V_26:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[V_27:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[V_28:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_27]]
@@ -103,8 +103,8 @@ component main = A();
 // CHECK-NEXT:    struct.def @A_0<[]> {
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@A_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[V_61:[0-9a-zA-Z_\.]+]] = struct.new : <@A_0<[]>>
-// CHECK-NEXT:        %[[V_62:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<1,1 x !felt.type>
-// CHECK-NEXT:        %[[V_63:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<1 x !felt.type>
+// CHECK-NEXT:        %[[V_62:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1,1 x !felt.type>
+// CHECK-NEXT:        %[[V_63:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1 x !felt.type>
 // CHECK-NEXT:        %[[V_64:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_65:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_66:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_65]]
@@ -116,8 +116,8 @@ component main = A();
 // CHECK-NEXT:        function.return %[[V_61]] : !struct.type<@A_0<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[V_70:[0-9a-zA-Z_\.]+]]: !struct.type<@A_0<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[V_71:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<1,1 x !felt.type>
-// CHECK-NEXT:        %[[V_72:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<1 x !felt.type>
+// CHECK-NEXT:        %[[V_71:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1,1 x !felt.type>
+// CHECK-NEXT:        %[[V_72:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1 x !felt.type>
 // CHECK-NEXT:        %[[V_73:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_74:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_75:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_74]]

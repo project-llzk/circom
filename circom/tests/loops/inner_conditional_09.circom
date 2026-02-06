@@ -32,9 +32,9 @@ template InnerConditional9(N) {
 
 component main = InnerConditional9(4);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@InnerConditional9<[4]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerConditional9<[4]>>} {
 // CHECK-NEXT:    struct.def @InnerConditional9<[@N]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      () -> !struct.type<@InnerConditional9<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[V_0:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerConditional9<[@N]>>
@@ -104,13 +104,13 @@ component main = InnerConditional9(4);
 // CHECK-NEXT:        %[[V_53:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_52]]
 // CHECK-NEXT:        %[[V_54:[0-9a-zA-Z_\.]+]] = array.read %[[V_10]]#0{{\[}}%[[V_53]]] : <@N x !felt.type>, !felt.type
 // CHECK-NEXT:        %[[V_55:[0-9a-zA-Z_\.]+]] = felt.add %[[V_51]], %[[V_54]] : !felt.type, !felt.type
-// CHECK-NEXT:        struct.writef %[[V_0]][@out] = %[[V_55]] : <@InnerConditional9<[@N]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[V_0]][@out] = %[[V_55]] : <@InnerConditional9<[@N]>>, !felt.type
 // CHECK-NEXT:        function.return %[[V_0]] : !struct.type<@InnerConditional9<[@N]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[V_56:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerConditional9<[@N]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %[[V_105:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_56]][@out] : <@InnerConditional9<[@N]>>, !felt.type
+// CHECK-NEXT:        %[[V_105:[0-9a-zA-Z_\.]+]] = struct.readm %[[V_56]][@out] : <@InnerConditional9<[@N]>>, !felt.type
 // CHECK-NEXT:        %[[V_58:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_A:[0-9a-zA-Z_\.]+]] = array.new  : <@N x !felt.type>
 // CHECK-NEXT:        %[[V_60:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index

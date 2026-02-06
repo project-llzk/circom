@@ -10,7 +10,7 @@ template A() {
 
 component main = A();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@A<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A<[]>>} {
 // CHECK-LABEL:   struct.def @A<[]> {
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      () -> !struct.type<@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

@@ -20,7 +20,7 @@ template LoopMultiIV() {
 
 component main = LoopMultiIV();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@LoopMultiIV<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@LoopMultiIV<[]>>} {
 // CHECK-NEXT:    function.def @complicatedLoopFn(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  1
@@ -42,16 +42,16 @@ component main = LoopMultiIV();
 // CHECK-NEXT:      function.return %[[VAL_4]]#2 : !felt.type
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @LoopMultiIV<[]> {
-// CHECK-NEXT:      struct.field @outp : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @outp : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_19:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@LoopMultiIV<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = struct.new : <@LoopMultiIV<[]>>
 // CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = function.call @complicatedLoopFn(%[[VAL_19]]) : (!felt.type) -> !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_20]][@outp] = %[[VAL_21]] : <@LoopMultiIV<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_20]][@outp] = %[[VAL_21]] : <@LoopMultiIV<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_20]] : !struct.type<@LoopMultiIV<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_22:[0-9a-zA-Z_\.]+]]: !struct.type<@LoopMultiIV<[]>>, %[[VAL_23:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-DAG:         %[[VAL_24:[0-9a-zA-Z_\.]+]] = function.call @complicatedLoopFn(%[[VAL_23]]) : (!felt.type) -> !felt.type
-// CHECK-DAG:         %[[VAL_25:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_22]][@outp] : <@LoopMultiIV<[]>>, !felt.type
+// CHECK-DAG:         %[[VAL_25:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_22]][@outp] : <@LoopMultiIV<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_25]], %[[VAL_24]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }

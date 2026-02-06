@@ -20,9 +20,9 @@ template InnerLoops(N) {
 
 component main = InnerLoops(2);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@InnerLoops<[2]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerLoops<[2]>>} {
 // CHECK-NEXT:    struct.def @InnerLoops<[@N]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      () -> !struct.type<@InnerLoops<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[SELF:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerLoops<[@N]>>
@@ -54,13 +54,13 @@ component main = InnerLoops(2);
 // CHECK-NEXT:          %[[V_I3:[0-9a-zA-Z_\.]+]] = felt.add %[[V_I2]], %[[V_27]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[V_15]]#0, %[[V_B4]], %[[V_I3]] : !felt.type, !felt.type, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[SELF]][@out] = %[[V_5]]#0 : <@InnerLoops<[@N]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[SELF]][@out] = %[[V_5]]#0 : <@InnerLoops<[@N]>>, !felt.type
 // CHECK-NEXT:        function.return %[[SELF]] : !struct.type<@InnerLoops<[@N]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[SELF:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerLoops<[@N]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %[[V_58:[0-9a-zA-Z_\.]+]] = struct.readf %[[SELF]][@out] : <@InnerLoops<[@N]>>, !felt.type
+// CHECK-NEXT:        %[[V_58:[0-9a-zA-Z_\.]+]] = struct.readm %[[SELF]][@out] : <@InnerLoops<[@N]>>, !felt.type
 // CHECK-NEXT:        %[[V_A0:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_B0:[0-9a-zA-Z_\.]+]] = felt.const  1000
 // CHECK-NEXT:        %[[V_I0:[0-9a-zA-Z_\.]+]] = felt.const  0

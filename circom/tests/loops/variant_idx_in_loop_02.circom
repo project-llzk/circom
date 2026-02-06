@@ -17,9 +17,9 @@ template VariantIndex(n) {
 
 component main = VariantIndex(2);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@VariantIndex<[2]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@VariantIndex<[2]>>} {
 // CHECK-NEXT:    struct.def @VariantIndex<[@n]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@VariantIndex<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@VariantIndex<[@n]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
@@ -52,12 +52,12 @@ component main = VariantIndex(2);
 // CHECK-NEXT:        %[[VAL_25:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_24]]
 // CHECK-NEXT:        %[[VAL_26:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_11]]#1{{\[}}%[[VAL_25]]] : <@n x !felt.type>, !felt.type
 // CHECK-NEXT:        %[[VAL_27:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_23]], %[[VAL_26]] : !felt.type, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@out] = %[[VAL_27]] : <@VariantIndex<[@n]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@out] = %[[VAL_27]] : <@VariantIndex<[@n]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@VariantIndex<[@n]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_28:[0-9a-zA-Z_\.]+]]: !struct.type<@VariantIndex<[@n]>>, %[[VAL_29:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
-// CHECK-NEXT:        %[[VAL_49:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_28]][@out] : <@VariantIndex<[@n]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_49:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_28]][@out] : <@VariantIndex<[@n]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = array.new  : <@n x !felt.type>
 // CHECK-NEXT:        %[[VAL_33:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
