@@ -206,7 +206,7 @@ impl<'ast> Lvalue<'ast> {
 
     /// Returns the SSA [`Value`] representing the op.
     ///
-    /// It could be a placeholder operation at this point (usually represented with `undef.undef`).
+    /// It could be a placeholder operation at this point (usually represented with `llzk.nondet`).
     pub fn get_value<'ctx, 'val>(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,

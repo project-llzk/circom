@@ -27,7 +27,7 @@ component main = EarlyReturn();
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@EarlyReturn<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    function.def @earlyReturnFn(%[[V_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:      %[[V_R0:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
+// CHECK-NEXT:      %[[V_R0:[0-9a-zA-Z_\.]+]] = llzk.nondet : !felt.type
 // CHECK-NEXT:      %[[V_I0:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[V_E0:[0-9a-zA-Z_\.]+]] = arith.constant false
 // CHECK-NEXT:      %[[V_4:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[V_E1:[0-9a-zA-Z_\.]+]] = %[[V_E0]], %[[V_R1:[0-9a-zA-Z_\.]+]] = %[[V_R0]]) : (i1, !felt.type) -> (i1, !felt.type) {

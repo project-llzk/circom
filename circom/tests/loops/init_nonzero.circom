@@ -27,7 +27,7 @@ component main = NonZeroInit();
 // CHECK-NEXT:      struct.field @b : !array.type<9 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<9 x !felt.type>) -> !struct.type<@NonZeroInit<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@NonZeroInit<[]>>
-// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<9 x !felt.type>
+// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<9 x !felt.type>
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  4
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_5:[0-9a-zA-Z_\.]+]] = %[[VAL_3]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  7

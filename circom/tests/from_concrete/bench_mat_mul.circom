@@ -70,7 +70,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:      struct.field @out : !array.type<1,3 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type>, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type>) -> !struct.type<@matElemMul_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@matElemMul_0<[]>>
-// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<1,3 x !felt.type>
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1,3 x !felt.type>
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  3
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -157,7 +157,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:      struct.field @sum : !array.type<3 x !felt.type>
 // CHECK-NEXT:      function.def @compute(%[[VAL_67:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type>) -> !struct.type<@matElemSum_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_68:[0-9a-zA-Z_\.]+]] = struct.new : <@matElemSum_1<[]>>
-// CHECK-NEXT:        %[[VAL_69:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<3 x !felt.type>
+// CHECK-NEXT:        %[[VAL_69:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type>
 // CHECK-NEXT:        %[[VAL_70:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_71:[0-9a-zA-Z_\.]+]] = felt.const  3
 // CHECK-NEXT:        %[[VAL_72:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -285,7 +285,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:      struct.field @matElemSumComp$inputs : !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type>]>>
 // CHECK-NEXT:      function.def @compute(%[[VAL_168:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type>, %[[VAL_169:[0-9a-zA-Z_\.]+]]: !array.type<3,2 x !felt.type>) -> !struct.type<@matMul_2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_170:[0-9a-zA-Z_\.]+]] = struct.new : <@matMul_2<[]>>
-// CHECK-NEXT:        %[[VAL_171:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2,2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_171:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2,2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_172:[0-9a-zA-Z_\.]+]] = array.new  : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0<[]>>, @params: !pod.type<[]>]>>
 // CHECK-NEXT:        %[[VAL_173:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:        %[[VAL_174:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index

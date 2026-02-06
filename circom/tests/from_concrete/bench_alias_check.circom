@@ -161,7 +161,7 @@ component main = AliasCheck();
 // CHECK-NEXT:      struct.field @num2bits$inputs : !pod.type<[@in: !felt.type]>
 // CHECK-NEXT:      function.def @compute(%[[VAL_47:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type>) -> !struct.type<@CompConstant_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_48:[0-9a-zA-Z_\.]+]] = struct.new : <@CompConstant_1<[]>>
-// CHECK-NEXT:        %[[VAL_49:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<127 x !felt.type>
+// CHECK-NEXT:        %[[VAL_49:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<127 x !felt.type>
 // CHECK-NEXT:        %[[VAL_50:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:        %[[VAL_51:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_50]] }  : <[@count: index, @comp: !struct.type<@Num2Bits_0<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:        %[[VAL_52:[0-9a-zA-Z_\.]+]] = pod.new : <[@in: !felt.type]>
@@ -438,7 +438,7 @@ component main = AliasCheck();
 // CHECK-NEXT:      struct.field @out : !array.type<135 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_303:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Num2Bits_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_304:[0-9a-zA-Z_\.]+]] = struct.new : <@Num2Bits_0<[]>>
-// CHECK-NEXT:        %[[VAL_305:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<135 x !felt.type>
+// CHECK-NEXT:        %[[VAL_305:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<135 x !felt.type>
 // CHECK-NEXT:        %[[VAL_306:[0-9a-zA-Z_\.]+]] = felt.const  135
 // CHECK-NEXT:        %[[VAL_307:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_308:[0-9a-zA-Z_\.]+]] = felt.const  1

@@ -34,7 +34,7 @@ component main = ComputeFee();
 // CHECK-NEXT:      struct.field @feeOut : !array.type<2 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@ComputeFee<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.new : <@ComputeFee<[]>>
-// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_12:[0-9a-zA-Z_\.]+]] = %[[VAL_10]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  2

@@ -17,8 +17,8 @@ component main = Main();
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@Main_0<[]>>, veridise.lang = "llzk"} {
 // CHECK-LABEL:   function.def @default_init_0() -> !array.type<3,2 x !felt.type> attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:      %[[VAL_0:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<3,2 x !felt.type>
-// CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
+// CHECK-NEXT:      %[[VAL_0:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3,2 x !felt.type>
+// CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_4:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_3]]
@@ -41,8 +41,8 @@ component main = Main();
 // CHECK-LABEL:   struct.def @Main_0<[]> {
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@Main_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.new : <@Main_0<[]>>
-// CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<3,2 x !felt.type>
-// CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3,2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_18]]
@@ -64,8 +64,8 @@ component main = Main();
 // CHECK-NEXT:        function.return %[[VAL_14]] : !struct.type<@Main_0<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_30:[0-9a-zA-Z_\.]+]]: !struct.type<@Main_0<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<3,2 x !felt.type>
-// CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3,2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_33:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_34:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_35:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_34]]

@@ -14,14 +14,14 @@ use anyhow::ensure;
 use anyhow::Context as _;
 use anyhow::Result;
 use llzk::builder::OpBuilder;
+use llzk::dialect;
 use llzk::dialect::array;
 use llzk::dialect::array::ArrayCtor;
-use llzk::dialect::undef;
+use llzk::dialect::felt;
+use llzk::dialect::pod;
 use llzk::operation::move_op_after;
-use llzk::prelude::felt;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
-use llzk::prelude::pod;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
@@ -653,7 +653,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         location: Location<'ctx>,
         result_type: Type<'ctx>,
     ) -> Result<Operation<'ctx>> {
-        Ok(undef::undef(location, result_type))
+        Ok(dialect::llzk::nondet(location, result_type))
     }
 
     /// Get the integer type of the given bitwidth.
@@ -1153,14 +1153,14 @@ pub fn replace_uses_with_new_block_argument<'ctx, 'val>(
 }
 
 /// Sets the n-th operand of the operation to the given value if the current value is an
-/// `undef.undef` op.
-pub fn set_operand_if_undef<'ctx, 'op>(
+/// `llzk.nondet` op.
+pub fn set_operand_if_nondet<'ctx, 'op>(
     op: OperationRef<'ctx, 'op>,
     idx: usize,
     value: impl ValueLike<'ctx>,
 ) -> Result<()> {
     if let Ok(arg) = OperationResult::try_from(op.operand(idx)?) {
-        if !undef::is_undef_op(&arg.owner()) {
+        if !dialect::llzk::is_nondet(&arg.owner()) {
             anyhow::bail!("Argument {idx} was assigned twice: {arg}");
         }
     }

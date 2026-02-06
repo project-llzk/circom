@@ -24,7 +24,7 @@ component main = A();
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@A_0<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    function.def @binop_bool_array_0(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type>, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type>) -> !array.type<10 x !felt.type> attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<10 x !felt.type>
+// CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<10 x !felt.type>
 // CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_5:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_4]]

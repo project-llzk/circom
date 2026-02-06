@@ -89,7 +89,7 @@ pub struct DeclarationInfo<'ctx> {
     inputs: Vec<InputSignalInfo<'ctx>>,
     /// Output and Intermediate declarations to use as LLZK struct fields.
     struct_fields: Vec<MemberInfo<'ctx>>,
-    /// Map var/signal name to its LLZK declaration Operation (usually `undef.undef`).
+    /// Map var/signal name to its LLZK declaration Operation (usually `llzk.nondet`).
     decl_inits: HashMap<String, Operation<'ctx>>,
     /// Map `component` name to its declaration information.
     subcmp_decls: HashMap<String, SubcmpDeclInfo<'ctx>>,
@@ -271,8 +271,8 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         codegen.struct_type(bus_name).into(),
                     ),
                     VariableType::Var => {
-                        // Create an `undef` of the appropriate type. When the actual assignment is
-                        // processed later, this is replaced with the appropriate value.
+                        // Create `llzk.nondet` of the appropriate type. When the actual assignment
+                        // is processed later, this is replaced with the appropriate value.
                         let dimensions = self.get_dimensions(codegen, dimensions)?;
                         self.decl_inits.insert(
                             name.clone(),
@@ -383,8 +383,8 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 public: SignalType::Output == *signal_type,
             });
         }
-        // Create an `undef` of the appropriate type. When the actual assignment is
-        // processed later, this is replaced with the appropriate value.
+        // Create `llzk.nondet` of the appropriate type. When the actual assignment
+        // is processed later, this is replaced with the appropriate value.
         codegen.new_nondet_at_location(location, decl_type).map(|op| {
             self.decl_inits.insert(name.clone(), op);
         })

@@ -37,8 +37,8 @@ component main = EarlyReturn();
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@EarlyReturn<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    function.def @earlyReturnFn(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
-// CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = undef.undef : i1
+// CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = llzk.nondet : !felt.type
+// CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : i1
 // CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_4:[0-9a-zA-Z_\.]+]]:3 = scf.while (%[[VAL_5:[0-9a-zA-Z_\.]+]] = %[[VAL_2]], %[[VAL_6:[0-9a-zA-Z_\.]+]] = %[[VAL_1]], %[[VAL_7:[0-9a-zA-Z_\.]+]] = %[[VAL_3]]) : (i1, !felt.type, !felt.type) -> (i1, !felt.type, !felt.type) {
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  6
@@ -59,7 +59,7 @@ component main = EarlyReturn();
 // CHECK-NEXT:        }
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]]:3 = scf.if %[[VAL_17]]#0 -> (i1, !felt.type, !felt.type) {
 // CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = arith.constant true
-// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
+// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = llzk.nondet : !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_21]], %[[VAL_17]]#1, %[[VAL_22]] : i1, !felt.type, !felt.type
 // CHECK-NEXT:        } else {
 // CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -82,8 +82,8 @@ component main = EarlyReturn();
 // CHECK-NEXT:      function.return %[[VAL_28]] : !felt.type
 // CHECK-NEXT:    }
 // CHECK-NEXT:    function.def @noEarlyReturnFn(%[[VAL_31:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:      %[[VAL_32:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
-// CHECK-NEXT:      %[[VAL_33:[0-9a-zA-Z_\.]+]] = undef.undef : i1
+// CHECK-NEXT:      %[[VAL_32:[0-9a-zA-Z_\.]+]] = llzk.nondet : !felt.type
+// CHECK-NEXT:      %[[VAL_33:[0-9a-zA-Z_\.]+]] = llzk.nondet : i1
 // CHECK-NEXT:      %[[VAL_34:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_35:[0-9a-zA-Z_\.]+]]:3 = scf.while (%[[VAL_36:[0-9a-zA-Z_\.]+]] = %[[VAL_33]], %[[VAL_37:[0-9a-zA-Z_\.]+]] = %[[VAL_32]], %[[VAL_38:[0-9a-zA-Z_\.]+]] = %[[VAL_34]]) : (i1, !felt.type, !felt.type) -> (i1, !felt.type, !felt.type) {
 // CHECK-NEXT:        %[[VAL_39:[0-9a-zA-Z_\.]+]] = felt.const  6
@@ -104,7 +104,7 @@ component main = EarlyReturn();
 // CHECK-NEXT:        }
 // CHECK-NEXT:        %[[VAL_51:[0-9a-zA-Z_\.]+]]:3 = scf.if %[[VAL_48]]#0 -> (i1, !felt.type, !felt.type) {
 // CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = arith.constant true
-// CHECK-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
+// CHECK-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = llzk.nondet : !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_52]], %[[VAL_48]]#1, %[[VAL_53]] : i1, !felt.type, !felt.type
 // CHECK-NEXT:        } else {
 // CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -129,7 +129,7 @@ component main = EarlyReturn();
 // CHECK-NEXT:      struct.field @outp : !array.type<2 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_61:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@EarlyReturn<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_62:[0-9a-zA-Z_\.]+]] = struct.new : <@EarlyReturn<[]>>
-// CHECK-NEXT:        %[[VAL_63:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_63:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_64:[0-9a-zA-Z_\.]+]] = function.call @noEarlyReturnFn(%[[VAL_61]]) : (!felt.type) -> !felt.type
 // CHECK-NEXT:        %[[VAL_65:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_66:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_65]]

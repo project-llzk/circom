@@ -15,7 +15,7 @@ subcomponent. Currently the backend only supports scalar subcomponents or array
 subcomponents in which all instances are of the same type.
 
 ```
-// Supported 
+// Supported
 component a;
 a = A(X);
 
@@ -48,7 +48,7 @@ the case of `@constrain` the value gets replaced with a `struct.readf` that
 reads the field with the same name as the subcomponent.
 
 The inputs of the template (the arguments of `@compute` and `@constrain`) are
-filled with `undef.undef` placeholders.
+filled with `llzk.nondet` placeholders.
 
 ### Subcomponent signal write
 

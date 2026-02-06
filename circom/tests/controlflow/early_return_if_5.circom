@@ -29,7 +29,7 @@ component main = EarlyReturn();
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@EarlyReturn<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    function.def @earlyReturnFn(%[[V_IN:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
+// CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = llzk.nondet : !felt.type
 // CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  10
 // CHECK-NEXT:      %[[VAL_4:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[V_IN]], %[[VAL_3]])
@@ -48,7 +48,7 @@ component main = EarlyReturn();
 // CHECK-NEXT:        }
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]]:3 = scf.if %[[VAL_8]]#0 -> (i1, !felt.type, !felt.type) {
 // CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = arith.constant true
-// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = undef.undef : !felt.type
+// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = llzk.nondet : !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_15]], %[[VAL_8]]#1, %[[VAL_16]] : i1, !felt.type, !felt.type
 // CHECK-NEXT:        } else {
 // CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = arith.constant false

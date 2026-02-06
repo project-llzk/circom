@@ -24,7 +24,7 @@ use crate::shared::parent_operation_mut;
 use crate::shared::region_with_block;
 use crate::shared::remove_from_parent;
 use crate::shared::replace_uses_with_new_block_argument;
-use crate::shared::set_operand_if_undef;
+use crate::shared::set_operand_if_nondet;
 use crate::shared::single_result_as_value;
 use crate::shared::ArrayDimension;
 use crate::shared::ArrayDimensionResult;
@@ -42,23 +42,21 @@ use crate::write_chain::SignalWriteInfo;
 use anyhow::anyhow;
 use anyhow::Context as _;
 use anyhow::Result;
+use llzk::dialect;
+use llzk::dialect::array;
 use llzk::dialect::array::ArrayCtor;
+use llzk::dialect::bool;
 use llzk::dialect::cast;
-use llzk::dialect::undef;
+use llzk::dialect::felt;
+use llzk::dialect::function;
+use llzk::dialect::pod;
 use llzk::operation::erase_op;
 use llzk::operation::WalkOperationMutLike;
-use llzk::prelude::array;
-use llzk::prelude::bool;
-use llzk::prelude::felt;
-use llzk::prelude::function;
-use llzk::prelude::function::is_func_def;
-use llzk::prelude::function::is_func_return;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::melior_dialects::index;
 use llzk::prelude::melior_dialects::scf;
 use llzk::prelude::melior_dialects::scf::is_scf_if;
 use llzk::prelude::melior_dialects::scf::is_scf_yield;
-use llzk::prelude::pod;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::Block;
@@ -476,16 +474,6 @@ where
         self.cast_to_expected_type_if_needed(codegen, location, val, self.return_type())
     }
 
-    /// Generates a list of undef ops inside the given function context.
-    #[inline]
-    pub fn gen_arg_undefs(
-        &mut self,
-        args: &[Type<'ctx>],
-        loc: Location<'ctx>,
-    ) -> Result<Vec<Value<'ctx, 'val>>> {
-        args.iter().copied().map(|t| self.append_op_unnamed_result(undef::undef(loc, t))).collect()
-    }
-
     /// Searches for the argument index of a subcomponent's signal.
     pub fn lookup_arg_idx(
         &self,
@@ -530,7 +518,7 @@ where
         let arg_idx = self.lookup_arg_idx(subcmp_signal, subcmp_value, codegen)?;
 
         let call_op = get_call(*subcmp_value)?;
-        set_operand_if_undef(call_op, arg_idx + arg_offset, rhe)?;
+        set_operand_if_nondet(call_op, arg_idx + arg_offset, rhe)?;
         insert_after_if_op_result(rhe, call_op)
     }
 
@@ -1404,10 +1392,10 @@ where
     /// Finalizes the context.
     pub fn finalize(&mut self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Result<()> {
         self.func.walk_mut(WalkOrder::PreOrder, |mut op| {
-            // Remove any `undef.undef` ops from the function whose result value is unused. These
+            // Remove any `llzk.nondet` ops from the function whose result value is unused. These
             // were added, for example, when visiting [Statement::Declaration] but their uses were
             // later replaced with actual values when visiting [Statement::Substitution], etc.
-            if undef::is_undef_op(&op) && !has_uses(single_result_as_value(op).unwrap()) {
+            if dialect::llzk::is_nondet(&op) && !has_uses(single_result_as_value(op).unwrap()) {
                 OperationMutLike::remove_from_parent(op.deref_mut());
                 return WalkResult::Skip;
             }
@@ -1420,7 +1408,7 @@ where
         self.func.walk_rev_mut(WalkOrder::PostOrder, |mut op| {
             if op.has_attribute(CIRCOM_RETURN_MARKER_ATTR) {
                 // Perform replacement of "if(..) return" pattern.
-                if is_func_return(&op) {
+                if function::is_func_return(&op) {
                     if let Some(parent) = parent_operation_mut(&op) {
                         if is_scf_if(&parent) {
                             // Cannot directly do the refactor here because it will invalidate the
@@ -1461,7 +1449,7 @@ where
         ret_op: OperationRefMut<'ctx, '_>,
         mut parent_if_op: OperationRefMut<'ctx, '_>,
     ) -> Result<()> {
-        assert!(is_func_return(&ret_op)); // precondition
+        assert!(function::is_func_return(&ret_op)); // precondition
         assert!(is_scf_if(&parent_if_op)); // precondition
 
         // Move all ops after the `scf.if` into a new block for "else" branch of new `scf.if`.
@@ -1488,7 +1476,7 @@ where
                     .expect("multi-value yield op must have names");
                 new_else_result_info = RefactoringBlockResultType::Multiple(result_types, names);
                 no_results(new_else_block.append_operation(tail))?;
-            } else if is_func_return(&tail) {
+            } else if function::is_func_return(&tail) {
                 assert_eq!(tail.operand_count(), 1, "circom functions must return a single value");
                 let ret_val = tail.operand(0).unwrap();
                 new_else_result_info = RefactoringBlockResultType::Single(ret_val.r#type());
@@ -1529,7 +1517,7 @@ where
                             )?);
                         } else {
                             assert!(i <= result_types.len(), "more names than result types");
-                            // Fill other positions with undef values of the appropriate type.
+                            // Fill other positions with `llzk.nondet` values of the expected type.
                             yield_values.push(single_result_as_value(
                                 new_then_block.append_operation(
                                     codegen.new_nondet_at_location(location, result_types[i])?,
@@ -1560,7 +1548,7 @@ where
 
         // Add return if the destination block is the function def body, else yield.
         let result_values: Vec<_> = new_if_ref.results().map(Value::from).collect();
-        let op = if blk.parent_operation().is_some_and(|r| is_func_def(&r)) {
+        let op = if blk.parent_operation().is_some_and(|r| function::is_func_def(&r)) {
             function::r#return(parent_if_op.location(), &result_values)
         } else {
             new_else_result_info.gen_yield(&result_values, parent_if_op.location())

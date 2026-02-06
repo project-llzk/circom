@@ -27,7 +27,7 @@ component main = Foo();
 // CHECK-NEXT:      struct.field @outp : !array.type<1 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_3:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type>) -> !struct.type<@Foo<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = struct.new : <@Foo<[]>>
-// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<1 x !felt.type>
+// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1 x !felt.type>
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_6]]
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_3]]{{\[}}%[[VAL_7]]] : <2 x !felt.type>, !felt.type

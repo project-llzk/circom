@@ -23,7 +23,7 @@ component main = Ex(3, 3);
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Ex<[@n, @m]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = poly.read_const @m : !felt.type
-// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<@m x !felt.type>
+// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<@m x !felt.type>
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_7:[0-9a-zA-Z_\.]+]] = %[[VAL_5]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_7]], %[[VAL_2]])

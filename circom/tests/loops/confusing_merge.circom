@@ -21,7 +21,7 @@ template Foo(N) {
 
 component main = Foo(3);
 
-// COM: Lit variables cannot be set at the "undef : !array.type<@N x !felt.type>" instances because their
+// COM: Lit variables cannot be set at the "llzk.nondet : !array.type<@N x !felt.type>" instances because their
 // COM: ordering is non-deterministic. The lit variable is instead set at the first use of the MLIR value.
 //
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@Foo<[3]>>, veridise.lang = "llzk"} {
@@ -31,8 +31,8 @@ component main = Foo(3);
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>) -> !struct.type<@Foo<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Foo<[@N]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = undef.undef : !array.type<@N x !felt.type>
-// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = undef.undef : !array.type<@N x !felt.type>
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = llzk.nondet : !array.type<@N x !felt.type>
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = llzk.nondet : !array.type<@N x !felt.type>
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_7:[0-9a-zA-Z_\.]+]] = %[[VAL_5]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_7]], %[[VAL_2]])

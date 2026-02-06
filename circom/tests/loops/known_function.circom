@@ -47,7 +47,7 @@ component main = KnownFunctionArgs();
 // CHECK-NEXT:      struct.field @out : !array.type<3 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@KnownFunctionArgs<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = struct.new : <@KnownFunctionArgs<[]>>
-// CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = undef.undef : !array.type<3 x !felt.type>
+// CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type>
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = felt.const  4
 // CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = function.call @funWithLoop(%[[VAL_14]]) : (!felt.type) -> !felt.type
 // CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.const  0
