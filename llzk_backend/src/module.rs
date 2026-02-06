@@ -756,10 +756,10 @@ where
                             )?;
                             (COUNT, count_value)
                         };
-                        fc.append_op_no_result(pod::write(
+                        fc.append_op_no_result(codegen.new_pod_write_op(
                             location,
                             comp_memory_pod,
-                            codegen.flat_sym(record_name),
+                            record_name,
                             record_value,
                         ))?;
 

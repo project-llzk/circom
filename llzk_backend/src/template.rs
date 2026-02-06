@@ -308,7 +308,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                             assert_eq!(dims, subcmp_type.dims());
 
                             fc.gen_loop_nest(codegen, location, &dims, |fc, indices| {
-                                let subcmp_instance =  fc.append_array_read(
+                                let subcmp_instance = fc.append_array_read(
                                         subcmp,
                                         indices,
                                         location,

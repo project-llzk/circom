@@ -990,10 +990,10 @@ where
         let one = self.append_op_unnamed_result(codegen.new_index_const_op(amount, location))?;
         let counter = self.append_op_unnamed_result(arith::subi(counter, one, location))?;
         self.append_op_no_result(codegen.new_pod_write_op(
+            location,
             subcmp_memory,
             COUNT,
             counter,
-            location,
         ))?;
         Ok(counter)
     }

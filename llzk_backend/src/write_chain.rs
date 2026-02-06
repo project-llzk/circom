@@ -173,7 +173,7 @@ impl<'ast> WriteChain<'ast> {
             location,
             Some(&prev.ov(subcmp_info)),
         )?;
-        fc.append_op_no_result(codegen.new_pod_write_op(subcmp_value_inputs, name, val, location))?;
+        fc.append_op_no_result(codegen.new_pod_write_op(location, subcmp_value_inputs, name, val))?;
         let prev_for_compute = prev.clone_for_compute_result();
         prev.write(
             subcmp_value_inputs,
@@ -200,10 +200,10 @@ impl<'ast> WriteChain<'ast> {
             let subcmp_instance =
                 fc.gen_compute_call(struct_type, subcmp_value_inputs, location, codegen)?;
             fc.append_op_no_result(codegen.new_pod_write_op(
+                location,
                 subcmp_value,
                 COMP,
                 subcmp_instance,
-                location,
             ))?;
             prev_for_compute.write(
                 subcmp_value,

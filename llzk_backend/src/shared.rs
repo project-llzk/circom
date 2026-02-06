@@ -727,10 +727,11 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         name: impl AsRef<str>,
         location: Location<'ctx>,
     ) -> Result<Operation<'ctx>> {
+        let name = name.as_ref();
         let pod_type = PodType::try_from(pod.r#type())?;
         let record_type = pod_type
-            .get_type_of_record(name.as_ref())
-            .ok_or_else(|| anyhow!("record '{}' not found for pod {pod_type}", name.as_ref()))?;
+            .get_type_of_record(name)
+            .ok_or_else(|| anyhow!("record '{}' not found for pod {pod_type}", name))?;
         Ok(pod::read(location, pod, self.flat_sym(name), record_type))
     }
 
@@ -738,10 +739,10 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     #[inline]
     pub fn new_pod_write_op(
         &self,
+        location: Location<'ctx>,
         pod: Value<'ctx, '_>,
         name: impl AsRef<str>,
         src: Value<'ctx, '_>,
-        location: Location<'ctx>,
     ) -> Operation<'ctx> {
         pod::write(location, pod, self.flat_sym(name), src)
     }
