@@ -42,7 +42,6 @@ use crate::write_chain::SignalWriteInfo;
 use anyhow::anyhow;
 use anyhow::Context as _;
 use anyhow::Result;
-use llzk::builder::OpBuilder;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::cast;
 use llzk::dialect::undef;
@@ -1230,7 +1229,7 @@ where
                 ArrayCtor::Values(&[])
             };
             let new_arr = self.append_op_unnamed_result(array::new(
-                &OpBuilder::new(codegen.context),
+                codegen.op_builder(),
                 location,
                 arr_ty,
                 ctor,
@@ -1261,11 +1260,15 @@ where
             Ok(new_arr)
         } else {
             let arr_ty = dimension.new_array_type(&value.r#type());
-            let builder = &OpBuilder::new(codegen.context);
             if let Ok(const_dim) = const_dim {
                 let values = vec![value; usize::try_from(const_dim.value())?];
                 let ctor = ArrayCtor::Values(&values);
-                self.append_op_unnamed_result(array::new(builder, location, arr_ty, ctor))
+                self.append_op_unnamed_result(array::new(
+                    codegen.op_builder(),
+                    location,
+                    arr_ty,
+                    ctor,
+                ))
             } else {
                 let mut v_sto = vec![];
                 let ctor = if let Ok(Some(v)) = dimension.value_range() {
@@ -1274,8 +1277,12 @@ where
                 } else {
                     ArrayCtor::Values(&[])
                 };
-                let array_ref =
-                    self.append_op_unnamed_result(array::new(builder, location, arr_ty, ctor))?;
+                let array_ref = self.append_op_unnamed_result(array::new(
+                    codegen.op_builder(),
+                    location,
+                    arr_ty,
+                    ctor,
+                ))?;
                 let dim = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
                 let array_len =
                     self.append_op_unnamed_result(array::len(location, array_ref, dim))?;
@@ -2245,7 +2252,6 @@ where
             }
             Expression::ArrayInLine { meta, values } => {
                 let location = codegen.location_from_meta(meta);
-                let builder = &OpBuilder::new(codegen.context);
                 // Multi-dimensional arrays are made up of array values as their elements
                 let values = values
                     .iter()
@@ -2262,7 +2268,7 @@ where
                     let dim = codegen.index_attr(i64::try_from(values.len())?);
                     let arr_ty = new_array_type(dim.into(), &subarr_ty);
                     let new_arr = function.append_op_unnamed_result(array::new(
-                        builder,
+                        codegen.op_builder(),
                         location,
                         arr_ty,
                         llzk::dialect::array::ArrayCtor::Values(&[]),
@@ -2285,7 +2291,7 @@ where
                     let dim = codegen.index_attr(i64::try_from(values.len())?);
                     let arr_ty = ArrayType::new(value_ty.into(), &[dim.into()]);
                     function.append_op_unnamed_result(array::new(
-                        builder,
+                        codegen.op_builder(),
                         location,
                         arr_ty,
                         llzk::dialect::array::ArrayCtor::Values(&values),
@@ -2302,7 +2308,6 @@ where
                 function.generate_uniform_array(codegen, location, value, &dim)
             }
             Expression::Call { meta, id, args } => {
-                let builder = OpBuilder::new(codegen.context.deref());
                 let location = codegen.location_from_meta(meta);
                 let target_function_data = codegen.program.get_function_data(id);
                 // Visit each argument and collect the resulting LLZK Values for both functions.
@@ -2324,7 +2329,7 @@ where
                 // Create the CallOp in each function using the collected args.
                 function.append_op_unnamed_result(
                     function::call(
-                        &builder,
+                        codegen.op_builder(),
                         location,
                         codegen.flat_sym(id),
                         &call_operands,

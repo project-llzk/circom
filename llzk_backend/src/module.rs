@@ -25,7 +25,6 @@ use crate::template_ext::TemplateLike;
 use anyhow::bail;
 use anyhow::Result;
 use llzk::attributes::NamedAttribute;
-use llzk::builder::OpBuilder;
 use llzk::dialect::array::ArrayCtor::MapDimSlice;
 use llzk::dialect::pod;
 use llzk::error::Error;
@@ -603,12 +602,11 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
 
     // Insert read operations for struct fields into constrain functions.
     let location = codegen.location_unknown();
-    let builder = OpBuilder::new(codegen.context);
     for field in new_struct.get_field_defs() {
         let field_name = field.field_name();
         constrain_ctx.block_ctx.declare_name_if_not_present(field_name, || {
             r#struct::readf(
-                &builder,
+                codegen.op_builder(),
                 location,
                 field.field_type(),
                 constrain_func.self_value_of_constrain()?,
@@ -672,7 +670,7 @@ fn gen_subcmps_prologue_in_template<'ast, 'ctx, 'func, 'blk, 'val>(
 where
     'val: 'blk,
 {
-    let op_builder = OpBuilder::new(codegen.context);
+    let op_builder = codegen.op_builder();
     for SubcmpPrologueData {
         name,
         subcmp: subcmp_type,
@@ -688,7 +686,7 @@ where
             let self_ref = constrain_ctx.func.self_value_of_constrain()?;
             constrain_ctx.block_ctx.declare_name_if_not_present(&name, || {
                 Ok(r#struct::readf(
-                    &op_builder,
+                    op_builder,
                     subcmp_decls[&name].location(),
                     subcmp_type,
                     self_ref,
@@ -697,7 +695,7 @@ where
             })?;
             constrain_ctx.block_ctx.declare_name_if_not_present(&name_inputs, || {
                 Ok(r#struct::readf(
-                    &op_builder,
+                    op_builder,
                     subcmp_decls[&name].location(),
                     subcmp_inputs_type,
                     self_ref,
@@ -727,7 +725,7 @@ where
                     let dims = comp_pod.dims();
                     compute_ctx.block_ctx.declare_name_ensure_not_present(
                         &name,
-                        array::new(&op_builder, location, comp_pod, MapDimSlice(&[], &[])),
+                        array::new(op_builder, location, comp_pod, MapDimSlice(&[], &[])),
                     )?;
                     let comp_memory = *compute_ctx.block_ctx.get_named_value(&name)?;
 
@@ -737,7 +735,7 @@ where
 
                         let (record_name, record_value) = if count.is_const_zero() {
                             let empty_inputs = fc.append_op_unnamed_result(pod::new(
-                                codegen.op_builder(),
+                                op_builder,
                                 location,
                                 &[],
                                 Some(codegen.pod_type(&[])),
@@ -778,7 +776,7 @@ where
                 Err(_) => {
                     let (record_name, record_value) = if count.is_const_zero() {
                         let empty_inputs = compute_ctx.append_op_unnamed_result(pod::new(
-                            codegen.op_builder(),
+                            op_builder,
                             location,
                             &[],
                             Some(codegen.pod_type(&[])),
@@ -802,7 +800,7 @@ where
                     compute_ctx.block_ctx.declare_name_ensure_not_present(
                         &name,
                         pod::new(
-                            &op_builder,
+                            op_builder,
                             location,
                             &[RecordValue::new(StringRef::new(record_name), record_value)],
                             Some(PodType::try_from(comp_pod)?),
@@ -814,10 +812,10 @@ where
                 &name_inputs,
                 match ArrayType::try_from(subcmp_inputs_type).ok() {
                     Some(subcmp_inputs_type) => {
-                        array::new(&op_builder, location, subcmp_inputs_type, MapDimSlice(&[], &[]))
+                        array::new(op_builder, location, subcmp_inputs_type, MapDimSlice(&[], &[]))
                     }
                     None => pod::new(
-                        &op_builder,
+                        op_builder,
                         location,
                         &[],
                         Some(PodType::try_from(subcmp_inputs_type)?),
