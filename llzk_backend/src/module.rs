@@ -810,11 +810,11 @@ where
             };
             compute_ctx.block_ctx.declare_name_ensure_not_present(
                 &name_inputs,
-                match ArrayType::try_from(subcmp_inputs_type).ok() {
-                    Some(subcmp_inputs_type) => {
+                match ArrayType::try_from(subcmp_inputs_type) {
+                    Ok(subcmp_inputs_type) => {
                         array::new(op_builder, location, subcmp_inputs_type, MapDimSlice(&[], &[]))
                     }
-                    None => pod::new(
+                    Err(_) => pod::new(
                         op_builder,
                         location,
                         &[],
