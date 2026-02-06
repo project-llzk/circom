@@ -732,8 +732,8 @@ where
 
             let comp_pod = map_array_inner_type(subcmp_type, codegen.pod_type(&records).into());
             let location = codegen.location_unknown();
-            match ArrayType::try_from(comp_pod).ok() {
-                Some(comp_pod) => {
+            match ArrayType::try_from(comp_pod) {
+                Ok(comp_pod) => {
                     let dims = comp_pod.dims();
                     compute_ctx.block_ctx.declare_name_ensure_not_present(
                         &name,
@@ -785,7 +785,7 @@ where
                         )
                     })?;
                 }
-                None => {
+                Err(_) => {
                     let (record_name, record_value) = if count.is_const_zero() {
                         let empty_inputs = compute_ctx.append_op_unnamed_result(pod::new(
                             codegen.op_builder(),
