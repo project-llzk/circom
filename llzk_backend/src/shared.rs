@@ -45,6 +45,7 @@ use llzk::prelude::Location;
 use llzk::prelude::Module;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike;
+use llzk::prelude::OperationMutLike;
 use llzk::prelude::OperationRef;
 use llzk::prelude::OperationResult;
 use llzk::prelude::PassManager;
@@ -1215,7 +1216,7 @@ pub fn new_array_type<'c>(dim: Attribute<'c>, subarr_ty: &ArrayType<'c>) -> Arra
     ArrayType::new(subarr_ty.element_type(), &dims)
 }
 
-/// Tries to obtain the owner operation of a [`Value`](melior::ir::Value).
+/// Tries to obtain the owner operation of a [`Value`](Value).
 ///
 /// This function works around a lifetime issue in [`OperationResult::owner`] that
 /// is resolved in [mlir-sys/melior#784](https://github.com/mlir-rs/melior/pull/784) but that
@@ -1309,9 +1310,7 @@ pub fn next_in_block_mut<'c: 'a, 'a>(
 }
 
 /// Removes itself from a parent block and returns the owned [Operation].
-pub fn remove_from_parent<'c: 'a, 'a>(
-    op: &mut impl melior::ir::operation::OperationMutLike<'c, 'a>,
-) -> Operation<'c> {
+pub fn remove_from_parent<'c: 'a, 'a>(op: &mut impl OperationMutLike<'c, 'a>) -> Operation<'c> {
     unsafe {
         mlir_sys::mlirOperationRemoveFromParent(op.to_raw());
     }
