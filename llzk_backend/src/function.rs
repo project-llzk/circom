@@ -31,11 +31,13 @@ use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COUNT;
+use crate::subcmp::NoSubcmps;
 use crate::subcmp::SubcmpCallsMap;
 use crate::subcmp::SubcmpInfo;
 use crate::template::TemplateContext;
 use crate::template_ext::TemplateLike as _;
 use crate::try_for_loop_heuristic;
+use crate::write_chain::NoSignalsInfo;
 use crate::write_chain::SignalWriteInfo;
 use anyhow::anyhow;
 use anyhow::Context as _;
@@ -142,6 +144,12 @@ pub struct InfoProviders<'info> {
     /// lowering freestanding functions, in which case it needs an empty implementation of this
     /// interface. This field is already here in preparation for reusing WriteChain.
     pub signal_write_info: &'info dyn SignalWriteInfo,
+}
+
+impl Default for InfoProviders<'_> {
+    fn default() -> Self {
+        Self { subcmp_info: &NoSubcmps, signal_write_info: &NoSignalsInfo }
+    }
 }
 
 impl<'tmpl, 'ctx, 'str, 'func, 'blk, 'val>

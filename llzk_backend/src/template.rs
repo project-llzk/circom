@@ -1379,14 +1379,7 @@ where
                     // The import is here rather than top level because it is very important that
                     // `gen_llzk_in_function()` is not used while translating statements.
                     use crate::function::GenerateLLZKInFunction;
-                    expr.gen_llzk_in_function(
-                        codegen,
-                        fc,
-                        crate::function::InfoProviders {
-                            subcmp_info: template,
-                            signal_write_info: template,
-                        },
-                    )
+                    expr.gen_llzk_in_function(codegen, fc, template.into())
                 })
             }
         }

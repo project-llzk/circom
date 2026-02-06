@@ -6,7 +6,6 @@ use crate::program_ext::ProgramLike;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COMP;
 use crate::subcmp::SubcmpInfo;
-use crate::write_chain::NoSignalsInfo;
 use anyhow::Result;
 use llzk::dialect::r#struct;
 use llzk::prelude::pod;
@@ -238,7 +237,7 @@ impl<'ast> Lvalue<'ast> {
                 codegen,
                 fc,
                 location,
-                InfoProviders { subcmp_info, signal_write_info: &NoSignalsInfo },
+                InfoProviders { subcmp_info, ..Default::default() },
             ),
             Lvalue::Subcmp { name: signal_name, prev } => {
                 let root = prev.root_var();
