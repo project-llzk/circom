@@ -710,6 +710,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     }
 
     /// Creates a [`FlatSymbolRefAttribute`] from the given string.
+    #[inline]
     pub fn flat_sym(&self, sym: impl AsRef<str>) -> FlatSymbolRefAttribute<'ctx> {
         FlatSymbolRefAttribute::new(self.context, sym.as_ref())
     }
@@ -732,6 +733,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     }
 
     /// Creates a `pod.write` operation.
+    #[inline]
     pub fn new_pod_write_op(
         &self,
         pod: Value<'ctx, '_>,
@@ -801,6 +803,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     }
 
     /// Verify the generated `Module`.
+    #[inline]
     pub fn verify(&self) -> Result<(), LlzkError> {
         verify_operation_with_diags(&self.module.as_operation())
     }
