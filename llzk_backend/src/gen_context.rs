@@ -26,7 +26,7 @@ use std::collections::HashMap;
 pub struct BlockContext<'ctx, 'blk, 'val>
 where
     'ctx: 'blk,
-    'ctx: 'val,
+    'blk: 'val,
 {
     /// Reference to a block in LLZK IR.
     block: BlockRef<'ctx, 'blk>,
@@ -45,7 +45,7 @@ where
 impl<'ctx, 'blk, 'val> BlockContext<'ctx, 'blk, 'val>
 where
     'ctx: 'blk,
-    'ctx: 'val,
+    'blk: 'val,
 {
     /// Create a new empty [BlockContext] for the given block.
     fn new(block: BlockRef<'ctx, 'blk>) -> Self {
@@ -108,7 +108,7 @@ where
 pub struct BlockContextStack<'ctx, 'blk, 'val>
 where
     'ctx: 'blk,
-    'ctx: 'val,
+    'blk: 'val,
 {
     /// Context for the function entry block.
     root: BlockContext<'ctx, 'blk, 'val>,
@@ -119,7 +119,7 @@ where
 impl<'ctx, 'blk, 'val> BlockContextStack<'ctx, 'blk, 'val>
 where
     'ctx: 'blk,
-    'ctx: 'val,
+    'blk: 'val,
 {
     /// Create a new [BlockContextStack] for the given function with an initial name-to-value
     /// mapping containing function parameters.
@@ -165,10 +165,7 @@ where
     }
 
     /// Append an operation to the current block (i.e. the top of the stack).
-    pub fn append_current_block(&mut self, operation: Operation<'ctx>) -> OperationRef<'ctx, 'val>
-    where
-        'blk: 'val,
-    {
+    pub fn append_current_block(&mut self, operation: Operation<'ctx>) -> OperationRef<'ctx, 'val> {
         let current = &self.top_mut().block;
         // Account for possible terminator in the current block. For example, the `compute_fn()`
         // and `constrain_fn()` helpers automatically add a return op at the end of the block
@@ -206,10 +203,11 @@ where
     /// the same Declaration statements are visited that were used to produce the parameters of
     /// the current function. Otherwise, the checks performed earlier in the circom parser
     /// pipeline will produce an error if a symbol is declared more than once in the same scope.
-    pub fn declare_name_ensure_not_present(&mut self, name: &str, op: Operation<'ctx>) -> Result<()>
-    where
-        'blk: 'val,
-    {
+    pub fn declare_name_ensure_not_present(
+        &mut self,
+        name: &str,
+        op: Operation<'ctx>,
+    ) -> Result<()> {
         ensure!(!self.is_name_present(name), format!("name {name} is already present"));
         let value = single_result_as_value(self.append_current_block(op))?;
         self.top_mut().scope_local_name_to_value.insert(name.to_string(), value);
@@ -226,10 +224,7 @@ where
         &mut self,
         name: &str,
         uninit_value: impl FnOnce() -> Result<Operation<'ctx>>,
-    ) -> Result<()>
-    where
-        'blk: 'val,
-    {
+    ) -> Result<()> {
         if !self.is_name_present(name) {
             let op = uninit_value()?;
             let value = single_result_as_value(self.append_current_block(op))?;
@@ -314,19 +309,13 @@ where
 
     /// Pop the current block off the stack to return to the previous block. The vars declared in
     /// the popped frame are dropped and those which are overwrites are returned.
-    pub fn pop(&mut self) -> HashMap<String, Value<'ctx, 'val>>
-    where
-        'blk: 'val,
-    {
+    pub fn pop(&mut self) -> HashMap<String, Value<'ctx, 'val>> {
         self.append_queue();
         self.other_blocks.pop().expect("There is no block to pop!").overwriting_name_to_value
     }
 
     /// Appends the queued operations in the top of the stack.
-    pub fn append_queue(&mut self)
-    where
-        'blk: 'val,
-    {
+    pub fn append_queue(&mut self) {
         let queue = std::mem::take(&mut self.top_mut().op_queue);
         for op in queue {
             self.append_current_block(op);
