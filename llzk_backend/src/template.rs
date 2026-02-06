@@ -9,44 +9,47 @@
 use crate::function::FunctionContext;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
+use crate::lvalue::Lvalue;
+use crate::lvalue::Root;
+use crate::program_ext::ProgramInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared;
-use crate::shared::get_constrain_call;
-use crate::shared::op_result_owner;
+use crate::shared::comp_type;
+use crate::shared::map_array_inner_type;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
+use crate::shared::TmplParamsInstance;
+use crate::subcmp::names::COMP;
+use crate::subcmp::names::COUNT;
+use crate::subcmp::names::PARAMS;
+use crate::subcmp::SubcmpInfo;
+use crate::template_ext::SignalDeclarations;
 use crate::template_ext::TemplateLike as _;
-use crate::write_chain::RootWriteOp;
 use crate::write_chain::WriteChain;
 use crate::write_chain::WriteTarget;
 use anyhow::anyhow;
 use anyhow::Result;
-use llzk::builder::OpBuilder;
+use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::cast;
 use llzk::prelude::constrain;
-use llzk::prelude::function;
 use llzk::prelude::is_felt_type;
+use llzk::prelude::pod;
 use llzk::prelude::r#struct;
-use llzk::prelude::r#struct::is_struct_readf;
+use llzk::prelude::ArrayType;
 use llzk::prelude::BlockRef;
-use llzk::prelude::CallOpLike as _;
-use llzk::prelude::CallOpRef;
-use llzk::prelude::FeltType;
 use llzk::prelude::FieldDefOpLike;
-use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::LoopBoundsAttribute;
-use llzk::prelude::OperationLike;
+use llzk::prelude::PodType;
+use llzk::prelude::RecordValue;
 use llzk::prelude::StructDefOpLike;
 use llzk::prelude::StructDefOpRefMut;
-use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
-use llzk::value_ext::replace_all_uses;
-use program_structure::ast::Access;
+use melior::StringRef;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -56,6 +59,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryFrom;
+use std::convert::TryInto as _;
 use std::rc::Rc;
 
 /// Alias for `Option<T>` to make it clear what the meaning of the option is within the
@@ -117,8 +121,8 @@ where
     compute: ShouldGenerate<Rc<RefCell<FunctionContext<'ctx, 'func, 'blk, 'val>>>>,
     /// Codegen refs for the "@constrain" function within `struct_def`
     constrain: ShouldGenerate<Rc<RefCell<FunctionContext<'ctx, 'func, 'blk, 'val>>>>,
-    /// Set of subcomponent names.
-    subcmps: &'str HashSet<String>,
+    /// Map of subcomponent names to their types.
+    subcmps: &'str HashMap<String, String>,
     /// Tracks for what component signals we have created their `struct.writef` op already.
     written_signals: Rc<RefCell<HashSet<String>>>,
 }
@@ -130,7 +134,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
         struct_def: StructDefOpRefMut<'ctx, 'str>,
         compute: FunctionContext<'ctx, 'func, 'blk, 'val>,
         constrain: FunctionContext<'ctx, 'func, 'blk, 'val>,
-        subcmps: &'str HashSet<String>,
+        subcmps: &'str HashMap<String, String>,
     ) -> TemplateContext<'ctx, 'str, 'func, 'blk, 'val> {
         Self {
             struct_def,
@@ -181,46 +185,182 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
         Ok(self
             .struct_def
             .get_field_def(name)
-            .ok_or_else(|| anyhow!("no field '{}' in struct", name))?
+            .ok_or_else(|| anyhow!("no field '{name}' in struct"))?
             .field_type())
+    }
+
+    /// Part of the finalization procedure that emits the pending operations in the queue.
+    fn finalize_queue(self) -> Result<Self> {
+        self.and_then_same::<_, GenResultUnit>(|fc, _| {
+            if !fc.block_ctx.is_only_root() {
+                anyhow::bail!("Template generation reached final step with more than one scope");
+            }
+            fc.block_ctx.append_queue();
+            Ok(())
+        })?;
+        Ok(self)
+    }
+
+    /// Part of the finalization procedure that emits the operations related to the subcomponents.
+    ///
+    /// For `@compute` emits the write operations for the results of calling the `@compute`
+    /// functions of the subcomponents and the values of the inputs.
+    ///
+    /// For `@constrain` emits calls to `@constrain` for each subcomponent.
+    fn finalize_subcmps(self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Result<Self>
+    where
+        // Required by `loop_nest`
+        'val: 'blk,
+    {
+        let mut subcmps: Vec<_> = self.subcmps.keys().collect();
+        if codegen.stabilize {
+            // Sort by circom subcomponent names to ensure a stable order of operations.
+            subcmps.sort_by(Ord::cmp);
+        }
+        let location = codegen.location_unknown();
+        let comp_sym = codegen.flat_sym(COMP);
+
+        self.and_then::<_, _, GenResultUnit>(|fc, _| {
+                // Write the subcomponent declarations to self.
+                let self_value = fc.func.self_value_of_compute()?;
+                subcmps.iter().try_for_each(|name| {
+                    // Write the inputs of the subcomponent.
+                    let name_inputs = crate::subcmp::names::inputs(name);
+                    let name_inputs_val = *fc.block_ctx.get_named_value(&name_inputs)?;
+                    fc.append_op_no_result(r#struct::writef(
+                        location,
+                        self_value,
+                        &name_inputs,
+                        name_inputs_val,
+                    )?)?;
+
+                    // This value is the memory SSA value. We need to extract the component from
+                    // it.
+                    let mem = *fc.block_ctx.get_named_value(name)?;
+                    let value = type_switch! { ty = mem.r#type(),
+                        ArrayType => {
+                            // Copy the components into an array of the same dimensions.
+                            let struct_type = comp_type(ty.element_type().try_into()?)?;
+
+                            let comp_array = fc.append_op_unnamed_result(codegen.new_array_new_op(
+                                location,
+                                map_array_inner_type(ty.into(), struct_type).try_into()?,
+                                ArrayCtor::Values(&[])
+                            ))?;
+
+                            fc.gen_loop_nest(codegen, codegen.location_unknown(), &ty.dims(), |fc, indices| {
+                                let comp_memory = fc.append_array_read(
+                                    mem,
+                                    indices,
+                                    location,
+                                    None
+                                )?;
+                                let comp_instance = fc.append_op_unnamed_result(pod::read(
+                                    location,
+                                    comp_memory,
+                                    comp_sym,
+                                    struct_type
+                                ))?;
+                                fc.append_array_write(
+                                    codegen,
+                                    comp_array,
+                                    indices,
+                                    location,
+                                    comp_instance,
+                                    None
+                                )
+                            })?;
+
+                            comp_array
+                        }
+                        PodType => {
+                            fc.append_op_unnamed_result(pod::read(
+                                location,
+                                mem,
+                                comp_sym,
+                                comp_type(ty)?
+                            ))?
+                        }
+                    };
+
+                    fc.append_op_no_result(r#struct::writef(
+                        location,
+                        self_value,
+                        name,
+                        value,
+                    )?)
+
+                })
+
+        }, |fc, _| {
+                subcmps.iter().try_for_each(|name| {
+                    // Read the subcomponent
+                    let subcmp = *fc.block_ctx.get_named_value(name)?;
+
+                    // Read the subcomponent inputs. The pod records are in declaration order,
+                    // which matches the order of the `@constrain` function.
+                    let inputs = *fc.block_ctx.get_named_value(&crate::subcmp::names::inputs(name))?;
+                    // Call `@constrain`
+                    type_switch! { inputs_type = inputs.r#type(),
+                        ArrayType => {
+                            let dims = inputs_type.dims();
+                            let subcmp_type = ArrayType::try_from(subcmp.r#type())?;
+                            assert_eq!(dims, subcmp_type.dims());
+
+                            fc.gen_loop_nest(codegen, location, &dims, |fc, indices| {
+                                let subcmp_instance = fc.append_array_read(
+                                        subcmp,
+                                        indices,
+                                        location,
+                                        None
+                                    )?;
+                                let subcmp_inputs = fc.append_array_read(
+                                        inputs,
+                                        indices,
+                                        location,
+                                        None
+                                    )?;
+                                fc.gen_constrain_call(
+                                   subcmp_instance,
+                                    subcmp_inputs,
+                                    location,
+                                    codegen
+                                )
+                            })
+                        }
+                        PodType as _ => fc.gen_constrain_call(subcmp, inputs,  location, codegen),
+                    }
+                })
+        })?;
+        Ok(self)
     }
 
     /// Finalizes the context by emitting the final write operations that write subcomponent
     /// declarations to the declaring component.
-    pub fn finalize(self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Result<()> {
-        let subcmps = self.subcmps;
-        self.and_then::<_, _, GenResultUnit>(
-            |fc, _| {
-                // Write the subcomponent declarations to self.
-                let self_value = fc.func.self_value_of_compute()?;
-                for name in subcmps {
-                    let val = fc.block_ctx.get_named_value(name)?;
-                    fc.append_op_no_result(r#struct::writef(
-                        Location::unknown(codegen.context),
-                        self_value,
-                        name,
-                        *val,
-                    )?)?;
-                }
-                if !fc.block_ctx.is_only_root() {
-                    anyhow::bail!(
-                        "Template generation reached final step with more than one scope"
-                    );
-                }
-                fc.block_ctx.append_queue();
-                Ok(())
-            },
-            |fc, _| {
-                fc.block_ctx.append_queue();
-                if !fc.block_ctx.is_only_root() {
-                    anyhow::bail!(
-                        "Template generation reached final step with more than one scope"
-                    );
-                }
-                Ok(())
-            },
-        )?
-        .and_then_same(|fc, _| fc.finalize(codegen))
+    pub fn finalize(self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Result<()>
+    where
+        // Required by `finalize_subcmps`
+        'val: 'blk,
+    {
+        self.finalize_subcmps(codegen)?
+            .finalize_queue()?
+            .and_then_same(|fc, _| fc.finalize(codegen))
+    }
+}
+
+impl SubcmpInfo for TemplateContext<'_, '_, '_, '_, '_> {
+    fn is_subcmp(&self, var: &str) -> bool {
+        self.subcmps.contains_key(var)
+    }
+
+    fn subcmp_info<'i>(
+        &self,
+        var: &str,
+        info: &'i dyn ProgramInfo,
+    ) -> Result<&'i dyn SignalDeclarations> {
+        let template_name =
+            self.subcmps.get(var).ok_or_else(|| anyhow!("subcomponent '{var}' not found"))?;
+        info.find_template(template_name)
     }
 }
 
@@ -602,10 +742,7 @@ where
                     [] => {
                         // Grab the parameter name if it exists, else, defer to function generation.
                         if self.struct_def.has_param_name(name) {
-                            ArrayDimensionResult::new(
-                                FlatSymbolRefAttribute::new(codegen.context, name).into(),
-                                &[],
-                            )
+                            ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
                         } else {
                             // Other variables are unsupported, defer to function context
                             ArrayDimensionResult::insufficient_data_result()
@@ -915,56 +1052,36 @@ where
                 match op {
                     AssignOp::AssignVar => {
                         if access.is_empty() {
-                            if template.subcmps.contains(var) {
-                                rhe.gen_llzk_in_template(codegen, template)?.and_then(
-                                    |fc, rhe| {
-                                        if let Ok(current) = fc.block_ctx.get_named_value(var) {
-                                            replace_all_uses(*current, rhe);
-                                        }
-                                        fc.block_ctx.set_named_value(var.clone(), rhe)
-                                    },
-                                    |fc, rhe| {
-                                        // Replace value
-                                        let field_read = fc.block_ctx.get_named_value(var)?;
-                                        // ASSERT: value comes from a `struct.readf`
-                                        assert!(is_struct_readf(
-                                            &op_result_owner(*field_read).unwrap()
-                                        ));
-                                        replace_all_uses(rhe, *field_read);
-                                        fc.subcmp_calls.update_keys(rhe, *field_read);
-                                        Ok(())
-                                    },
-                                )
+                            if template.is_subcmp(var) {
+                                // Do nothing.
+                                Ok(())
                             } else {
                                 rhe.gen_llzk_in_template(codegen, template)?.and_then_same(
                                     |fc, val| fc.block_ctx.set_named_value(var.clone(), val),
                                 )
                             }
                         } else {
-                            let write_op = if template.subcmps.contains(var) {
-                                RootWriteOp::Subcmp
-                            } else {
-                                RootWriteOp::Var
-                            };
                             let location = codegen.location_from_meta(meta);
                             rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                 |fc, val| {
-                                    WriteChain::new(var, write_op, access).write(
+                                    WriteChain::new(var, Root::Var, access).write(
                                         val,
                                         WriteTarget::Compute,
                                         codegen,
                                         fc,
                                         location,
                                         template,
+                                        template,
                                     )
                                 },
                                 |fc, val| {
-                                    WriteChain::new(var, write_op, access).write(
+                                    WriteChain::new(var, Root::Var, access).write(
                                         val,
                                         WriteTarget::Constrain,
                                         codegen,
                                         fc,
                                         location,
+                                        template,
                                         template,
                                     )
                                 },
@@ -1006,17 +1123,13 @@ where
                             access => rhe
                                 .gen_llzk_in_template(codegen, &template.compute_only())?
                                 .and_then_same(|fc, rhe| {
-                                    let write_op = if template.subcmps.contains(var) {
-                                        RootWriteOp::Subcmp
-                                    } else {
-                                        RootWriteOp::Signal
-                                    };
-                                    WriteChain::new(var, write_op, access).write(
+                                    WriteChain::new(var, Root::Signal, access).write(
                                         rhe,
                                         WriteTarget::Compute,
                                         codegen,
                                         fc,
                                         codegen.location_from_meta(meta),
+                                        template,
                                         template,
                                     )
                                 }),
@@ -1067,58 +1180,22 @@ where
                                     },
                                 )
                             }
-                            [Access::ComponentAccess(subcmp_signal)] => {
-                                // Assigning to a subcomponent signal is translated into replacing
-                                // the corresponding argument of the `@compute` and `@constrain`
-                                // calls.
-                                //
-                                // The value representing the call is mapped to the name of
-                                // the subcomponent and mapped to the name of
-                                // the subcomponent's template. For `@compute` that value is the
-                                // call op to `@compute` and in `@constrain` is the first operand
-                                // to the `@constrain` call.
-                                //
-                                // We use that name to look for the signal's declaration index and
-                                // use it to locate the corresponding operand and
-                                // replace it with the given `rhe`.
-                                rhe.gen_llzk_in_template(codegen, template)?.and_then(
-                                    |fc, rhe| {
-                                        fc.assign_subcmp(
-                                            rhe,
-                                            var,
-                                            subcmp_signal,
-                                            codegen,
-                                            0,
-                                            op_result_owner,
-                                        )
-                                    },
-                                    |fc, rhe| {
-                                        fc.assign_subcmp(
-                                            rhe,
-                                            var,
-                                            subcmp_signal,
-                                            codegen,
-                                            1,
-                                            get_constrain_call,
-                                        )
-                                    },
-                                )
-                            }
                             access => rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                 |fc, rhv| {
-                                    WriteChain::new(var, RootWriteOp::Signal, access).write(
+                                    WriteChain::new(var, Root::Signal, access).write(
                                         rhv,
                                         WriteTarget::Compute,
                                         codegen,
                                         fc,
                                         codegen.location_from_meta(meta),
                                         template,
+                                        template,
                                     )
                                 },
                                 |fc, rhv| {
                                     let location = codegen.location_from_meta(meta);
-                                    let lhv = WriteChain::new(var, RootWriteOp::Signal, access)
-                                        .get_value(codegen, fc, location, WriteTarget::Constrain)?;
+                                    let lhv = Lvalue::new(var, Root::Signal, access)
+                                        .get_value(codegen, fc, template, location, None)?;
                                     fc.append_op_no_result(constrain::eq(location, lhv, rhv).into())
                                 },
                             ),
@@ -1209,88 +1286,6 @@ where
         // This function handles the special cases that happen in templates and any other kind of
         // expression is delegated.
         match self {
-            Expression::Variable { meta, name, access }
-                if { matches!(access[..], [Access::ComponentAccess(_)]) } =>
-            {
-                match access.as_slice() {
-                    [Access::ComponentAccess(signal_name)] => template.and_then(
-                        |fc, _| {
-                            let subcmp_value = fc.block_ctx.get_named_value(name)?;
-                            let template_data = fc
-                                .subcmp_calls
-                                .get(subcmp_value)
-                                .ok_or_else(|| {
-                                    anyhow::anyhow!(
-                                        "subcomponent call for {subcmp_value} not found"
-                                    )
-                                })
-                                .and_then(|name| {
-                                    codegen.find_template_data(name).ok_or_else(|| {
-                                        anyhow::anyhow!("template {name:?} not found")
-                                    })
-                                })?;
-                            if template_data.get_outputs().contains_key(signal_name) {
-                                fc.append_op_unnamed_result(r#struct::readf(
-                                    &OpBuilder::new(codegen.context),
-                                    codegen.location_from_meta(meta),
-                                    FeltType::new(codegen.context).into(),
-                                    *subcmp_value,
-                                    signal_name,
-                                )?)
-                            } else if template_data.get_inputs().contains_key(signal_name) {
-                                let idx = template_data
-                                    .get_declaration_input_idx(signal_name)
-                                    .expect("signal from mapping");
-                                let call = CallOpRef::try_from(op_result_owner(*subcmp_value)?)?;
-                                assert!(call.callee_is_struct_compute());
-                                Ok(call.operand(idx)?)
-                            } else {
-                                anyhow::bail!(
-                                    "signal {signal_name} of subcomponent {name} is internal"
-                                );
-                            }
-                        },
-                        |fc, _| {
-                            let subcmp_value = fc.block_ctx.get_named_value(name)?;
-                            let template_data = fc
-                                .subcmp_calls
-                                .get(subcmp_value)
-                                .ok_or_else(|| {
-                                    anyhow::anyhow!(
-                                        "subcomponent call for {subcmp_value} not found"
-                                    )
-                                })
-                                .and_then(|name| {
-                                    codegen.find_template_data(name).ok_or_else(|| {
-                                        anyhow::anyhow!("template {name:?} not found")
-                                    })
-                                })?;
-                            if template_data.get_outputs().contains_key(signal_name) {
-                                fc.append_op_unnamed_result(r#struct::readf(
-                                    &OpBuilder::new(codegen.context),
-                                    codegen.location_from_meta(meta),
-                                    FeltType::new(codegen.context).into(),
-                                    *subcmp_value,
-                                    signal_name,
-                                )?)
-                            } else if template_data.get_inputs().contains_key(signal_name) {
-                                let idx = template_data
-                                    .get_declaration_input_idx(signal_name)
-                                    .expect("signal from mapping");
-                                let call = get_constrain_call(*subcmp_value)?;
-                                Ok(call.operand(idx + 1)?)
-                            } else {
-                                anyhow::bail!(
-                                    "signal {signal_name} of subcomponent {name} is internal"
-                                );
-                            }
-                        },
-                    ),
-                    _ => {
-                        unreachable!()
-                    }
-                }
-            }
             Expression::ParallelOp { rhe, .. } => {
                 // `parallel` is a tag used to generate parallelized code for the C++
                 // witness generator. Since LLZK currently has no such hint,
@@ -1301,57 +1296,63 @@ where
                 if meta.get_type_knowledge().is_component()
                     && codegen.program.contains_template(id) =>
             {
+                // We don't handle template parameters until the general structure of the procedure
+                // is done.
+                if !args.is_empty() {
+                    todo!("subcomponents with template parameters");
+                }
                 let location = codegen.location_from_meta(meta);
                 let dimensions = template.get_dimensions(codegen, args)?;
-                let subcmp_type = dimensions.struct_type_with_concrete_dimensions(codegen, id);
-                let arg_types = std::iter::once(Type::from(subcmp_type))
-                    .chain(codegen.get_template_input_types(id)?)
-                    .collect::<Vec<_>>();
-                // Undefs have unknown locations at creation and we set it when we encounter
-                // the corresponding write.
-                let unk = Location::unknown(codegen.context);
-                let builder = OpBuilder::new(codegen.context);
 
-                // Generate here the call to @compute and @constrain.
-                // Passing undefs to the methods. These undefs get associated with the
-                // signals of the subcomponent s.t. when we encounter an assignment
-                // to one of the signals we replace the undef with the actual value,
-                // similar to how we do for variables assignment.
-                template.and_then(
-                    |fc, _| {
-                        let undefs = fc.gen_arg_undefs(&arg_types[1..], unk)?;
-                        let val = fc.append_op_unnamed_result(
-                            function::call(
-                                &builder,
+                // Names of the template parameters
+                let params_formals = codegen.program.get_template_data(id).get_name_of_params();
+                let subcmp_type = dimensions.struct_type_with_concrete_dimensions(codegen, id);
+                let count = codegen.count_input_signals(subcmp_type.into())?;
+                let records = [
+                    // Counts the number of inputs pending an assignment. When it reaches 0 it's
+                    // safe to call the corresponding `@compute` function.
+                    (COUNT, codegen.index_type()),
+                    // Holds the output of calling `@compute`. Before the call, this value is
+                    // undefined and should not be read from.
+                    (COMP, subcmp_type.into()),
+                    // Holds the affine map operands of the subcomponents, if any.
+                    (PARAMS, codegen.pod_type(&[]).into()),
+                ];
+
+                // Create a `pod.new` operation with the memory for the subcomponent.
+                template.and_then_same(|fc, _| {
+                    let pod_type = Some(codegen.pod_type(&records));
+                    // If the count == 0 means that the subcomponent has no inputs. In that case we
+                    // call `@compute` here directly and store it into COMP.
+                    let (name, value) = if count.is_const_zero() {
+                        let empty_inputs = fc.append_op_unnamed_result(pod::new(
+                            codegen.op_builder(),
+                            location,
+                            &[],
+                            Some(codegen.pod_type(&[])),
+                        ))?;
+                        let instance =
+                            fc.gen_compute_call(subcmp_type, empty_inputs, location, codegen)?;
+                        (COMP, instance)
+                    } else {
+                        (
+                            COUNT,
+                            count.to_index_value(
+                                codegen,
+                                fc,
                                 location,
-                                SymbolRefAttribute::new(codegen.context, id, &["compute"]),
-                                &undefs,
-                                &[subcmp_type],
-                            )?
-                            .into(),
-                        )?;
-                        fc.subcmp_calls.insert(&val, id.clone());
-                        Ok(val)
-                    },
-                    |fc, _| {
-                        let undefs = fc.gen_arg_undefs(&arg_types, unk)?;
-                        let empty_result: [Type<'ctx>; 0] = [];
-                        fc.append_op_no_result(
-                            function::call(
-                                &builder,
-                                location,
-                                SymbolRefAttribute::new(codegen.context, id, &["constrain"]),
-                                &undefs,
-                                &empty_result,
-                            )?
-                            .into(),
-                        )?;
-                        fc.subcmp_calls.insert(&undefs[0], id.clone());
-                        // Return the reference to the subcomponent to match the result of
-                        // compute.
-                        Ok(undefs[0])
-                    },
-                )
+                                Some(&TmplParamsInstance::new(params_formals, &dimensions)),
+                            )?,
+                        )
+                    };
+
+                    fc.append_op_unnamed_result(pod::new(
+                        codegen.op_builder(),
+                        location,
+                        &[RecordValue::new(StringRef::new(name), value)],
+                        pod_type,
+                    ))
+                })
             }
             Expression::UniformArray { meta, value, dimension } => {
                 let location = codegen.location_from_meta(meta);
@@ -1376,7 +1377,7 @@ where
                     // The import is here rather than top level because it is very important that
                     // `gen_llzk_in_function()` is not used while translating statements.
                     use crate::function::GenerateLLZKInFunction;
-                    expr.gen_llzk_in_function(codegen, fc)
+                    expr.gen_llzk_in_function(codegen, fc, template.into())
                 })
             }
         }

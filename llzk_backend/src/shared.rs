@@ -1,7 +1,9 @@
 //! Shared code generation utilities.
 
+use crate::function::FunctionContext;
 use crate::module::DeclarationInfo;
 use crate::program_ext::ProgramLike;
+use crate::subcmp::names::COMP;
 use crate::template_ext::TemplateLike;
 use crate::template_ext::WireLike;
 use crate::traversal::walk_from_block;
@@ -9,11 +11,17 @@ use crate::traversal::WalkCallbacks;
 use ansi_term::Color;
 use anyhow::anyhow;
 use anyhow::ensure;
+use anyhow::Context as _;
 use anyhow::Result;
+use llzk::builder::OpBuilder;
+use llzk::dialect::array;
+use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::undef;
 use llzk::operation::move_op_after;
 use llzk::prelude::felt;
+use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
+use llzk::prelude::pod;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
@@ -21,8 +29,6 @@ use llzk::prelude::AttributeLike;
 use llzk::prelude::BlockLike;
 use llzk::prelude::BlockRef;
 use llzk::prelude::BoolAttribute;
-use llzk::prelude::CallOpLike as _;
-use llzk::prelude::CallOpRef;
 use llzk::prelude::FeltConstAttribute;
 use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
@@ -41,19 +47,24 @@ use llzk::prelude::OperationLike;
 use llzk::prelude::OperationRef;
 use llzk::prelude::OperationResult;
 use llzk::prelude::PassManager;
+use llzk::prelude::PodRecordAttribute;
+use llzk::prelude::PodType;
 use llzk::prelude::StringAttribute;
 use llzk::prelude::StructDefOp;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::StructType;
+use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
-use llzk::value_ext::get_single_user;
 use llzk::value_ext::replace_all_uses_in_block_with;
 use llzk::value_ext::OwningValueRange;
 use llzk::value_ext::ValueRange;
+use melior::ir::Block;
+use melior::ir::Region;
+use melior::ir::RegionLike as _;
 use melior::utility;
 use num_bigint_dig::BigInt;
 use num_bigint_dig::BigUint;
@@ -82,6 +93,107 @@ use std::ops::Deref;
 use std::os::raw::c_void;
 use std::path::Path;
 
+/// This macro allows writing type switches with a syntax similar to match expressions.
+#[macro_export]
+macro_rules! type_switch {
+    // Entry point
+    { $name:ident = $value:expr, $( $body:tt )+ } => {{
+        // Evaluate once
+        let $name = $value;
+
+        type_switch!(@parse $name, $( $body )+)
+    }};
+
+    // Entry point
+    { $name:ident, $( $body:tt )+ } => {
+        type_switch!(@parse $name, $( $body )+)
+    };
+
+        // Entry point
+    { let $name:ident = $value:expr ; $( $body:tt )+ } => {{
+        // Evaluate once
+        let $name = $value;
+
+        type_switch!(@parse $name, $( $body )+)
+    }};
+
+    // Entry point
+    { let $name:ident ; $( $body:tt )+ } => {
+        type_switch!(@parse $name, $( $body )+)
+    };
+
+
+    // Parsing
+
+    (@parse $name:ident, $ty:ty => $body:block $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, $name, $body) $( $rest )*)
+    };
+
+    (@parse $name:ident, $ty:ty as $bind:ident => $body:block $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, $bind, $body) $( $rest )*)
+    };
+
+    (@parse $name:ident, $ty:ty as  => $body:block $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, _, $body) $( $rest )*)
+    };
+
+    (@parse $name:ident, $ty:ty  => $body:expr, $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, $name, {$body}) $( $rest )*)
+    };
+
+    (@parse $name:ident, $ty:ty as $bind:ident  => $body:expr, $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, $bind, {$body}) $( $rest )*)
+    };
+
+    (@parse $name:ident, $ty:ty as _  => $body:expr, $( $rest:tt )*) => {
+        type_switch!(@inner $name, ($ty, _, {$body}) $( $rest )*)
+    };
+
+    // Inner implementation
+
+    // Last arm without default case
+    (@inner $name:ident, ( $ty:ty, $bind:ident, $body:block) $(,)?) => {
+        type_switch!(@inner $name, ( $ty, $bind, $body) else => {panic!("unhandled type {}", $name)})
+    };
+    (@inner $name:ident, ( $ty:ty, _, $body:block) $(,)?) => {
+        type_switch!(@inner $name, ( $ty, _, $body) else => {panic!("unhandled type {}", $name)})
+    };
+
+    // Last arm with default case
+    (@inner $name:ident, ( $ty:ty, $bind:ident, $body:block ) else => $else_body:expr $(,)?) => {
+        if let Ok($bind) = <$ty>::try_from($name) {
+            $body
+        } else {
+            $else_body
+        }
+    };
+
+    (@inner $name:ident, ( $ty:ty, _, $body:block ) else => $else_body:expr $(,)?) => {
+        if let Ok(_) = <$ty>::try_from($name) {
+            $body
+        } else {
+            $else_body
+        }
+    };
+
+    // Recursive case
+    (@inner $name:ident, ( $ty:ty, $bind:ident, $body:block ) $( $rest:tt )+ ) => {
+        if let Ok($bind) = <$ty>::try_from($name) {
+            $body
+        } else {
+            type_switch!(@parse $name, $( $rest )+)
+        }
+    };
+
+    (@inner $name:ident, ( $ty:ty, _, $body:block ) $( $rest:tt )+ ) => {
+        if let Ok(_) = <$ty>::try_from($name) {
+            $body
+        } else {
+            type_switch!(@parse $name, $( $rest )+)
+        }
+    };
+}
+
 /// Information about a template's declaration, either full before LLZK IR is generated for the
 /// template or, after the template is processed, just the minimal information needed to support
 /// queries about input signal types that other templates may need.
@@ -89,8 +201,13 @@ use std::path::Path;
 enum DeclInfo<'ctx> {
     /// Complete declaration info computed initially.
     Full(DeclarationInfo<'ctx>),
-    /// Just the map of signal name to type left behind after generating LLZK for a template.
-    Remnant(HashMap<String, Type<'ctx>>),
+    /// Minimal information left behind after generating LLZK for a template.
+    Remnant {
+        /// Map of signal name to type for input signals.
+        inputs: HashMap<String, Type<'ctx>>,
+        /// Map of signal name to type for output signals.
+        outputs: HashMap<String, Type<'ctx>>,
+    },
 }
 
 /// Convert circom location information to MLIR location.
@@ -127,6 +244,253 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     pub stabilize: bool,
     /// Declaration info pre-computed for all templates.
     template_decls: RefCell<HashMap<String, DeclInfo<'ctx>>>,
+    /// Operation builder
+    builder: OpBuilder<'ctx>,
+}
+
+/// Maps parameter symbols to the attributes assigned to a concrete instances of a template.
+#[derive(Debug)]
+pub struct TmplParamsInstance<'ast, 'ctx> {
+    /// Maps a symbol name to an attribute used as template parameter.
+    map: HashMap<&'ast str, Attribute<'ctx>>,
+}
+
+impl<'ast, 'ctx> TmplParamsInstance<'ast, 'ctx> {
+    /// Creates a new mapping of template parameter formals to attributes.
+    pub fn new(
+        params: impl IntoIterator<Item = &'ast String>,
+        attrs: impl IntoIterator<Item = Attribute<'ctx>>,
+    ) -> Self {
+        Self { map: std::iter::zip(params.into_iter().map(|s| s.as_str()), attrs).collect() }
+    }
+
+    /// Returns the attribute mapped by the given symbol.
+    fn get(&self, sym: SymbolRefAttribute<'ctx>) -> Result<Option<Attribute<'ctx>>> {
+        Ok(self.map.get(sym.root().as_str()?).copied())
+    }
+
+    /// Converts the given attribute if it is a [`SymbolRefAttribute`] and its symbol has a
+    /// mapping.
+    ///
+    /// If the attribute is not of that type returns it as is.
+    pub fn map_attr(&self, attr: Attribute<'ctx>) -> Result<Attribute<'ctx>> {
+        type_switch! { attr,
+            SymbolRefAttribute => {
+                self.get(attr)?.ok_or_else(|| anyhow!("symbol {attr} was not found in the mapping"))
+            }
+            else => Ok(attr)
+        }
+    }
+
+    /// Converts the given type using the mapping, replacing the symbols found in the map with the
+    /// corresponding attribute.
+    pub fn map_type(&self, ty: Type<'ctx>) -> Result<Type<'ctx>> {
+        type_switch! { ty,
+            ArrayType => self.handle_array_type(ty),
+            FeltType => self.handle_passthrough(ty),
+            else => {
+                todo!("Unhandled type {ty} while mapping through template parameters.")
+            }
+        }
+    }
+
+    /// Handler for array type.
+    fn handle_array_type(&self, ty: ArrayType<'ctx>) -> Result<Type<'ctx>> {
+        let dims =
+            ty.dims().into_iter().map(|attr| self.map_attr(attr)).collect::<Result<Vec<_>>>()?;
+        let inner = self.map_type(ty.element_type())?;
+        Ok(ArrayType::new(inner, &dims).into())
+    }
+
+    /// Handler for mapping types that don't actually require mapping.
+    fn handle_passthrough(&self, ty: impl Into<Type<'ctx>>) -> Result<Type<'ctx>> {
+        Ok(ty.into())
+    }
+}
+
+/// Represents the size of a Type as an expression of its parts.
+#[derive(Debug, Clone)]
+pub enum TypeSizeExpr<'ctx> {
+    /// Constant unsigned integer.
+    Const(usize),
+    /// Symbol reference.
+    Sym(SymbolRefAttribute<'ctx>),
+    /// Addition of two expressions.
+    Add(Box<Self>, Box<Self>),
+    /// Multiplication of two expressions.
+    Mul(Box<Self>, Box<Self>),
+}
+
+impl PartialEq for TypeSizeExpr<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (TypeSizeExpr::Const(a), TypeSizeExpr::Const(b)) => a == b,
+            (TypeSizeExpr::Sym(a), TypeSizeExpr::Sym(b)) => a.to_raw().ptr == b.to_raw().ptr,
+            (TypeSizeExpr::Add(lhs1, rhs1), TypeSizeExpr::Add(lhs2, rhs2)) => {
+                lhs1 == lhs2 && rhs1 == rhs2
+            }
+            (TypeSizeExpr::Mul(lhs1, rhs1), TypeSizeExpr::Mul(lhs2, rhs2)) => {
+                lhs1 == lhs2 && rhs1 == rhs2
+            }
+            _ => false,
+        }
+    }
+}
+
+impl<'ctx> TypeSizeExpr<'ctx> {
+    /// The zero expression.
+    #[inline]
+    pub fn zero() -> Self {
+        TypeSizeExpr::Const(0)
+    }
+    /// The one expression.
+    #[inline]
+    pub fn one() -> Self {
+        TypeSizeExpr::Const(1)
+    }
+    /// Creates a constant expression.
+    #[inline]
+    pub fn const_val(v: usize) -> Self {
+        TypeSizeExpr::Const(v)
+    }
+    /// Creates a symbol reference expression.
+    #[inline]
+    pub fn sym(a: SymbolRefAttribute<'ctx>) -> Self {
+        TypeSizeExpr::Sym(a)
+    }
+    /// Creates an addition expression.
+    #[inline]
+    pub fn add(self, other: Self) -> Self {
+        TypeSizeExpr::Add(Box::new(self), Box::new(other))
+    }
+    /// Creates a multiplication expression.
+    #[inline]
+    pub fn mul(self, other: Self) -> Self {
+        TypeSizeExpr::Mul(Box::new(self), Box::new(other))
+    }
+
+    /// Returns true if the expression is known to compute to constant zero.
+    pub fn is_const_zero(&self) -> bool {
+        match self {
+            TypeSizeExpr::Const(a) => *a == 0,
+            TypeSizeExpr::Add(lhs, rhs) => lhs.is_const_zero() && rhs.is_const_zero(),
+            TypeSizeExpr::Mul(lhs, rhs) => lhs.is_const_zero() || rhs.is_const_zero(),
+            _ => false,
+        }
+    }
+
+    /// Produce a simplified addition expression of the two operands.
+    fn simplify_add(lhs: &Self, rhs: &Self) -> Self {
+        match (lhs.simplified(), rhs.simplified()) {
+            (TypeSizeExpr::Const(0), x) => x.clone(),
+            (x, TypeSizeExpr::Const(0)) => x.clone(),
+            (TypeSizeExpr::Const(a), TypeSizeExpr::Const(b)) => {
+                TypeSizeExpr::Const(a.checked_add(b).expect("type size overflows usize max"))
+            }
+            (new_lhs, new_rhs) => {
+                if new_lhs == *lhs && new_rhs == *rhs {
+                    TypeSizeExpr::Add(Box::new(new_lhs), Box::new(new_rhs)) // unchanged
+                } else {
+                    Self::simplify_add(&new_lhs, &new_rhs)
+                }
+            }
+        }
+    }
+
+    /// Produce a simplified multiplication expression of the two operands.
+    fn simplify_mul(lhs: &Self, rhs: &Self) -> Self {
+        match (lhs.simplified(), rhs.simplified()) {
+            (TypeSizeExpr::Const(0), _) => TypeSizeExpr::Const(0),
+            (_, TypeSizeExpr::Const(0)) => TypeSizeExpr::Const(0),
+            (TypeSizeExpr::Const(1), x) => x.clone(),
+            (x, TypeSizeExpr::Const(1)) => x.clone(),
+            (TypeSizeExpr::Const(a), TypeSizeExpr::Const(b)) => {
+                TypeSizeExpr::Const(a.checked_mul(b).expect("type size overflows usize max"))
+            }
+            (new_lhs, new_rhs) => {
+                if new_lhs == *lhs && new_rhs == *rhs {
+                    TypeSizeExpr::Mul(Box::new(new_lhs), Box::new(new_rhs)) // unchanged
+                } else {
+                    Self::simplify_mul(&new_lhs, &new_rhs)
+                }
+            }
+        }
+    }
+
+    /// Returns a simplified version of the expression by applying arithmetic identities.
+    pub fn simplified(&self) -> Self {
+        match self {
+            s @ TypeSizeExpr::Const(_) => s.clone(),
+            s @ TypeSizeExpr::Sym(_) => s.clone(),
+            TypeSizeExpr::Add(lhs, rhs) => Self::simplify_add(lhs, rhs),
+            TypeSizeExpr::Mul(lhs, rhs) => Self::simplify_mul(lhs, rhs),
+        }
+    }
+
+    /// Generate code for the expression as an index value in LLZK IR.
+    pub fn to_index_value<'ast, 'func, 'blk, 'val>(
+        &self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+        location: Location<'ctx>,
+        env: Option<&TmplParamsInstance<'ast, 'ctx>>,
+    ) -> Result<Value<'ctx, 'val>> {
+        match self.simplified() {
+            TypeSizeExpr::Const(a) => {
+                fc.append_op_unnamed_result(codegen.new_index_const_op(i64::try_from(a)?, location))
+            }
+            TypeSizeExpr::Sym(a) => {
+                if !a.nested().is_empty() {
+                    unreachable!("we don't generate any nested symbols, i.e. reference to globals");
+                }
+                match env {
+                    Some(env) => env
+                        .get(a)
+                        .and_then(|attr| {
+                            attr.ok_or_else(|| {
+                                anyhow!(
+                                    "Symbol ref {a} was not found in the list of template parameters"
+                                )
+                            })
+                        })
+                        .and_then(Self::try_from_attr)
+                        .and_then(|e|
+                            // The call to this new expression should happen in the context of
+                            // the caller since we mapped the formal to its parameter.
+                            e.to_index_value(codegen, fc, location, None)),
+                    None => {
+                        let v = fc.block_ctx.get_named_value(a.root().as_str()?)?;
+                        fc.cast_to_index_if_needed(location, *v)
+                    }
+                }
+            }
+            TypeSizeExpr::Add(lhs, rhs) => {
+                let lhs = lhs.to_index_value(codegen, fc, location, env)?;
+                let rhs = rhs.to_index_value(codegen, fc, location, env)?;
+                fc.append_op_unnamed_result(arith::addi(lhs, rhs, location))
+            }
+            TypeSizeExpr::Mul(lhs, rhs) => {
+                let lhs = lhs.to_index_value(codegen, fc, location, env)?;
+                let rhs = rhs.to_index_value(codegen, fc, location, env)?;
+                fc.append_op_unnamed_result(arith::muli(lhs, rhs, location))
+            }
+        }
+    }
+
+    /// Creates a new expression based on an attribute.
+    fn try_from_attr(attr: Attribute<'ctx>) -> Result<Self> {
+        type_switch! { attr,
+            IntegerAttribute => {
+                let value = attr.value();
+                if value < 0 {
+                    anyhow::bail!("Negative value {value} in attribute: {attr}");
+                }
+                Ok(Self::const_val(value.try_into()?))
+            }
+            SymbolRefAttribute => Ok(Self::Sym(attr)),
+            else => anyhow::bail!("Unsupported attribute: {attr}")
+        }
+    }
 }
 
 impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
@@ -147,7 +511,13 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
             verbose,
             stabilize,
             template_decls: RefCell::new(Default::default()),
+            builder: OpBuilder::new(context),
         }
+    }
+
+    /// Returns a reference to the operation builder.
+    pub fn op_builder(&self) -> &OpBuilder<'ctx> {
+        &self.builder
     }
 
     /// Store the full [DeclarationInfo] for the template with the given name.
@@ -160,21 +530,42 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     pub fn take_template_decl(&self, name: &str) -> Result<DeclarationInfo<'ctx>> {
         let mut borrow = self.template_decls.borrow_mut();
         if let Some((name, DeclInfo::Full(decl_info))) = borrow.remove_entry(name) {
-            borrow.insert(name, DeclInfo::Remnant(decl_info.build_input_name_to_type_map()));
+            let inputs = decl_info.build_input_name_to_type_map();
+            let outputs = decl_info.build_output_name_to_type_map();
+            borrow.insert(name, DeclInfo::Remnant { inputs, outputs });
             return Ok(decl_info);
         }
         Err(anyhow!("No full declaration info for {name}"))
     }
 
     /// Get the type of the input signal with the given name in the given template, if it exists.
-    pub fn get_signal_type(&self, template_name: &str, signal_name: &str) -> Result<Type<'ctx>> {
+    pub fn get_input_signal_type(
+        &self,
+        template_name: &str,
+        signal_name: &str,
+    ) -> Result<Type<'ctx>> {
         let borrow = self.template_decls.borrow();
         match borrow.get(template_name) {
             None => anyhow::bail!("No declaration info for {template_name}"),
             Some(DeclInfo::Full(info)) => info.get_input_type(signal_name),
-            Some(DeclInfo::Remnant(map)) => map.get(signal_name).copied(),
+            Some(DeclInfo::Remnant { inputs, .. }) => inputs.get(signal_name).copied(),
         }
         .ok_or_else(|| anyhow!("No input signal with name {signal_name}"))
+    }
+
+    /// Get the type of an output signal with the given name in the given template, if it exists.
+    pub fn get_output_signal_type(
+        &self,
+        template_name: &str,
+        signal_name: &str,
+    ) -> Result<Type<'ctx>> {
+        let borrow = self.template_decls.borrow();
+        match borrow.get(template_name) {
+            None => anyhow::bail!("No declaration info for {template_name}"),
+            Some(DeclInfo::Full(info)) => info.get_output_type(signal_name),
+            Some(DeclInfo::Remnant { outputs, .. }) => outputs.get(signal_name).copied(),
+        }
+        .ok_or_else(|| anyhow!("No output signal with name {signal_name}"))
     }
 
     /// Get the width of the scalar prime field in bits.
@@ -251,7 +642,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                         .map_err(Into::into)
                         .map(|c| Attribute::from(self.index_attr(c)))
                 })
-                .collect::<Result<Vec<_>, _>>()
+                .collect::<Result<Vec<_>>>()
                 .map(|dims| ArrayType::new(base_type, &dims).into())
         }
     }
@@ -295,6 +686,16 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         StructType::from_str(self.context, name)
     }
 
+    /// Get a pod struct type with the given records.
+    #[inline]
+    pub fn pod_type(&self, records: &[(&str, Type<'ctx>)]) -> PodType<'ctx> {
+        let records = records
+            .iter()
+            .map(|(name, r#type)| PodRecordAttribute::new(name, *r#type))
+            .collect::<Vec<_>>();
+        PodType::new(self.context, &records)
+    }
+
     /// Create an index attribute.
     #[inline]
     pub fn index_attr<T>(&self, integer: T) -> IntegerAttribute<'ctx>
@@ -308,6 +709,42 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     pub fn affine_map_attr(&self, definition: &str) -> Result<Attribute<'ctx>> {
         Attribute::parse(self.context, definition)
             .ok_or_else(|| anyhow!("could not parse affine_map definition"))
+    }
+
+    /// Creates a [`FlatSymbolRefAttribute`] from the given string.
+    #[inline]
+    pub fn flat_sym(&self, sym: impl AsRef<str>) -> FlatSymbolRefAttribute<'ctx> {
+        FlatSymbolRefAttribute::new(self.context, sym.as_ref())
+    }
+
+    /// Creates a `pod.read` operation.
+    ///
+    /// Fails if the type of the value is not [`PodType`] or if the given name does not correspond
+    /// with a record in the pod.
+    pub fn new_pod_read_op(
+        &self,
+        pod: Value<'ctx, '_>,
+        name: impl AsRef<str>,
+        location: Location<'ctx>,
+    ) -> Result<Operation<'ctx>> {
+        let name = name.as_ref();
+        let pod_type = PodType::try_from(pod.r#type())?;
+        let record_type = pod_type
+            .get_type_of_record(name)
+            .ok_or_else(|| anyhow!("record '{}' not found for pod {pod_type}", name))?;
+        Ok(pod::read(location, pod, self.flat_sym(name), record_type))
+    }
+
+    /// Creates a `pod.write` operation.
+    #[inline]
+    pub fn new_pod_write_op(
+        &self,
+        location: Location<'ctx>,
+        pod: Value<'ctx, '_>,
+        name: impl AsRef<str>,
+        src: Value<'ctx, '_>,
+    ) -> Operation<'ctx> {
+        pod::write(location, pod, self.flat_sym(name), src)
     }
 
     /// Create an LLZK operation that produces a boolean constant value.
@@ -334,6 +771,17 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         T: Into<i64>,
     {
         arith::constant(self.context, self.index_attr(val).into(), location)
+    }
+
+    /// Create an LLZK `array.new` operation with the given element type and dimensions.
+    #[inline]
+    pub fn new_array_new_op(
+        &self,
+        location: Location<'ctx>,
+        r#type: ArrayType<'ctx>,
+        ctor: ArrayCtor<'ctx, '_, '_, '_>,
+    ) -> Operation<'ctx> {
+        array::new(&self.builder, location, r#type, ctor)
     }
 
     /// Generate a `felt.const` operation from a BigInt. Returns an `Err` result if unsuccessful
@@ -369,6 +817,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     }
 
     /// Verify the generated `Module`.
+    #[inline]
     pub fn verify(&self) -> Result<(), LlzkError> {
         verify_operation_with_diags(&self.module.as_operation())
     }
@@ -443,6 +892,37 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                 }
             })
             .collect())
+    }
+
+    /// Compute the size of the type in signals. A scalar signal has size 1, an array of 2 signals
+    /// has size 2, a 2x3 matrix of signals has size 6, and so on. Structs have a size equal to the
+    /// sum of its input sizes.
+    pub fn count_input_signals(&self, t: Type<'ctx>) -> Result<TypeSizeExpr<'ctx>> {
+        if is_felt_type(t) {
+            Ok(TypeSizeExpr::one())
+        } else if let Ok(at) = ArrayType::try_from(t) {
+            let init = self.count_input_signals(at.element_type())?;
+            at.dims().iter().try_fold(init, |acc, d| {
+                if let Ok(a) = IntegerAttribute::try_from(*d) {
+                    let s = usize::try_from(a.value()).context("negative array size")?;
+                    Ok(acc.mul(TypeSizeExpr::const_val(s)))
+                } else if let Ok(a) = SymbolRefAttribute::try_from(*d) {
+                    Ok(acc.mul(TypeSizeExpr::sym(a)))
+                } else {
+                    Err(anyhow!("expected array dimension to be Int or SymRef but found: {d}"))
+                }
+            })
+        } else if let Ok(pt) = PodType::try_from(t) {
+            pt.get_records().iter().try_fold(TypeSizeExpr::zero(), |acc, r| {
+                Ok(acc.add(self.count_input_signals(r.r#type())?))
+            })
+        } else if let Ok(st) = StructType::try_from(t) {
+            self.get_template_input_types(st.name().value())?
+                .iter()
+                .try_fold(TypeSizeExpr::zero(), |acc, t| Ok(acc.add(self.count_input_signals(*t)?)))
+        } else {
+            anyhow::bail!("unexpected type while counting signals: {t}");
+        }
     }
 
     /// Convert a `Vec<String>` into a comma-separated [StringAttribute].
@@ -642,7 +1122,7 @@ pub fn map_name_to_arg_value<'ctx, 'val>(
         .map(|(i, name)| {
             func.deref().argument(i).map_err(Into::into).map(|a| (name, Value::from(a)))
         })
-        .collect::<Result<HashMap<_, _>, _>>()
+        .collect()
 }
 
 /// Return `true` iff the given Type is an `IndexType`.
@@ -684,6 +1164,7 @@ pub fn set_operand_if_undef<'ctx, 'op>(
             anyhow::bail!("Argument {idx} was assigned twice: {arg}");
         }
     }
+    assert!(idx <= isize::MAX as usize, "cast to isize would overflow");
     unsafe { mlir_sys::mlirOperationSetOperand(op.to_raw(), idx as isize, value.to_raw()) }
     Ok(())
 }
@@ -750,29 +1231,6 @@ pub fn op_result_owner<'ctx, 'val, 'op: 'val>(
         .ok_or_else(|| anyhow::anyhow!("owner of {value} is not a valid operation"))
 }
 
-/// Looks for a call op to a constrain function where the given value is the first argument.
-///
-/// Fails if:
-///     - The value has more than one use.
-///     - The use is not a constrain call.
-///     - The used value is not the first operand.
-#[inline]
-pub fn get_constrain_call<'ctx, 'op, 'val>(
-    value: Value<'ctx, 'val>,
-) -> Result<OperationRef<'ctx, 'op>> {
-    let owner: CallOpRef<'ctx, 'op> = get_single_user(value)?.try_into()?;
-    if !owner.callee_is_constrain() {
-        anyhow::bail!("operation {owner} is not a call to a constrain function");
-    }
-
-    let fst_operand = owner.operand(0)?;
-    if fst_operand != value {
-        anyhow::bail!("first operand {fst_operand} does not match target: {value}");
-    }
-
-    Ok(owner.into())
-}
-
 /// Convert unsigned field elements into relational values used for comparisons.
 ///
 /// relational_val(a) = a-p  if m/2 +1 <= a < m
@@ -800,7 +1258,7 @@ pub fn relational_val(a: &BigUint, p: &BigUint) -> Result<BigInt> {
 /// `scf.while` loop.
 #[macro_export]
 macro_rules! try_for_loop_heuristic {
-    ($codegen:expr, $gen_context:expr, $meta:expr, $stmts:expr) => {
+    ($codegen:expr, $gen_context:expr, $meta:expr, $stmts:expr $(, $info:expr)? $(,)?) => {
         if let [program_structure::ast::Statement::InitializationBlock {
             xtype: program_structure::ast::VariableType::Var,
             initializations,
@@ -816,8 +1274,8 @@ macro_rules! try_for_loop_heuristic {
             // fail when this is added since the lit checks only do line prefix by default).
             let loop_bounds = None;
 
-            gen_init_block($codegen, $gen_context, initializations)?;
-            return gen_while($codegen, $gen_context, $meta, cond, stmt, loop_bounds);
+            gen_init_block($codegen, $gen_context, $($info,)* initializations)?;
+            return gen_while($codegen, $gen_context, $($info,)* $meta, cond, stmt, loop_bounds);
         }
     };
 }
@@ -1043,8 +1501,18 @@ impl<'ast, 'ctx, 'val> ArrayDimensions<'ctx, 'val> {
         if self.is_empty() {
             StructType::from_str(codegen.context, name)
         } else {
-            StructType::new(FlatSymbolRefAttribute::new(codegen.context, name), &self.attrs())
+            StructType::new(codegen.flat_sym(name), &self.attrs())
         }
+    }
+}
+
+impl<'ctx> IntoIterator for &ArrayDimensions<'ctx, '_> {
+    type Item = Attribute<'ctx>;
+
+    type IntoIter = <Vec<Attribute<'ctx>> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.attrs().into_iter()
     }
 }
 
@@ -1135,4 +1603,28 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
             anyhow!("unexpected lack of data needed to convert dimension expressions")
         })
     }
+}
+
+/// Maps the inner type of the given type if it is an [`ArrayType`]. Returns the new type
+/// otherwise.
+///
+/// ```text
+/// map([T], O) -> [O]
+/// map(T, O) -> O
+/// ```
+pub fn map_array_inner_type<'ctx>(t: Type<'ctx>, new_inner: Type<'ctx>) -> Type<'ctx> {
+    ArrayType::try_from(t).map(|t| ArrayType::new(new_inner, &t.dims()).into()).unwrap_or(new_inner)
+}
+
+/// Returns a region that contains one block with the given arguments.
+pub fn region_with_block<'ctx>(arguments: &[(Type<'ctx>, Location<'ctx>)]) -> Region<'ctx> {
+    let region = Region::new();
+    region.append_block(Block::new(arguments));
+    region
+}
+
+/// Returns the type of a subcomponent as defined in its memory.
+pub fn comp_type<'ctx>(pod: PodType<'ctx>) -> Result<Type<'ctx>> {
+    pod.get_type_of_record(COMP)
+        .ok_or_else(|| anyhow::anyhow!("missing {COMP} record in memory struct: {pod:?}"))
 }

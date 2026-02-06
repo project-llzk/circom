@@ -13,7 +13,6 @@ use compiler::hir::very_concrete_program::ClusterType;
 use compiler::hir::very_concrete_program::TemplateInstance;
 use compiler::hir::very_concrete_program::Wire;
 use llzk::prelude::Attribute;
-use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::Location;
 use llzk::prelude::StructType;
 use num_bigint_dig::BigInt;
@@ -31,6 +30,20 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::slice;
+
+/// Trait for IR objects that can have signal declarations on them.
+pub trait SignalDeclarations {
+    /// Returns true if the signal is an input.
+    ///
+    /// Returns false if the signal is not an input or is not declared.
+    fn signal_is_input(&self, name: &str) -> bool;
+}
+
+impl<T: TemplateLike> SignalDeclarations for T {
+    fn signal_is_input(&self, name: &str) -> bool {
+        self.get_inputs().contains_key(name)
+    }
+}
 
 /// A trait that allows common handling of structs/enums that represent template
 /// inputs or outputs.
@@ -206,16 +219,9 @@ impl TemplateLike for TemplateInstance {
                         todo!("Support mixed type subcomponent instantiations")
                     }
                     ClusterType::Uniform { header, .. } => {
-                        // See ExecutedTemplate::export_to_circuit for header construction
-                        let last_underscore = header
-                            .rfind("_")
-                            .ok_or_else(|| anyhow!("unexpected header string format"))?;
-                        let (template_name, _) = header.split_at(last_underscore);
-                        let struct_type = StructType::new(
-                            FlatSymbolRefAttribute::new(codegen.context, template_name),
-                            &[],
-                        );
-                        subcmp_decl.instances_mut().push(struct_type);
+                        subcmp_decl
+                            .instances_mut()
+                            .push(StructType::new(codegen.flat_sym(header), &[]));
                     }
                 }
             }

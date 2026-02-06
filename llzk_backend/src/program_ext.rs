@@ -1,6 +1,8 @@
 //! Extensions for the [`ProgramArchive`] and [`VCP`] types.
 
 use crate::function_ext::FunctionLike;
+use crate::shared::LlzkCodegen;
+use crate::template_ext::SignalDeclarations;
 use crate::template_ext::TemplateLike;
 use compiler::compiler_interface::VCP;
 use program_structure::ast::Expression;
@@ -8,6 +10,23 @@ use program_structure::file_definition::FileID;
 use program_structure::file_definition::FileLibrary;
 use program_structure::file_definition::FileLocation;
 use program_structure::program_archive::ProgramArchive;
+
+/// A dyn-safe trait for obtaining information about the program.
+pub trait ProgramInfo {
+    /// Looks for a template with the given name.
+    fn find_template(&self, name: &str) -> anyhow::Result<&dyn SignalDeclarations>;
+}
+
+impl<P: ProgramLike> ProgramInfo for LlzkCodegen<'_, '_, P> {
+    fn find_template(&self, name: &str) -> anyhow::Result<&dyn SignalDeclarations> {
+        self.program
+            .get_templates(false)
+            .into_iter()
+            .find(|t| t.get_name() == name)
+            .map(|t| -> &dyn SignalDeclarations { t })
+            .ok_or_else(|| anyhow::anyhow!("template '{name}' not found"))
+    }
+}
 
 /// Specification of the main component of a circom program.
 #[derive(Debug)]
@@ -180,7 +199,7 @@ impl ProgramLike for VCPPlus<'_> {
 
 /// Helper function to sort a vector of &FunctionLike by name.
 #[inline]
-fn sort_functions_by_name<T: FunctionLike>(functions: &mut [&T]) {
+fn sort_functions_by_name<F: FunctionLike>(functions: &mut [&F]) {
     functions.sort_by(|a, b| a.get_name().cmp(b.get_name()));
 }
 

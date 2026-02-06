@@ -10,6 +10,8 @@ use crate::function_ext::FunctionLike;
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
+use crate::lvalue::Lvalue;
+use crate::lvalue::Root;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::insert_after_if_op_result;
@@ -19,6 +21,7 @@ use crate::shared::new_array_type;
 use crate::shared::next_in_block_mut;
 use crate::shared::no_results;
 use crate::shared::parent_operation_mut;
+use crate::shared::region_with_block;
 use crate::shared::remove_from_parent;
 use crate::shared::replace_uses_with_new_block_argument;
 use crate::shared::set_operand_if_undef;
@@ -27,13 +30,18 @@ use crate::shared::ArrayDimension;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
+use crate::subcmp::names::COUNT;
+use crate::subcmp::NoSubcmps;
 use crate::subcmp::SubcmpCallsMap;
+use crate::subcmp::SubcmpInfo;
+use crate::template::TemplateContext;
 use crate::template_ext::TemplateLike as _;
 use crate::try_for_loop_heuristic;
+use crate::write_chain::NoSignalsInfo;
+use crate::write_chain::SignalWriteInfo;
 use anyhow::anyhow;
 use anyhow::Context as _;
 use anyhow::Result;
-use llzk::builder::OpBuilder;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::cast;
 use llzk::dialect::undef;
@@ -50,12 +58,12 @@ use llzk::prelude::melior_dialects::index;
 use llzk::prelude::melior_dialects::scf;
 use llzk::prelude::melior_dialects::scf::is_scf_if;
 use llzk::prelude::melior_dialects::scf::is_scf_yield;
+use llzk::prelude::pod;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
-use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::IntegerAttribute;
@@ -66,13 +74,18 @@ use llzk::prelude::OperationLike as _;
 use llzk::prelude::OperationMutLike;
 use llzk::prelude::OperationRef;
 use llzk::prelude::OperationRefMut;
+use llzk::prelude::PodType;
 use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
+use llzk::prelude::StructType;
+use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use llzk::prelude::WalkOrder;
 use llzk::prelude::WalkResult;
+use llzk::prelude::FUNC_NAME_COMPUTE;
+use llzk::prelude::FUNC_NAME_CONSTRAIN;
 use llzk::value_ext::has_uses;
 use melior::dialect::ods::math;
 use num_bigint_dig::BigInt;
@@ -102,6 +115,49 @@ const CIRCOM_RETURN_MARKER_ATTR: &str = "from_circom_return";
 /// LLZK attribute used to attach comma-separated list of variable names for the operands
 /// of an `scf.yield` op.
 const OPERAND_VAL_NAMES: &str = "operand_val_names";
+
+/// Contains references to information providers.
+///
+/// This information is required by [`Lvalue`] for properly constructing the IR representing the
+/// read in the case of subcomponents. The information it needs is:
+/// - Is the variable a subcomponent?
+/// - Is the field read with dot-notation an input or an output?
+///
+/// To answer that information it needs the [`TemplateContext`] since subcomponents can only occur
+/// inside a template. However, the logic in this file lowers [expressions](Expression) in both
+/// functions and templates so is necessary to provide that information in such a way that is
+/// transparent to that.
+///
+/// This type holds dyn references to two traits that give just enough information necessary for
+/// lowering using [`Lvalue`]. Both traits are implemented by [`TemplateContext`] and by a couple
+/// [Null objects](https://en.wikipedia.org/wiki/Null_object_pattern). The former is used while
+/// lowering expressions inside a template and the latter used while lowering inside a function.
+#[derive(Copy, Clone, Debug)]
+pub struct InfoProviders<'info> {
+    /// Subcomponent information.
+    pub subcmp_info: &'info dyn SubcmpInfo,
+    /// Signals write information.
+    ///
+    /// TODO: We may be able to remove this field if the lowering in this file does not need to use
+    /// `WriteChain`. Since that type aims to be generic it may be reusable in the context of
+    /// lowering freestanding functions, in which case it needs an empty implementation of this
+    /// interface. This field is already here in preparation for reusing WriteChain.
+    pub signal_write_info: &'info dyn SignalWriteInfo,
+}
+
+impl Default for InfoProviders<'_> {
+    fn default() -> Self {
+        Self { subcmp_info: &NoSubcmps, signal_write_info: &NoSignalsInfo }
+    }
+}
+
+impl<'tmpl, 'ctx, 'str, 'func, 'blk, 'val>
+    From<&'tmpl TemplateContext<'ctx, 'str, 'func, 'blk, 'val>> for InfoProviders<'tmpl>
+{
+    fn from(template: &'tmpl TemplateContext<'ctx, 'str, 'func, 'blk, 'val>) -> Self {
+        Self { subcmp_info: template, signal_write_info: template }
+    }
+}
 
 /// Stores ref to the current function while generating LLZK IR for the function.
 ///
@@ -266,7 +322,7 @@ where
         var_name: Option<&str>,
     ) -> Result<()> {
         let arr_ty = ArrayType::try_from(arr_ref.r#type()).with_context(|| {
-            let v = var_name.map_or(String::from("array"), |s| format!("'{}'", s));
+            let v = var_name.map_or(String::from("array"), |s| format!("'{s}'"));
             format!("Conflicting types to write {v} at {location}")
         })?;
         let arr_ty_dims = arr_ty.dims();
@@ -286,7 +342,7 @@ where
                 array::insert(location, arr_ref, indices, rvalue)
             }
             std::cmp::Ordering::Greater => {
-                let v = var_name.map_or(String::from("array"), |s| format!("'{}'", s));
+                let v = var_name.map_or(String::from("array"), |s| format!("'{s}'"));
                 anyhow::bail!("Too many indices to write {v} at {location}");
             }
         };
@@ -303,7 +359,7 @@ where
         var_name: Option<&str>,
     ) -> Result<Value<'ctx, 'val>> {
         let arr_ty = ArrayType::try_from(arr_ref.r#type()).with_context(|| {
-            let v = var_name.map_or(String::from("array"), |s| format!("'{}'", s));
+            let v = var_name.map_or(String::from("array"), |s| format!("'{s}'"));
             format!("Conflicting types to read {v} at {location}")
         })?;
         let arr_ty_dims = arr_ty.dims();
@@ -320,7 +376,7 @@ where
                 array::extract(location, reduced_type.into(), arr_ref, indices)
             }
             std::cmp::Ordering::Greater => {
-                let v = var_name.map_or(String::from("array"), |s| format!("'{}'", s));
+                let v = var_name.map_or(String::from("array"), |s| format!("'{s}'"));
                 anyhow::bail!("Too many indices to read {v} at {location}");
             }
         };
@@ -779,7 +835,7 @@ where
                     .get(name)
                     .map_or_else(|| self.block_ctx.get_named_value(name).cloned(), |v| Ok(*v))
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>>>()?;
 
         // Insert `scf.yield` at the end of each block.
         Self::append_multi_operand_yield_to_block(
@@ -804,10 +860,10 @@ where
             .map(|name| {
                 self.block_ctx
                     .get_named_value(name)
-                    .inspect_err(|e| eprintln!("\nERROR: {:?}", e))
+                    .inspect_err(|e| eprintln!("\nERROR: {e:?}"))
                     .map(|v| v.r#type())
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>>>()?;
 
         // Cast condition value to bool type if needed.
         let condition = self.cast_to_bool_if_needed(codegen, location, condition)?;
@@ -916,6 +972,237 @@ where
         self.gen_simple_scf_for(codegen, location, start, step, end, body_fn)
     }
 
+    /// Generates IR for decreasing the counter of a subcomponent.
+    ///
+    /// Returns a [`Value`] with the updated counter.
+    pub fn gen_subcmp_decrease_counter(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        subcmp_memory: Value<'ctx, 'val>,
+        amount: u32,
+    ) -> Result<Value<'ctx, 'val>> {
+        let counter = self.append_op_unnamed_result(codegen.new_pod_read_op(
+            subcmp_memory,
+            COUNT,
+            location,
+        )?)?;
+        let one = self.append_op_unnamed_result(codegen.new_index_const_op(amount, location))?;
+        let counter = self.append_op_unnamed_result(arith::subi(counter, one, location))?;
+        self.append_op_no_result(codegen.new_pod_write_op(
+            location,
+            subcmp_memory,
+            COUNT,
+            counter,
+        ))?;
+        Ok(counter)
+    }
+
+    /// Generates a `scf.if` block that runs the 'then' branch if the given value is 0.
+    pub fn gen_scf_if_is_zero(
+        &mut self,
+        value: Value<'ctx, 'val>,
+        location: Location<'ctx>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        body: impl FnOnce(&mut Self) -> Result<()>,
+    ) -> Result<()> {
+        let zero = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
+        let cmp = self.append_op_unnamed_result(arith::cmpi(
+            codegen.context,
+            arith::CmpiPredicate::Eq,
+            value,
+            zero,
+            location,
+        ))?;
+        let then_region = region_with_block(&[]);
+        self.block_ctx.push(then_region.first_block().unwrap());
+        body(self)?;
+        self.append_op_no_result(scf::r#yield(&[], location))?;
+        self.block_ctx.pop();
+        let else_region = region_with_block(&[]);
+        else_region.first_block().unwrap().append_operation(scf::r#yield(&[], location));
+
+        self.append_op_no_result(scf::r#if(cmp, &[], then_region, else_region, location))
+    }
+
+    /// Decomposes the given value of [`PodType`] into a sequence of values in declaration order.
+    pub fn gen_decompose_pod(
+        &mut self,
+        pod: Value<'ctx, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+    ) -> Result<Vec<Value<'ctx, 'val>>> {
+        PodType::try_from(pod.r#type())?
+            .get_records()
+            .into_iter()
+            .map(|record| {
+                let record_name = codegen.flat_sym(record.name().as_str()?);
+                self.append_op_unnamed_result(pod::read(
+                    location,
+                    pod,
+                    record_name,
+                    record.r#type(),
+                ))
+            })
+            .collect()
+    }
+
+    /// Generates a call to `@compute` for the given struct type.
+    ///
+    /// The arguments for the call are given as a value of [`PodType`] representing the inputs of
+    /// the subcomponent.
+    ///
+    /// # TODO
+    ///
+    /// Map operands are missing.
+    pub fn gen_compute_call(
+        &mut self,
+        struct_type: StructType<'ctx>,
+        inputs: Value<'ctx, 'val>,
+        location: Location<'ctx>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Result<Value<'ctx, 'val>> {
+        let input_values = self.gen_decompose_pod(inputs, codegen, location)?;
+
+        let func_name = SymbolRefAttribute::new(
+            codegen.context,
+            struct_type.name().value(),
+            &[FUNC_NAME_COMPUTE.as_ref()],
+        );
+
+        self.append_op_unnamed_result(
+            function::call(
+                codegen.op_builder(),
+                location,
+                func_name,
+                &input_values,
+                &[struct_type],
+            )?
+            .into(),
+        )
+    }
+
+    /// Generates a call to `@constrain` for the given struct type.
+    ///
+    /// The arguments for the call are given as a value of [`PodType`] representing the inputs of
+    /// the subcomponent.
+    pub fn gen_constrain_call(
+        &mut self,
+        subcmp: Value<'ctx, 'val>,
+        inputs: Value<'ctx, 'val>,
+        location: Location<'ctx>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Result<()> {
+        let mut call_args = vec![subcmp];
+        call_args.extend(self.gen_decompose_pod(inputs, codegen, location)?);
+
+        let func_name = SymbolRefAttribute::new(
+            codegen.context,
+            StructType::try_from(subcmp.r#type())?.name().value(),
+            &[FUNC_NAME_CONSTRAIN.as_ref()],
+        );
+        let return_types: [Type; 0] = [];
+        self.append_op_no_result(
+            function::call(codegen.op_builder(), location, func_name, &call_args, &return_types)?
+                .into(),
+        )
+    }
+
+    /// Creates a loop nest from a list of dimensions.
+    ///
+    /// The body of the inner-most loop is defined by the given closure, which accepts a list of
+    /// values representing the current value of each loop's induction variable.
+    pub fn gen_loop_nest(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        dims: &[Attribute<'ctx>],
+        body: impl FnOnce(&mut Self, &[Value<'ctx, 'val>]) -> Result<()>,
+    ) -> Result<()>
+    where
+        'val: 'blk,
+    {
+        let zero = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
+        let one = self.append_op_unnamed_result(codegen.new_index_const_op(1, location))?;
+
+        // Create values from the dimensions
+        let dim_values = dims
+            .iter()
+            .copied()
+            .map(|attr| {
+                if IntegerAttribute::try_from(attr).is_ok() {
+                    return self.append_op_unnamed_result(arith::constant(
+                        codegen.context,
+                        attr,
+                        location,
+                    ));
+                }
+                unreachable!("Unhandled attribute in array dimensions {}", attr)
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        let loop_block_args = [(codegen.index_type(), location)];
+        let top_block = *self.block_ctx.top_block();
+        let mut loop_vars: Vec<Value> = vec![];
+        // Create the loop nest
+        let mut block: Option<BlockRef<'_, '_>> = None;
+        for dim in dim_values {
+            let op = scf::r#for(zero, dim, one, region_with_block(&loop_block_args), location);
+            let loop_op = match &block {
+                Some(block_ref) => block_ref.append_operation(op),
+                None => self.append_op(op),
+            };
+            block = Some(
+                loop_op
+                    .region(0)?
+                    .first_block()
+                    .ok_or_else(|| anyhow::anyhow!("region is missing first block"))?,
+            );
+            // Accumulate the induction variables for later giving all of them to the callback.
+            loop_vars.push(block.unwrap().argument(0)?.into());
+        }
+
+        // Unwrap the block after creating the loop nest.
+        let mut block = block.ok_or_else(|| anyhow::anyhow!("no loops created"))?;
+        // Push the block of the inner-most loop s.t. the user can use `self` and ops will get added
+        // to the right block.
+        self.block_ctx.push(block);
+        body(self, &loop_vars)?;
+        self.block_ctx.pop();
+
+        // Traverse the stack of blocks until we reach the block where we inserted the whole nest.
+        // For each block traversed this way add the scf terminator op.
+        while block != top_block {
+            block.append_operation(scf::r#yield(&[], location));
+            block = block
+                .parent_operation()
+                .and_then(|op| op.block())
+                .ok_or_else(|| anyhow::anyhow!("detached block while creating loop nest"))?;
+        }
+
+        Ok(())
+    }
+
+    /// Creates LLZK ops for array indexing from the collection of elements.
+    pub fn gen_index_ops<'ast, 'info, E>(
+        &mut self,
+        indices: impl IntoIterator<Item = &'ast E>,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        info: InfoProviders<'info>,
+    ) -> Result<Vec<Value<'ctx, 'val>>>
+    where
+        E: GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val, Output = Value<'ctx, 'val>> + 'ast,
+    {
+        indices
+            .into_iter()
+            .map(|e| {
+                let val = e.gen_llzk_in_function(codegen, self, info)?;
+                self.append_op_unnamed_result(cast::toindex(location, val))
+            })
+            .collect()
+    }
+
     /// Implementation for [Expression::UniformArray] after conversion of dimension
     /// expression. Useful because dimension generation differs between function
     /// and template contexts due to template parameters, but the actual array generation
@@ -941,12 +1228,8 @@ where
             } else {
                 ArrayCtor::Values(&[])
             };
-            let new_arr = self.append_op_unnamed_result(array::new(
-                &OpBuilder::new(codegen.context),
-                location,
-                arr_ty,
-                ctor,
-            ))?;
+            let new_arr =
+                self.append_op_unnamed_result(codegen.new_array_new_op(location, arr_ty, ctor))?;
             if let Ok(const_dim) = const_dim {
                 for idx in 0..const_dim.value() {
                     let idx_val =
@@ -973,11 +1256,13 @@ where
             Ok(new_arr)
         } else {
             let arr_ty = dimension.new_array_type(&value.r#type());
-            let builder = &OpBuilder::new(codegen.context);
             if let Ok(const_dim) = const_dim {
                 let values = vec![value; usize::try_from(const_dim.value())?];
-                let ctor = ArrayCtor::Values(&values);
-                self.append_op_unnamed_result(array::new(builder, location, arr_ty, ctor))
+                self.append_op_unnamed_result(codegen.new_array_new_op(
+                    location,
+                    arr_ty,
+                    ArrayCtor::Values(&values),
+                ))
             } else {
                 let mut v_sto = vec![];
                 let ctor = if let Ok(Some(v)) = dimension.value_range() {
@@ -986,8 +1271,8 @@ where
                 } else {
                     ArrayCtor::Values(&[])
                 };
-                let array_ref =
-                    self.append_op_unnamed_result(array::new(builder, location, arr_ty, ctor))?;
+                let array_ref = self
+                    .append_op_unnamed_result(codegen.new_array_new_op(location, arr_ty, ctor))?;
                 let dim = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
                 let array_len =
                     self.append_op_unnamed_result(array::len(location, array_ref, dim))?;
@@ -1091,7 +1376,7 @@ where
         let initial_values = loop_carried_var_names
             .iter()
             .map(|name| self.block_ctx.get_named_value(name).cloned())
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>>>()?;
 
         // Generate the `scf.while` op for the circom `While` statement, adding `loopbounds`
         // attribute if given, and append it to the current block.
@@ -1445,10 +1730,11 @@ where
     /// Generates LLZK IR from [Statement] and [Expression] nodes in a circom function.
     ///
     /// 'ast: lifetime of the circom AST element
-    fn gen_llzk_in_function<'ast>(
+    fn gen_llzk_in_function<'ast, 'info>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+        info: InfoProviders<'info>,
     ) -> Result<Self::Output>;
 }
 
@@ -1566,9 +1852,10 @@ where
 }
 
 /// Generate LLZK code for a circom [Statement::IfThenElse].
-fn gen_if_then_else<'ast, 'ctx, 'func, 'blk, 'val>(
+fn gen_if_then_else<'ast, 'ctx, 'func, 'blk, 'val, 'info>(
     codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    info: InfoProviders<'info>,
     meta: &Meta,
     cond: &Expression,
     if_case: &Statement,
@@ -1583,20 +1870,20 @@ where
     let mut then_info = NestedBlockInfo::default();
     function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
         then_info.block,
-        |function| if_case.gen_llzk_in_function(codegen, function),
+        |function| if_case.gen_llzk_in_function(codegen, function, info),
         &mut then_info,
     )?;
     let mut else_info = NestedBlockInfo::default();
     if let Some(else_case) = else_case {
         function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
             else_info.block,
-            |function| else_case.gen_llzk_in_function(codegen, function),
+            |function| else_case.gen_llzk_in_function(codegen, function, info),
             &mut else_info,
         )?;
     }
 
     let location = codegen.location_from_meta(meta);
-    let condition = cond.gen_llzk_in_function(codegen, function)?;
+    let condition = cond.gen_llzk_in_function(codegen, function, info)?;
 
     // Check if one or both blocks end with a return in circom. The `scf.if` op used in LLZK cannot
     // have returns nested within other blocks like circom allows. Use of `append_circom_return()`
@@ -1655,9 +1942,10 @@ where
 }
 
 /// Generate LLZK code for a circom [Statement::While].
-fn gen_while<'ast, 'ctx, 'func, 'blk, 'val>(
+fn gen_while<'ast, 'ctx, 'func, 'blk, 'val, 'info>(
     codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    info: InfoProviders<'info>,
     meta: &Meta,
     cond: &Expression,
     body_stmt: &Statement,
@@ -1672,13 +1960,13 @@ where
     let mut loop_cond_info = NestedBlockInfo::default();
     let cond_result = function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
         loop_cond_info.block,
-        |fc| cond.gen_llzk_in_function(codegen, fc),
+        |fc| cond.gen_llzk_in_function(codegen, fc, info),
         &mut loop_cond_info,
     )?;
     let mut loop_body_info = NestedBlockInfo::default();
     function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
         loop_body_info.block,
-        |fc| body_stmt.gen_llzk_in_function(codegen, fc),
+        |fc| body_stmt.gen_llzk_in_function(codegen, fc, info),
         &mut loop_body_info,
     )?;
 
@@ -1740,6 +2028,7 @@ where
 fn gen_init_block<'ast, 'ctx, 'func, 'blk, 'val>(
     codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    info: InfoProviders<'_>,
     initializations: &[Statement],
 ) -> Result<()>
 where
@@ -1747,7 +2036,7 @@ where
     'func: 'blk,
     'blk: 'val,
 {
-    initializations.gen_llzk_in_function(codegen, function)
+    initializations.gen_llzk_in_function(codegen, function, info)
 }
 
 impl<'ctx, 'func, 'blk, 'val> GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val> for Statement
@@ -1758,10 +2047,11 @@ where
 {
     type Output = SkipRestOfBlock;
 
-    fn gen_llzk_in_function<'ast>(
+    fn gen_llzk_in_function<'ast, 'info>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+        info: InfoProviders<'info>,
     ) -> Result<Self::Output> {
         match self {
             Statement::InitializationBlock { xtype, initializations, .. } => {
@@ -1769,7 +2059,7 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Template elements declared inside the function")
                 }
-                gen_init_block(codegen, function, initializations)?;
+                gen_init_block(codegen, function, info, initializations)?;
                 Ok(false)
             }
             Statement::Declaration { meta, xtype, name, dimensions, .. } => {
@@ -1783,9 +2073,9 @@ where
             Statement::Block { meta, stmts } => {
                 function.gen_in_current_block_with_new_circom_scope_and_merge_overwrites(
                     |function| {
-                        try_for_loop_heuristic!(codegen, function, meta, stmts);
+                        try_for_loop_heuristic!(codegen, function, meta, stmts, info);
                         // Fallback to standard block handling.
-                        stmts.gen_llzk_in_function(codegen, function)?;
+                        stmts.gen_llzk_in_function(codegen, function, info)?;
                         Ok(false)
                     },
                 )?;
@@ -1796,7 +2086,7 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Function uses template operators");
                 }
-                let rvalue = rhe.gen_llzk_in_function(codegen, function)?;
+                let rvalue = rhe.gen_llzk_in_function(codegen, function, info)?;
                 match access.as_slice() {
                     [] => {
                         // Since there's no simple assignment in LLZK, just update the mapped Value
@@ -1810,7 +2100,7 @@ where
                             .map(|access| {
                                 let idx = match access {
                                     Access::ArrayAccess(index_expr) => {
-                                        index_expr.gen_llzk_in_function(codegen, function)
+                                        index_expr.gen_llzk_in_function(codegen, function, info)
                                     }
                                     #[allow(unused_variables)] // TODO: TEMP
                                     Access::ComponentAccess(name) => {
@@ -1839,17 +2129,17 @@ where
                     unreachable!("Function uses template operators");
                 }
                 // Just visit and drop the resulting Value since it's unused.
-                rhe.gen_llzk_in_function(codegen, function).map(drop)?;
+                rhe.gen_llzk_in_function(codegen, function, info).map(drop)?;
                 Ok(false)
             }
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
-                gen_if_then_else(codegen, function, meta, cond, if_case, else_case)
+                gen_if_then_else(codegen, function, info, meta, cond, if_case, else_case)
             }
             Statement::While { meta, cond, stmt } => {
-                gen_while(codegen, function, meta, cond, stmt, None)
+                gen_while(codegen, function, info, meta, cond, stmt, None)
             }
             Statement::Return { meta, value } => {
-                let value = value.gen_llzk_in_function(codegen, function)?;
+                let value = value.gen_llzk_in_function(codegen, function, info)?;
                 let location = codegen.location_from_meta(meta);
                 function.append_circom_return(codegen, location, value)?;
                 // circom allows unreachable code after a return but it is not processed
@@ -1859,7 +2149,7 @@ where
                 Ok(true)
             }
             Statement::Assert { meta, arg } => {
-                let cond = arg.gen_llzk_in_function(codegen, function)?;
+                let cond = arg.gen_llzk_in_function(codegen, function, info)?;
                 let location = codegen.location_from_meta(meta);
                 let cond = function.cast_to_bool_if_needed(codegen, location, cond)?;
                 let msg = Some("assertion failed");
@@ -1898,10 +2188,11 @@ where
 {
     type Output = Value<'ctx, 'val>;
 
-    fn gen_llzk_in_function<'ast>(
+    fn gen_llzk_in_function<'ast, 'info>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+        info: InfoProviders<'info>,
     ) -> Result<Self::Output> {
         match self {
             Expression::Number(meta, big_int) => {
@@ -1911,63 +2202,50 @@ where
                     codegen.new_felt_const_op(big_int, codegen.location_from_meta(meta))?,
                 )
             }
-            Expression::Variable { meta, name, access } => match access.as_slice() {
-                [] => {
-                    let v = function.block_ctx.get_named_value(name)?;
-                    Ok(*v)
-                }
-                a => {
-                    let location = codegen.location_from_meta(meta);
-                    let indices = a
-                        .iter()
-                        .map(|access| {
-                            let idx = match access {
-                                Access::ArrayAccess(index_expr) => {
-                                    index_expr.gen_llzk_in_function(codegen, function)
-                                }
-                                #[allow(unused_variables)] // TODO: TEMP
-                                Access::ComponentAccess(name) => {
-                                    todo!("Handle component access")
-                                }
-                            }?;
-                            function.cast_to_index_if_needed(location, idx)
-                        })
-                        .collect::<Result<Vec<Value<'_, '_>>>>()?;
-                    let arr_ref = function.block_ctx.get_named_value(name)?;
-                    function.append_array_read(*arr_ref, &indices, location, Some(name))
-                }
-            },
+            Expression::Variable { meta, name, access } => {
+                let lvalue = Lvalue::new(
+                    name,
+                    if info.subcmp_info.is_subcmp(name) { Root::Signal } else { Root::Var },
+                    access,
+                );
+                lvalue.get_value(
+                    codegen,
+                    function,
+                    info.subcmp_info,
+                    codegen.location_from_meta(meta),
+                    None,
+                )
+            }
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                let lhs = lhe.gen_llzk_in_function(codegen, function)?;
-                let rhs = rhe.gen_llzk_in_function(codegen, function)?;
+                let lhs = lhe.gen_llzk_in_function(codegen, function, info)?;
+                let rhs = rhe.gen_llzk_in_function(codegen, function, info)?;
                 function.gen_infix_op(codegen, meta, infix_op, lhs, rhs)
             }
             Expression::PrefixOp { meta, prefix_op, rhe } => {
-                let rhs = rhe.gen_llzk_in_function(codegen, function)?;
+                let rhs = rhe.gen_llzk_in_function(codegen, function, info)?;
                 function.gen_prefix_op(codegen, meta, prefix_op, rhs)
             }
             Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
                 let location = codegen.location_from_meta(meta);
                 // Ensure the condition is a bool type.
-                let cond_val = cond.gen_llzk_in_function(codegen, function)?;
+                let cond_val = cond.gen_llzk_in_function(codegen, function, info)?;
                 let condition = function.cast_to_bool_if_needed(codegen, location, cond_val)?;
                 let scf_if_op = function.generate_simple_scf_if(
                     codegen,
                     meta,
                     condition,
-                    |fc| if_true.gen_llzk_in_function(codegen, fc),
-                    |fc| if_false.gen_llzk_in_function(codegen, fc),
+                    |fc| if_true.gen_llzk_in_function(codegen, fc, info),
+                    |fc| if_false.gen_llzk_in_function(codegen, fc, info),
                 )?;
 
                 function.append_op_unnamed_result(scf_if_op)
             }
             Expression::ArrayInLine { meta, values } => {
                 let location = codegen.location_from_meta(meta);
-                let builder = &OpBuilder::new(codegen.context);
                 // Multi-dimensional arrays are made up of array values as their elements
                 let values = values
                     .iter()
-                    .map(|val_expr| val_expr.gen_llzk_in_function(codegen, function))
+                    .map(|val_expr| val_expr.gen_llzk_in_function(codegen, function, info))
                     .collect::<Result<Vec<Value>>>()?;
                 let value_ty =
                     values.first().expect("Array must have at least one element").r#type();
@@ -1979,11 +2257,10 @@ where
                     // For subarrays, we need to create a new array then insert the values
                     let dim = codegen.index_attr(i64::try_from(values.len())?);
                     let arr_ty = new_array_type(dim.into(), &subarr_ty);
-                    let new_arr = function.append_op_unnamed_result(array::new(
-                        builder,
+                    let new_arr = function.append_op_unnamed_result(codegen.new_array_new_op(
                         location,
                         arr_ty,
-                        llzk::dialect::array::ArrayCtor::Values(&[]),
+                        ArrayCtor::Values(&[]),
                     ))?;
                     for (idx, val) in values.iter().enumerate() {
                         let idx_val = function.append_op_unnamed_result(
@@ -2002,25 +2279,23 @@ where
                 } else {
                     let dim = codegen.index_attr(i64::try_from(values.len())?);
                     let arr_ty = ArrayType::new(value_ty.into(), &[dim.into()]);
-                    function.append_op_unnamed_result(array::new(
-                        builder,
+                    function.append_op_unnamed_result(codegen.new_array_new_op(
                         location,
                         arr_ty,
-                        llzk::dialect::array::ArrayCtor::Values(&values),
+                        ArrayCtor::Values(&values),
                     ))
                 }
             }
             Expression::UniformArray { meta, value, dimension } => {
                 let location = codegen.location_from_meta(meta);
                 // Multi-dimensional arrays are made up of array values as their elements
-                let value = value.gen_llzk_in_function(codegen, function)?;
+                let value = value.gen_llzk_in_function(codegen, function, info)?;
                 let dim_result = function.convert_dim_expr(codegen, dimension)?;
                 let dim = Option::from(dim_result)
                     .ok_or_else(|| anyhow!("unable to convert dimension in function context"))?;
                 function.generate_uniform_array(codegen, location, value, &dim)
             }
             Expression::Call { meta, id, args } => {
-                let builder = OpBuilder::new(codegen.context.deref());
                 let location = codegen.location_from_meta(meta);
                 let target_function_data = codegen.program.get_function_data(id);
                 // Visit each argument and collect the resulting LLZK Values for both functions.
@@ -2030,7 +2305,7 @@ where
                     .iter()
                     .zip(param_types)
                     .map(|(arg, expected_type)| {
-                        let operand_val = arg.gen_llzk_in_function(codegen, function)?;
+                        let operand_val = arg.gen_llzk_in_function(codegen, function, info)?;
                         function.cast_to_expected_type_if_needed(
                             codegen,
                             location,
@@ -2042,9 +2317,9 @@ where
                 // Create the CallOp in each function using the collected args.
                 function.append_op_unnamed_result(
                     function::call(
-                        &builder,
+                        codegen.op_builder(),
                         location,
-                        FlatSymbolRefAttribute::new(codegen.context, id),
+                        codegen.flat_sym(id),
                         &call_operands,
                         &[target_function_data.get_type_of_return(codegen)],
                     )?
@@ -2072,13 +2347,14 @@ where
 {
     type Output = ();
 
-    fn gen_llzk_in_function<'ast>(
+    fn gen_llzk_in_function<'ast, 'info>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+        info: InfoProviders<'info>,
     ) -> Result<Self::Output> {
         for s in self {
-            let skip_rest_of_block = s.gen_llzk_in_function(codegen, function)?;
+            let skip_rest_of_block = s.gen_llzk_in_function(codegen, function, info)?;
             if skip_rest_of_block {
                 break;
             }
