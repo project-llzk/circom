@@ -12,7 +12,7 @@ template ArithNeg() {
 
 component main = ArithNeg();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@ArithNeg<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArithNeg<[]>>} {
 // CHECK-LABEL:   struct.def @ArithNeg<[]> {
 // CHECK-NEXT:      struct.member @x : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute

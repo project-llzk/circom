@@ -14,7 +14,7 @@ template ArithSubtract() {
 
 component main = ArithSubtract();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@ArithSubtract<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArithSubtract<[]>>} {
 // CHECK-LABEL:   struct.def @ArithSubtract<[]> {
 // CHECK-NEXT:      struct.member @x : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute

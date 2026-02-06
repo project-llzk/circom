@@ -19,7 +19,7 @@ template T14() {
 
 component main = T14();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@T14<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@T14<[]>>} {
 // CHECK-LABEL:   struct.def @T14<[]> {
 // CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@T14<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

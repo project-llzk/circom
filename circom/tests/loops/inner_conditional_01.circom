@@ -33,7 +33,7 @@ template InnerConditional1(N) {
 
 component main = InnerConditional1(10);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@InnerConditional1<[10]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerConditional1<[10]>>} {
 // CHECK-NEXT:    struct.def @InnerConditional1<[@N]> {
 // CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute

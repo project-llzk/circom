@@ -30,7 +30,7 @@ template Multiplier3() {
 
 component main = Multiplier3();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Multiplier3<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Multiplier3<[]>>} {
 // CHECK-NEXT:    struct.def @Multiplier2<[]> {
 // CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Multiplier2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

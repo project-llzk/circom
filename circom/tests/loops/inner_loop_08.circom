@@ -20,7 +20,7 @@ template InnerLoops(N) {
 
 component main = InnerLoops(2);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@InnerLoops<[2]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerLoops<[2]>>} {
 // CHECK-NEXT:    struct.def @InnerLoops<[@N]> {
 // CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute

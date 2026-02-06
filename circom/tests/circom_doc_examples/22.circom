@@ -16,7 +16,7 @@ template Ex(n, m){
 
 component main = Ex(3, 3);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Ex<[3, 3]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Ex<[3, 3]>>} {
 // CHECK-NEXT:    struct.def @Ex<[@n, @m]> {
 // CHECK-NEXT:      struct.member @out : !array.type<@m x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) -> !struct.type<@Ex<[@n, @m]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

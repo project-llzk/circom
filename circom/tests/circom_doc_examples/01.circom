@@ -14,7 +14,7 @@ template Multiplier2() {
 
 component main {public [in1,in2]} = Multiplier2();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Multiplier2<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Multiplier2<[]>>} {
 // CHECK-LABEL:   struct.def @Multiplier2<[]> {
 // CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute

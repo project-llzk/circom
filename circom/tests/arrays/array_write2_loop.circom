@@ -18,7 +18,7 @@ template Array1() {
 
 component main = Array1();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Array1<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Array1<[]>>} {
 // CHECK-NEXT:    struct.def @Array1<[]> {
 // CHECK-NEXT:      struct.member @out : !array.type<5,2 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@Array1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

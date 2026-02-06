@@ -16,7 +16,7 @@ template Template(m, n, c) {
 
 component main = Template([[0, 1], [2, 3]], [1, 0], 2);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Template_0<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Template_0<[]>>} {
 // CHECK-NEXT:    function.def @f_0(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<2,2 x !felt.type>) -> !array.type<2,2 x !felt.type> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      function.return %[[VAL_0]] : !array.type<2,2 x !felt.type>
 // CHECK-NEXT:    }

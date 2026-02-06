@@ -51,7 +51,7 @@ template Main() {
 
 component main = Main();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Main_0<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Main_0<[]>>} {
 // CHECK-NEXT:    function.def @add_1(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_3:[0-9a-zA-Z_\.]+]]: !felt.type) -> !array.type<2 x !felt.type> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  168700
 // CHECK-NEXT:      %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  168696

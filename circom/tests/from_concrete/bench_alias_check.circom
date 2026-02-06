@@ -82,7 +82,7 @@ template AliasCheck() {
 
 component main = AliasCheck();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@AliasCheck_2<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@AliasCheck_2<[]>>} {
 // CHECK-NEXT:    struct.def @AliasCheck_2<[]> {
 // CHECK-NEXT:      struct.member @compConstant : !struct.type<@CompConstant_1<[]>>
 // CHECK-NEXT:      struct.member @compConstant$inputs : !pod.type<[@in: !array.type<254 x !felt.type>]>

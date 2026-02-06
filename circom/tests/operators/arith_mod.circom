@@ -18,7 +18,7 @@ template ArithRemainder() {
 
 component main = ArithRemainder();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@ArithRemainder<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArithRemainder<[]>>} {
 // CHECK-NEXT:    struct.def @ArithRemainder<[]> {
 // CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      struct.member @inv : !felt.type

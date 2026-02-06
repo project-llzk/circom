@@ -24,7 +24,7 @@ template Array1() {
 
 component main = Array1();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Array1<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Array1<[]>>} {
 // CHECK-NEXT:    struct.def @Array1<[]> {
 // CHECK-NEXT:      struct.member @out : !array.type<5 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      struct.member @foo : !array.type<5 x !struct.type<@Foo<[]>>>

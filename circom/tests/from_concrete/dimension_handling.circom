@@ -25,7 +25,7 @@ template A() {
 
 component main = A();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@A_0<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A_0<[]>>} {
 // CHECK-NEXT:    function.def @myAdd_1(%[[V_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_1:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_2:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_3:[0-9a-zA-Z_\.]+]]: !felt.type) -> !array.type<2 x !felt.type> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[V_4:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:      %[[V_5:[0-9a-zA-Z_\.]+]] = felt.const  0

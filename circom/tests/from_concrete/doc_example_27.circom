@@ -28,7 +28,7 @@ template A(){
 
 component main = A();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@A_1<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A_1<[]>>} {
 // CHECK-NEXT:    struct.def @A_1<[]> {
 // CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      struct.member @b : !struct.type<@Bits2Num_0<[]>>

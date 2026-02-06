@@ -28,7 +28,7 @@ template InnerConditional12(N) {
 
 component main = InnerConditional12(4);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@InnerConditional12<[4]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerConditional12<[4]>>} {
 // CHECK-NEXT:    struct.def @InnerConditional12<[@N]> {
 // CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute

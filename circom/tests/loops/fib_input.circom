@@ -26,7 +26,7 @@ template Fibonacci() {
 
 component main = Fibonacci();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Fibonacci<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Fibonacci<[]>>} {
 // CHECK-NEXT:    struct.def @Fibonacci<[]> {
 // CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Fibonacci<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

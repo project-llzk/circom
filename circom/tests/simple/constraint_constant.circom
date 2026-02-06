@@ -12,7 +12,7 @@ template Simple2(a) {
 
 component main = Simple2(10);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Simple2<[10]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Simple2<[10]>>} {
 // CHECK-NEXT:    struct.def @Simple2<[@a]> {
 // CHECK-NEXT:      struct.member @b : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@Simple2<[@a]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

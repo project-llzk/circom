@@ -20,7 +20,7 @@ template Num2Bits(n) {
 
 component main {public [in]}= Num2Bits(3);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Num2Bits<[3]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Num2Bits<[3]>>} {
 // CHECK-NEXT:    struct.def @Num2Bits<[@n]> {
 // CHECK-NEXT:      struct.member @out : !array.type<@n x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type {llzk.pub}) -> !struct.type<@Num2Bits<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

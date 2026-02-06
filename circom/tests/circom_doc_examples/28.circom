@@ -22,7 +22,7 @@ template Caller(){
 
 component main = Caller();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Caller<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Caller<[]>>} {
 // CHECK-NEXT:    struct.def @A<[]> {
 // CHECK-NEXT:      struct.member @intermediate : !felt.type
 // CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}

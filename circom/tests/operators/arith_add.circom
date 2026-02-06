@@ -13,7 +13,7 @@ template ArithAdd() {
 
 component main = ArithAdd();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@ArithAdd<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArithAdd<[]>>} {
 // CHECK-LABEL:   struct.def @ArithAdd<[]> {
 // CHECK-NEXT:      struct.member @x : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute

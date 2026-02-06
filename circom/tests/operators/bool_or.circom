@@ -13,7 +13,7 @@ template BoolOr() {
 
 component main = BoolOr();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@BoolOr<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BoolOr<[]>>} {
 // CHECK-NEXT:    struct.def @BoolOr<[]> {
 // CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@BoolOr<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

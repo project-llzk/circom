@@ -30,7 +30,7 @@ template runner() {
 
 component main = runner();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@runner<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@runner<[]>>} {
 // CHECK-NEXT:    struct.def @InnerConditional2<[@N, @T]> {
 // CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@InnerConditional2<[@N, @T]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

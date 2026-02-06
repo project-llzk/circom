@@ -12,7 +12,7 @@ template BitwiseShiftRight() {
 
 component main = BitwiseShiftRight();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@BitwiseShiftRight<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BitwiseShiftRight<[]>>} {
 // CHECK-NEXT:    struct.def @BitwiseShiftRight<[]> {
 // CHECK-NEXT:      struct.member @type : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@BitwiseShiftRight<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

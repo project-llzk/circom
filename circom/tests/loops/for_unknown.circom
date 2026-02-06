@@ -18,7 +18,7 @@ template ForUnknown() {
 
 component main = ForUnknown();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@ForUnknown<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ForUnknown<[]>>} {
 // CHECK-LABEL:   struct.def @ForUnknown<[]> {
 // CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute

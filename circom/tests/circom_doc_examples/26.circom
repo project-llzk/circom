@@ -18,7 +18,7 @@ template B(n){
 }
 component main = B(3);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@B<[3]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@B<[3]>>} {
 // CHECK-NEXT:    struct.def @A<[@n]> {
 // CHECK-NEXT:      struct.member @b : !felt.type {llzk.pub}
 // CHECK-NEXT:      struct.member @c : !felt.type {llzk.pub}

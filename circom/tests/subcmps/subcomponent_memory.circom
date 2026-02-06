@@ -22,7 +22,7 @@ template A() {
 
 component main = A();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@A<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A<[]>>} {
 // CHECK-NEXT:    struct.def @A<[]> {
 // CHECK-NEXT:      struct.member @b : !struct.type<@B<[]>>
 // CHECK-NEXT:      struct.member @b$inputs : !pod.type<[@x: !felt.type, @y: !array.type<10 x !felt.type>]>

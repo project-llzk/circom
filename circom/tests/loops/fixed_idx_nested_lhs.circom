@@ -14,7 +14,7 @@ template FixIdxNested() {
 
 component main = FixIdxNested();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@FixIdxNested<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@FixIdxNested<[]>>} {
 // CHECK-NEXT:    struct.def @FixIdxNested<[]> {
 // CHECK-NEXT:      struct.member @out : !array.type<9 x !felt.type>
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@FixIdxNested<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

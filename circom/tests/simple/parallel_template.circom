@@ -12,7 +12,7 @@ template Parallel() {
 
 component main = Parallel();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Parallel<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Parallel<[]>>} {
 // CHECK-NEXT:    struct.def @Foo<[]> {
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@Foo<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@Foo<[]>>

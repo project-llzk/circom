@@ -13,7 +13,7 @@ template A() {
 
 component main = A();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@A<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A<[]>>} {
 // CHECK-LABEL:   struct.def @A<[]> {
 // CHECK-NEXT:      struct.member @val : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute

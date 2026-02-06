@@ -12,7 +12,7 @@ template A(s) {
 
 component main = A(12);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@A<[12]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A<[12]>>} {
 // CHECK-NEXT:    struct.def @A<[@s]> {
 // CHECK-NEXT:      struct.member @out : !array.type<@s x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@s x !felt.type>) -> !struct.type<@A<[@s]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

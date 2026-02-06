@@ -27,7 +27,7 @@ template UnknownLoopComponent() {
 
 component main = UnknownLoopComponent();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@UnknownLoopComponent<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@UnknownLoopComponent<[]>>} {
 // CHECK-NEXT:    struct.def @UnknownLoopComponent<[]> {
 // CHECK-NEXT:      struct.member @bits : !felt.type {llzk.pub}
 // CHECK-NEXT:      struct.member @nb : !struct.type<@nbits<[]>>

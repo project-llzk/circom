@@ -15,7 +15,7 @@ template IsZero() {
 
 component main = IsZero();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@IsZero<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@IsZero<[]>>} {
 // CHECK-NEXT:    struct.def @IsZero<[]> {
 // CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      struct.member @inv : !felt.type

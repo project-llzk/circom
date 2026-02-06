@@ -17,7 +17,7 @@ template T16() {
 
 component main = T16();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@T16<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@T16<[]>>} {
 // CHECK-LABEL:   struct.def @T16<[]> {
 // CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute

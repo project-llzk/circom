@@ -26,7 +26,7 @@ template UnknownLoopOOB() {
 
 component main = UnknownLoopOOB();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@UnknownLoopOOB<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@UnknownLoopOOB<[]>>} {
 // CHECK-NEXT:    struct.def @UnknownLoopOOB<[]> {
 // CHECK-NEXT:      struct.member @y : !felt.type {llzk.pub}
 // CHECK-NEXT:      struct.member @a : !struct.type<@accumulate<[]>>

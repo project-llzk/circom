@@ -22,7 +22,7 @@ template mult4(){
 
 component main = mult4();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@mult4<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@mult4<[]>>} {
 // CHECK-NEXT:    struct.def @mult<[]> {
 // CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type>) -> !struct.type<@mult<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

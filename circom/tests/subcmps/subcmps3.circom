@@ -33,7 +33,7 @@ template SubCmps3() {
 
 component main = SubCmps3();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@SubCmps3<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@SubCmps3<[]>>} {
 // CHECK-NEXT:    struct.def @SubCmps3<[]> {
 // CHECK-NEXT:      struct.member @outp : !felt.type {llzk.pub}
 // CHECK-NEXT:      struct.member @s : !struct.type<@Sum<[4]>>

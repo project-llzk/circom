@@ -23,7 +23,7 @@ template EarlyReturn() {
 
 component main = EarlyReturn();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@EarlyReturn<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@EarlyReturn<[]>>} {
 // CHECK-NEXT:    function.def @earlyReturnFn(%[[V_I:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_N:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[V_U:[0-9a-zA-Z_\.]+]] = llzk.nondet : !felt.type
 // CHECK-NEXT:      %[[V_3:[0-9a-zA-Z_\.]+]] = felt.const  0

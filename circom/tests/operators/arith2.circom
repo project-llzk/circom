@@ -14,7 +14,7 @@ template Arith2() {
 
 component main = Arith2();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Arith2<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Arith2<[]>>} {
 // CHECK-LABEL:   struct.def @Arith2<[]> {
 // CHECK-NEXT:      struct.member @x : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute

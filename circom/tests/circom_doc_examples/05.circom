@@ -15,7 +15,7 @@ template UsingExample() {
 
 component main = UsingExample();
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@UsingExample<[]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@UsingExample<[]>>} {
 // CHECK-NEXT:    struct.def @Example<[]> {
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@Example<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@Example<[]>>

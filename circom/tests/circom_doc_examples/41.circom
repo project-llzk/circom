@@ -31,7 +31,7 @@ template parity(n) {
 
 component main = parity(10);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@parity<[10]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@parity<[10]>>} {
 // CHECK-NEXT:    struct.def @Num2Bits<[@n]> {
 // CHECK-NEXT:      struct.member @out : !array.type<@n x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Num2Bits<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

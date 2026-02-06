@@ -20,7 +20,7 @@ template Foo(N) {
 
 component main = Foo(2);
 
-// CHECK-LABEL: module attributes {llzk.main = !struct.type<@Foo<[2]>>, veridise.lang = "llzk"} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Foo<[2]>>} {
 // CHECK-NEXT:    struct.def @Foo<[@N]> {
 // CHECK-NEXT:      struct.member @c : !struct.type<@Sum<[@N]>>
 // CHECK-NEXT:      struct.member @c$inputs : !pod.type<[@inp: !array.type<@N x !felt.type>]>
