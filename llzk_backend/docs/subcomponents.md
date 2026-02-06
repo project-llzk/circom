@@ -44,7 +44,7 @@ subcomponent by name is refering to this value. The second piece of the
 construction is an assign var statement. When a variable tied to a subcomponent
 gets assigned it does different things depending on the function. In `@compute`,
 it updates the value with the result of lowering the right hand expression. In
-the case of `@constrain` the value gets replaced with a `struct.readf` that
+the case of `@constrain` the value gets replaced with a `struct.readm` that
 reads the field with the same name as the subcomponent.
 
 The inputs of the template (the arguments of `@compute` and `@constrain`) are
@@ -66,11 +66,11 @@ For the handling of `===` see below.
 When reading a subcomponent signal the backend first checks if it's an input or
 an output (or intermediate, which is an error). If the signal is an input then
 locates the corresponding argument to the function, similar to how writing
-works. If the signal is an output generates a `struct.readf` operation that
+works. If the signal is an output generates a `struct.readm` operation that
 reads the signal from the subcomponent.
 
 ## 3. Subcomponent writing
 
-Once lowering is complete, the backend inserts `struct.writef` operations for
+Once lowering is complete, the backend inserts `struct.writem` operations for
 each subcomponent using the value in the scope associated to the subcomponent's
 name.

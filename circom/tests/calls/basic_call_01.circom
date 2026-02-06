@@ -28,24 +28,24 @@ component main = Call1();
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@Call1<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @B<[]> {
-// CHECK-NEXT:      struct.field @x : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @x : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@B<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@B<[]>>
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_0]], %[[VAL_1]] : !felt.type, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_2]][@x] = %[[VAL_3]] : <@B<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_2]][@x] = %[[VAL_3]] : <@B<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_2]] : !struct.type<@B<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@B<[]>>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_6:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@x] : <@B<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_4]][@x] : <@B<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_5]], %[[VAL_6]] : !felt.type, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_7]], %[[VAL_8]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @Call1<[]> {
-// CHECK-NEXT:      struct.field @y : !felt.type {llzk.pub}
-// CHECK-NEXT:      struct.field @a : !struct.type<@B<[]>>
-// CHECK-NEXT:      struct.field @a$inputs : !pod.type<[@a: !felt.type, @b: !felt.type]>
+// CHECK-NEXT:      struct.member @y : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @a : !struct.type<@B<[]>>
+// CHECK-NEXT:      struct.member @a$inputs : !pod.type<[@a: !felt.type, @b: !felt.type]>
 // CHECK-NEXT:      function.def @compute(%[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_10:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Call1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = struct.new : <@Call1<[]>>
 // CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
@@ -80,22 +80,22 @@ component main = Call1();
 // CHECK-NEXT:        } else {
 // CHECK-NEXT:        }
 // CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_13]][@comp] : <[@count: index, @comp: !struct.type<@B<[]>>, @params: !pod.type<[]>]>, !struct.type<@B<[]>>
-// CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_31]][@x] : <@B<[]>>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_11]][@y] = %[[VAL_32]] : <@Call1<[]>>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_11]][@a$inputs] = %[[VAL_14]] : <@Call1<[]>>, !pod.type<[@a: !felt.type, @b: !felt.type]>
+// CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_31]][@x] : <@B<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_11]][@y] = %[[VAL_32]] : <@Call1<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_11]][@a$inputs] = %[[VAL_14]] : <@Call1<[]>>, !pod.type<[@a: !felt.type, @b: !felt.type]>
 // CHECK-NEXT:        %[[VAL_33:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_13]][@comp] : <[@count: index, @comp: !struct.type<@B<[]>>, @params: !pod.type<[]>]>, !struct.type<@B<[]>>
-// CHECK-NEXT:        struct.writef %[[VAL_11]][@a] = %[[VAL_33]] : <@Call1<[]>>, !struct.type<@B<[]>>
+// CHECK-NEXT:        struct.writem %[[VAL_11]][@a] = %[[VAL_33]] : <@Call1<[]>>, !struct.type<@B<[]>>
 // CHECK-NEXT:        function.return %[[VAL_11]] : !struct.type<@Call1<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_34:[0-9a-zA-Z_\.]+]]: !struct.type<@Call1<[]>>, %[[VAL_35:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_36:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_37:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_34]][@y] : <@Call1<[]>>, !felt.type
-// CHECK-NEXT:        %[[VAL_38:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_34]][@a] : <@Call1<[]>>, !struct.type<@B<[]>>
-// CHECK-NEXT:        %[[VAL_39:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_34]][@a$inputs] : <@Call1<[]>>, !pod.type<[@a: !felt.type, @b: !felt.type]>
+// CHECK-NEXT:        %[[VAL_37:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_34]][@y] : <@Call1<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_38:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_34]][@a] : <@Call1<[]>>, !struct.type<@B<[]>>
+// CHECK-NEXT:        %[[VAL_39:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_34]][@a$inputs] : <@Call1<[]>>, !pod.type<[@a: !felt.type, @b: !felt.type]>
 // CHECK-NEXT:        %[[VAL_40:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_39]][@a] : <[@a: !felt.type, @b: !felt.type]>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_40]], %[[VAL_35]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_41:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_39]][@b] : <[@a: !felt.type, @b: !felt.type]>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_41]], %[[VAL_36]] : !felt.type, !felt.type
-// CHECK-NEXT:        %[[VAL_42:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_38]][@x] : <@B<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_42:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_38]][@x] : <@B<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_37]], %[[VAL_42]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_43:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_39]][@a] : <[@a: !felt.type, @b: !felt.type]>, !felt.type
 // CHECK-NEXT:        %[[VAL_44:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_39]][@b] : <[@a: !felt.type, @b: !felt.type]>, !felt.type

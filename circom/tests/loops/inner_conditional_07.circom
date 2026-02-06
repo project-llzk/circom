@@ -30,7 +30,7 @@ component main = InnerConditional7(3);
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@InnerConditional7<[3]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @InnerConditional7<[@N]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      () -> !struct.type<@InnerConditional7<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[V_0:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerConditional7<[@N]>>
@@ -90,13 +90,13 @@ component main = InnerConditional7(3);
 // CHECK-NEXT:        %[[V_44:[0-9a-zA-Z_\.]+]] = cast.toindex %[[V_43]]
 // CHECK-NEXT:        %[[V_45:[0-9a-zA-Z_\.]+]] = array.read %[[V_10]]#0{{\[}}%[[V_44]]] : <@N x !felt.type>, !felt.type
 // CHECK-NEXT:        %[[V_46:[0-9a-zA-Z_\.]+]] = felt.add %[[V_42]], %[[V_45]] : !felt.type, !felt.type
-// CHECK-NEXT:        struct.writef %[[V_0]][@out] = %[[V_46]] : <@InnerConditional7<[@N]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[V_0]][@out] = %[[V_46]] : <@InnerConditional7<[@N]>>, !felt.type
 // CHECK-NEXT:        function.return %[[V_0]] : !struct.type<@InnerConditional7<[@N]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[V_47:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerConditional7<[@N]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %[[V_87:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_47]][@out] : <@InnerConditional7<[@N]>>, !felt.type
+// CHECK-NEXT:        %[[V_87:[0-9a-zA-Z_\.]+]] = struct.readm %[[V_47]][@out] : <@InnerConditional7<[@N]>>, !felt.type
 // CHECK-NEXT:        %[[V_49:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_A:[0-9a-zA-Z_\.]+]] = array.new  : <@N x !felt.type>
 // CHECK-NEXT:        %[[V_51:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index

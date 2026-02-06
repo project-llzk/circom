@@ -126,7 +126,7 @@ component main = EarlyReturn();
 // CHECK-NEXT:      function.return %[[VAL_58]] : !felt.type
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @EarlyReturn<[]> {
-// CHECK-NEXT:      struct.field @outp : !array.type<2 x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @outp : !array.type<2 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_61:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@EarlyReturn<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_62:[0-9a-zA-Z_\.]+]] = struct.new : <@EarlyReturn<[]>>
 // CHECK-NEXT:        %[[VAL_63:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
@@ -138,12 +138,12 @@ component main = EarlyReturn();
 // CHECK-NEXT:        %[[VAL_68:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_69:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_68]]
 // CHECK-NEXT:        array.write %[[VAL_63]]{{\[}}%[[VAL_69]]] = %[[VAL_67]] : <2 x !felt.type>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_62]][@outp] = %[[VAL_63]] : <@EarlyReturn<[]>>, !array.type<2 x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_62]][@outp] = %[[VAL_63]] : <@EarlyReturn<[]>>, !array.type<2 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_62]] : !struct.type<@EarlyReturn<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_70:[0-9a-zA-Z_\.]+]]: !struct.type<@EarlyReturn<[]>>, %[[VAL_71:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-DAG:         %[[VAL_72:[0-9a-zA-Z_\.]+]] = function.call @noEarlyReturnFn(%[[VAL_71]]) : (!felt.type) -> !felt.type
-// CHECK-DAG:         %[[VAL_73:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_70]][@outp] : <@EarlyReturn<[]>>, !array.type<2 x !felt.type>
+// CHECK-DAG:         %[[VAL_73:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_70]][@outp] : <@EarlyReturn<[]>>, !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_74:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_75:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_74]]
 // CHECK-NEXT:        %[[VAL_76:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_73]]{{\[}}%[[VAL_75]]] : <2 x !felt.type>, !felt.type

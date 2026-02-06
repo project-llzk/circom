@@ -13,16 +13,16 @@ component main = ArithPower();
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@ArithPower<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:   struct.def @ArithPower<[]> {
-// CHECK-NEXT:     struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:     struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:     function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@ArithPower<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:       %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@ArithPower<[]>>
 // CHECK-NEXT:       %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  2
 // CHECK-NEXT:       %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.pow %[[VAL_0]], %[[VAL_2]] : !felt.type, !felt.type
-// CHECK-NEXT:       struct.writef %[[VAL_1]][@out] = %[[VAL_3]] : <@ArithPower<[]>>, !felt.type
+// CHECK-NEXT:       struct.writem %[[VAL_1]][@out] = %[[VAL_3]] : <@ArithPower<[]>>, !felt.type
 // CHECK-NEXT:       function.return %[[VAL_1]] : !struct.type<@ArithPower<[]>>
 // CHECK-NEXT:     }
 // CHECK-NEXT:     function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@ArithPower<[]>>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:       %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@out] : <@ArithPower<[]>>, !felt.type
+// CHECK-NEXT:       %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_4]][@out] : <@ArithPower<[]>>, !felt.type
 // CHECK-NEXT:       function.return
 // CHECK-NEXT:     }
 // CHECK-NEXT:   }

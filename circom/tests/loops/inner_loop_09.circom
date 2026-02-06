@@ -24,8 +24,8 @@ component main = InnerLoops(2);
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@InnerLoops<[2]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @InnerLoops<[@N]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
-// CHECK-NEXT:      struct.field @out2 : !array.type<@N x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out2 : !array.type<@N x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>) -> !struct.type<@InnerLoops<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerLoops<[@N]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
@@ -61,14 +61,14 @@ component main = InnerLoops(2);
 // CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_14]], %[[VAL_32]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_20]]#0, %[[VAL_31]], %[[VAL_33]] : !felt.type, !felt.type, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@out] = %[[VAL_7]]#0 : <@InnerLoops<[@N]>>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@out2] = %[[VAL_3]] : <@InnerLoops<[@N]>>, !array.type<@N x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@out] = %[[VAL_7]]#0 : <@InnerLoops<[@N]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@out2] = %[[VAL_3]] : <@InnerLoops<[@N]>>, !array.type<@N x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@InnerLoops<[@N]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_34:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerLoops<[@N]>>, %[[VAL_35:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_36:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readf %[[VAL_34]][@out] : <@InnerLoops<[@N]>>, !felt.type
-// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readf %[[VAL_34]][@out2] : <@InnerLoops<[@N]>>, !array.type<@N x !felt.type>
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readm %[[VAL_34]][@out] : <@InnerLoops<[@N]>>, !felt.type
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readm %[[VAL_34]][@out2] : <@InnerLoops<[@N]>>, !array.type<@N x !felt.type>
 // CHECK-NEXT:        %[[VAL_37:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_38:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_39:[0-9a-zA-Z_\.]+]] = felt.const  0

@@ -34,22 +34,22 @@ component main = CallDiffTypeTest();
 // CHECK-NEXT:     }
 //
 // CHECK-LABEL:   struct.def @CallDiffTypeTest<[]> {
-// CHECK-NEXT:      struct.field @out1 : !felt.type {llzk.pub}
-// CHECK-NEXT:      struct.field @out2 : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out1 : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out2 : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      (%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@CallDiffTypeTest<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@CallDiffTypeTest<[]>>
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = function.call @f(%[[VAL_0]], %[[VAL_1]]) : (!felt.type, !felt.type) -> !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_2]][@out1] = %[[VAL_3]] : <@CallDiffTypeTest<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_2]][@out1] = %[[VAL_3]] : <@CallDiffTypeTest<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = function.call @f(%[[VAL_4]], %[[VAL_1]]) : (!felt.type, !felt.type) -> !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_2]][@out2] = %[[VAL_5]] : <@CallDiffTypeTest<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_2]][@out2] = %[[VAL_5]] : <@CallDiffTypeTest<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_2]] : !struct.type<@CallDiffTypeTest<[]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[VAL_6:[0-9a-zA-Z_\.]+]]: !struct.type<@CallDiffTypeTest<[]>>, %[[VAL_7:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_8:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_6]][@out1] : <@CallDiffTypeTest<[]>>, !felt.type
-// CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_6]][@out2] : <@CallDiffTypeTest<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_6]][@out1] : <@CallDiffTypeTest<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_6]][@out2] : <@CallDiffTypeTest<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = function.call @f(%[[VAL_7]], %[[VAL_8]]) : (!felt.type, !felt.type) -> !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_10]], %[[VAL_9]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.const  1

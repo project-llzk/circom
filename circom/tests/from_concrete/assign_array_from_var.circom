@@ -13,7 +13,7 @@ component main = Template();
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@Template_0<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @Template_0<[]> {
-// CHECK-NEXT:      struct.field @ret : !array.type<2,2 x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @ret : !array.type<2,2 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@Template_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@Template_0<[]>>
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2,2 x !felt.type>
@@ -56,11 +56,11 @@ component main = Template();
 // CHECK-NEXT:        %[[VAL_29:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_29]]
 // CHECK-NEXT:        array.insert %[[VAL_1]]{{\[}}%[[VAL_30]]] = %[[VAL_20]] : <2,2 x !felt.type>, <2 x !felt.type>
-// CHECK-NEXT:        struct.writef %[[VAL_0]][@ret] = %[[VAL_1]] : <@Template_0<[]>>, !array.type<2,2 x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_0]][@ret] = %[[VAL_1]] : <@Template_0<[]>>, !array.type<2,2 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@Template_0<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_31:[0-9a-zA-Z_\.]+]]: !struct.type<@Template_0<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_62:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_31]][@ret] : <@Template_0<[]>>, !array.type<2,2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_62:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_31]][@ret] : <@Template_0<[]>>, !array.type<2,2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_32:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2,2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_33:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_34:[0-9a-zA-Z_\.]+]] = felt.const  0

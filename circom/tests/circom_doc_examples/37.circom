@@ -32,26 +32,26 @@ component main = Multiplier3();
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@Multiplier3<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @Multiplier2<[]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Multiplier2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@Multiplier2<[]>>
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_0]], %[[VAL_1]] : !felt.type, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_2]][@out] = %[[VAL_3]] : <@Multiplier2<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_2]][@out] = %[[VAL_3]] : <@Multiplier2<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_2]] : !struct.type<@Multiplier2<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@Multiplier2<[]>>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_6:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_4]][@out] : <@Multiplier2<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_4]][@out] : <@Multiplier2<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_5]], %[[VAL_6]] : !felt.type, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_7]], %[[VAL_8]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @Multiplier3<[]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
-// CHECK-NEXT:      struct.field @mult1 : !struct.type<@Multiplier2<[]>>
-// CHECK-NEXT:      struct.field @mult1$inputs : !pod.type<[@in1: !felt.type, @in2: !felt.type]>
-// CHECK-NEXT:      struct.field @mult2 : !struct.type<@Multiplier2<[]>>
-// CHECK-NEXT:      struct.field @mult2$inputs : !pod.type<[@in1: !felt.type, @in2: !felt.type]>
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @mult1 : !struct.type<@Multiplier2<[]>>
+// CHECK-NEXT:      struct.member @mult1$inputs : !pod.type<[@in1: !felt.type, @in2: !felt.type]>
+// CHECK-NEXT:      struct.member @mult2 : !struct.type<@Multiplier2<[]>>
+// CHECK-NEXT:      struct.member @mult2$inputs : !pod.type<[@in1: !felt.type, @in2: !felt.type]>
 // CHECK-NEXT:      function.def @compute(%[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_10:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_11:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Multiplier3<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = struct.new : <@Multiplier3<[]>>
 // CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
@@ -89,7 +89,7 @@ component main = Multiplier3();
 // CHECK-NEXT:        } else {
 // CHECK-NEXT:        }
 // CHECK-NEXT:        %[[VAL_35:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_14]][@comp] : <[@count: index, @comp: !struct.type<@Multiplier2<[]>>, @params: !pod.type<[]>]>, !struct.type<@Multiplier2<[]>>
-// CHECK-NEXT:        %[[VAL_36:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_35]][@out] : <@Multiplier2<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_36:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_35]][@out] : <@Multiplier2<[]>>, !felt.type
 // CHECK-NEXT:        pod.write %[[VAL_18]][@in1] = %[[VAL_36]] : <[@in1: !felt.type, @in2: !felt.type]>, !felt.type
 // CHECK-NEXT:        %[[VAL_37:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_17]][@count] : <[@count: index, @comp: !struct.type<@Multiplier2<[]>>, @params: !pod.type<[]>]>, index
 // CHECK-NEXT:        %[[VAL_38:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -119,32 +119,32 @@ component main = Multiplier3();
 // CHECK-NEXT:        } else {
 // CHECK-NEXT:        }
 // CHECK-NEXT:        %[[VAL_53:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_17]][@comp] : <[@count: index, @comp: !struct.type<@Multiplier2<[]>>, @params: !pod.type<[]>]>, !struct.type<@Multiplier2<[]>>
-// CHECK-NEXT:        %[[VAL_54:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_53]][@out] : <@Multiplier2<[]>>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_12]][@out] = %[[VAL_54]] : <@Multiplier3<[]>>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_12]][@mult1$inputs] = %[[VAL_15]] : <@Multiplier3<[]>>, !pod.type<[@in1: !felt.type, @in2: !felt.type]>
+// CHECK-NEXT:        %[[VAL_54:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_53]][@out] : <@Multiplier2<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_12]][@out] = %[[VAL_54]] : <@Multiplier3<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_12]][@mult1$inputs] = %[[VAL_15]] : <@Multiplier3<[]>>, !pod.type<[@in1: !felt.type, @in2: !felt.type]>
 // CHECK-NEXT:        %[[VAL_55:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_14]][@comp] : <[@count: index, @comp: !struct.type<@Multiplier2<[]>>, @params: !pod.type<[]>]>, !struct.type<@Multiplier2<[]>>
-// CHECK-NEXT:        struct.writef %[[VAL_12]][@mult1] = %[[VAL_55]] : <@Multiplier3<[]>>, !struct.type<@Multiplier2<[]>>
-// CHECK-NEXT:        struct.writef %[[VAL_12]][@mult2$inputs] = %[[VAL_18]] : <@Multiplier3<[]>>, !pod.type<[@in1: !felt.type, @in2: !felt.type]>
+// CHECK-NEXT:        struct.writem %[[VAL_12]][@mult1] = %[[VAL_55]] : <@Multiplier3<[]>>, !struct.type<@Multiplier2<[]>>
+// CHECK-NEXT:        struct.writem %[[VAL_12]][@mult2$inputs] = %[[VAL_18]] : <@Multiplier3<[]>>, !pod.type<[@in1: !felt.type, @in2: !felt.type]>
 // CHECK-NEXT:        %[[VAL_56:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_17]][@comp] : <[@count: index, @comp: !struct.type<@Multiplier2<[]>>, @params: !pod.type<[]>]>, !struct.type<@Multiplier2<[]>>
-// CHECK-NEXT:        struct.writef %[[VAL_12]][@mult2] = %[[VAL_56]] : <@Multiplier3<[]>>, !struct.type<@Multiplier2<[]>>
+// CHECK-NEXT:        struct.writem %[[VAL_12]][@mult2] = %[[VAL_56]] : <@Multiplier3<[]>>, !struct.type<@Multiplier2<[]>>
 // CHECK-NEXT:        function.return %[[VAL_12]] : !struct.type<@Multiplier3<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_57:[0-9a-zA-Z_\.]+]]: !struct.type<@Multiplier3<[]>>, %[[VAL_58:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_59:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_60:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_61:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_57]][@out] : <@Multiplier3<[]>>, !felt.type
-// CHECK-NEXT:        %[[VAL_62:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_57]][@mult1] : <@Multiplier3<[]>>, !struct.type<@Multiplier2<[]>>
-// CHECK-NEXT:        %[[VAL_63:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_57]][@mult1$inputs] : <@Multiplier3<[]>>, !pod.type<[@in1: !felt.type, @in2: !felt.type]>
-// CHECK-NEXT:        %[[VAL_64:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_57]][@mult2] : <@Multiplier3<[]>>, !struct.type<@Multiplier2<[]>>
-// CHECK-NEXT:        %[[VAL_65:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_57]][@mult2$inputs] : <@Multiplier3<[]>>, !pod.type<[@in1: !felt.type, @in2: !felt.type]>
+// CHECK-NEXT:        %[[VAL_61:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_57]][@out] : <@Multiplier3<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_62:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_57]][@mult1] : <@Multiplier3<[]>>, !struct.type<@Multiplier2<[]>>
+// CHECK-NEXT:        %[[VAL_63:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_57]][@mult1$inputs] : <@Multiplier3<[]>>, !pod.type<[@in1: !felt.type, @in2: !felt.type]>
+// CHECK-NEXT:        %[[VAL_64:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_57]][@mult2] : <@Multiplier3<[]>>, !struct.type<@Multiplier2<[]>>
+// CHECK-NEXT:        %[[VAL_65:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_57]][@mult2$inputs] : <@Multiplier3<[]>>, !pod.type<[@in1: !felt.type, @in2: !felt.type]>
 // CHECK-NEXT:        %[[VAL_66:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_63]][@in1] : <[@in1: !felt.type, @in2: !felt.type]>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_66]], %[[VAL_58]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_67:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_63]][@in2] : <[@in1: !felt.type, @in2: !felt.type]>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_67]], %[[VAL_59]] : !felt.type, !felt.type
-// CHECK-NEXT:        %[[VAL_68:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_62]][@out] : <@Multiplier2<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_68:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_62]][@out] : <@Multiplier2<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_69:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_65]][@in1] : <[@in1: !felt.type, @in2: !felt.type]>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_69]], %[[VAL_68]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_70:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_65]][@in2] : <[@in1: !felt.type, @in2: !felt.type]>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_70]], %[[VAL_60]] : !felt.type, !felt.type
-// CHECK-NEXT:        %[[VAL_71:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_64]][@out] : <@Multiplier2<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_71:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_64]][@out] : <@Multiplier2<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_61]], %[[VAL_71]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_72:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_63]][@in1] : <[@in1: !felt.type, @in2: !felt.type]>, !felt.type
 // CHECK-NEXT:        %[[VAL_73:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_63]][@in2] : <[@in1: !felt.type, @in2: !felt.type]>, !felt.type

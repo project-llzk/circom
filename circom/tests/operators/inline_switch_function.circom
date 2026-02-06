@@ -28,7 +28,7 @@ component main = CallInlineSwitch();
 // CHECK-NEXT:      function.return %[[VAL_4]] : !felt.type
 // CHECK-NEXT:    }
 // CHECK-LABEL:   struct.def @CallInlineSwitch<[]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      (%[[VAL_5:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@CallInlineSwitch<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.new : <@CallInlineSwitch<[]>>
@@ -39,12 +39,12 @@ component main = CallInlineSwitch();
 // CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.div %[[VAL_10]], %[[VAL_5]] : !felt.type, !felt.type
 // CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = function.call @InlineSwitch(%[[VAL_9]], %[[VAL_11]], %[[VAL_12]]) : (!felt.type, !felt.type, !felt.type) -> !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_6]][@out] = %[[VAL_13]] : <@CallInlineSwitch<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_6]][@out] = %[[VAL_13]] : <@CallInlineSwitch<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_6]] : !struct.type<@CallInlineSwitch<[]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[VAL_14:[0-9a-zA-Z_\.]+]]: !struct.type<@CallInlineSwitch<[]>>, %[[VAL_15:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_14]][@out] : <@CallInlineSwitch<[]>>, !felt.type
+// CHECK-NEXT:        %[[VAL_16:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_14]][@out] : <@CallInlineSwitch<[]>>, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

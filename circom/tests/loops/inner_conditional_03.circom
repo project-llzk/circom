@@ -24,7 +24,7 @@ component main = InnerConditional3(3);
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@InnerConditional3<[3]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @InnerConditional3<[@N]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      (%[[V_IN:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@InnerConditional3<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[SELF:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerConditional3<[@N]>>
@@ -49,13 +49,13 @@ component main = InnerConditional3(3);
 // CHECK-NEXT:          %[[V_17:[0-9a-zA-Z_\.]+]] = felt.add %[[V_I2]], %[[V_16]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[V_13]], %[[V_17]] : !felt.type, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[SELF]][@out] = %[[V_5]]#0 : <@InnerConditional3<[@N]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[SELF]][@out] = %[[V_5]]#0 : <@InnerConditional3<[@N]>>, !felt.type
 // CHECK-NEXT:        function.return %[[SELF]] : !struct.type<@InnerConditional3<[@N]>>
 // CHECK-NEXT:      }
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[SELF:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerConditional3<[@N]>>, %[[V_IN:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %[[V_36:[0-9a-zA-Z_\.]+]] = struct.readf %[[SELF]][@out] : <@InnerConditional3<[@N]>>, !felt.type
+// CHECK-NEXT:        %[[V_36:[0-9a-zA-Z_\.]+]] = struct.readm %[[SELF]][@out] : <@InnerConditional3<[@N]>>, !felt.type
 // CHECK-NEXT:        %[[V_A0:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_I0:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[V_23:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[V_A1:[0-9a-zA-Z_\.]+]] = %[[V_A0]], %[[V_I1:[0-9a-zA-Z_\.]+]] = %[[V_I0]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {

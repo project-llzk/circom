@@ -14,7 +14,7 @@ component main = A(12);
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@A<[12]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @A<[@s]> {
-// CHECK-NEXT:      struct.field @out : !array.type<@s x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !array.type<@s x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@s x !felt.type>) -> !struct.type<@A<[@s]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@A<[@s]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @s : !felt.type
@@ -27,12 +27,12 @@ component main = A(12);
 // CHECK-NEXT:        scf.for %[[VAL_9:[0-9a-zA-Z_\.]+]] = %[[VAL_7]] to %[[VAL_6]] step %[[VAL_8]] {
 // CHECK-NEXT:          array.write %[[VAL_4]]{{\[}}%[[VAL_9]]] = %[[VAL_3]] : <@s x !felt.type>, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@out] = %[[VAL_0]] : <@A<[@s]>>, !array.type<@s x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@out] = %[[VAL_0]] : <@A<[@s]>>, !array.type<@s x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@A<[@s]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_10:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[@s]>>, %[[VAL_11:[0-9a-zA-Z_\.]+]]: !array.type<@s x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = poly.read_const @s : !felt.type
-// CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_10]][@out] : <@A<[@s]>>, !array.type<@s x !felt.type>
+// CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_10]][@out] : <@A<[@s]>>, !array.type<@s x !felt.type>
 // CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = array.new  : <@s x !felt.type>
 // CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index

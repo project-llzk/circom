@@ -19,7 +19,7 @@ component main = CmpLT(5);
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@CmpLT<[5]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @CmpLT<[@n]> {
-// CHECK-NEXT:      struct.field @b : !array.type<@n x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @b : !array.type<@n x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) -> !struct.type<@CmpLT<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@CmpLT<[@n]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
@@ -41,12 +41,12 @@ component main = CmpLT(5);
 // CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_14]]
 // CHECK-NEXT:          array.write %[[VAL_3]]{{\[}}%[[VAL_15]]] = %[[VAL_13]] : <@n x !felt.type>, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@b] = %[[VAL_3]] : <@CmpLT<[@n]>>, !array.type<@n x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@b] = %[[VAL_3]] : <@CmpLT<[@n]>>, !array.type<@n x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@CmpLT<[@n]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@CmpLT<[@n]>>, %[[VAL_17:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
-// CHECK-NEXT:        %[[VAL_24:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_16]][@b] : <@CmpLT<[@n]>>, !array.type<@n x !felt.type>
+// CHECK-NEXT:        %[[VAL_24:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_16]][@b] : <@CmpLT<[@n]>>, !array.type<@n x !felt.type>
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_18]], %[[VAL_19]])
 // CHECK-NEXT:        scf.if %[[VAL_20]] {

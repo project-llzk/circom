@@ -52,16 +52,16 @@ component main = Caller();
 // CHECK-NEXT:      function.return %[[VAL_25]] : !felt.type
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @Caller<[]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_26:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Caller<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_27:[0-9a-zA-Z_\.]+]] = struct.new : <@Caller<[]>>
 // CHECK-NEXT:        %[[VAL_28:[0-9a-zA-Z_\.]+]] = function.call @compute(%[[VAL_26]]) : (!felt.type) -> !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_27]][@out] = %[[VAL_28]] : <@Caller<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[VAL_27]][@out] = %[[VAL_28]] : <@Caller<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[VAL_27]] : !struct.type<@Caller<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_29:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller<[]>>, %[[VAL_30:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-DAG:         %[[VAL_31:[0-9a-zA-Z_\.]+]] = function.call @compute(%[[VAL_30]]) : (!felt.type) -> !felt.type
-// CHECK-DAG:         %[[VAL_32:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_29]][@out] : <@Caller<[]>>, !felt.type
+// CHECK-DAG:         %[[VAL_32:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_29]][@out] : <@Caller<[]>>, !felt.type
 // CHECK-NEXT:        constrain.eq %[[VAL_32]], %[[VAL_31]] : !felt.type, !felt.type
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }

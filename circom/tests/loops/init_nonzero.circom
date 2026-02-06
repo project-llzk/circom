@@ -24,7 +24,7 @@ component main = NonZeroInit();
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@NonZeroInit<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @NonZeroInit<[]> {
-// CHECK-NEXT:      struct.field @b : !array.type<9 x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @b : !array.type<9 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<9 x !felt.type>) -> !struct.type<@NonZeroInit<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@NonZeroInit<[]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<9 x !felt.type>
@@ -73,11 +73,11 @@ component main = NonZeroInit();
 // CHECK-NEXT:          %[[VAL_35:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_30]], %[[VAL_34]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_35]] : !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@b] = %[[VAL_2]] : <@NonZeroInit<[]>>, !array.type<9 x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@b] = %[[VAL_2]] : <@NonZeroInit<[]>>, !array.type<9 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@NonZeroInit<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_36:[0-9a-zA-Z_\.]+]]: !struct.type<@NonZeroInit<[]>>, %[[VAL_37:[0-9a-zA-Z_\.]+]]: !array.type<9 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readf %[[VAL_36]][@b] : <@NonZeroInit<[]>>, !array.type<9 x !felt.type>
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readm %[[VAL_36]][@b] : <@NonZeroInit<[]>>, !array.type<9 x !felt.type>
 // CHECK-NEXT:        %[[VAL_38:[0-9a-zA-Z_\.]+]] = felt.const  4
 // CHECK-NEXT:        %[[VAL_39:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_40:[0-9a-zA-Z_\.]+]] = %[[VAL_38]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_41:[0-9a-zA-Z_\.]+]] = felt.const  7

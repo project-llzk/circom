@@ -24,7 +24,7 @@ component main = InnerConditional3(3);
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@InnerConditional3_0<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @InnerConditional3_0<[]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[V_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@InnerConditional3_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[SELF:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerConditional3_0<[]>>
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = felt.const  3
@@ -49,11 +49,11 @@ component main = InnerConditional3(3);
 // CHECK-NEXT:          %[[V_17:[0-9a-zA-Z_\.]+]] = felt.add %[[V_I2]], %[[V_16]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[V_13]], %[[V_17]] : !felt.type, !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[SELF]][@out] = %[[V_4]]#0 : <@InnerConditional3_0<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[SELF]][@out] = %[[V_4]]#0 : <@InnerConditional3_0<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[SELF]] : !struct.type<@InnerConditional3_0<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[SELF:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerConditional3_0<[]>>, %[[V_19:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[V_36:[0-9a-zA-Z_\.]+]] = struct.readf %[[SELF]][@out] : <@InnerConditional3_0<[]>>, !felt.type
+// CHECK-NEXT:        %[[V_36:[0-9a-zA-Z_\.]+]] = struct.readm %[[SELF]][@out] : <@InnerConditional3_0<[]>>, !felt.type
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = felt.const  3
 // CHECK-NEXT:        %[[V_A0:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_I0:[0-9a-zA-Z_\.]+]] = felt.const  1

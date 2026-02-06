@@ -24,7 +24,7 @@ component main = Foo();
 // CHECK-NEXT:      function.return %[[VAL_2]] : !felt.type
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @Foo<[]> {
-// CHECK-NEXT:      struct.field @outp : !array.type<1 x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @outp : !array.type<1 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_3:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type>) -> !struct.type<@Foo<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = struct.new : <@Foo<[]>>
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1 x !felt.type>
@@ -38,11 +38,11 @@ component main = Foo();
 // CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_13]]
 // CHECK-NEXT:        array.write %[[VAL_5]]{{\[}}%[[VAL_14]]] = %[[VAL_12]] : <1 x !felt.type>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_4]][@outp] = %[[VAL_5]] : <@Foo<[]>>, !array.type<1 x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_4]][@outp] = %[[VAL_5]] : <@Foo<[]>>, !array.type<1 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_4]] : !struct.type<@Foo<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_15:[0-9a-zA-Z_\.]+]]: !struct.type<@Foo<[]>>, %[[VAL_16:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_15]][@outp] : <@Foo<[]>>, !array.type<1 x !felt.type>
+// CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_15]][@outp] : <@Foo<[]>>, !array.type<1 x !felt.type>
 // CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_18]]
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_17]]{{\[}}%[[VAL_19]]] : <1 x !felt.type>, !felt.type

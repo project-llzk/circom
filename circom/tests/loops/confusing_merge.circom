@@ -26,8 +26,8 @@ component main = Foo(3);
 //
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@Foo<[3]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @Foo<[@N]> {
-// CHECK-NEXT:      struct.field @outp : !array.type<@N x !felt.type> {llzk.pub}
-// CHECK-NEXT:      struct.field @internal : !array.type<@N x !felt.type>
+// CHECK-NEXT:      struct.member @outp : !array.type<@N x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @internal : !array.type<@N x !felt.type>
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>) -> !struct.type<@Foo<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Foo<[@N]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
@@ -61,14 +61,14 @@ component main = Foo(3);
 // CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_19]], %[[VAL_23]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_24]] : !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@internal] = %[[VAL_4]] : <@Foo<[@N]>>, !array.type<@N x !felt.type>
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@outp] = %[[VAL_3]] : <@Foo<[@N]>>, !array.type<@N x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@internal] = %[[VAL_4]] : <@Foo<[@N]>>, !array.type<@N x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@outp] = %[[VAL_3]] : <@Foo<[@N]>>, !array.type<@N x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@Foo<[@N]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_25:[0-9a-zA-Z_\.]+]]: !struct.type<@Foo<[@N]>>, %[[VAL_26:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_27:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %[[VAL_OUTP:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_25]][@outp] : <@Foo<[@N]>>, !array.type<@N x !felt.type>
-// CHECK-NEXT:        %[[VAL_36:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_25]][@internal] : <@Foo<[@N]>>, !array.type<@N x !felt.type>
+// CHECK-NEXT:        %[[VAL_OUTP:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_25]][@outp] : <@Foo<[@N]>>, !array.type<@N x !felt.type>
+// CHECK-NEXT:        %[[VAL_36:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_25]][@internal] : <@Foo<[@N]>>, !array.type<@N x !felt.type>
 // CHECK-NEXT:        %[[VAL_29:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_31:[0-9a-zA-Z_\.]+]] = %[[VAL_29]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_31]], %[[VAL_27]])

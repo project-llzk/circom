@@ -11,11 +11,11 @@ use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::IntegerAttribute;
 use llzk::prelude::LlzkContext;
 use llzk::prelude::Module;
-use llzk::prelude::OperationMutLike;
+use llzk::prelude::OperationMutLike as _;
 use llzk::prelude::StructType;
+use llzk::prelude::Type;
 use llzk::prelude::TypeAttribute;
 use llzk::prelude::MAIN_ATTR_NAME;
-use melior::ir::Type;
 use num_bigint_dig::BigUint;
 use program_structure::constants::UsefulConstants;
 

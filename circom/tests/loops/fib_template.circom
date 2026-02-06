@@ -33,7 +33,7 @@ component main = FibonacciTmpl(5);
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@FibonacciTmpl<[5]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @FibonacciTmpl<[@N]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-LABEL:     function.def @compute
 // CHECK-SAME:      () -> !struct.type<@FibonacciTmpl<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[SELF:[0-9a-zA-Z_\.]+]] = struct.new : <@FibonacciTmpl<[@N]>>
@@ -56,18 +56,18 @@ component main = FibonacciTmpl(5);
 // CHECK-NEXT:        %[[V_20:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[V_N]], %[[V_19]])
 // CHECK-NEXT:        %[[V_21:[0-9a-zA-Z_\.]+]] = scf.if %[[V_20]] -> (!felt.type) {
 // CHECK-NEXT:          %[[V_22:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:          struct.writef %[[SELF]][@out] = %[[V_22]] : <@FibonacciTmpl<[@N]>>, !felt.type
+// CHECK-NEXT:          struct.writem %[[SELF]][@out] = %[[V_22]] : <@FibonacciTmpl<[@N]>>, !felt.type
 // CHECK-NEXT:          scf.yield %[[V_22]] : !felt.type
 // CHECK-NEXT:        } else {
 // CHECK-NEXT:          %[[V_23:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:          %[[V_24:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[V_N]], %[[V_23]])
 // CHECK-NEXT:          %[[V_25:[0-9a-zA-Z_\.]+]] = scf.if %[[V_24]] -> (!felt.type) {
 // CHECK-NEXT:            %[[V_26:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:            struct.writef %[[SELF]][@out] = %[[V_26]] : <@FibonacciTmpl<[@N]>>, !felt.type
+// CHECK-NEXT:            struct.writem %[[SELF]][@out] = %[[V_26]] : <@FibonacciTmpl<[@N]>>, !felt.type
 // CHECK-NEXT:            scf.yield %[[V_26]] : !felt.type
 // CHECK-NEXT:          } else {
 // CHECK-NEXT:            %[[V_27:[0-9a-zA-Z_\.]+]] = felt.add %[[V_5]]#0, %[[V_5]]#1 : !felt.type, !felt.type
-// CHECK-NEXT:            struct.writef %[[SELF]][@out] = %[[V_27]] : <@FibonacciTmpl<[@N]>>, !felt.type
+// CHECK-NEXT:            struct.writem %[[SELF]][@out] = %[[V_27]] : <@FibonacciTmpl<[@N]>>, !felt.type
 // CHECK-NEXT:            scf.yield %[[V_27]] : !felt.type
 // CHECK-NEXT:          }
 // CHECK-NEXT:          scf.yield %[[V_25]] : !felt.type
@@ -77,7 +77,7 @@ component main = FibonacciTmpl(5);
 // CHECK-LABEL:     function.def @constrain
 // CHECK-SAME:      (%[[SELF:[0-9a-zA-Z_\.]+]]: !struct.type<@FibonacciTmpl<[@N]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readf %[[SELF]][@out] : <@FibonacciTmpl<[@N]>>, !felt.type
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readm %[[SELF]][@out] : <@FibonacciTmpl<[@N]>>, !felt.type
 // CHECK-NEXT:        %[[V_A0:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[V_B0:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:        %[[V_X0:[0-9a-zA-Z_\.]+]] = felt.const  0

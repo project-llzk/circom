@@ -31,7 +31,7 @@ component main = UnknownIndexOverwriteKnown();
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@UnknownIndexOverwriteKnown<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @UnknownIndexOverwriteKnown<[]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@UnknownIndexOverwriteKnown<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@UnknownIndexOverwriteKnown<[]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  45
@@ -120,7 +120,7 @@ component main = UnknownIndexOverwriteKnown();
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@UnknownIndexOverwriteKnown<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_77:[0-9a-zA-Z_\.]+]]: !struct.type<@UnknownIndexOverwriteKnown<[]>>, %[[VAL_78:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readf %[[VAL_77]][@out] : <@UnknownIndexOverwriteKnown<[]>>, !felt.type
+// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readm %[[VAL_77]][@out] : <@UnknownIndexOverwriteKnown<[]>>, !felt.type
 // CHECK-NEXT:        %[[VAL_79:[0-9a-zA-Z_\.]+]] = felt.const  45
 // CHECK-NEXT:        %[[VAL_80:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_81:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_80]], %[[VAL_80]], %[[VAL_80]], %[[VAL_80]], %[[VAL_80]], %[[VAL_80]], %[[VAL_80]], %[[VAL_80]], %[[VAL_80]], %[[VAL_80]] : <10 x !felt.type>

@@ -15,7 +15,7 @@ component main = Array00();
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@Array00<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @Array00<[]> {
-// CHECK-NEXT:      struct.field @b : !array.type<1 x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @b : !array.type<1 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<1 x !felt.type>) -> !struct.type<@Array00<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Array00<[]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1 x !felt.type>
@@ -25,11 +25,11 @@ component main = Array00();
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_6]]
 // CHECK-NEXT:        array.write %[[VAL_2]]{{\[}}%[[VAL_7]]] = %[[VAL_5]] : <1 x !felt.type>, !felt.type
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@b] = %[[VAL_2]] : <@Array00<[]>>, !array.type<1 x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@b] = %[[VAL_2]] : <@Array00<[]>>, !array.type<1 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@Array00<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !struct.type<@Array00<[]>>, %[[VAL_9:[0-9a-zA-Z_\.]+]]: !array.type<1 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_8]][@b] : <@Array00<[]>>, !array.type<1 x !felt.type>
+// CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_8]][@b] : <@Array00<[]>>, !array.type<1 x !felt.type>
 // CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_10]]
 // CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_9]]{{\[}}%[[VAL_11]]] : <1 x !felt.type>, !felt.type

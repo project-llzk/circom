@@ -91,15 +91,15 @@ component main = A();
 // CHECK-NEXT:      function.return %[[VAL_2]] : !array.type<10 x !felt.type>
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @A_0<[]> {
-// CHECK-NEXT:      struct.field @out : !array.type<10 x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !array.type<10 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_52:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type>, %[[VAL_53:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type>) -> !struct.type<@A_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_54:[0-9a-zA-Z_\.]+]] = struct.new : <@A_0<[]>>
 // CHECK-NEXT:        %[[VAL_55:[0-9a-zA-Z_\.]+]] = function.call @binop_bool_array_0(%[[VAL_52]], %[[VAL_53]]) : (!array.type<10 x !felt.type>, !array.type<10 x !felt.type>) -> !array.type<10 x !felt.type>
-// CHECK-NEXT:        struct.writef %[[VAL_54]][@out] = %[[VAL_55]] : <@A_0<[]>>, !array.type<10 x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_54]][@out] = %[[VAL_55]] : <@A_0<[]>>, !array.type<10 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_54]] : !struct.type<@A_0<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_56:[0-9a-zA-Z_\.]+]]: !struct.type<@A_0<[]>>, %[[VAL_57:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type>, %[[VAL_58:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_59:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_56]][@out] : <@A_0<[]>>, !array.type<10 x !felt.type>
+// CHECK-NEXT:        %[[VAL_59:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_56]][@out] : <@A_0<[]>>, !array.type<10 x !felt.type>
 // CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }

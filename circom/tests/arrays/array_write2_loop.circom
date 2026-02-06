@@ -20,7 +20,7 @@ component main = Array1();
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@Array1<[]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @Array1<[]> {
-// CHECK-NEXT:      struct.field @out : !array.type<5,2 x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !array.type<5,2 x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute() -> !struct.type<@Array1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@Array1<[]>>
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<5,2 x !felt.type>
@@ -54,11 +54,11 @@ component main = Array1();
 // CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_18]], %[[VAL_22]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_23]] : !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_0]][@out] = %[[VAL_1]] : <@Array1<[]>>, !array.type<5,2 x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_0]][@out] = %[[VAL_1]] : <@Array1<[]>>, !array.type<5,2 x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_0]] : !struct.type<@Array1<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_24:[0-9a-zA-Z_\.]+]]: !struct.type<@Array1<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_24]][@out] : <@Array1<[]>>, !array.type<5,2 x !felt.type>
+// CHECK-NEXT:        %[[VAL_31:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_24]][@out] : <@Array1<[]>>, !array.type<5,2 x !felt.type>
 // CHECK-NEXT:        %[[VAL_25:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:        %[[VAL_26:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_27:[0-9a-zA-Z_\.]+]] = %[[VAL_25]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = felt.const  5

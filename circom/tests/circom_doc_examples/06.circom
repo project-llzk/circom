@@ -62,16 +62,16 @@ component main = Caller();
 // CHECK-NEXT:      function.return %[[V_9]]#1 : !felt.type
 // CHECK-NEXT:    }
 // CHECK-NEXT:    struct.def @Caller<[]> {
-// CHECK-NEXT:      struct.field @out : !felt.type {llzk.pub}
+// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[V_21:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Caller<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[V_22:[0-9a-zA-Z_\.]+]] = struct.new : <@Caller<[]>>
 // CHECK-NEXT:        %[[V_23:[0-9a-zA-Z_\.]+]] = function.call @nbits(%[[V_21]]) : (!felt.type) -> !felt.type
 // CHECK-NEXT:        %[[V_24:[0-9a-zA-Z_\.]+]] = function.call @example(%[[V_23]]) : (!felt.type) -> !felt.type
-// CHECK-NEXT:        struct.writef %[[V_22]][@out] = %[[V_24]] : <@Caller<[]>>, !felt.type
+// CHECK-NEXT:        struct.writem %[[V_22]][@out] = %[[V_24]] : <@Caller<[]>>, !felt.type
 // CHECK-NEXT:        function.return %[[V_22]] : !struct.type<@Caller<[]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[V_25:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller<[]>>, %[[V_26:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[V_29:[0-9a-zA-Z_\.]+]] = struct.readf %[[V_25]][@out] : <@Caller<[]>>, !felt.type
+// CHECK-NEXT:        %[[V_29:[0-9a-zA-Z_\.]+]] = struct.readm %[[V_25]][@out] : <@Caller<[]>>, !felt.type
 // CHECK-NEXT:        %[[V_27:[0-9a-zA-Z_\.]+]] = function.call @nbits(%[[V_26]]) : (!felt.type) -> !felt.type
 // CHECK-NEXT:        %[[V_28:[0-9a-zA-Z_\.]+]] = function.call @example(%[[V_27]]) : (!felt.type) -> !felt.type
 // CHECK-NEXT:        constrain.eq %[[V_29]], %[[V_28]] : !felt.type, !felt.type

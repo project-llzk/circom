@@ -6,7 +6,7 @@
 //! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes.
 
 use crate::function::felt::is_felt_type;
-use crate::function_ext::FunctionLike;
+use crate::function_ext::FunctionLike as _;
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::NestedBlockInfo;
@@ -51,7 +51,7 @@ use llzk::dialect::felt;
 use llzk::dialect::function;
 use llzk::dialect::pod;
 use llzk::operation::erase_op;
-use llzk::operation::WalkOperationMutLike;
+use llzk::operation::WalkOperationMutLike as _;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::melior_dialects::index;
 use llzk::prelude::melior_dialects::scf;

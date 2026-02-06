@@ -17,7 +17,7 @@ component main = CmpGT(5);
 
 // CHECK-LABEL: module attributes {llzk.main = !struct.type<@CmpGT<[5]>>, veridise.lang = "llzk"} {
 // CHECK-NEXT:    struct.def @CmpGT<[@n]> {
-// CHECK-NEXT:      struct.field @b : !array.type<@n x !felt.type> {llzk.pub}
+// CHECK-NEXT:      struct.member @b : !array.type<@n x !felt.type> {llzk.pub}
 // CHECK-NEXT:      function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) -> !struct.type<@CmpGT<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@CmpGT<[@n]>>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
@@ -40,12 +40,12 @@ component main = CmpGT(5);
 // CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = felt.sub %[[VAL_8]], %[[VAL_16]] : !felt.type, !felt.type
 // CHECK-NEXT:          scf.yield %[[VAL_17]] : !felt.type
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writef %[[VAL_1]][@b] = %[[VAL_3]] : <@CmpGT<[@n]>>, !array.type<@n x !felt.type>
+// CHECK-NEXT:        struct.writem %[[VAL_1]][@b] = %[[VAL_3]] : <@CmpGT<[@n]>>, !array.type<@n x !felt.type>
 // CHECK-NEXT:        function.return %[[VAL_1]] : !struct.type<@CmpGT<[@n]>>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.def @constrain(%[[VAL_18:[0-9a-zA-Z_\.]+]]: !struct.type<@CmpGT<[@n]>>, %[[VAL_19:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type
-// CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = struct.readf %[[VAL_18]][@b] : <@CmpGT<[@n]>>, !array.type<@n x !felt.type>
+// CHECK-NEXT:        %[[VAL_30:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_18]][@b] : <@CmpGT<[@n]>>, !array.type<@n x !felt.type>
 // CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_22:[0-9a-zA-Z_\.]+]] = %[[VAL_20]]) : (!felt.type) -> !felt.type {
 // CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = bool.cmp gt(%[[VAL_22]], %[[VAL_23]])

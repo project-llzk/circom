@@ -7,13 +7,13 @@ use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COMP;
 use crate::subcmp::SubcmpInfo;
 use anyhow::Result;
+use llzk::dialect::pod;
 use llzk::dialect::r#struct;
-use llzk::prelude::pod;
+use llzk::prelude::Location;
 use llzk::prelude::PodType;
 use llzk::prelude::StructType;
-use melior::ir::Location;
-use melior::ir::Value;
-use melior::ir::ValueLike as _;
+use llzk::prelude::Value;
+use llzk::prelude::ValueLike as _;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
@@ -110,7 +110,7 @@ impl<'ast> Lvalue<'ast> {
     ) -> Result<Value<'ctx, 'val>> {
         // Both compute and constrain functions should have the `var` defined:
         // compute from an existing assignment, or constrain from pre-generation
-        // of the `readf` in `gen_template_llzk`.
+        // of the `readm` in `gen_template_llzk`.
         fc.block_ctx.get_named_value(var).copied()
     }
 
@@ -170,7 +170,7 @@ impl<'ast> Lvalue<'ast> {
         let field_ty =
             codegen.get_output_signal_type(comp_value_type.name().value(), signal_name)?;
 
-        fc.append_op_unnamed_result(r#struct::readf(
+        fc.append_op_unnamed_result(r#struct::readm(
             codegen.op_builder(),
             location,
             field_ty,
