@@ -1484,7 +1484,7 @@ impl<'ast, 'ctx, 'val> ArrayDimensions<'ctx, 'val> {
         if self.is_empty() {
             StructType::from_str(codegen.context, name)
         } else {
-            StructType::new(FlatSymbolRefAttribute::new(codegen.context, name), &self.attrs())
+            StructType::new(codegen.flat_sym(name), &self.attrs())
         }
     }
 }

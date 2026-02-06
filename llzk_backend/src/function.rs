@@ -63,7 +63,6 @@ use llzk::prelude::Attribute;
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
-use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::IntegerAttribute;
@@ -2319,7 +2318,7 @@ where
                     function::call(
                         &builder,
                         location,
-                        FlatSymbolRefAttribute::new(codegen.context, id),
+                        codegen.flat_sym(id),
                         &call_operands,
                         &[target_function_data.get_type_of_return(codegen)],
                     )?

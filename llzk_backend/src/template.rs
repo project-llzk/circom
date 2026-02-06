@@ -40,7 +40,6 @@ use llzk::prelude::r#struct;
 use llzk::prelude::ArrayType;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FieldDefOpLike;
-use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::LoopBoundsAttribute;
@@ -745,10 +744,7 @@ where
                     [] => {
                         // Grab the parameter name if it exists, else, defer to function generation.
                         if self.struct_def.has_param_name(name) {
-                            ArrayDimensionResult::new(
-                                FlatSymbolRefAttribute::new(codegen.context, name).into(),
-                                &[],
-                            )
+                            ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
                         } else {
                             // Other variables are unsupported, defer to function context
                             ArrayDimensionResult::insufficient_data_result()

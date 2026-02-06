@@ -455,8 +455,7 @@ where
                 Expression::Variable { meta, name, access } => match access.as_slice() {
                     [] => {
                         if self.template_params.contains(name) {
-                            let template_param_attr =
-                                FlatSymbolRefAttribute::new(codegen.context, name);
+                            let template_param_attr = codegen.flat_sym(name);
                             ArrayDimensionResult::new(template_param_attr.into(), &[])
                         } else if let Some(op) = self.decl_inits.get(name) {
                             let id_map = codegen.affine_map_attr("affine_map<()[i] -> (i)>")?;
@@ -771,7 +770,7 @@ where
                         fc.append_op_no_result(pod::write(
                             location,
                             comp_memory_pod,
-                            FlatSymbolRefAttribute::new(codegen.context, record_name),
+                            codegen.flat_sym(record_name),
                             record_value,
                         ))?;
 
