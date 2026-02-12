@@ -114,6 +114,7 @@ where
     'str: 'func,
     'func: 'blk,
     'blk: 'val,
+    'val: 'blk,
 {
     /// Current LLZK `StructDefOp`
     struct_def: StructDefOpRefMut<'ctx, 'str>,
@@ -796,7 +797,8 @@ where
     /// should be the unit type whereas [Expression] nodes produce a Value.
     type Output<'r>
     where
-        'val: 'r;
+        'val: 'r,
+        'val: 'blk;
 
     /// Generates LLZK IR from [Statement] and [Expression] nodes in a circom template.
     ///
@@ -817,6 +819,7 @@ where
     'str: 'func,
     'func: 'blk,
     'blk: 'val,
+    'val: 'blk,
 {
     type Output<'r>
         = ()
@@ -1015,6 +1018,7 @@ where
     'str: 'func,
     'func: 'blk,
     'blk: 'val,
+    'val: 'blk,
 {
     type Output<'r>
         = ()
@@ -1057,7 +1061,7 @@ where
                                 Ok(())
                             } else {
                                 rhe.gen_llzk_in_template(codegen, template)?.and_then_same(
-                                    |fc, val| fc.block_ctx.set_named_value(var.clone(), val),
+                                    |fc, val| fc.handle_simple_assignment(codegen, meta, var, val),
                                 )
                             }
                         } else {
@@ -1269,6 +1273,7 @@ where
     'str: 'func,
     'func: 'blk,
     'blk: 'val,
+    'val: 'blk,
 {
     type Output<'r>
         = GenResultSingleVal<'ctx, 'str, 'func, 'blk, 'val, 'r>

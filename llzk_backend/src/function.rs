@@ -52,6 +52,7 @@ use llzk::dialect::function;
 use llzk::dialect::pod;
 use llzk::operation::erase_op;
 use llzk::operation::WalkOperationMutLike as _;
+use llzk::prelude::is_array_type;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::melior_dialects::index;
 use llzk::prelude::melior_dialects::scf;
@@ -99,6 +100,7 @@ use program_structure::error_code::ReportCode;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto;
+use std::iter::zip;
 use std::ops::Deref;
 use std::ops::DerefMut;
 
@@ -520,6 +522,133 @@ where
         let call_op = get_call(*subcmp_value)?;
         set_operand_if_nondet(call_op, arg_idx + arg_offset, rhe)?;
         insert_after_if_op_result(rhe, call_op)
+    }
+
+    /// Copy the values in the source array into the destination array.
+    /// Assumes both arrays have the same number of dimensions, but each dimension
+    /// may be wider/narrower than the destination type.
+    /// General overview: create a N-dimensional nested for loop to copy. If the
+    /// indices are out-of-bounds, then the array is default-filled. Otherwise,
+    /// copy elements into destination
+    fn copy_into_array<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        meta: &Meta,
+        dst: Value<'ctx, 'val>,
+        dst_ty: ArrayType<'ctx>,
+        src: Value<'ctx, 'val>,
+        src_ty: ArrayType<'ctx>,
+    ) -> Result<()>
+    where
+        'val: 'blk,
+    {
+        assert!(dst_ty.num_dims() == src_ty.num_dims());
+        assert!(dst_ty.element_type() == src_ty.element_type());
+
+        let location = codegen.location_from_meta(meta);
+        // Read out all the src bounds
+        let bounds = (0..src_ty.num_dims())
+            .map(|i| {
+                let idx = i64::try_from(i)?;
+                let dim =
+                    self.append_op_unnamed_result(codegen.new_index_const_op(idx, location))?;
+                self.append_op_unnamed_result(array::len(location, src, dim))
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        let elem_ty = dst_ty.element_type();
+        self.gen_loop_nest(codegen, location, &dst_ty.dims(), move |fc, indices| {
+            let bounds_checks = zip(indices, bounds)
+                .map(|(i, b)| -> Result<Value<'ctx, 'val>> {
+                    fc.append_op_unnamed_result(arith::cmpi(
+                        codegen.context,
+                        arith::CmpiPredicate::Ult,
+                        *i,
+                        b,
+                        location,
+                    ))
+                })
+                .collect::<Vec<Result<_>>>(); // Keep the Result<_> elements here so reduce works
+            let within_bounds = bounds_checks
+                .into_iter()
+                .reduce(|a, b| -> Result<Value<'ctx, 'val>> {
+                    fc.append_op_unnamed_result(llzk::dialect::bool::and(location, a?, b?)?)
+                })
+                .expect("array bounds reduction must yield a condition value")?;
+            // If within bounds, return a value read from the source array, otherwise, 0.
+            let dst_val_op = fc.generate_simple_scf_if(
+                codegen,
+                meta,
+                within_bounds,
+                |fc| fc.append_op_unnamed_result(array::read(location, elem_ty, src, indices)),
+                |fc| fc.append_op_unnamed_result(codegen.new_const_op(location, elem_ty, 0)?),
+            )?;
+            let dst_val = fc.append_op_unnamed_result(dst_val_op)?;
+            // Now write the value into the destination array
+            fc.append_op_no_result(array::write(location, dst, indices, dst_val))
+        })
+    }
+
+    /// Perform a direct assignment of `rvalue` to `var`. In many cases this is handled
+    /// by updating the variable name map to have `var` -> `rvalue`, but special handling
+    /// is required during array assignments where `rvalue` is a different width than the
+    /// destination array (this requires 0-filling or truncation).
+    pub fn handle_simple_assignment<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        meta: &Meta,
+        var: &String,
+        rvalue: Value<'ctx, 'val>,
+    ) -> Result<()>
+    where
+        'val: 'blk,
+    {
+        // Since there's no simple assignment in LLZK, just update the mapped Value
+        // which essentially propagates the assignment. The exception here is the ArrayType case:
+        // Circom allows (with a warning) arrays to be assigned to array variables
+        // of differing widths (wider/narrower) as long as both arrays have
+        // the same number of dimensions (e.g., var x[2][2] = y, where y is var[1][7], is allowed).
+        // If the dimension is wider, the values are truncated, and if they are narrower,
+        // the array is left in its default initialized state.
+        if let Ok(existing) = self.block_ctx.get_named_value(var) {
+            let err_fn = || {
+                anyhow::bail!(
+                    "could not assign value of type '{}' to '{var}', which has type '{}'",
+                    rvalue.r#type(),
+                    existing.r#type()
+                )
+            };
+            if existing.r#type() == rvalue.r#type() {
+                // Replace existing value reference to rvalue
+                self.block_ctx.set_named_value(var.clone(), rvalue)
+            } else if is_array_type(existing.r#type()) && is_array_type(rvalue.r#type()) {
+                let existing_arr_ty = ArrayType::try_from(existing.r#type())?;
+                let new_arr_ty = ArrayType::try_from(rvalue.r#type())?;
+                if existing_arr_ty.element_type() == new_arr_ty.element_type()
+                    && existing_arr_ty.num_dims() == new_arr_ty.num_dims()
+                    && existing_arr_ty.dims() != new_arr_ty.dims()
+                {
+                    // Copy values from the rvalue into the existing array.
+                    self.copy_into_array(
+                        codegen,
+                        meta,
+                        *existing,
+                        existing_arr_ty,
+                        rvalue,
+                        new_arr_ty,
+                    )?;
+                    // No need to update named value here
+                    Ok(())
+                } else {
+                    err_fn()
+                }
+            } else {
+                err_fn()
+            }
+        } else {
+            // Otherwise, set the var to point to rvalue
+            self.block_ctx.set_named_value(var.clone(), rvalue)
+        }
     }
 
     /// Generate LLZK code in the current function for a circom prefix operation.
@@ -1853,6 +1982,7 @@ where
     'ctx: 'func,
     'func: 'blk,
     'blk: 'val,
+    'val: 'blk,
 {
     // Initially, generate the blocks for the 'then' and 'else' cases naively.
     let mut then_info = NestedBlockInfo::default();
@@ -1943,6 +2073,7 @@ where
     'ctx: 'func,
     'func: 'blk,
     'blk: 'val,
+    'val: 'blk,
 {
     // Generate the loop condition (i.e. "before") and body (i.e. "after") blocks naively.
     let mut loop_cond_info = NestedBlockInfo::default();
@@ -2023,6 +2154,7 @@ where
     'ctx: 'func,
     'func: 'blk,
     'blk: 'val,
+    'val: 'blk,
 {
     initializations.gen_llzk_in_function(codegen, function, info)
 }
@@ -2032,6 +2164,7 @@ where
     'ctx: 'func,
     'func: 'blk,
     'blk: 'val,
+    'val: 'blk,
 {
     type Output = SkipRestOfBlock;
 
@@ -2077,9 +2210,7 @@ where
                 let rvalue = rhe.gen_llzk_in_function(codegen, function, info)?;
                 match access.as_slice() {
                     [] => {
-                        // Since there's no simple assignment in LLZK, just update the mapped Value
-                        // which essentially propagates the assignment.
-                        function.block_ctx.set_named_value(var.clone(), rvalue)?;
+                        function.handle_simple_assignment(codegen, meta, var, rvalue)?;
                     }
                     a => {
                         let location = codegen.location_from_meta(meta);
@@ -2332,6 +2463,7 @@ where
     'ctx: 'func,
     'func: 'blk,
     'blk: 'val,
+    'val: 'blk,
 {
     type Output = ();
 
