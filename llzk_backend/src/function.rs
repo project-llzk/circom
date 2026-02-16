@@ -609,7 +609,7 @@ where
         // of differing widths (wider/narrower) as long as both arrays have
         // the same number of dimensions (e.g., var x[2][2] = y, where y is var[1][7], is allowed).
         // If the dimension is wider, the values are truncated, and if they are narrower,
-        // the array is left in its default initialized state.
+        // the array is left in its current state.
         let Ok(existing) = self.block_ctx.get_named_value(var) else {
             // Otherwise, set the var to point to rvalue
             return self.block_ctx.set_named_value(var.clone(), rvalue);

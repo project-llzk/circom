@@ -815,7 +815,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         if is_felt_type(r#type) {
             self.new_felt_const_op(&BigInt::from(val), location)
         } else {
-            Ok(arith::constant(self.context, IntegerAttribute::new(r#type, val).into(), location))
+            Ok(self.new_int_const_op(r#type, val, location))
         }
     }
 
