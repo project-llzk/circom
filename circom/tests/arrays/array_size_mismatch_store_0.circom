@@ -5,7 +5,8 @@
 pragma circom 2.0.0;
 
 // The circom compiler only gives a warning for this:
-// warning[T3001]: Typing warning: Mismatched dimensions, assigning to an array an expression of smaller length, the remaining positions are assigned to 0.
+// warning[T3001]: Typing warning: Mismatched dimensions, assigning to an array an expression of smaller length,
+//                 the remaining positions are not modified. Initially all variables are initialized to 0.
 
 template ImplicitExtension() {
     signal output out[10];
