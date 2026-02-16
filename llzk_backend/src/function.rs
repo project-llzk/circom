@@ -619,8 +619,8 @@ where
             return self.block_ctx.set_named_value(var.clone(), rvalue);
         }
         if is_array_type(existing.r#type()) && is_array_type(rvalue.r#type()) {
-            let existing_arr_ty = ArrayType::try_from(existing.r#type())?;
-            let new_arr_ty = ArrayType::try_from(rvalue.r#type())?;
+            let existing_arr_ty = ArrayType::try_from(existing.r#type()).unwrap();
+            let new_arr_ty = ArrayType::try_from(rvalue.r#type()).unwrap();
             if existing_arr_ty.element_type() == new_arr_ty.element_type()
                 && existing_arr_ty.num_dims() == new_arr_ty.num_dims()
                 && existing_arr_ty.dims() != new_arr_ty.dims()
