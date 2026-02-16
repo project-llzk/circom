@@ -610,45 +610,38 @@ where
         // the same number of dimensions (e.g., var x[2][2] = y, where y is var[1][7], is allowed).
         // If the dimension is wider, the values are truncated, and if they are narrower,
         // the array is left in its default initialized state.
-        if let Ok(existing) = self.block_ctx.get_named_value(var) {
-            let err_fn = || {
-                anyhow::bail!(
-                    "could not assign value of type '{}' to '{var}', which has type '{}'",
-                    rvalue.r#type(),
-                    existing.r#type()
-                )
-            };
-            if existing.r#type() == rvalue.r#type() {
-                // Replace existing value reference to rvalue
-                self.block_ctx.set_named_value(var.clone(), rvalue)
-            } else if is_array_type(existing.r#type()) && is_array_type(rvalue.r#type()) {
-                let existing_arr_ty = ArrayType::try_from(existing.r#type())?;
-                let new_arr_ty = ArrayType::try_from(rvalue.r#type())?;
-                if existing_arr_ty.element_type() == new_arr_ty.element_type()
-                    && existing_arr_ty.num_dims() == new_arr_ty.num_dims()
-                    && existing_arr_ty.dims() != new_arr_ty.dims()
-                {
-                    // Copy values from the rvalue into the existing array.
-                    self.copy_into_array(
-                        codegen,
-                        meta,
-                        *existing,
-                        existing_arr_ty,
-                        rvalue,
-                        new_arr_ty,
-                    )?;
-                    // No need to update named value here
-                    Ok(())
-                } else {
-                    err_fn()
-                }
-            } else {
-                err_fn()
-            }
-        } else {
+        let Ok(existing) = self.block_ctx.get_named_value(var) else {
             // Otherwise, set the var to point to rvalue
-            self.block_ctx.set_named_value(var.clone(), rvalue)
+            return self.block_ctx.set_named_value(var.clone(), rvalue);
+        };
+        if existing.r#type() == rvalue.r#type() {
+            // Replace existing value reference to rvalue
+            return self.block_ctx.set_named_value(var.clone(), rvalue);
         }
+        if is_array_type(existing.r#type()) && is_array_type(rvalue.r#type()) {
+            let existing_arr_ty = ArrayType::try_from(existing.r#type())?;
+            let new_arr_ty = ArrayType::try_from(rvalue.r#type())?;
+            if existing_arr_ty.element_type() == new_arr_ty.element_type()
+                && existing_arr_ty.num_dims() == new_arr_ty.num_dims()
+                && existing_arr_ty.dims() != new_arr_ty.dims()
+            {
+                // Copy values from the rvalue into the existing array.
+                // No need to update named value here.
+                return self.copy_into_array(
+                    codegen,
+                    meta,
+                    *existing,
+                    existing_arr_ty,
+                    rvalue,
+                    new_arr_ty,
+                );
+            }
+        }
+        anyhow::bail!(
+            "could not assign value of type '{}' to '{var}', which has type '{}'",
+            rvalue.r#type(),
+            existing.r#type()
+        )
     }
 
     /// Generate LLZK code in the current function for a circom prefix operation.
