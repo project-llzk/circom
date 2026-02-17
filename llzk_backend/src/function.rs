@@ -545,50 +545,37 @@ where
     where
         'val: 'blk,
     {
+        let elem_ty = dst_ty.element_type();
+        assert!(elem_ty == src_ty.element_type());
         assert!(dst_ty.num_dims() == src_ty.num_dims());
-        assert!(dst_ty.element_type() == src_ty.element_type());
 
         let location = codegen.location_from_meta(meta);
-        // Read out all the src bounds
-        let bounds = (0..src_ty.num_dims())
-            .map(|i| {
-                let idx = i64::try_from(i)?;
-                let dim =
-                    self.append_op_unnamed_result(codegen.new_index_const_op(idx, location))?;
-                self.append_op_unnamed_result(array::len(location, src, dim))
+
+        let bounds = zip(src_ty.dims(), dst_ty.dims())
+            .map(|(src_dim, dest_dim)| {
+                let src_val = self.array_dim_attr_to_idx_val(codegen, location, src_dim)?;
+                let dest_val = self.array_dim_attr_to_idx_val(codegen, location, dest_dim)?;
+                let condition = self.append_op_unnamed_result(arith::cmpi(
+                    codegen.context,
+                    arith::CmpiPredicate::Ult,
+                    src_val,
+                    dest_val,
+                    location,
+                ))?;
+                let if_op = self.generate_simple_scf_if(
+                    codegen,
+                    meta,
+                    condition,
+                    |_| Ok(src_val),
+                    |_| Ok(dest_val),
+                )?;
+                self.append_op_unnamed_result(if_op)
             })
             .collect::<Result<Vec<_>>>()?;
 
-        let elem_ty = dst_ty.element_type();
-        self.gen_loop_nest_from_attrs(codegen, location, &dst_ty.dims(), move |fc, indices| {
-            let bounds_checks = zip(indices, bounds)
-                .map(|(i, b)| -> Result<Value<'ctx, 'val>> {
-                    fc.append_op_unnamed_result(arith::cmpi(
-                        codegen.context,
-                        arith::CmpiPredicate::Ult,
-                        *i,
-                        b,
-                        location,
-                    ))
-                })
-                .collect::<Vec<Result<_>>>(); // Keep the Result<_> elements here so reduce works
-            let within_bounds = bounds_checks
-                .into_iter()
-                .reduce(|a, b| -> Result<Value<'ctx, 'val>> {
-                    fc.append_op_unnamed_result(llzk::dialect::bool::and(location, a?, b?)?)
-                })
-                .expect("array bounds reduction must yield a condition value")?;
-            // If within bounds, return a value read from the source array, otherwise, 0.
-            let dst_val_op = fc.generate_simple_scf_if(
-                codegen,
-                meta,
-                within_bounds,
-                |fc| fc.append_op_unnamed_result(array::read(location, elem_ty, src, indices)),
-                |fc| fc.append_op_unnamed_result(codegen.new_const_op(location, elem_ty, 0)?),
-            )?;
-            let dst_val = fc.append_op_unnamed_result(dst_val_op)?;
-            // Now write the value into the destination array
-            fc.append_op_no_result(array::write(location, dst, indices, dst_val))
+        self.gen_loop_nest(codegen, location, &bounds, move |fc, indices| {
+            let read = fc.append_op_unnamed_result(array::read(location, elem_ty, src, indices))?;
+            fc.append_op_no_result(array::write(location, dst, indices, read))
         })
     }
 
