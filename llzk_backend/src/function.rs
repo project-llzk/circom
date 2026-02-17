@@ -560,7 +560,7 @@ where
             .collect::<Result<Vec<_>>>()?;
 
         let elem_ty = dst_ty.element_type();
-        self.gen_loop_nest(codegen, location, &dst_ty.dims(), move |fc, indices| {
+        self.gen_loop_nest_from_attrs(codegen, location, &dst_ty.dims(), move |fc, indices| {
             let bounds_checks = zip(indices, bounds)
                 .map(|(i, b)| -> Result<Value<'ctx, 'val>> {
                     fc.append_op_unnamed_result(arith::cmpi(
