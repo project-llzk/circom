@@ -50,6 +50,7 @@ use llzk::dialect::cast;
 use llzk::dialect::felt;
 use llzk::dialect::function;
 use llzk::dialect::pod;
+use llzk::dialect::poly;
 use llzk::operation::erase_op;
 use llzk::operation::WalkOperationMutLike as _;
 use llzk::prelude::melior_dialects::arith;
@@ -86,6 +87,8 @@ use llzk::prelude::FUNC_NAME_COMPUTE;
 use llzk::prelude::FUNC_NAME_CONSTRAIN;
 use llzk::value_ext::has_uses;
 use melior::dialect::ods::math;
+use melior::ir::AttributeLike as _;
+use melior::ir::TypeLike as _;
 use num_bigint_dig::BigInt;
 use num_traits::Zero;
 use program_structure::ast::Access;
@@ -1096,11 +1099,45 @@ where
         )
     }
 
-    /// Creates a loop nest from a list of dimensions.
+    /// Convert a dimension [Attribute] from an [ArrayType] into a [`Value`] of index type,
+    /// generating the necessary IR if the attribute is a symbol reference to a struct param.
+    pub fn array_dim_attr_to_idx_val(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        dim: Attribute<'ctx>,
+    ) -> Result<Value<'ctx, 'val>> {
+        if IntegerAttribute::try_from(dim).is_ok() {
+            if !dim.r#type().is_index() {
+                anyhow::bail!(
+                    "expected index type for array dimension attribute, got '{}'",
+                    dim.r#type()
+                );
+            }
+            return self.append_op_unnamed_result(arith::constant(codegen.context, dim, location));
+        }
+        if let Ok(sym_ref) = SymbolRefAttribute::try_from(dim) {
+            let symbol = sym_ref.root();
+            if symbol != sym_ref.leaf() {
+                anyhow::bail!(
+                    "expected flat symbol ref attribute for array dimension, got {:?}",
+                    sym_ref
+                );
+            }
+            return self.append_op_unnamed_result(poly::read_const(
+                location,
+                symbol.as_str()?,
+                codegen.index_type(),
+            ));
+        }
+        unreachable!("Unhandled attribute in array dimensions {}", dim)
+    }
+
+    /// Creates a loop nest from a list of array dimension attributes.
     ///
     /// The body of the inner-most loop is defined by the given closure, which accepts a list of
     /// values representing the current value of each loop's induction variable.
-    pub fn gen_loop_nest(
+    pub fn gen_loop_nest_from_attrs(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
@@ -1110,24 +1147,31 @@ where
     where
         'val: 'blk,
     {
-        let zero = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
-        let one = self.append_op_unnamed_result(codegen.new_index_const_op(1, location))?;
-
         // Create values from the dimensions
         let dim_values = dims
             .iter()
-            .copied()
-            .map(|attr| {
-                if IntegerAttribute::try_from(attr).is_ok() {
-                    return self.append_op_unnamed_result(arith::constant(
-                        codegen.context,
-                        attr,
-                        location,
-                    ));
-                }
-                unreachable!("Unhandled attribute in array dimensions {}", attr)
-            })
+            .map(|dim| self.array_dim_attr_to_idx_val(codegen, location, *dim))
             .collect::<Result<Vec<_>>>()?;
+
+        self.gen_loop_nest(codegen, location, &dim_values, body)
+    }
+
+    /// Creates a loop nest from a list of array dimension values.
+    ///
+    /// The body of the inner-most loop is defined by the given closure, which accepts a list of
+    /// values representing the current value of each loop's induction variable.
+    pub fn gen_loop_nest(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        dim_values: &[Value<'ctx, 'val>],
+        body: impl FnOnce(&mut Self, &[Value<'ctx, 'val>]) -> Result<()>,
+    ) -> Result<()>
+    where
+        'val: 'blk,
+    {
+        let zero = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
+        let one = self.append_op_unnamed_result(codegen.new_index_const_op(1, location))?;
 
         let loop_block_args = [(codegen.index_type(), location)];
         let top_block = *self.block_ctx.top_block();
@@ -1135,7 +1179,7 @@ where
         // Create the loop nest
         let mut block: Option<BlockRef<'_, '_>> = None;
         for dim in dim_values {
-            let op = scf::r#for(zero, dim, one, region_with_block(&loop_block_args), location);
+            let op = scf::r#for(zero, *dim, one, region_with_block(&loop_block_args), location);
             let loop_op = match &block {
                 Some(block_ref) => block_ref.append_operation(op),
                 None => self.append_op(op),
@@ -2141,7 +2185,7 @@ where
                 let location = codegen.location_from_meta(meta);
                 let cond = function.cast_to_bool_if_needed(codegen, location, cond)?;
                 let msg = Some("assertion failed");
-                function.append_op_no_result(llzk::dialect::bool::assert(location, cond, msg)?)?;
+                function.append_op_no_result(dialect::bool::assert(location, cond, msg)?)?;
                 Ok(false)
             }
             Statement::LogCall { meta, .. } => {

@@ -248,7 +248,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                                 ArrayCtor::Empty
                             ))?;
 
-                            fc.gen_loop_nest(codegen, codegen.location_unknown(), &ty.dims(), |fc, indices| {
+                            fc.gen_loop_nest_from_attrs(codegen, codegen.location_unknown(), &ty.dims(), |fc, indices| {
                                 let comp_memory = fc.append_array_read(
                                     mem,
                                     indices,
@@ -307,7 +307,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
                             let subcmp_type = ArrayType::try_from(subcmp.r#type())?;
                             assert_eq!(dims, subcmp_type.dims());
 
-                            fc.gen_loop_nest(codegen, location, &dims, |fc, indices| {
+                            fc.gen_loop_nest_from_attrs(codegen, location, &dims, |fc, indices| {
                                 let subcmp_instance = fc.append_array_read(
                                         subcmp,
                                         indices,
