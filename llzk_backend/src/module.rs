@@ -746,56 +746,60 @@ where
             let location = codegen.location_unknown();
             match ArrayType::try_from(comp_pod) {
                 Ok(comp_pod) => {
-                    let dims = comp_pod.dims();
                     compute_ctx.block_ctx.declare_name_ensure_not_present(
                         &name,
                         array::new(op_builder, location, comp_pod, ArrayCtor::Empty),
                     )?;
                     let comp_memory = *compute_ctx.block_ctx.get_named_value(&name)?;
 
-                    compute_ctx.gen_loop_nest(codegen, location, &dims, |fc, indices| {
-                        let comp_memory_pod =
-                            fc.append_array_read(comp_memory, indices, location, None)?;
+                    compute_ctx.gen_loop_nest_from_attrs(
+                        codegen,
+                        location,
+                        &comp_pod.dims(),
+                        |fc, indices| {
+                            let comp_memory_pod =
+                                fc.append_array_read(comp_memory, indices, location, None)?;
 
-                        let (record_name, record_value) = if count.is_const_zero() {
-                            let empty_inputs = fc.append_op_unnamed_result(pod::new(
-                                op_builder,
+                            let (record_name, record_value) = if count.is_const_zero() {
+                                let empty_inputs = fc.append_op_unnamed_result(pod::new(
+                                    op_builder,
+                                    location,
+                                    &[],
+                                    Some(codegen.pod_type(&[])),
+                                ))?;
+                                let instance = fc.gen_compute_call(
+                                    subcmp_struct_type.try_into()?,
+                                    empty_inputs,
+                                    location,
+                                    codegen,
+                                )?;
+                                (COMP, instance)
+                            } else {
+                                let count_value = count.to_index_value(
+                                    codegen,
+                                    fc,
+                                    location,
+                                    Some(&template_params),
+                                )?;
+                                (COUNT, count_value)
+                            };
+                            fc.append_op_no_result(codegen.new_pod_write_op(
                                 location,
-                                &[],
-                                Some(codegen.pod_type(&[])),
+                                comp_memory_pod,
+                                record_name,
+                                record_value,
                             ))?;
-                            let instance = fc.gen_compute_call(
-                                subcmp_struct_type.try_into()?,
-                                empty_inputs,
-                                location,
-                                codegen,
-                            )?;
-                            (COMP, instance)
-                        } else {
-                            let count_value = count.to_index_value(
-                                codegen,
-                                fc,
-                                location,
-                                Some(&template_params),
-                            )?;
-                            (COUNT, count_value)
-                        };
-                        fc.append_op_no_result(codegen.new_pod_write_op(
-                            location,
-                            comp_memory_pod,
-                            record_name,
-                            record_value,
-                        ))?;
 
-                        fc.append_array_write(
-                            codegen,
-                            comp_memory,
-                            indices,
-                            location,
-                            comp_memory_pod,
-                            None,
-                        )
-                    })?;
+                            fc.append_array_write(
+                                codegen,
+                                comp_memory,
+                                indices,
+                                location,
+                                comp_memory_pod,
+                                None,
+                            )
+                        },
+                    )?;
                 }
                 Err(_) => {
                     let (record_name, record_value) = if count.is_const_zero() {
