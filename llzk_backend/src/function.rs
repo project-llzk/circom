@@ -63,6 +63,7 @@ use llzk::prelude::Attribute;
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
+use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::IntegerAttribute;
@@ -1116,17 +1117,10 @@ where
             }
             return self.append_op_unnamed_result(arith::constant(codegen.context, dim, location));
         }
-        if let Ok(sym_ref) = SymbolRefAttribute::try_from(dim) {
-            let symbol = sym_ref.root();
-            if symbol != sym_ref.leaf() {
-                anyhow::bail!(
-                    "expected flat symbol ref attribute for array dimension, got {:?}",
-                    sym_ref
-                );
-            }
+        if let Ok(sym_ref) = FlatSymbolRefAttribute::try_from(dim) {
             return self.append_op_unnamed_result(poly::read_const(
                 location,
-                symbol.as_str()?,
+                sym_ref.value(),
                 codegen.index_type(),
             ));
         }
