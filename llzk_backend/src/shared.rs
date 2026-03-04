@@ -804,6 +804,21 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         felt::constant(location, attr).map_err(Into::into)
     }
 
+    /// Creates a new constant op to create a constant of the given type.
+    /// Assumes `type` will be a felt or integral/index type.
+    pub fn new_const_op(
+        &self,
+        location: Location<'ctx>,
+        r#type: Type<'ctx>,
+        val: i64,
+    ) -> Result<Operation<'ctx>> {
+        if is_felt_type(r#type) {
+            self.new_felt_const_op(&BigInt::from(val), location)
+        } else {
+            Ok(self.new_int_const_op(r#type, val, location))
+        }
+    }
+
     /// Run cleanup passes on the generated `Module`.
     pub fn run_passes(&mut self, pass_pipeline: &str) -> Result<()> {
         if pass_pipeline.is_empty() {
