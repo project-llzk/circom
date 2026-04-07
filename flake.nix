@@ -3,25 +3,16 @@
     llzk-pkgs.url = "github:project-llzk/llzk-nix-pkgs";
     nixpkgs.follows = "llzk-pkgs/nixpkgs";
     flake-utils.follows = "llzk-pkgs/flake-utils";
-    llzk-lib = {
-      url = "github:project-llzk/llzk-lib";
-      inputs = {
-        nixpkgs.follows = "llzk-pkgs/nixpkgs";
-        flake-utils.follows = "llzk-pkgs/flake-utils";
-        llzk-pkgs.follows = "llzk-pkgs";
-      };
-    };
-    release-helpers.follows = "llzk-lib/release-helpers";
-
     llzk-rs-pkgs = {
-      url = "git+https://github.com/project-llzk/llzk-rs?submodules=1";
+      url = "git+https://github.com/project-llzk/llzk-rs";
       inputs = {
         nixpkgs.follows = "llzk-pkgs/nixpkgs";
         flake-utils.follows = "llzk-pkgs/flake-utils";
         llzk-pkgs.follows = "llzk-pkgs";
-        llzk-lib.follows = "llzk-lib";
       };
     };
+    llzk-lib.follows = "llzk-rs-pkgs/llzk-lib";
+    release-helpers.follows = "llzk-rs-pkgs/llzk-lib/release-helpers";
   };
 
   # Custom colored bash prompt

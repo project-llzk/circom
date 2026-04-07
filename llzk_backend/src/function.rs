@@ -1137,7 +1137,7 @@ where
             .get_records()
             .into_iter()
             .map(|record| {
-                let record_name = codegen.flat_sym(record.name().as_str()?);
+                let record_name = codegen.flat_sym(record.name().as_string_ref().as_str()?);
                 self.append_op_unnamed_result(pod::read(
                     location,
                     pod,

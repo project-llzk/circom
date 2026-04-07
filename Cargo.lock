@@ -280,15 +280,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cmake"
-version = "0.1.54"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7caa3f9de89ddbe2c607f4101924c5abec803763ae9534e4f4d7d8f84aa81f0"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "code_producers"
 version = "2.2.2"
 dependencies = [
@@ -806,8 +797,8 @@ checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
 
 [[package]]
 name = "llzk"
-version = "0.1.0"
-source = "git+https://github.com/project-llzk/llzk-rs#779d537c4ef34da1b0d66670317f9070bcb1ce6b"
+version = "0.3.1"
+source = "git+https://github.com/project-llzk/llzk-rs#0f815eb50497c5079b8b2cbf8d1c26424277a4c0"
 dependencies = [
  "llzk-macro",
  "llzk-sys",
@@ -820,8 +811,8 @@ dependencies = [
 
 [[package]]
 name = "llzk-macro"
-version = "0.1.0"
-source = "git+https://github.com/project-llzk/llzk-rs#779d537c4ef34da1b0d66670317f9070bcb1ce6b"
+version = "0.3.0"
+source = "git+https://github.com/project-llzk/llzk-rs#0f815eb50497c5079b8b2cbf8d1c26424277a4c0"
 dependencies = [
  "convert_case",
  "proc-macro2",
@@ -832,8 +823,8 @@ dependencies = [
 
 [[package]]
 name = "llzk-sys"
-version = "0.1.0"
-source = "git+https://github.com/project-llzk/llzk-rs#779d537c4ef34da1b0d66670317f9070bcb1ce6b"
+version = "10.0.1"
+source = "git+https://github.com/project-llzk/llzk-rs#0f815eb50497c5079b8b2cbf8d1c26424277a4c0"
 dependencies = [
  "anyhow",
  "llzk-sys-build-support",
@@ -842,15 +833,12 @@ dependencies = [
 
 [[package]]
 name = "llzk-sys-build-support"
-version = "0.1.0"
-source = "git+https://github.com/project-llzk/llzk-rs#779d537c4ef34da1b0d66670317f9070bcb1ce6b"
+version = "1.0.1"
+source = "git+https://github.com/project-llzk/llzk-rs#0f815eb50497c5079b8b2cbf8d1c26424277a4c0"
 dependencies = [
  "anyhow",
  "bindgen 0.71.1",
  "cc",
- "cmake",
- "glob",
- "tempfile",
 ]
 
 [[package]]

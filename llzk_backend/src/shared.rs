@@ -800,6 +800,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
             // use required bits +1 to ensure unsigned representation
             u32::try_from(val.bits())? + 1,
             val.to_string().as_str(),
+            None,
         );
         felt::constant(location, attr).map_err(Into::into)
     }
