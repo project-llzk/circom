@@ -14,7 +14,7 @@
     release-helpers.follows = "llzk-lib/release-helpers";
 
     llzk-rs-pkgs = {
-      url = "git+https://github.com/project-llzk/llzk-rs?submodules=1";
+      url = "git+https://github.com/project-llzk/llzk-rs";
       inputs = {
         nixpkgs.follows = "llzk-pkgs/nixpkgs";
         flake-utils.follows = "llzk-pkgs/flake-utils";
