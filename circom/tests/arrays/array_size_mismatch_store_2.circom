@@ -1,5 +1,5 @@
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && %circom --llzk=concrete -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// RUN: rm -rf %t && mkdir %t && %circom --llzk=concrete --llzk_plaintext -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
 // COM: Only works for llzk=concrete mode for now, pending larger template support
 

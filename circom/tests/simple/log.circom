@@ -1,7 +1,7 @@
 // REQUIRES: circom
 // COM: Setup and run the test
 // RUN:   rm -rf %t && mkdir %t
-// RUN:   %circom --stabilize --llzk -o %t %s > %t/stdout.txt 2> %t/stderr.txt
+// RUN:   %circom --stabilize --llzk --llzk_plaintext -o %t %s > %t/stdout.txt 2> %t/stderr.txt
 // COM: Check stderr for the warning that's produced (but ignore the color codes)
 // RUN:   sed 's/\x1b\[[0-9;]*m//g' %t/stderr.txt | FileCheck %s --check-prefix=WARN
 // COM: Check stdout for the generated IR
