@@ -13,5 +13,4 @@
 set -e
 
 cargo update -p llzk
-nix flake update llzk-lib
 nix flake update llzk-rs-pkgs
