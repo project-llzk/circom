@@ -41,6 +41,7 @@ fn start() -> Result<(), ()> {
             &user_input.prime(),
             user_input.flag_verbose(),
             user_input.flag_stabilize(),
+            user_input.llzk_plaintext_out_flag(),
         );
     }
 
@@ -88,6 +89,7 @@ fn start() -> Result<(), ()> {
             &user_input.prime(),
             user_input.flag_verbose(),
             user_input.flag_stabilize(),
+            user_input.llzk_plaintext_out_flag(),
         );
     }
 

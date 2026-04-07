@@ -850,7 +850,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     }
 
     /// Write the generated `Module` to a file in LLZK IR assembly format.
-    pub fn write_to_file(self, filename: &str) -> Result<()> {
+    pub fn write_assembly_to_file(self, filename: &str) -> Result<()> {
         let mut file = Self::create_file(filename)?;
         write!(file, "{}", self.module.as_operation())?;
         println!("{} {}", Color::Green.paint("Written successfully:"), filename);
