@@ -1,5 +1,5 @@
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs xxd | head -1 | FileCheck %s
+// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs od -t x1 -N 4 | FileCheck %s
 // END.
 
 pragma circom 2.0.0;
@@ -14,4 +14,4 @@ template BytecodeOutput() {
 
 component main = BytecodeOutput();
 
-// CHECK: 4d4c ef52
+// CHECK: 4d 4c ef 52
