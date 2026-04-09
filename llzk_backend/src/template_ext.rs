@@ -14,7 +14,6 @@ use compiler::hir::very_concrete_program::TemplateInstance;
 use compiler::hir::very_concrete_program::Wire;
 use llzk::prelude::Attribute;
 use llzk::prelude::Location;
-use llzk::prelude::StructType;
 use num_bigint_dig::BigInt;
 use num_traits::FromPrimitive;
 use program_structure::ast::AssignOp::AssignVar;
@@ -219,9 +218,7 @@ impl TemplateLike for TemplateInstance {
                         todo!("Support mixed type subcomponent instantiations")
                     }
                     ClusterType::Uniform { header, .. } => {
-                        subcmp_decl
-                            .instances_mut()
-                            .push(StructType::new(codegen.flat_sym(header), &[]));
+                        subcmp_decl.instances_mut().push(codegen.struct_type(header).into());
                     }
                 }
             }
