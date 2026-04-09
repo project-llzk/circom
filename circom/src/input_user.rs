@@ -42,6 +42,7 @@ pub struct Input {
     pub flag_verbose: bool,
     pub flag_no_init: bool,
     pub prime: String,
+    pub llzk_plaintext_out_flag: bool,
     pub llzk_pass_pipeline: String,
     pub link_libraries : Vec<PathBuf>
 }
@@ -112,6 +113,7 @@ impl Input {
             wasm_flag: input_processing::get_wasm(&matches),
             c_flag: c_flag,
             llzk_flag: input_processing::get_llzk(&matches),
+            llzk_plaintext_out_flag: input_processing::get_llzk_plaintext(&matches),
             llzk_pass_pipeline: input_processing::get_llzk_pass_pipeline(&matches)?,
             no_asm_flag:input_processing::get_no_asm(&matches),
             r1cs_flag: input_processing::get_r1cs(&matches),
@@ -276,6 +278,9 @@ impl Input {
     }
     pub fn llzk_pass_pipeline(&self) -> String {
         self.llzk_pass_pipeline.clone()
+    }
+    pub fn llzk_plaintext_out_flag(&self) -> bool {
+        self.llzk_plaintext_out_flag
     }
 }
 mod input_processing {
@@ -442,6 +447,10 @@ mod input_processing {
             true => Ok(String::from(matches.value_of("mlir_pass_pipeline").unwrap())),
             false => Ok(String::from("")),
         }
+    }
+
+    pub fn get_llzk_plaintext(matches: &ArgMatches) -> bool {
+        matches.is_present("llzk_plaintext")
     }
 
     pub fn view() -> ArgMatches<'static> {
@@ -669,6 +678,13 @@ mod input_processing {
                     .default_value("")
                     .display_order(5002)
                     .help("Specify an MLIR pass pipeline to apply on the LLZK IR output"),
+            )
+            .arg(
+                Arg::with_name("llzk_plaintext")
+                    .long("llzk_plaintext")
+                    .takes_value(false)
+                    .display_order(5003)
+                    .help("Emit LLZK IR in plaintext/assembly format instead of bytecode (default is bytecode)"),
             )
             .get_matches()
     }

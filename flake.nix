@@ -46,6 +46,7 @@
         createFileCheckSymlink = ''
           mkdir -p $PWD/build-tools
           ln -sf "${pkgs.llzk-llvmPackages.llvm}/bin/FileCheck" $PWD/build-tools/FileCheck
+          ln -sf "${pkgs.llzk}/bin/llzk-opt" $PWD/build-tools/llzk-opt
           export PATH="$PWD/build-tools:$PATH"
         '';
       in

@@ -71,6 +71,7 @@ pub fn generate_llzk(
     prime: &str,
     verbose: bool,
     stabilize: bool,
+    emit_plaintext: bool,
 ) -> Result<(), ()> {
     let prime = UsefulConstants::new(&prime.to_string()).get_p().to_biguint();
     if prime.is_none() {
@@ -121,7 +122,12 @@ pub fn generate_llzk(
     })?;
 
     // Write module to file
-    codegen.write_to_file(filename).map_err(|err| {
+    let write_result = if emit_plaintext {
+        codegen.write_assembly_to_file(filename)
+    } else {
+        codegen.write_bytecode_to_file(filename)
+    };
+    write_result.map_err(|err| {
         if verbose {
             eprintln!("{} {err:?}", Color::Red.paint("Failed to write LLZK IR:"));
         } else {
