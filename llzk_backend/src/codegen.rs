@@ -4,6 +4,7 @@ use crate::module::GenerateLLZKInModule;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::LlzkCodegen;
+pub use crate::shared::LlzkConfig;
 use ansi_term::Color;
 use anyhow::anyhow;
 use anyhow::Result;
@@ -17,7 +18,6 @@ use llzk::prelude::Type;
 use llzk::prelude::TypeAttribute;
 use llzk::prelude::MAIN_ATTR_NAME;
 use num_bigint_dig::BigUint;
-use program_structure::constants::UsefulConstants;
 
 /// Create a new, empty LLZK `Module` with Location "main" from the `ProgramArchive`.
 ///
@@ -64,38 +64,20 @@ fn new_llzk_module<'ctx>(
 
 /// Generate LLZK IR from the given `ProgramArchive` and write it to a file with the given filename.
 #[allow(clippy::result_unit_err)]
-pub fn generate_llzk(
-    program: &impl ProgramLike,
-    filename: &str,
-    pass_pipeline: &str,
-    prime: &str,
-    verbose: bool,
-    stabilize: bool,
-    emit_plaintext: bool,
-) -> Result<(), ()> {
-    let prime = UsefulConstants::new(&prime.to_string()).get_p().to_biguint();
-    if prime.is_none() {
-        eprintln!(
-            "{} prime should be convertible to unsigned",
-            Color::Red.paint("LLZK config error:"),
-        );
-        std::process::exit(10); // force exit to avoid hang if MLIR state is inconsistent
-    }
-    let prime = prime.unwrap();
-
+pub fn generate_llzk(program: &impl ProgramLike, config: LlzkConfig) -> Result<(), ()> {
     let ctx = LlzkContext::new();
-    let module = new_llzk_module(&ctx, program, &prime).map_err(|err| {
-        if verbose {
+    let module = new_llzk_module(&ctx, program, &config.prime).map_err(|err| {
+        if config.verbose {
             eprintln!("{} {err:?}", Color::Red.paint("Failed to generate LLZK IR:"));
         } else {
             eprintln!("{} {err}", Color::Red.paint("Failed to generate LLZK IR:"));
         }
         std::process::exit(20); // force exit to avoid hang if MLIR state is inconsistent
     })?;
-    let mut codegen = LlzkCodegen::new(program, &ctx, module, prime, verbose, stabilize);
+    let mut codegen = LlzkCodegen::new(program, &ctx, module, config);
 
     program.gen_llzk(&codegen).map_err(|err| {
-        if verbose {
+        if codegen.config.verbose {
             eprintln!("{} {err:?}", Color::Red.paint("Failed to generate LLZK IR:"));
         } else {
             eprintln!("{} {err}", Color::Red.paint("Failed to generate LLZK IR:"));
@@ -112,8 +94,8 @@ pub fn generate_llzk(
     }
 
     // Run user-specified MLIR pass pipeline
-    codegen.run_passes(pass_pipeline).map_err(|err| {
-        if verbose {
+    codegen.run_passes().map_err(|err| {
+        if codegen.config.verbose {
             eprintln!("{} {err:?}", Color::Red.paint("Failed to run pass pipeline:"));
         } else {
             eprintln!("{} {err}", Color::Red.paint("Failed to run pass pipeline:"));
@@ -122,10 +104,11 @@ pub fn generate_llzk(
     })?;
 
     // Write module to file
-    let write_result = if emit_plaintext {
-        codegen.write_assembly_to_file(filename)
+    let verbose = codegen.config.verbose;
+    let write_result = if codegen.config.emit_plaintext {
+        codegen.write_assembly_to_file()
     } else {
-        codegen.write_bytecode_to_file(filename)
+        codegen.write_bytecode_to_file()
     };
     write_result.map_err(|err| {
         if verbose {

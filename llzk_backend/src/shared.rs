@@ -225,6 +225,25 @@ pub fn location<'ctx>(
     Location::new(context, &filename, line, column)
 }
 
+/// Configuration for LLZK code generation, derived from user input.
+#[derive(Debug)]
+pub struct LlzkConfig {
+    /// Output filename for the generated LLZK IR.
+    pub filename: String,
+    /// MLIR pass pipeline to run on the generated module.
+    pub pass_pipeline: String,
+    /// Value of the `--prime` flag (e.g. `"bn128"`).
+    pub prime_str: String,
+    /// Prime field modulus as an unsigned integer.
+    pub prime: BigUint,
+    /// State of the `--verbose` flag.
+    pub verbose: bool,
+    /// State of the `--stabilize` flag.
+    pub stabilize: bool,
+    /// Emit plaintext (assembly) instead of bytecode.
+    pub emit_plaintext: bool,
+}
+
 /// Stores necessary context for generating LLZK IR.
 ///
 /// 'ast: lifetime of the circom AST element
@@ -237,12 +256,8 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     pub context: &'ctx LlzkContext,
     /// The generated LLZK `Module`.
     pub module: Module<'ctx>,
-    /// The prime field modulus.
-    pub prime: BigUint,
-    /// State of the `--verbose` flag.
-    pub verbose: bool,
-    /// State of the `--stabilize` flag.
-    pub stabilize: bool,
+    /// Code generation configuration.
+    pub config: LlzkConfig,
     /// Declaration info pre-computed for all templates.
     template_decls: RefCell<HashMap<String, DeclInfo<'ctx>>>,
     /// Operation builder
@@ -500,17 +515,13 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         program: &'ast P,
         context: &'ctx LlzkContext,
         module: Module<'ctx>,
-        prime: BigUint,
-        verbose: bool,
-        stabilize: bool,
+        config: LlzkConfig,
     ) -> Self {
         LlzkCodegen {
             program,
             context,
             module,
-            prime,
-            verbose,
-            stabilize,
+            config,
             template_decls: RefCell::new(Default::default()),
             builder: OpBuilder::new(context),
         }
@@ -576,7 +587,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
 
     /// Get the prime field modulus as a BigUint
     pub fn prime(&self) -> &BigUint {
-        &self.prime
+        &self.config.prime
     }
 
     /// Emit a circom-style warning.
@@ -821,15 +832,18 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     }
 
     /// Run cleanup passes on the generated `Module`.
-    pub fn run_passes(&mut self, pass_pipeline: &str) -> Result<()> {
-        if pass_pipeline.is_empty() {
+    pub fn run_passes(&mut self) -> Result<()> {
+        if self.config.pass_pipeline.is_empty() {
             return Ok(());
         }
         let manager = PassManager::new(self.context);
         manager.enable_verifier(true);
         utility::register_all_passes();
-        utility::parse_pass_pipeline(manager.as_operation_pass_manager(), pass_pipeline)
-            .map_err(anyhow::Error::from)?;
+        utility::parse_pass_pipeline(
+            manager.as_operation_pass_manager(),
+            &self.config.pass_pipeline,
+        )
+        .map_err(anyhow::Error::from)?;
         manager.run(&mut self.module).map_err(Into::into)
     }
 
@@ -850,7 +864,8 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     }
 
     /// Write the generated `Module` to a file in LLZK IR assembly format.
-    pub fn write_assembly_to_file(self, filename: &str) -> Result<()> {
+    pub fn write_assembly_to_file(self) -> Result<()> {
+        let filename = self.config.filename.as_str();
         let mut file = Self::create_file(filename)?;
         write!(file, "{}", self.module.as_operation())?;
         println!("{} {}", Color::Green.paint("Written successfully:"), filename);
@@ -858,13 +873,14 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     }
 
     /// Write the generated `Module` to a file in bytecode format.
-    pub fn write_bytecode_to_file(self, filename: &str) -> Result<()> {
+    pub fn write_bytecode_to_file(self) -> Result<()> {
         unsafe extern "C" fn callback(string_ref: mlir_sys::MlirStringRef, user_data: *mut c_void) {
             let file = &mut *(user_data as *mut File);
             let slice = std::slice::from_raw_parts(string_ref.data as *const u8, string_ref.length);
             file.write_all(slice).unwrap();
         }
 
+        let filename = self.config.filename.as_str();
         let mut file = Self::create_file(filename)?;
         unsafe {
             mlir_sys::mlirOperationWriteBytecode(

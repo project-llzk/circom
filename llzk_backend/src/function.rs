@@ -919,7 +919,7 @@ where
         // ordering of names here defines the ordering of results from the `scf.if` op and
         // thus the ordering of operands to `scf.yield` ops in both branches.
         let mut overwrites_sorted: Vec<_> = then_info.var_overwrites.into_iter().collect();
-        if codegen.stabilize {
+        if codegen.config.stabilize {
             // Sort by circom variable names to ensure a stable order.
             overwrites_sorted.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
         }
@@ -1445,7 +1445,7 @@ where
         // ordering of names here defines the ordering of the loop-carried variables for the
         // `scf.while` op and thus the ordering of operands for `scf.yield` and `scf.condition`.
         let mut overwrites_sorted: Vec<_> = loop_body_info.var_overwrites.into_iter().collect();
-        if codegen.stabilize {
+        if codegen.config.stabilize {
             // Sort by circom variable names to ensure a stable order.
             overwrites_sorted.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
         }
@@ -1741,7 +1741,7 @@ where
         } else {
             self.get_dimensions(codegen, dimensions)?
         };
-        if codegen.verbose {
+        if codegen.config.verbose {
             println!("Declaring variable '{name}' with dimensions {dims:?}");
         }
         let op = dims.new_nondet_felt_of_dimensions(codegen, meta)?;
