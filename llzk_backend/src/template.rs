@@ -214,7 +214,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
         'val: 'blk,
     {
         let mut subcmps: Vec<_> = self.subcmps.keys().collect();
-        if codegen.stabilize {
+        if codegen.config.stabilize {
             // Sort by circom subcomponent names to ensure a stable order of operations.
             subcmps.sort_by(Ord::cmp);
         }

@@ -161,7 +161,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     ) -> Result<Vec<SubcmpPrologueData<'ast, 'ctx>>> {
         let mut ops = vec![];
         let mut subcmps: Vec<_> = self.subcmp_decls.keys().cloned().collect();
-        if codegen.stabilize {
+        if codegen.config.stabilize {
             // Sort by circom subcomponent names to ensure a stable order of struct fields.
             subcmps.sort_by(Ord::cmp);
         }
@@ -524,7 +524,7 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
     func_like: &'ast F,
     codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
 ) -> Result<()> {
-    if codegen.verbose {
+    if codegen.config.verbose {
         println!("Generating LLZK for function {}", func_like.get_name());
     }
     let location = func_like.get_location(codegen);
@@ -556,7 +556,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     template_like: &'ast T,
     codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
 ) -> Result<()> {
-    if codegen.verbose {
+    if codegen.config.verbose {
         println!("Generating LLZK for template {}", template_like.get_name());
     }
     // Collect declarations first to determine struct fields and function parameters.
@@ -868,14 +868,14 @@ pub trait GenerateLLZKInModule<'ctx, P: ProgramLike> {
 
 impl<'ctx, P: ProgramLike> GenerateLLZKInModule<'ctx, P> for P {
     fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx, P>) -> Result<()> {
-        for f in self.get_functions(codegen.stabilize) {
+        for f in self.get_functions(codegen.config.stabilize) {
             gen_function_llzk(f, codegen)?;
         }
         // Collect declaration information for all templates first to avoid duplicating work.
         for t in self.get_templates(false) {
             codegen.put_template_decl(t.get_name(), t.get_declarations(codegen)?);
         }
-        for t in self.get_templates(codegen.stabilize) {
+        for t in self.get_templates(codegen.config.stabilize) {
             gen_template_llzk(t, codegen)?;
         }
         Ok(())

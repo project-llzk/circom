@@ -282,6 +282,24 @@ impl Input {
     pub fn llzk_plaintext_out_flag(&self) -> bool {
         self.llzk_plaintext_out_flag
     }
+    pub fn to_llzk_config(&self) -> Result<llzk_backend::LlzkConfig, ()> {
+        use program_structure::constants::UsefulConstants;
+        let prime = UsefulConstants::new(&self.prime).get_p().to_biguint().ok_or_else(|| {
+            eprintln!(
+                "{} prime should be convertible to unsigned",
+                ansi_term::Colour::Red.paint("LLZK config error:"),
+            );
+        })?;
+        Ok(llzk_backend::LlzkConfig {
+            filename: self.llzk_file().to_string(),
+            pass_pipeline: self.llzk_pass_pipeline(),
+            prime_str: self.prime(),
+            prime,
+            verbose: self.flag_verbose(),
+            stabilize: self.flag_stabilize(),
+            emit_plaintext: self.llzk_plaintext_out_flag(),
+        })
+    }
 }
 mod input_processing {
     use ansi_term::Colour;

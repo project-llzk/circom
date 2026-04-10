@@ -34,15 +34,7 @@ fn start() -> Result<(), ()> {
     // If requested, generate LLZK IR output with generic templates
     let llzk_gen_opt = user_input.llzk_flag().as_deref();
     if Some(crate::input_user::LLZK_KIND_TEMPLATED) == llzk_gen_opt {
-        return llzk_backend::generate_llzk(
-            &program_archive,
-            user_input.llzk_file(),
-            &user_input.llzk_pass_pipeline(),
-            &user_input.prime(),
-            user_input.flag_verbose(),
-            user_input.flag_stabilize(),
-            user_input.llzk_plaintext_out_flag(),
-        );
+        return llzk_backend::generate_llzk(&program_archive, user_input.to_llzk_config()?);
     }
 
     let config = ExecutionConfig {
@@ -82,15 +74,7 @@ fn start() -> Result<(), ()> {
     // If requested, generate LLZK IR output after templates have been made concrete
     if let Some(parse_info) = parse_info {
         let vcp_plus = llzk_backend::VCPPlus { vcp: &circuit, parse_info };
-        return llzk_backend::generate_llzk(
-            &vcp_plus,
-            user_input.llzk_file(),
-            &user_input.llzk_pass_pipeline(),
-            &user_input.prime(),
-            user_input.flag_verbose(),
-            user_input.flag_stabilize(),
-            user_input.llzk_plaintext_out_flag(),
-        );
+        return llzk_backend::generate_llzk(&vcp_plus, user_input.to_llzk_config()?);
     }
 
     let compilation_config = CompilerConfig {
