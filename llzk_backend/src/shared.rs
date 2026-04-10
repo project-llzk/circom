@@ -698,6 +698,16 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         StructType::from_str(self.context, name)
     }
 
+    /// Get the struct type for the given struct name and parameters.
+    #[inline]
+    pub fn struct_type_with_params(
+        &self,
+        name: &str,
+        params: &[Attribute<'ctx>],
+    ) -> StructType<'ctx> {
+        StructType::new(self.flat_sym(name), params)
+    }
+
     /// Get a pod struct type with the given records.
     #[inline]
     pub fn pod_type(&self, records: &[(&str, Type<'ctx>)]) -> PodType<'ctx> {
@@ -1532,7 +1542,7 @@ impl<'ast, 'ctx, 'val> ArrayDimensions<'ctx, 'val> {
         if self.is_empty() {
             codegen.struct_type(name)
         } else {
-            StructType::new(codegen.flat_sym(name), &self.attrs())
+            codegen.struct_type_with_params(name, &self.attrs())
         }
     }
 }
