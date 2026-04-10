@@ -698,6 +698,16 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         StructType::from_str(self.context, name)
     }
 
+    /// Get the struct type for the given struct name and parameters.
+    #[inline]
+    pub fn struct_type_with_params(
+        &self,
+        name: &str,
+        params: &[Attribute<'ctx>],
+    ) -> StructType<'ctx> {
+        StructType::new(self.flat_sym(name), params)
+    }
+
     /// Get a pod struct type with the given records.
     #[inline]
     pub fn pod_type(&self, records: &[(&str, Type<'ctx>)]) -> PodType<'ctx> {
@@ -920,8 +930,8 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                     // something has gone very wrong.
                     .unwrap_or_else(|| panic!("Input {:?} not found for type {:?}", input, name));
                 match wire.get_type() {
-                    WireType::Signal => FeltType::new(self.context).into(),
-                    WireType::Bus(name) => StructType::from_str(self.context, &name).into(),
+                    WireType::Signal => self.felt_type().into(),
+                    WireType::Bus(name) => self.struct_type(&name).into(),
                 }
             })
             .collect())
@@ -1530,9 +1540,9 @@ impl<'ast, 'ctx, 'val> ArrayDimensions<'ctx, 'val> {
         name: &str,
     ) -> StructType<'ctx> {
         if self.is_empty() {
-            StructType::from_str(codegen.context, name)
+            codegen.struct_type(name)
         } else {
-            StructType::new(codegen.flat_sym(name), &self.attrs())
+            codegen.struct_type_with_params(name, &self.attrs())
         }
     }
 }
