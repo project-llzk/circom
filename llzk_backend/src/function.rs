@@ -395,7 +395,7 @@ where
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
         if !is_felt_type(val.r#type()) {
-            self.append_op_unnamed_result(cast::tofelt(location, val))
+            self.append_op_unnamed_result(cast::tofelt(location, val, None))
         } else {
             Ok(val)
         }

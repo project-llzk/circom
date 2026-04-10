@@ -1001,8 +1001,9 @@ fn unify_constrain_eq_types<'ctx, 'func, 'blk, 'val>(
     rhs: Value<'ctx, 'val>,
 ) -> Result<(Value<'ctx, 'val>, Value<'ctx, 'val>)> {
     // May need to cast between scalar types
-    let mut to_felt =
-        |val: Value<'ctx, 'val>| fc.append_op_unnamed_result(cast::tofelt(location, val).into());
+    let mut to_felt = |val: Value<'ctx, 'val>| {
+        fc.append_op_unnamed_result(cast::tofelt(location, val, None).into())
+    };
 
     match (lhs.r#type(), rhs.r#type()) {
         (t0, t1) if is_felt_type(t0) && !is_felt_type(t1) => Ok((lhs, to_felt(rhs)?)),
