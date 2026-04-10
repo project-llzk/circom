@@ -41,6 +41,7 @@ use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::FuncDefOpRef;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::FunctionType;
+use llzk::prelude::LlzkError;
 use llzk::prelude::Location;
 use llzk::prelude::MemberDefOpLike as _;
 use llzk::prelude::Operation;
@@ -52,7 +53,9 @@ use llzk::prelude::RecordValue;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::StringRef;
 use llzk::prelude::StructDefOpLike as _;
+use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructType;
+use llzk::prelude::TemplateOpLike;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use program_structure::ast::AssignOp;
@@ -562,18 +565,29 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     // Collect declarations first to determine struct fields and function parameters.
     let mut declarations = codegen.take_template_decl(template_like.get_name())?;
     let subcmps = declarations.complete(codegen)?;
+    let location = template_like.get_location(codegen);
 
-    // Generate the struct definition, prepopulated with fields.
-    let struct_loc = template_like.get_location(codegen);
-    let struct_params: Vec<_> =
-        template_like.get_name_of_params().iter().map(String::as_str).collect();
-    let struct_def = r#struct::def(
-        struct_loc,
-        template_like.get_name(),
-        &struct_params,
-        declarations.struct_fields.into_iter().map(MemberInfo::try_into),
+    // Generate list of template params for the LLZK template body.
+    let template_region_ops = template_like
+        .get_name_of_params()
+        .iter()
+        .map(|name| poly::param(location, name, None).map(Into::into))
+        .collect::<Vec<Result<Operation, LlzkError>>>();
+    let llzk_template_def =
+        poly::template(location, template_like.get_name(), template_region_ops)?;
+    let new_template = codegen.add_template(llzk_template_def)?;
+
+    // Add the struct definition, prepopulated with fields, to the template body.
+    let new_struct = StructDefOpRef::try_from(
+        new_template.body().append_operation(
+            r#struct::def(
+                location,
+                template_like.get_name(),
+                declarations.struct_fields.into_iter().map(MemberInfo::try_into),
+            )?
+            .into(),
+        ),
     )?;
-    let new_struct = codegen.add_struct(struct_def)?;
 
     // Consume and separate 'declarations.inputs' (to avoid cloning 'attrs' and 'name').
     let (inputs, arg_attrs, arg_names) = declarations.inputs.into_iter().fold(
@@ -589,11 +603,11 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     let new_struct_type = new_struct.r#type();
     let struct_body = new_struct.body();
     let compute_func = FuncDefOpRef::try_from(struct_body.append_operation(
-        compute_fn(struct_loc, new_struct_type, &inputs, Some(&arg_attrs))?.into(),
+        compute_fn(location, new_struct_type, &inputs, Some(&arg_attrs))?.into(),
     ))?
     .into();
     let constrain_func = FuncDefOpRef::try_from(struct_body.append_operation(
-        constrain_fn(struct_loc, new_struct_type, &inputs, Some(&arg_attrs))?.into(),
+        constrain_fn(location, new_struct_type, &inputs, Some(&arg_attrs))?.into(),
     ))?
     .into();
 
@@ -615,12 +629,12 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
 
     // Insert Operations to read templated struct parameters into an SSA Value in each function.
     // This ensures the struct parameter is available as a Value in the block context.
-    for name in struct_params.into_iter() {
+    for name in template_like.get_name_of_params() {
         compute_ctx.block_ctx.declare_name_if_not_present(name, || {
-            Ok(poly::read_const(struct_loc, name, codegen.felt_type().into()))
+            Ok(poly::read_const(location, name, codegen.felt_type().into()))
         })?;
         constrain_ctx.block_ctx.declare_name_if_not_present(name, || {
-            Ok(poly::read_const(struct_loc, name, codegen.felt_type().into()))
+            Ok(poly::read_const(location, name, codegen.felt_type().into()))
         })?;
     }
 
@@ -671,8 +685,13 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         .collect::<Result<_>>()?;
 
     // Visit the body of the template and generate LLZK IR for it within the struct functions.
-    let template_context =
-        TemplateContext::new(new_struct, compute_ctx, constrain_ctx, &subcmp_names);
+    let template_context = TemplateContext::new(
+        new_template.into(),
+        new_struct.into(),
+        compute_ctx,
+        constrain_ctx,
+        &subcmp_names,
+    );
     template_like.gen_preamble(codegen, &template_context)?;
     template_like.get_body().gen_llzk_in_template(codegen, &template_context)?;
     template_context.finalize(codegen)

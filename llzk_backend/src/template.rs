@@ -34,6 +34,7 @@ use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::cast;
 use llzk::dialect::constrain;
 use llzk::dialect::pod;
+use llzk::dialect::poly::ops::TemplateOpRefMut;
 use llzk::dialect::r#struct;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::ArrayType;
@@ -47,6 +48,7 @@ use llzk::prelude::RecordValue;
 use llzk::prelude::StringRef;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRefMut;
+use llzk::prelude::TemplateOpLike;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
@@ -116,7 +118,9 @@ where
     'blk: 'val,
     'val: 'blk,
 {
-    /// Current LLZK `StructDefOp`
+    /// Current LLZK `TemplateOp`
+    template_def: TemplateOpRefMut<'ctx, 'str>,
+    /// Current LLZK `StructDefOp` within the `TemplateOp`
     struct_def: StructDefOpRefMut<'ctx, 'str>,
     /// Codegen refs for the "@compute" function within `struct_def`
     compute: ShouldGenerate<Rc<RefCell<FunctionContext<'ctx, 'func, 'blk, 'val>>>>,
@@ -132,12 +136,14 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
     /// Creates a new [TemplateContext].
     #[inline]
     pub fn new(
+        template_def: TemplateOpRefMut<'ctx, 'str>,
         struct_def: StructDefOpRefMut<'ctx, 'str>,
         compute: FunctionContext<'ctx, 'func, 'blk, 'val>,
         constrain: FunctionContext<'ctx, 'func, 'blk, 'val>,
         subcmps: &'str HashMap<String, String>,
     ) -> TemplateContext<'ctx, 'str, 'func, 'blk, 'val> {
         Self {
+            template_def,
             struct_def,
             compute: Some(Rc::new(RefCell::new(compute))),
             constrain: Some(Rc::new(RefCell::new(constrain))),
@@ -150,6 +156,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
     #[inline]
     pub fn compute_only(&self) -> TemplateContext<'ctx, 'str, 'func, 'blk, 'val> {
         Self {
+            template_def: self.template_def,
             struct_def: self.struct_def,
             compute: self.compute.as_ref().map(Rc::clone),
             constrain: None,
@@ -162,6 +169,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
     #[inline]
     pub fn constrain_only(&self) -> TemplateContext<'ctx, 'str, 'func, 'blk, 'val> {
         Self {
+            template_def: self.template_def,
             struct_def: self.struct_def,
             compute: None,
             constrain: self.constrain.as_ref().map(Rc::clone),
@@ -742,7 +750,7 @@ where
                 Expression::Variable { meta, name, access } => match access.as_slice() {
                     [] => {
                         // Grab the parameter name if it exists, else, defer to function generation.
-                        if self.struct_def.has_param_name(name) {
+                        if self.template_def.has_const_param_named(name) {
                             ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
                         } else {
                             // Other variables are unsupported, defer to function context

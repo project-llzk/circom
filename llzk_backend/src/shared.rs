@@ -19,6 +19,8 @@ use llzk::dialect::array;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::felt;
 use llzk::dialect::pod;
+use llzk::dialect::poly::ops::TemplateOpRef;
+use llzk::dialect::poly::ops::TemplateOpRefMut;
 use llzk::operation::move_op_after;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
@@ -54,11 +56,9 @@ use llzk::prelude::PodType;
 use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::StringAttribute;
-use llzk::prelude::StructDefOp;
-use llzk::prelude::StructDefOpRef;
-use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::StructType;
 use llzk::prelude::SymbolRefAttribute;
+use llzk::prelude::TemplateOp;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
@@ -625,13 +625,13 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         }
     }
 
-    /// Insert the struct into the module and return a reference to it.
-    pub fn add_struct(&self, s: StructDefOp<'ctx>) -> Result<StructDefOpRefMut<'ctx, '_>> {
-        let s: StructDefOpRef = self.module.body().append_operation(s.into()).try_into()?;
-        Ok(s.into())
+    /// Insert the LLZK template into the module and return a reference to it.
+    pub fn add_template(&self, t: TemplateOp<'ctx>) -> Result<TemplateOpRefMut<'ctx, '_>> {
+        let t: TemplateOpRef = self.module.body().append_operation(t.into()).try_into()?;
+        Ok(t.into())
     }
 
-    /// Insert the free function into the module and return a reference to it.
+    /// Insert the LLZK free function into the module and return a reference to it.
     pub fn add_function(&self, f: FuncDefOp<'ctx>) -> Result<FuncDefOpRefMut<'ctx, '_>> {
         let f: FuncDefOpRef = self.module.body().append_operation(f.into()).try_into()?;
         Ok(f.into())
