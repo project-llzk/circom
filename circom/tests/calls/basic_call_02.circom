@@ -42,17 +42,19 @@ component main = Call2();
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.return %[[V_3]]#1 : !felt.type
 // CHECK-NEXT:    }
-// CHECK-NEXT:    struct.def @Call2<[]> {
-// CHECK-NEXT:      struct.member @y : !felt.type {llzk.pub}
-// CHECK-NEXT:      function.def @compute(%[[V_15:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Call2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:        %[[V_16:[0-9a-zA-Z_\.]+]] = struct.new : <@Call2<[]>>
-// CHECK-NEXT:        %[[V_17:[0-9a-zA-Z_\.]+]] = function.call @nbits(%[[V_15]]) : (!felt.type) -> !felt.type
-// CHECK-NEXT:        struct.writem %[[V_16]][@y] = %[[V_17]] : <@Call2<[]>>, !felt.type
-// CHECK-NEXT:        function.return %[[V_16]] : !struct.type<@Call2<[]>>
-// CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[V_18:[0-9a-zA-Z_\.]+]]: !struct.type<@Call2<[]>>, %[[V_19:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[V_20:[0-9a-zA-Z_\.]+]] = struct.readm %[[V_18]][@y] : <@Call2<[]>>, !felt.type
-// CHECK-NEXT:        function.return
+// CHECK-NEXT:    poly.template @Call2 {
+// CHECK-NEXT:      struct.def @Call2 {
+// CHECK-NEXT:        struct.member @y : !felt.type {llzk.pub}
+// CHECK-NEXT:        function.def @compute(%[[VAL_15:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Call2::@Call2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = struct.new : <@Call2::@Call2<[]>>
+// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = function.call @nbits(%[[VAL_15]]) : (!felt.type) -> !felt.type
+// CHECK-NEXT:          struct.writem %[[VAL_16]][@y] = %[[VAL_17]] : <@Call2::@Call2<[]>>, !felt.type
+// CHECK-NEXT:          function.return %[[VAL_16]] : !struct.type<@Call2::@Call2<[]>>
+// CHECK-NEXT:        }
+// CHECK-NEXT:        function.def @constrain(%[[VAL_18:[0-9a-zA-Z_\.]+]]: !struct.type<@Call2::@Call2<[]>>, %[[VAL_19:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_18]][@y] : <@Call2::@Call2<[]>>, !felt.type
+// CHECK-NEXT:          function.return
+// CHECK-NEXT:        }
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }

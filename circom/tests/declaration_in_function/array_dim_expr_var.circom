@@ -22,19 +22,21 @@ component main = A();
 // CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_1]], %[[VAL_1]], %[[VAL_1]], %[[VAL_1]], %[[VAL_1]], %[[VAL_1]] : <6 x !felt.type>
 // CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:      %[[VAL_4:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_3]]
+// CHECK-NEXT:      %[[VAL_4:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_3]] : !felt.type
 // CHECK-NEXT:      %[[VAL_5:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_2]]{{\[}}%[[VAL_4]]] : <6 x !felt.type>, !felt.type
 // CHECK-NEXT:      function.return %[[VAL_5]] : !felt.type
 // CHECK-NEXT:    }
-// CHECK-NEXT:    struct.def @A<[]> {
-// CHECK-NEXT:      function.def @compute() -> !struct.type<@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.new : <@A<[]>>
-// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = function.call @f() : () -> !felt.type
-// CHECK-NEXT:        function.return %[[VAL_6]] : !struct.type<@A<[]>>
-// CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !struct.type<@A<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = function.call @f() : () -> !felt.type
-// CHECK-NEXT:        function.return
+// CHECK-NEXT:    poly.template @A {
+// CHECK-NEXT:      struct.def @A {
+// CHECK-NEXT:        function.def @compute() -> !struct.type<@A::@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.new : <@A::@A<[]>>
+// CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = function.call @f() : () -> !felt.type
+// CHECK-NEXT:          function.return %[[VAL_6]] : !struct.type<@A::@A<[]>>
+// CHECK-NEXT:        }
+// CHECK-NEXT:        function.def @constrain(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !struct.type<@A::@A<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = function.call @f() : () -> !felt.type
+// CHECK-NEXT:          function.return
+// CHECK-NEXT:        }
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }
