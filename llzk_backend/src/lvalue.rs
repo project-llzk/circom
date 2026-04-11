@@ -3,6 +3,7 @@
 use crate::function::FunctionContext;
 use crate::function::InfoProviders;
 use crate::program_ext::ProgramLike;
+use crate::shared;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COMP;
 use crate::subcmp::SubcmpInfo;
@@ -167,8 +168,8 @@ impl<'ast> Lvalue<'ast> {
             StructType as _ => subcmp_value,
         };
         let comp_value_type = StructType::try_from(comp_value.r#type())?;
-        let field_ty =
-            codegen.get_output_signal_type(comp_value_type.name().value(), signal_name)?;
+        let field_ty = codegen
+            .get_output_signal_type(shared::get_name_tail(&comp_value_type)?, signal_name)?;
 
         fc.append_op_unnamed_result(r#struct::readm(
             codegen.op_builder(),

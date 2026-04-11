@@ -180,7 +180,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 todo!("Handle subcomponents with different instantiations")
             }
             let mut inputs_size = TypeSizeExpr::zero();
-            let template_name = types[0].name().value();
+            let template_name = shared::get_name_tail(&types[0])?;
             info.set_template(template_name.to_owned());
 
             let template = codegen
