@@ -82,7 +82,7 @@ template AliasCheck() {
 
 component main = AliasCheck();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@AliasCheck_2<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@AliasCheck_2::@AliasCheck_2<[]>>} {
 // CHECK-NEXT:    poly.template @AliasCheck_2 {
 // CHECK-NEXT:      struct.def @AliasCheck_2 {
 // CHECK-NEXT:        struct.member @compConstant : !struct.type<@CompConstant_1::@CompConstant_1<[]>>

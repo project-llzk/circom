@@ -19,7 +19,7 @@ template B() {
 
 component main = B();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@B<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@B::@B<[]>>} {
 // CHECK-NEXT:    poly.template @B {
 // CHECK-NEXT:      struct.def @B {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@B::@B<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

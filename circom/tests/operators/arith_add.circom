@@ -13,7 +13,7 @@ template ArithAdd() {
 
 component main = ArithAdd();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArithAdd<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArithAdd::@ArithAdd<[]>>} {
 // CHECK-NEXT:    poly.template @ArithAdd {
 // CHECK-NEXT:      struct.def @ArithAdd {
 // CHECK-NEXT:        struct.member @x : !felt.type {llzk.pub}

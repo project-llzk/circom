@@ -12,7 +12,7 @@ template ArithNeg() {
 
 component main = ArithNeg();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArithNeg<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArithNeg::@ArithNeg<[]>>} {
 // CHECK-NEXT:    poly.template @ArithNeg {
 // CHECK-NEXT:      struct.def @ArithNeg {
 // CHECK-NEXT:        struct.member @x : !felt.type {llzk.pub}

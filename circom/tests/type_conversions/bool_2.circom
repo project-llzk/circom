@@ -28,7 +28,7 @@ template A(x) {
 
 component main = A(555);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A<[555]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A::@A<[555]>>} {
 // CHECK-NEXT:    function.def @binop_bool(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = bool.cmp ne(%[[VAL_0]], %[[VAL_2]]) : !felt.type, !felt.type

@@ -20,7 +20,7 @@ template B() {
 
 component main = B();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@B<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@B::@B<[]>>} {
 // CHECK-NEXT:    poly.template @B {
 // CHECK-NEXT:      struct.def @B {
 // CHECK-NEXT:        struct.member @out : !felt.type {llzk.pub}

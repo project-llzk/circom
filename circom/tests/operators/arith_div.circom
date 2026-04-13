@@ -12,7 +12,7 @@ template Div() {
 
 component main = Div();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Div<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Div::@Div<[]>>} {
 // CHECK-NEXT:    poly.template @Div {
 // CHECK-NEXT:      struct.def @Div {
 // CHECK-NEXT:        struct.member @out : !felt.type {llzk.pub}

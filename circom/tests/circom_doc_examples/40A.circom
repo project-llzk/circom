@@ -28,7 +28,7 @@ template check_bits(n) {
 
 component main = check_bits(10);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@check_bits<[10]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@check_bits::@check_bits<[10]>>} {
 // CHECK-NEXT:    poly.template @Num2Bits {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @Num2Bits {

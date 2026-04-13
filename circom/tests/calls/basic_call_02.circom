@@ -23,7 +23,7 @@ template Call2() {
 
 component main = Call2();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Call2<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Call2::@Call2<[]>>} {
 // CHECK-NEXT:    function.def @nbits(%[[V_A:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[V_N0:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:      %[[V_R0:[0-9a-zA-Z_\.]+]] = felt.const  0

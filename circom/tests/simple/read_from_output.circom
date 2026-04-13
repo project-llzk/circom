@@ -14,7 +14,7 @@ template ReadFromOutput() {
 
 component main = ReadFromOutput();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ReadFromOutput<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ReadFromOutput::@ReadFromOutput<[]>>} {
 // CHECK-NEXT:    poly.template @ReadFromOutput {
 // CHECK-NEXT:      struct.def @ReadFromOutput {
 // CHECK-NEXT:        struct.member @outp : !felt.type {llzk.pub}

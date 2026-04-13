@@ -8,12 +8,12 @@ pub use crate::shared::LlzkConfig;
 use ansi_term::Color;
 use anyhow::anyhow;
 use anyhow::Result;
-use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::IntegerAttribute;
 use llzk::prelude::LlzkContext;
 use llzk::prelude::Module;
 use llzk::prelude::OperationMutLike as _;
 use llzk::prelude::StructType;
+use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Type;
 use llzk::prelude::TypeAttribute;
 use llzk::prelude::MAIN_ATTR_NAME;
@@ -55,7 +55,11 @@ fn new_llzk_module<'ctx>(
     ret.as_operation_mut().set_attribute(
         MAIN_ATTR_NAME.as_ref(),
         TypeAttribute::new(
-            StructType::new(FlatSymbolRefAttribute::new(context, &main_info.name), &params).into(),
+            StructType::new(
+                SymbolRefAttribute::new_from_str(context, &main_info.name, &[&main_info.name]),
+                &params,
+            )
+            .into(),
         )
         .into(),
     );

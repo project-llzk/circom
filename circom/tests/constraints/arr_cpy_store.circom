@@ -20,7 +20,7 @@ template Foo(N) {
 
 component main = Foo(2);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Foo<[2]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Foo::@Foo<[2]>>} {
 // CHECK-NEXT:    poly.template @Foo {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      struct.def @Foo {

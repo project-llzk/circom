@@ -17,7 +17,7 @@ template CmpLT(n) {
 
 component main = CmpLT(5);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@CmpLT<[5]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@CmpLT::@CmpLT<[5]>>} {
 // CHECK-NEXT:    poly.template @CmpLT {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @CmpLT {

@@ -16,4 +16,4 @@ template Main() {
 
 component main = Main();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Main<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Main::@Main<[]>>} {

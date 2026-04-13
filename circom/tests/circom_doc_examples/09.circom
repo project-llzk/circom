@@ -20,7 +20,7 @@ template Num2Bits(n) {
 
 component main {public [in]}= Num2Bits(3);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Num2Bits<[3]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Num2Bits::@Num2Bits<[3]>>} {
 // CHECK-NEXT:    poly.template @Num2Bits {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @Num2Bits {

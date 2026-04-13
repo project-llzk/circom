@@ -15,7 +15,7 @@ template Simple3() {
 
 component main = Simple3();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Simple3<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Simple3::@Simple3<[]>>} {
 // CHECK-NEXT:    poly.template @Simple3 {
 // CHECK-NEXT:      struct.def @Simple3 {
 // CHECK-NEXT:        struct.member @b : !felt.type {llzk.pub}

@@ -19,7 +19,7 @@ template T14() {
 
 component main = T14();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@T14<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@T14::@T14<[]>>} {
 // CHECK-NEXT:    poly.template @T14 {
 // CHECK-NEXT:      struct.def @T14 {
 // CHECK-NEXT:        struct.member @out : !felt.type {llzk.pub}

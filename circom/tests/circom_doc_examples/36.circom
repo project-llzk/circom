@@ -11,7 +11,7 @@ template Translate(n) {
 
 component main = Translate(1);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Translate<[1]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Translate::@Translate<[1]>>} {
 // CHECK-NEXT:    poly.template @Translate {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @Translate {

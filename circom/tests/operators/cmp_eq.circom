@@ -17,7 +17,7 @@ template CmpEQ(n) {
 
 component main = CmpEQ(5);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@CmpEQ<[5]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@CmpEQ::@CmpEQ<[5]>>} {
 // CHECK-NEXT:    poly.template @CmpEQ {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @CmpEQ {

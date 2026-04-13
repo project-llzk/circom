@@ -28,7 +28,7 @@ template Caller(n) {
 
 component main = Caller(5);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Caller<[5]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Caller::@Caller<[5]>>} {
 // CHECK-NEXT:    poly.template @Caller {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @Caller {

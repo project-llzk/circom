@@ -24,7 +24,7 @@ component main = Foo(3);
 // COM: Lit variables cannot be set at the "llzk.nondet : !array.type<@N x !felt.type>" instances because their
 // COM: ordering is non-deterministic. The lit variable is instead set at the first use of the MLIR value.
 //
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Foo<[3]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Foo::@Foo<[3]>>} {
 // CHECK-NEXT:    poly.template @Foo {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      struct.def @Foo {

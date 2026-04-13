@@ -25,7 +25,7 @@ template Num2Bits(n) {
 
 component main = Num2Bits(3);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Num2Bits<[3]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Num2Bits::@Num2Bits<[3]>>} {
 // CHECK-NEXT:    poly.template @Inner {
 // CHECK-NEXT:      struct.def @Inner {
 // CHECK-NEXT:        struct.member @out : !felt.type {llzk.pub}

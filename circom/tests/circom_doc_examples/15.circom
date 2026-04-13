@@ -22,7 +22,7 @@ template mult4(){
 
 component main = mult4();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@mult4<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@mult4::@mult4<[]>>} {
 // CHECK-NEXT:    poly.template @mult {
 // CHECK-NEXT:      struct.def @mult {
 // CHECK-NEXT:        struct.member @out : !felt.type {llzk.pub}

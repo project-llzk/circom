@@ -18,7 +18,7 @@ template ArrayShenanigans() {
 
 component main = ArrayShenanigans();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArrayShenanigans_0<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArrayShenanigans_0::@ArrayShenanigans_0<[]>>} {
 // CHECK-NEXT:    function.def @arr_0() -> !array.type<1,1,1 x !felt.type> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[VAL_0:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1,2,3 x !felt.type>
 // CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type>

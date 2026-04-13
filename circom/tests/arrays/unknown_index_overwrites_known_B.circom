@@ -29,7 +29,7 @@ template UnknownIndexOverwriteKnown() {
 
 component main = UnknownIndexOverwriteKnown();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@UnknownIndexOverwriteKnown<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@UnknownIndexOverwriteKnown::@UnknownIndexOverwriteKnown<[]>>} {
 // CHECK-NEXT:    poly.template @UnknownIndexOverwriteKnown {
 // CHECK-NEXT:      struct.def @UnknownIndexOverwriteKnown {
 // CHECK-NEXT:        struct.member @out : !felt.type {llzk.pub}

@@ -13,7 +13,7 @@ template BoolNot() {
 
 component main = BoolNot();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BoolNot<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BoolNot::@BoolNot<[]>>} {
 // CHECK-NEXT:    poly.template @BoolNot {
 // CHECK-NEXT:      struct.def @BoolNot {
 // CHECK-NEXT:        struct.member @out : !felt.type {llzk.pub}

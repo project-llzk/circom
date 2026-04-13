@@ -12,7 +12,7 @@ template Simple2(a) {
 
 component main = Simple2(10);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Simple2<[10]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Simple2::@Simple2<[10]>>} {
 // CHECK-NEXT:    poly.template @Simple2 {
 // CHECK-NEXT:      poly.param @a
 // CHECK-NEXT:      struct.def @Simple2 {

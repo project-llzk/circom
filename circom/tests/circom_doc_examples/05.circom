@@ -15,7 +15,7 @@ template UsingExample() {
 
 component main = UsingExample();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@UsingExample<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@UsingExample::@UsingExample<[]>>} {
 // CHECK-NEXT:    poly.template @Example {
 // CHECK-NEXT:      struct.def @Example {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Example::@Example<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

@@ -17,7 +17,7 @@ template ForKnown(N) {
 
 component main = ForKnown(10);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ForKnown<[10]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ForKnown::@ForKnown<[10]>>} {
 // CHECK-NEXT:    poly.template @ForKnown {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      struct.def @ForKnown {

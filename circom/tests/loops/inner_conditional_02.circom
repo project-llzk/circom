@@ -30,7 +30,7 @@ template runner() {
 
 component main = runner();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@runner<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@runner::@runner<[]>>} {
 // CHECK-NEXT:    poly.template @InnerConditional2 {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      poly.param @T

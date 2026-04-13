@@ -27,7 +27,7 @@ template InnerLoops(n) {
 
 component main = InnerLoops(5);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerLoops<[5]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerLoops::@InnerLoops<[5]>>} {
 // CHECK-NEXT:    poly.template @InnerLoops {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @InnerLoops {

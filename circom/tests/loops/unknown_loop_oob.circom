@@ -26,7 +26,7 @@ template UnknownLoopOOB() {
 
 component main = UnknownLoopOOB();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@UnknownLoopOOB<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@UnknownLoopOOB::@UnknownLoopOOB<[]>>} {
 // CHECK-NEXT:    poly.template @UnknownLoopOOB {
 // CHECK-NEXT:      struct.def @UnknownLoopOOB {
 // CHECK-NEXT:        struct.member @y : !felt.type {llzk.pub}

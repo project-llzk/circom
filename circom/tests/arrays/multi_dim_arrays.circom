@@ -11,7 +11,7 @@ template Arrays() {
 
 component main = Arrays();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Arrays<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Arrays::@Arrays<[]>>} {
 // CHECK-NEXT:    poly.template @Arrays {
 // CHECK-NEXT:      struct.def @Arrays {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Arrays::@Arrays<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

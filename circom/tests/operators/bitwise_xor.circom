@@ -14,7 +14,7 @@ template BitwiseXOR() {
 
 component main = BitwiseXOR();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BitwiseXOR<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BitwiseXOR::@BitwiseXOR<[]>>} {
 // CHECK-NEXT:    poly.template @BitwiseXOR {
 // CHECK-NEXT:      struct.def @BitwiseXOR {
 // CHECK-NEXT:        struct.member @type : !felt.type {llzk.pub}

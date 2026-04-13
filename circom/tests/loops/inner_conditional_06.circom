@@ -21,7 +21,7 @@ template InnerConditional6(N) {
 
 component main = InnerConditional6(4);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerConditional6<[4]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerConditional6::@InnerConditional6<[4]>>} {
 // CHECK-NEXT:    poly.template @InnerConditional6 {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      struct.def @InnerConditional6 {

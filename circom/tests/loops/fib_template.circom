@@ -31,7 +31,7 @@ template FibonacciTmpl(N) {
 
 component main = FibonacciTmpl(5);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@FibonacciTmpl<[5]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@FibonacciTmpl::@FibonacciTmpl<[5]>>} {
 // CHECK-NEXT:    poly.template @FibonacciTmpl {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      struct.def @FibonacciTmpl {

@@ -27,7 +27,7 @@ template SMTProcessor(nLevels) {
 
 component main = SMTProcessor(2);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@SMTProcessor<[2]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@SMTProcessor::@SMTProcessor<[2]>>} {
 // CHECK-NEXT:    poly.template @SMTProcessor {
 // CHECK-NEXT:      poly.param @nLevels
 // CHECK-NEXT:      struct.def @SMTProcessor {

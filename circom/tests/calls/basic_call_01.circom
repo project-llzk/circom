@@ -26,7 +26,7 @@ template Call1() {
 
 component main = Call1();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Call1<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Call1::@Call1<[]>>} {
 // CHECK-NEXT:    poly.template @B {
 // CHECK-NEXT:      struct.def @B {
 // CHECK-NEXT:        struct.member @x : !felt.type {llzk.pub}

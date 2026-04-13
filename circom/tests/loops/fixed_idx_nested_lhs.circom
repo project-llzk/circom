@@ -14,7 +14,7 @@ template FixIdxNested() {
 
 component main = FixIdxNested();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@FixIdxNested<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@FixIdxNested::@FixIdxNested<[]>>} {
 // CHECK-NEXT:    poly.template @FixIdxNested {
 // CHECK-NEXT:      struct.def @FixIdxNested {
 // CHECK-NEXT:        struct.member @out : !array.type<9 x !felt.type>

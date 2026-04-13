@@ -22,7 +22,7 @@ template InnerConditional3(N) {
 
 component main = InnerConditional3(3);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerConditional3<[3]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerConditional3::@InnerConditional3<[3]>>} {
 // CHECK-NEXT:    poly.template @InnerConditional3 {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      struct.def @InnerConditional3 {

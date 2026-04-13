@@ -26,7 +26,7 @@ template Fibonacci() {
 
 component main = Fibonacci();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Fibonacci<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Fibonacci::@Fibonacci<[]>>} {
 // CHECK-NEXT:    poly.template @Fibonacci {
 // CHECK-NEXT:      struct.def @Fibonacci {
 // CHECK-NEXT:        struct.member @out : !felt.type {llzk.pub}

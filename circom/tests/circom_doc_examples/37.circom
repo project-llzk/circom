@@ -30,7 +30,7 @@ template Multiplier3() {
 
 component main = Multiplier3();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Multiplier3<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Multiplier3::@Multiplier3<[]>>} {
 // CHECK-NEXT:    poly.template @Multiplier2 {
 // CHECK-NEXT:      struct.def @Multiplier2 {
 // CHECK-NEXT:        struct.member @out : !felt.type {llzk.pub}

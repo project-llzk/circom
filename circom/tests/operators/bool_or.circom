@@ -13,7 +13,7 @@ template BoolOr() {
 
 component main = BoolOr();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BoolOr<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BoolOr::@BoolOr<[]>>} {
 // CHECK-NEXT:    poly.template @BoolOr {
 // CHECK-NEXT:      struct.def @BoolOr {
 // CHECK-NEXT:        struct.member @out : !felt.type {llzk.pub}

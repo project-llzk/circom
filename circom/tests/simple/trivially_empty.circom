@@ -8,7 +8,7 @@ template EmptyTemplate() {
 }
 component main = EmptyTemplate();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@EmptyTemplate<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@EmptyTemplate::@EmptyTemplate<[]>>} {
 // CHECK-NEXT:    poly.template @EmptyTemplate {
 // CHECK-NEXT:      struct.def @EmptyTemplate {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@EmptyTemplate::@EmptyTemplate<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

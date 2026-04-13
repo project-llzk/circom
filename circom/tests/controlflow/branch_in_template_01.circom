@@ -16,7 +16,7 @@ template Conditional() {
 
 component main = Conditional();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Conditional<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Conditional::@Conditional<[]>>} {
 // CHECK-NEXT:    poly.template @Conditional {
 // CHECK-NEXT:      struct.def @Conditional {
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Conditional::@Conditional<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

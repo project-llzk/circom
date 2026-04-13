@@ -65,7 +65,7 @@ template matMul (m,n,p) {
 
 component main = matMul(2,3,2);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@matMul_2<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@matMul_2::@matMul_2<[]>>} {
 // CHECK-NEXT:    poly.template @matElemMul_0 {
 // CHECK-NEXT:      struct.def @matElemMul_0 {
 // CHECK-NEXT:        struct.member @out : !array.type<1,3 x !felt.type> {llzk.pub}

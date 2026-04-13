@@ -19,7 +19,7 @@ template ImplicitExtension() {
 
 component main = ImplicitExtension();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ImplicitExtension<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ImplicitExtension::@ImplicitExtension<[]>>} {
 // CHECK-NEXT:    poly.template @ImplicitExtension {
 // CHECK-NEXT:      struct.def @ImplicitExtension {
 // CHECK-NEXT:        struct.member @out : !array.type<10 x !felt.type> {llzk.pub}

@@ -28,7 +28,7 @@ template Poseidon() {
 
 component main = Poseidon();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Poseidon<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Poseidon::@Poseidon<[]>>} {
 // CHECK-NEXT:    poly.template @Poseidon {
 // CHECK-NEXT:      struct.def @Poseidon {
 // CHECK-NEXT:        struct.member @sigmaF : !array.type<2 x !struct.type<@Sigma::@Sigma<[]>>>

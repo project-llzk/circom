@@ -25,7 +25,7 @@ template SubCmps0A(n) {
 
 component main = SubCmps0A(2);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@SubCmps0A<[2]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@SubCmps0A::@SubCmps0A<[2]>>} {
 // CHECK-NEXT:    poly.template @IsZero {
 // CHECK-NEXT:      struct.def @IsZero {
 // CHECK-NEXT:        struct.member @out : !felt.type {llzk.pub}

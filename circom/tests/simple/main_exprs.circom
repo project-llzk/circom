@@ -11,7 +11,7 @@ template A(a,b,c,d,e,f,g,h,i,j,k) {}
 
 component main = A( 3<<3, -12+24, 4*5, 20/4, 20\4, 7%3, 2^3, (1+2)*3, 6&2, 5!=2, !(1==1 ? 2<2 : 4*1^5&3) );
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A<[24, 12, 20, 5, 5, 1, 1, 9, 2, 1, 1]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A::@A<[24, 12, 20, 5, 5, 1, 1, 9, 2, 1, 1]>>} {
 // CHECK-NEXT:    poly.template @A {
 // CHECK-NEXT:      poly.param @a
 // CHECK-NEXT:      poly.param @b

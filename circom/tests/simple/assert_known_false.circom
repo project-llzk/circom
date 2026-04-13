@@ -12,7 +12,7 @@ template UCO() {
 
 component main = UCO();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@UCO<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@UCO::@UCO<[]>>} {
 // CHECK-NEXT:    poly.template @UCO {
 // CHECK-NEXT:      struct.def @UCO {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@UCO::@UCO<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

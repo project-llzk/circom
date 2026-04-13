@@ -15,7 +15,7 @@ template ArrayDims(N) {
 component main = ArrayDims(7);
 
 // CHECK: #[[$ATTR_0:[0-9a-zA-Z_\.]+]] = affine_map<()[s0] -> (s0)>
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArrayDims<[7]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArrayDims::@ArrayDims<[7]>>} {
 // CHECK-NEXT:    poly.template @ArrayDims {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      struct.def @ArrayDims {

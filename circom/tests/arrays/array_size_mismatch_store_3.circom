@@ -25,7 +25,7 @@ template SmallToLarge() {
 
 component main = SmallToLarge();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@SmallToLarge<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@SmallToLarge::@SmallToLarge<[]>>} {
 // CHECK-NEXT:    poly.template @SmallToLarge {
 // CHECK-NEXT:      struct.def @SmallToLarge {
 // CHECK-NEXT:        struct.member @out : !array.type<10 x !felt.type> {llzk.pub}

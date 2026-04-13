@@ -12,7 +12,7 @@ template BitwiseShiftRight() {
 
 component main = BitwiseShiftRight();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BitwiseShiftRight<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BitwiseShiftRight::@BitwiseShiftRight<[]>>} {
 // CHECK-NEXT:    poly.template @BitwiseShiftRight {
 // CHECK-NEXT:      struct.def @BitwiseShiftRight {
 // CHECK-NEXT:        struct.member @type : !felt.type {llzk.pub}

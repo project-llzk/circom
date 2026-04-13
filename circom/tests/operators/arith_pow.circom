@@ -11,7 +11,7 @@ template ArithPower() {
 
 component main = ArithPower();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArithPower<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArithPower::@ArithPower<[]>>} {
 // CHECK-NEXT:    poly.template @ArithPower {
 // CHECK-NEXT:      struct.def @ArithPower {
 // CHECK-NEXT:        struct.member @out : !felt.type {llzk.pub}

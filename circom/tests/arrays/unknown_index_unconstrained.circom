@@ -17,7 +17,7 @@ template UnknownIndex() {
 
 component main = UnknownIndex();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@UnknownIndex<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@UnknownIndex::@UnknownIndex<[]>>} {
 // CHECK-NEXT:    poly.template @UnknownIndex {
 // CHECK-NEXT:      struct.def @UnknownIndex {
 // CHECK-NEXT:        struct.member @out : !felt.type {llzk.pub}

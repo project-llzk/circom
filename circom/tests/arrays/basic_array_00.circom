@@ -13,7 +13,7 @@ template Array00() {
 
 component main = Array00();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Array00<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Array00::@Array00<[]>>} {
 // CHECK-NEXT:    poly.template @Array00 {
 // CHECK-NEXT:      struct.def @Array00 {
 // CHECK-NEXT:        struct.member @b : !array.type<1 x !felt.type> {llzk.pub}

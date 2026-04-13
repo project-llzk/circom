@@ -32,7 +32,7 @@ template SubCmps1(n) {
 
 component main = SubCmps1(3);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@SubCmps1<[3]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@SubCmps1::@SubCmps1<[3]>>} {
 // CHECK-NEXT:    poly.template @IsZero {
 // CHECK-NEXT:      struct.def @IsZero {
 // CHECK-NEXT:        struct.member @out : !felt.type {llzk.pub}
