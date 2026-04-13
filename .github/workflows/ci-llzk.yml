@@ -10,8 +10,6 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      RUST_BACKTRACE: full
     steps:
       - uses: actions/checkout@v6
         with:
