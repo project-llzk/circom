@@ -79,13 +79,16 @@ impl<'a> LitTest<'a> {
     }
 
     fn prepare_command(&self, run_command: &str, tmp_file: &Path) -> String {
-        run_command
+        let cmd = run_command
             .replace(
                 TEST_INPUT,
                 format!("\"{}\"", self.test_input.path().to_str().unwrap()).as_str(),
             )
             .replace(TMP_FILE, format!("\"{}\"", tmp_file.to_str().unwrap()).as_str())
-            .replace(CIRCOM, env!("CARGO_BIN_EXE_circom"))
+            .replace(CIRCOM, env!("CARGO_BIN_EXE_circom"));
+
+        // Make pipelines fail if any element fails, and echo commands for easier debugging
+        format!("set -euo pipefail; {}", cmd)
     }
 
     pub fn execute(&self) -> LitResult<()> {
