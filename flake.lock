@@ -207,6 +207,10 @@
           "llzk-rs-pkgs",
           "llzk-lib",
           "release-helpers"
+        ],
+        "rust-overlay": [
+          "llzk-rs-pkgs",
+          "rust-overlay"
         ]
       }
     },
