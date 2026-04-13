@@ -996,9 +996,8 @@ pub fn get_name_tail<'c>(ty: &StructType<'c>) -> Result<&'c str> {
 #[inline]
 pub fn append_tail<'c>(base: &SymbolRefAttribute<'c>, append: &'c str) -> SymbolRefAttribute<'c> {
     let mut tail = base.nested();
-    let ctx = unsafe { base.context().to_ref() };
-    tail.push(FlatSymbolRefAttribute::new(ctx, append).into());
-    SymbolRefAttribute::new(ctx, base.root(), &tail)
+    tail.push(FlatSymbolRefAttribute::new(unsafe { base.context().to_ref() }, append));
+    SymbolRefAttribute::new(unsafe { base.context().to_ref() }, base.root(), &tail)
 }
 
 /// Try to statically compute the value of a circom [Expression] used as an array dimension.
