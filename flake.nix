@@ -13,6 +13,7 @@
     };
     llzk-lib.follows = "llzk-rs-pkgs/llzk-lib";
     release-helpers.follows = "llzk-rs-pkgs/llzk-lib/release-helpers";
+    rust-overlay.follows = "llzk-rs-pkgs/rust-overlay";
   };
 
   # Custom colored bash prompt
@@ -27,6 +28,7 @@
       llzk-pkgs,
       llzk-lib,
       llzk-rs-pkgs,
+      rust-overlay,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -34,6 +36,7 @@
         pkgs = import nixpkgs {
           inherit system;
           overlays = [
+            (import rust-overlay)
             llzk-pkgs.overlays.default
             llzk-lib.overlays.default
             llzk-rs-pkgs.overlays.default
@@ -84,7 +87,9 @@
           default = pkgs.mkShell (
             {
               nativeBuildInputs = pkgs.llzkSharedEnvironment.nativeBuildInputs;
-              buildInputs = pkgs.llzkSharedEnvironment.devBuildInputs;
+              buildInputs = pkgs.llzkSharedEnvironment.devBuildInputs ++ [
+                pkgs.rust-bin.stable.latest.default
+              ];
 
               shellHook = ''
                 ## Bail out of pipes where any command fails
