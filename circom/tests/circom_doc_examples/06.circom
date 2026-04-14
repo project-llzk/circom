@@ -30,7 +30,7 @@ template Caller() {
 
 component main = Caller();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Caller<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Caller::@Caller<[]>>} {
 // CHECK-NEXT:    function.def @example(%[[V_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[V_1:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[V_2:[0-9a-zA-Z_\.]+]] = bool.cmp ge(%[[V_0]], %[[V_1]])
@@ -61,21 +61,23 @@ component main = Caller();
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.return %[[V_9]]#1 : !felt.type
 // CHECK-NEXT:    }
-// CHECK-NEXT:    struct.def @Caller<[]> {
-// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
-// CHECK-NEXT:      function.def @compute(%[[V_21:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Caller<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:        %[[V_22:[0-9a-zA-Z_\.]+]] = struct.new : <@Caller<[]>>
-// CHECK-NEXT:        %[[V_23:[0-9a-zA-Z_\.]+]] = function.call @nbits(%[[V_21]]) : (!felt.type) -> !felt.type
-// CHECK-NEXT:        %[[V_24:[0-9a-zA-Z_\.]+]] = function.call @example(%[[V_23]]) : (!felt.type) -> !felt.type
-// CHECK-NEXT:        struct.writem %[[V_22]][@out] = %[[V_24]] : <@Caller<[]>>, !felt.type
-// CHECK-NEXT:        function.return %[[V_22]] : !struct.type<@Caller<[]>>
-// CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[V_25:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller<[]>>, %[[V_26:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[V_29:[0-9a-zA-Z_\.]+]] = struct.readm %[[V_25]][@out] : <@Caller<[]>>, !felt.type
-// CHECK-NEXT:        %[[V_27:[0-9a-zA-Z_\.]+]] = function.call @nbits(%[[V_26]]) : (!felt.type) -> !felt.type
-// CHECK-NEXT:        %[[V_28:[0-9a-zA-Z_\.]+]] = function.call @example(%[[V_27]]) : (!felt.type) -> !felt.type
-// CHECK-NEXT:        constrain.eq %[[V_29]], %[[V_28]] : !felt.type, !felt.type
-// CHECK-NEXT:        function.return
+// CHECK-NEXT:    poly.template @Caller {
+// CHECK-NEXT:      struct.def @Caller {
+// CHECK-NEXT:        struct.member @out : !felt.type {llzk.pub}
+// CHECK-NEXT:        function.def @compute(%[[VAL_21:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Caller::@Caller<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = struct.new : <@Caller::@Caller<[]>>
+// CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = function.call @nbits(%[[VAL_21]]) : (!felt.type) -> !felt.type
+// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = function.call @example(%[[VAL_23]]) : (!felt.type) -> !felt.type
+// CHECK-NEXT:          struct.writem %[[VAL_22]][@out] = %[[VAL_24]] : <@Caller::@Caller<[]>>, !felt.type
+// CHECK-NEXT:          function.return %[[VAL_22]] : !struct.type<@Caller::@Caller<[]>>
+// CHECK-NEXT:        }
+// CHECK-NEXT:        function.def @constrain(%[[VAL_25:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller::@Caller<[]>>, %[[VAL_26:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_25]][@out] : <@Caller::@Caller<[]>>, !felt.type
+// CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = function.call @nbits(%[[VAL_26]]) : (!felt.type) -> !felt.type
+// CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = function.call @example(%[[VAL_28]]) : (!felt.type) -> !felt.type
+// CHECK-NEXT:          constrain.eq %[[VAL_27]], %[[VAL_29]] : !felt.type, !felt.type
+// CHECK-NEXT:          function.return
+// CHECK-NEXT:        }
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }

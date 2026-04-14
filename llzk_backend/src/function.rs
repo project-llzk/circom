@@ -14,6 +14,7 @@ use crate::lvalue::Lvalue;
 use crate::lvalue::Root;
 use crate::program_ext::ProgramLike;
 use crate::shared;
+use crate::shared::append_tail;
 use crate::shared::insert_after_if_op_result;
 use crate::shared::is_bool;
 use crate::shared::is_index;
@@ -79,7 +80,6 @@ use llzk::prelude::PodType;
 use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::StructType;
-use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
@@ -395,7 +395,7 @@ where
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
         if !is_felt_type(val.r#type()) {
-            self.append_op_unnamed_result(cast::tofelt(location, val))
+            self.append_op_unnamed_result(cast::tofelt(location, val, None))
         } else {
             Ok(val)
         }
@@ -1164,13 +1164,7 @@ where
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Result<Value<'ctx, 'val>> {
         let input_values = self.gen_decompose_pod(inputs, codegen, location)?;
-
-        let func_name = SymbolRefAttribute::new(
-            codegen.context,
-            struct_type.name().value(),
-            &[FUNC_NAME_COMPUTE.as_ref()],
-        );
-
+        let func_name = append_tail(&struct_type.name(), FUNC_NAME_COMPUTE.as_ref());
         self.append_op_unnamed_result(
             function::call(
                 codegen.op_builder(),
@@ -1196,11 +1190,9 @@ where
     ) -> Result<()> {
         let mut call_args = vec![subcmp];
         call_args.extend(self.gen_decompose_pod(inputs, codegen, location)?);
-
-        let func_name = SymbolRefAttribute::new(
-            codegen.context,
-            StructType::try_from(subcmp.r#type())?.name().value(),
-            &[FUNC_NAME_CONSTRAIN.as_ref()],
+        let func_name = append_tail(
+            &StructType::try_from(subcmp.r#type())?.name(),
+            FUNC_NAME_CONSTRAIN.as_ref(),
         );
         let return_types: [Type; 0] = [];
         self.append_op_no_result(

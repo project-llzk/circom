@@ -33,61 +33,62 @@ template InnerConditional1(N) {
 
 component main = InnerConditional1(10);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerConditional1<[10]>>} {
-// CHECK-NEXT:    struct.def @InnerConditional1<[@N]> {
-// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
-// CHECK-LABEL:     function.def @compute
-// CHECK-SAME:      () -> !struct.type<@InnerConditional1<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:        %[[SELF:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerConditional1<[@N]>>
-// CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %[[V_A0:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:        %[[V_I0:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:        %[[V_4:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[V_A1:[0-9a-zA-Z_\.]+]] = %[[V_A0]], %[[V_I1:[0-9a-zA-Z_\.]+]] = %[[V_I0]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {
-// CHECK-NEXT:          %[[V_7:[0-9a-zA-Z_\.]+]] = bool.cmp le(%[[V_I1]], %[[V_N]])
-// CHECK-NEXT:          scf.condition(%[[V_7]]) %[[V_A1]], %[[V_I1]] : !felt.type, !felt.type
-// CHECK-NEXT:        } do {
-// CHECK-NEXT:        ^bb0(%[[V_A2:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_I2:[0-9a-zA-Z_\.]+]]: !felt.type):
-// CHECK-NEXT:          %[[V_10:[0-9a-zA-Z_\.]+]] = felt.const  5
-// CHECK-NEXT:          %[[V_11:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[V_I2]], %[[V_10]])
-// CHECK-NEXT:          %[[V_12:[0-9a-zA-Z_\.]+]] = scf.if %[[V_11]] -> (!felt.type) {
-// CHECK-NEXT:            %[[V_13:[0-9a-zA-Z_\.]+]] = felt.add %[[V_A2]], %[[V_I2]] : !felt.type, !felt.type
-// CHECK-NEXT:            scf.yield %[[V_13]] : !felt.type
-// CHECK-NEXT:          } else {
-// CHECK-NEXT:            %[[V_14:[0-9a-zA-Z_\.]+]] = felt.sub %[[V_A2]], %[[V_I2]] : !felt.type, !felt.type
-// CHECK-NEXT:            scf.yield %[[V_14]] : !felt.type
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerConditional1::@InnerConditional1<[10]>>} {
+// CHECK-NEXT:    poly.template @InnerConditional1 {
+// CHECK-NEXT:      poly.param @N
+// CHECK-NEXT:      struct.def @InnerConditional1 {
+// CHECK-NEXT:        struct.member @out : !felt.type {llzk.pub}
+// CHECK-NEXT:        function.def @compute() -> !struct.type<@InnerConditional1::@InnerConditional1<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerConditional1::@InnerConditional1<[@N]>>
+// CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
+// CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_5:[0-9a-zA-Z_\.]+]] = %[[VAL_2]], %[[VAL_6:[0-9a-zA-Z_\.]+]] = %[[VAL_3]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {
+// CHECK-NEXT:            %[[VAL_7:[0-9a-zA-Z_\.]+]] = bool.cmp le(%[[VAL_6]], %[[VAL_1]]) : !felt.type, !felt.type
+// CHECK-NEXT:            scf.condition(%[[VAL_7]]) %[[VAL_5]], %[[VAL_6]] : !felt.type, !felt.type
+// CHECK-NEXT:          } do {
+// CHECK-NEXT:          ^bb0(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type):
+// CHECK-NEXT:            %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.const  5
+// CHECK-NEXT:            %[[VAL_11:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_9]], %[[VAL_10]]) : !felt.type, !felt.type
+// CHECK-NEXT:            %[[VAL_12:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_11]] -> (!felt.type) {
+// CHECK-NEXT:              %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_8]], %[[VAL_9]] : !felt.type, !felt.type
+// CHECK-NEXT:              scf.yield %[[VAL_13]] : !felt.type
+// CHECK-NEXT:            } else {
+// CHECK-NEXT:              %[[VAL_14:[0-9a-zA-Z_\.]+]] = felt.sub %[[VAL_8]], %[[VAL_9]] : !felt.type, !felt.type
+// CHECK-NEXT:              scf.yield %[[VAL_14]] : !felt.type
+// CHECK-NEXT:            }
+// CHECK-NEXT:            %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:            %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_9]], %[[VAL_15]] : !felt.type, !felt.type
+// CHECK-NEXT:            scf.yield %[[VAL_12]], %[[VAL_16]] : !felt.type, !felt.type
 // CHECK-NEXT:          }
-// CHECK-NEXT:          %[[V_15:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:          %[[V_16:[0-9a-zA-Z_\.]+]] = felt.add %[[V_I2]], %[[V_15]] : !felt.type, !felt.type
-// CHECK-NEXT:          scf.yield %[[V_12]], %[[V_16]] : !felt.type, !felt.type
+// CHECK-NEXT:          struct.writem %[[VAL_0]][@out] = %[[VAL_4]]#0 : <@InnerConditional1::@InnerConditional1<[@N]>>, !felt.type
+// CHECK-NEXT:          function.return %[[VAL_0]] : !struct.type<@InnerConditional1::@InnerConditional1<[@N]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        struct.writem %[[SELF]][@out] = %[[V_4]]#0 : <@InnerConditional1<[@N]>>, !felt.type
-// CHECK-NEXT:        function.return %[[SELF]] : !struct.type<@InnerConditional1<[@N]>>
-// CHECK-NEXT:      }
-// CHECK-LABEL:     function.def @constrain
-// CHECK-SAME:      (%[[SELF:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerConditional1<[@N]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
-// CHECK-NEXT:        %{{[0-9a-zA-Z_\.]+}} = struct.readm %[[SELF]][@out] : <@InnerConditional1<[@N]>>, !felt.type
-// CHECK-NEXT:        %[[V_A0:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:        %[[V_I0:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:        %[[V_21:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[V_A1:[0-9a-zA-Z_\.]+]] = %[[V_A0]], %[[V_I1:[0-9a-zA-Z_\.]+]] = %[[V_I0]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {
-// CHECK-NEXT:          %[[V_24:[0-9a-zA-Z_\.]+]] = bool.cmp le(%[[V_I1]], %[[V_N]])
-// CHECK-NEXT:          scf.condition(%[[V_24]]) %[[V_A1]], %[[V_I1]] : !felt.type, !felt.type
-// CHECK-NEXT:        } do {
-// CHECK-NEXT:        ^bb0(%[[V_A2:[0-9a-zA-Z_\.]+]]: !felt.type, %[[V_I2:[0-9a-zA-Z_\.]+]]: !felt.type):
-// CHECK-NEXT:          %[[V_27:[0-9a-zA-Z_\.]+]] = felt.const  5
-// CHECK-NEXT:          %[[V_28:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[V_I2]], %[[V_27]])
-// CHECK-NEXT:          %[[V_29:[0-9a-zA-Z_\.]+]] = scf.if %[[V_28]] -> (!felt.type) {
-// CHECK-NEXT:            %[[V_30:[0-9a-zA-Z_\.]+]] = felt.add %[[V_A2]], %[[V_I2]] : !felt.type, !felt.type
-// CHECK-NEXT:            scf.yield %[[V_30]] : !felt.type
-// CHECK-NEXT:          } else {
-// CHECK-NEXT:            %[[V_31:[0-9a-zA-Z_\.]+]] = felt.sub %[[V_A2]], %[[V_I2]] : !felt.type, !felt.type
-// CHECK-NEXT:            scf.yield %[[V_31]] : !felt.type
+// CHECK-NEXT:        function.def @constrain(%[[VAL_17:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerConditional1::@InnerConditional1<[@N]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type
+// CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_17]][@out] : <@InnerConditional1::@InnerConditional1<[@N]>>, !felt.type
+// CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = felt.const  0
+// CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_23:[0-9a-zA-Z_\.]+]] = %[[VAL_20]], %[[VAL_24:[0-9a-zA-Z_\.]+]] = %[[VAL_21]]) : (!felt.type, !felt.type) -> (!felt.type, !felt.type) {
+// CHECK-NEXT:            %[[VAL_25:[0-9a-zA-Z_\.]+]] = bool.cmp le(%[[VAL_24]], %[[VAL_18]]) : !felt.type, !felt.type
+// CHECK-NEXT:            scf.condition(%[[VAL_25]]) %[[VAL_23]], %[[VAL_24]] : !felt.type, !felt.type
+// CHECK-NEXT:          } do {
+// CHECK-NEXT:          ^bb0(%[[VAL_26:[0-9a-zA-Z_\.]+]]: !felt.type, %[[VAL_27:[0-9a-zA-Z_\.]+]]: !felt.type):
+// CHECK-NEXT:            %[[VAL_28:[0-9a-zA-Z_\.]+]] = felt.const  5
+// CHECK-NEXT:            %[[VAL_29:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_27]], %[[VAL_28]]) : !felt.type, !felt.type
+// CHECK-NEXT:            %[[VAL_30:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_29]] -> (!felt.type) {
+// CHECK-NEXT:              %[[VAL_31:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_26]], %[[VAL_27]] : !felt.type, !felt.type
+// CHECK-NEXT:              scf.yield %[[VAL_31]] : !felt.type
+// CHECK-NEXT:            } else {
+// CHECK-NEXT:              %[[VAL_32:[0-9a-zA-Z_\.]+]] = felt.sub %[[VAL_26]], %[[VAL_27]] : !felt.type, !felt.type
+// CHECK-NEXT:              scf.yield %[[VAL_32]] : !felt.type
+// CHECK-NEXT:            }
+// CHECK-NEXT:            %[[VAL_33:[0-9a-zA-Z_\.]+]] = felt.const  1
+// CHECK-NEXT:            %[[VAL_34:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_27]], %[[VAL_33]] : !felt.type, !felt.type
+// CHECK-NEXT:            scf.yield %[[VAL_30]], %[[VAL_34]] : !felt.type, !felt.type
 // CHECK-NEXT:          }
-// CHECK-NEXT:          %[[V_32:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:          %[[V_33:[0-9a-zA-Z_\.]+]] = felt.add %[[V_I2]], %[[V_32]] : !felt.type, !felt.type
-// CHECK-NEXT:          scf.yield %[[V_29]], %[[V_33]] : !felt.type, !felt.type
+// CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }

@@ -8,14 +8,16 @@ template EmptyTemplate() {
 }
 component main = EmptyTemplate();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@EmptyTemplate<[]>>} {
-// CHECK-NEXT:    struct.def @EmptyTemplate<[]> {
-// CHECK-NEXT:      function.def @compute() -> !struct.type<@EmptyTemplate<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:        %[[SELF:[0-9a-zA-Z_\.]+]] = struct.new : <@EmptyTemplate<[]>>
-// CHECK-NEXT:        function.return %[[SELF]] : !struct.type<@EmptyTemplate<[]>>
-// CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%arg0: !struct.type<@EmptyTemplate<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        function.return
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@EmptyTemplate::@EmptyTemplate<[]>>} {
+// CHECK-NEXT:    poly.template @EmptyTemplate {
+// CHECK-NEXT:      struct.def @EmptyTemplate {
+// CHECK-NEXT:        function.def @compute() -> !struct.type<@EmptyTemplate::@EmptyTemplate<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@EmptyTemplate::@EmptyTemplate<[]>>
+// CHECK-NEXT:          function.return %[[VAL_0]] : !struct.type<@EmptyTemplate::@EmptyTemplate<[]>>
+// CHECK-NEXT:        }
+// CHECK-NEXT:        function.def @constrain(%[[VAL_1:[0-9a-zA-Z_\.]+]]: !struct.type<@EmptyTemplate::@EmptyTemplate<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          function.return
+// CHECK-NEXT:        }
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }

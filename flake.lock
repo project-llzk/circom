@@ -39,11 +39,11 @@
         "release-helpers": "release-helpers"
       },
       "locked": {
-        "lastModified": 1775244473,
-        "narHash": "sha256-FKF1xjq6zd2fOivmkTTT9Nta5iIdyMPLBm2sFJ5anew=",
+        "lastModified": 1775847213,
+        "narHash": "sha256-dp5H+ZiSDkcumNd4sjTWkYyfiqUHT8KkPgjE1j5etis=",
         "owner": "project-llzk",
         "repo": "llzk-lib",
-        "rev": "8e9ee1e3ad551c67c3dc901a16ebb412a3beaaa0",
+        "rev": "16993e9becd5975d8ad0973dad9124c957a0b864",
         "type": "github"
       },
       "original": {
@@ -58,11 +58,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1768329036,
-        "narHash": "sha256-aScxpJJ7VMDETL4hi+6Pojxb4VwKucW0VwOPCZDt53Q=",
+        "lastModified": 1775793233,
+        "narHash": "sha256-MDo3X2dV2Mc+tG9ve476E0WIUlxOaFs97GZrT3heiKw=",
         "owner": "project-llzk",
         "repo": "llzk-nix-pkgs",
-        "rev": "830b084608fe510c2bd2612bf66def7cdabf7cf7",
+        "rev": "0002f52bf1b3bbe810c2b55184b64b8e3bdc865b",
         "type": "github"
       },
       "original": {
@@ -94,11 +94,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1775539756,
-        "narHash": "sha256-ql58y5+Cp1u21ywQx4AV5K6+u2u1sGYTvZCHjhDitrk=",
+        "lastModified": 1776183185,
+        "narHash": "sha256-NrDrXwDBWQnA5jWKvYY+WqU3cI2TDyjA5phbvrwoklY=",
         "ref": "refs/heads/main",
-        "rev": "0f815eb50497c5079b8b2cbf8d1c26424277a4c0",
-        "revCount": 350,
+        "rev": "7f8c9d66630c732f356aefb8b94f52a1f618488b",
+        "revCount": 363,
         "type": "git",
         "url": "https://github.com/project-llzk/llzk-rs"
       },
@@ -109,11 +109,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1768302833,
-        "narHash": "sha256-h5bRFy9bco+8QcK7rGoOiqMxMbmn21moTACofNLRMP4=",
+        "lastModified": 1761656231,
+        "narHash": "sha256-EiED5k6gXTWoAIS8yQqi5mAX6ojnzpHwAQTS3ykeYMg=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "61db79b0c6b838d9894923920b612048e1201926",
+        "rev": "e99366c665bdd53b7b500ccdc5226675cfc51f45",
         "type": "github"
       },
       "original": {
@@ -174,11 +174,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1747068965,
-        "narHash": "sha256-px7s7IVHnR3SiShc7FKCUiL6vfqew5AM6jnkH7qO03I=",
+        "lastModified": 1775793201,
+        "narHash": "sha256-q129kMo7c75Fgb+lMDOiYkkggoze0Z/6x7cV5uekVKg=",
         "owner": "project-llzk",
         "repo": "open-source-release-helpers",
-        "rev": "c3d1ab6082cc62b167927d074f2836f290b9e3b7",
+        "rev": "aeec44f1169dd1cedc37df750556177a937c4445",
         "type": "github"
       },
       "original": {

@@ -18,7 +18,7 @@ template Caller() {
 
 component main = Caller();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Caller<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Caller::@Caller<[]>>} {
 // CHECK-NEXT:    function.def @lookup() -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[VAL_0:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_0]], %[[VAL_0]] : <2 x !felt.type>
@@ -31,34 +31,36 @@ component main = Caller();
 // CHECK-NEXT:      %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  1
 // CHECK-NEXT:      %[[VAL_7:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_5]], %[[VAL_6]] : <2 x !felt.type>
 // CHECK-NEXT:      %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:      %[[VAL_9:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_8]]
+// CHECK-NEXT:      %[[VAL_9:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_8]] : !felt.type
 // CHECK-NEXT:      array.insert %[[VAL_2]]{{\[}}%[[VAL_9]]] = %[[VAL_7]] : <2,2 x !felt.type>, <2 x !felt.type>
 // CHECK-NEXT:      %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.const  2
 // CHECK-NEXT:      %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.const  3
 // CHECK-NEXT:      %[[VAL_12:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_10]], %[[VAL_11]] : <2 x !felt.type>
 // CHECK-NEXT:      %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:      %[[VAL_14:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_13]]
+// CHECK-NEXT:      %[[VAL_14:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_13]] : !felt.type
 // CHECK-NEXT:      array.insert %[[VAL_2]]{{\[}}%[[VAL_14]]] = %[[VAL_12]] : <2,2 x !felt.type>, <2 x !felt.type>
 // CHECK-NEXT:      %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:      %[[VAL_16:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_15]]
+// CHECK-NEXT:      %[[VAL_16:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_15]] : !felt.type
 // CHECK-NEXT:      %[[VAL_17:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:      %[[VAL_18:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_17]]
+// CHECK-NEXT:      %[[VAL_18:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_17]] : !felt.type
 // CHECK-NEXT:      %[[VAL_19:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_2]]{{\[}}%[[VAL_16]], %[[VAL_18]]] : <2,2 x !felt.type>, !felt.type
 // CHECK-NEXT:      function.return %[[VAL_19]] : !felt.type
 // CHECK-NEXT:    }
-// CHECK-NEXT:    struct.def @Caller<[]> {
-// CHECK-NEXT:      struct.member @out : !felt.type {llzk.pub}
-// CHECK-NEXT:      function.def @compute(%[[VAL_20:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Caller<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = struct.new : <@Caller<[]>>
-// CHECK-NEXT:        %[[VAL_22:[0-9a-zA-Z_\.]+]] = function.call @lookup() : () -> !felt.type
-// CHECK-NEXT:        struct.writem %[[VAL_21]][@out] = %[[VAL_22]] : <@Caller<[]>>, !felt.type
-// CHECK-NEXT:        function.return %[[VAL_21]] : !struct.type<@Caller<[]>>
-// CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_23:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller<[]>>, %[[VAL_24:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-DAG:         %[[VAL_25:[0-9a-zA-Z_\.]+]] = function.call @lookup() : () -> !felt.type
-// CHECK-DAG:         %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_23]][@out] : <@Caller<[]>>, !felt.type
-// CHECK-NEXT:        constrain.eq %[[VAL_26]], %[[VAL_25]] : !felt.type, !felt.type
-// CHECK-NEXT:        function.return
+// CHECK-NEXT:    poly.template @Caller {
+// CHECK-NEXT:      struct.def @Caller {
+// CHECK-NEXT:        struct.member @out : !felt.type {llzk.pub}
+// CHECK-NEXT:        function.def @compute(%[[VAL_20:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Caller::@Caller<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = struct.new : <@Caller::@Caller<[]>>
+// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = function.call @lookup() : () -> !felt.type
+// CHECK-NEXT:          struct.writem %[[VAL_21]][@out] = %[[VAL_22]] : <@Caller::@Caller<[]>>, !felt.type
+// CHECK-NEXT:          function.return %[[VAL_21]] : !struct.type<@Caller::@Caller<[]>>
+// CHECK-NEXT:        }
+// CHECK-NEXT:        function.def @constrain(%[[VAL_23:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller::@Caller<[]>>, %[[VAL_24:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_23]][@out] : <@Caller::@Caller<[]>>, !felt.type
+// CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = function.call @lookup() : () -> !felt.type
+// CHECK-NEXT:          constrain.eq %[[VAL_25]], %[[VAL_26]] : !felt.type, !felt.type
+// CHECK-NEXT:          function.return
+// CHECK-NEXT:        }
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }

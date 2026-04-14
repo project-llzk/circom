@@ -19,13 +19,13 @@ template Caller() {
 
 component main = Caller();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Caller<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Caller::@Caller<[]>>} {
 // CHECK-NEXT:    function.def @factorial(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !felt.type attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = llzk.nondet : !felt.type
 // CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_0]], %[[VAL_2]])
+// CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_0]], %[[VAL_2]]) : !felt.type, !felt.type
 // CHECK-NEXT:      %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:      %[[VAL_5:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_0]], %[[VAL_4]])
+// CHECK-NEXT:      %[[VAL_5:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_0]], %[[VAL_4]]) : !felt.type, !felt.type
 // CHECK-NEXT:      %[[VAL_6:[0-9a-zA-Z_\.]+]] = bool.or %[[VAL_3]], %[[VAL_5]] : i1, i1
 // CHECK-NEXT:      %[[VAL_7:[0-9a-zA-Z_\.]+]]:2 = scf.if %[[VAL_6]] -> (i1, !felt.type) {
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  1
@@ -46,17 +46,19 @@ component main = Caller();
 // CHECK-NEXT:      }
 // CHECK-NEXT:      function.return %[[VAL_11]] : !felt.type
 // CHECK-NEXT:    }
-// CHECK-NEXT:    struct.def @Caller<[]> {
-// CHECK-NEXT:      struct.member @outp : !felt.type {llzk.pub}
-// CHECK-NEXT:      function.def @compute(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Caller<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = struct.new : <@Caller<[]>>
-// CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = function.call @factorial(%[[VAL_16]]) : (!felt.type) -> !felt.type
-// CHECK-NEXT:        struct.writem %[[VAL_17]][@outp] = %[[VAL_18]] : <@Caller<[]>>, !felt.type
-// CHECK-NEXT:        function.return %[[VAL_17]] : !struct.type<@Caller<[]>>
-// CHECK-NEXT:      }
-// CHECK-NEXT:      function.def @constrain(%[[VAL_19:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller<[]>>, %[[VAL_20:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_19]][@outp] : <@Caller<[]>>, !felt.type
-// CHECK-NEXT:        function.return
+// CHECK-NEXT:    poly.template @Caller {
+// CHECK-NEXT:      struct.def @Caller {
+// CHECK-NEXT:        struct.member @outp : !felt.type {llzk.pub}
+// CHECK-NEXT:        function.def @compute(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@Caller::@Caller<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = struct.new : <@Caller::@Caller<[]>>
+// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = function.call @factorial(%[[VAL_16]]) : (!felt.type) -> !felt.type
+// CHECK-NEXT:          struct.writem %[[VAL_17]][@outp] = %[[VAL_18]] : <@Caller::@Caller<[]>>, !felt.type
+// CHECK-NEXT:          function.return %[[VAL_17]] : !struct.type<@Caller::@Caller<[]>>
+// CHECK-NEXT:        }
+// CHECK-NEXT:        function.def @constrain(%[[VAL_19:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller::@Caller<[]>>, %[[VAL_20:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_19]][@outp] : <@Caller::@Caller<[]>>, !felt.type
+// CHECK-NEXT:          function.return
+// CHECK-NEXT:        }
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }
