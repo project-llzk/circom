@@ -48,6 +48,7 @@ use llzk::dialect::array;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::bool;
 use llzk::dialect::cast;
+use llzk::dialect::constrain;
 use llzk::dialect::felt;
 use llzk::dialect::function;
 use llzk::dialect::pod;
@@ -314,6 +315,40 @@ where
         self.append_op_no_result(op)
     }
 
+    /// Insert cast operations as needed to make `lhs` and `rhs` have compatible types for equality
+    /// constraints.
+    #[inline]
+    fn unify_constrain_eq_types<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        lhs: Value<'ctx, 'val>,
+        rhs: Value<'ctx, 'val>,
+    ) -> Result<(Value<'ctx, 'val>, Value<'ctx, 'val>)> {
+        match (lhs.r#type(), rhs.r#type()) {
+            (t0, t1) if is_felt_type(t0) && !is_felt_type(t1) => {
+                Ok((lhs, self.cast_to_felt(codegen, location, rhs)?))
+            }
+            (t0, t1) if !is_felt_type(t0) && is_felt_type(t1) => {
+                Ok((self.cast_to_felt(codegen, location, lhs)?, rhs))
+            }
+            _ => Ok((lhs, rhs)),
+        }
+    }
+
+    /// Generate a `constrain.eq` operation for the given values, casting to compatible felt types
+    /// if necessary.
+    pub fn append_constrain_eq<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        lhs: Value<'ctx, 'val>,
+        rhs: Value<'ctx, 'val>,
+    ) -> Result<()> {
+        let (lhs, rhs) = self.unify_constrain_eq_types(codegen, location, lhs, rhs)?;
+        self.append_op_no_result(constrain::eq(location, lhs, rhs).into())
+    }
+
     /// Generate an `array.write` or `array.insert` operation appropriate for the number of indices
     /// and the [ArrayType] of the `arr_ref` value.
     pub fn append_array_write(
@@ -387,15 +422,27 @@ where
         self.append_op_unnamed_result(array_get_op)
     }
 
+    /// Create a cast to felt (field element) type.
+    #[inline]
+    pub fn cast_to_felt<'ast>(
+        &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        self.append_op_unnamed_result(cast::tofelt(location, val, Some(codegen.felt_type())))
+    }
+
     /// Create a cast to felt (field element) type if the given value is not already a felt.
     #[inline]
-    pub fn cast_to_felt_if_needed(
+    pub fn cast_to_felt_if_needed<'ast>(
         &mut self,
+        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
         if !is_felt_type(val.r#type()) {
-            self.append_op_unnamed_result(cast::tofelt(location, val, None))
+            self.cast_to_felt(codegen, location, val)
         } else {
             Ok(val)
         }
@@ -456,7 +503,7 @@ where
         if expected == val.r#type() {
             Ok(val)
         } else if is_felt_type(expected) {
-            self.cast_to_felt_if_needed(location, val)
+            self.cast_to_felt_if_needed(codegen, location, val)
         } else if is_index(expected) {
             self.cast_to_index_if_needed(location, val)
         } else if is_bool(expected) {
