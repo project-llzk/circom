@@ -7,7 +7,9 @@
 //! actual code generation within [GenerateLLZKInTemplate] a lot simpler.
 
 use crate::function::FunctionContext;
+use crate::gen_context::BlockGenContext;
 use crate::gen_context::GenWithCircomScopeHandling;
+use crate::gen_context::GenerateLLZKInAnyBlock;
 use crate::gen_context::NestedBlockInfo;
 use crate::lvalue::Lvalue;
 use crate::lvalue::Root;
@@ -414,7 +416,7 @@ where
     ) -> Result<()>
     where
         H: Fn(
-            &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            &mut BlockGenContext<'ctx, 'blk, 'val>,
             &mut NestedBlockInfo<'ctx, 'blk, 'val>,
             HashMap<String, Value<'ctx, 'val>>,
         ) -> Result<()>,
@@ -427,7 +429,7 @@ where
             let mut fc = rc.borrow_mut();
             let popped = fc.block_ctx.pop();
             overwrite_handler(
-                &mut fc,
+                &mut fc.base,
                 overwrite_data.compute.get_or_insert_with(NestedBlockInfo::default),
                 popped,
             )?;
@@ -436,7 +438,7 @@ where
             let mut fc = rc.borrow_mut();
             let popped = fc.block_ctx.pop();
             overwrite_handler(
-                &mut fc,
+                &mut fc.base,
                 overwrite_data.constrain.get_or_insert_with(NestedBlockInfo::default),
                 popped,
             )?;
@@ -1097,14 +1099,10 @@ where
                                             signal_type,
                                         )?;
                                         // Write value to field of "self" struct.
+                                        let self_val = fc.func.self_value_of_compute()?;
                                         fc.append_op_no_result(
-                                            r#struct::writem(
-                                                location,
-                                                fc.func.self_value_of_compute()?,
-                                                var,
-                                                value,
-                                            )?
-                                            .into(),
+                                            r#struct::writem(location, self_val, var, value)?
+                                                .into(),
                                         )?;
                                         fc.block_ctx.set_named_value(var.clone(), value)
                                     })
@@ -1139,14 +1137,10 @@ where
                                             signal_type,
                                         )?;
                                         // Write value to field of "self" struct.
+                                        let self_val = fc.func.self_value_of_compute()?;
                                         fc.append_op_no_result(
-                                            r#struct::writem(
-                                                location,
-                                                fc.func.self_value_of_compute()?,
-                                                var,
-                                                value,
-                                            )?
-                                            .into(),
+                                            r#struct::writem(location, self_val, var, value)?
+                                                .into(),
                                         )?;
                                         fc.block_ctx.set_named_value(var.clone(), value)
                                     },
@@ -1155,11 +1149,11 @@ where
                                         // at the beginning of the constrain function, see
                                         // `gen_template_llzk`) and generate equality constraint
                                         // with 'val'.
-                                        let signal_val = fc.block_ctx.get_named_value(var)?;
+                                        let signal_val = *fc.block_ctx.get_named_value(var)?;
                                         fc.append_constrain_eq(
                                             codegen,
                                             codegen.location_from_meta(meta),
-                                            *signal_val,
+                                            signal_val,
                                             val,
                                         )
                                     },
@@ -1354,12 +1348,7 @@ where
             }
             // Delegate any other kind of expression to the implementation in `function.rs`.
             expr => {
-                template.and_then_same(|fc, _| {
-                    // The import is here rather than top level because it is very important that
-                    // `gen_llzk_in_function()` is not used while translating statements.
-                    use crate::function::GenerateLLZKInFunction;
-                    expr.gen_llzk_in_function(codegen, fc, template.into())
-                })
+                template.and_then_same(|fc, _| expr.gen_llzk_in_block(codegen, fc, template.into()))
             }
         }
     }

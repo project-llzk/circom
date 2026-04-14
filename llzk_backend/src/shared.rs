@@ -1,6 +1,6 @@
 //! Shared code generation utilities.
 
-use crate::function::FunctionContext;
+use crate::gen_context::BlockGenContext;
 use crate::module::DeclarationInfo;
 use crate::program_ext::ProgramLike;
 use crate::subcmp::names::COMP;
@@ -441,10 +441,10 @@ impl<'ctx> TypeSizeExpr<'ctx> {
     }
 
     /// Generate code for the expression as an index value in LLZK IR.
-    pub fn to_index_value<'ast, 'func, 'blk, 'val>(
+    pub fn to_index_value<'ast, 'blk, 'val>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+        fc: &mut BlockGenContext<'ctx, 'blk, 'val>,
         location: Location<'ctx>,
         env: Option<&TmplParamsInstance<'ast, 'ctx>>,
     ) -> Result<Value<'ctx, 'val>> {
