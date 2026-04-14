@@ -15,16 +15,16 @@ component main = BitwiseShiftRight();
 // CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BitwiseShiftRight::@BitwiseShiftRight<[]>>} {
 // CHECK-NEXT:    poly.template @BitwiseShiftRight {
 // CHECK-NEXT:      struct.def @BitwiseShiftRight {
-// CHECK-NEXT:        struct.member @type : !felt.type {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type) -> !struct.type<@BitwiseShiftRight::@BitwiseShiftRight<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        struct.member @type : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@BitwiseShiftRight::@BitwiseShiftRight<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@BitwiseShiftRight::@BitwiseShiftRight<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  5
-// CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.shr %[[VAL_0]], %[[VAL_2]] : !felt.type, !felt.type
-// CHECK-NEXT:          struct.writem %[[VAL_1]][@type] = %[[VAL_3]] : <@BitwiseShiftRight::@BitwiseShiftRight<[]>>, !felt.type
+// CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.shr %[[VAL_0]], %[[VAL_2]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:          struct.writem %[[VAL_1]][@type] = %[[VAL_3]] : <@BitwiseShiftRight::@BitwiseShiftRight<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@BitwiseShiftRight::@BitwiseShiftRight<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@BitwiseShiftRight::@BitwiseShiftRight<[]>>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !felt.type) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_4]][@type] : <@BitwiseShiftRight::@BitwiseShiftRight<[]>>, !felt.type
+// CHECK-NEXT:        function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@BitwiseShiftRight::@BitwiseShiftRight<[]>>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_4]][@type] : <@BitwiseShiftRight::@BitwiseShiftRight<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

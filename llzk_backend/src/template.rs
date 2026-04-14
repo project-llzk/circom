@@ -31,15 +31,12 @@ use crate::write_chain::WriteTarget;
 use anyhow::anyhow;
 use anyhow::Result;
 use llzk::dialect::array::ArrayCtor;
-use llzk::dialect::cast;
 use llzk::dialect::constrain;
 use llzk::dialect::pod;
 use llzk::dialect::r#struct;
-use llzk::prelude::is_felt_type;
 use llzk::prelude::ArrayType;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FuncDefOpLike as _;
-use llzk::prelude::Location;
 use llzk::prelude::LoopBoundsAttribute;
 use llzk::prelude::MemberDefOpLike as _;
 use llzk::prelude::PodType;
@@ -1000,26 +997,6 @@ where
     initializations.gen_llzk_in_template(codegen, template)
 }
 
-/// Insert cast operations as needed to make `lhs` and `rhs` have compatible types for equality
-/// constraints.
-fn unify_constrain_eq_types<'ctx, 'func, 'blk, 'val>(
-    fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
-    location: Location<'ctx>,
-    lhs: Value<'ctx, 'val>,
-    rhs: Value<'ctx, 'val>,
-) -> Result<(Value<'ctx, 'val>, Value<'ctx, 'val>)> {
-    // May need to cast between scalar types
-    let mut to_felt = |val: Value<'ctx, 'val>| {
-        fc.append_op_unnamed_result(cast::tofelt(location, val, None).into())
-    };
-
-    match (lhs.r#type(), rhs.r#type()) {
-        (t0, t1) if is_felt_type(t0) && !is_felt_type(t1) => Ok((lhs, to_felt(rhs)?)),
-        (t0, t1) if !is_felt_type(t0) && is_felt_type(t1) => Ok((to_felt(lhs)?, rhs)),
-        _ => Ok((lhs, rhs)),
-    }
-}
-
 impl<'ctx, 'str, 'func, 'blk, 'val> GenerateLLZKInTemplate<'ctx, 'str, 'func, 'blk, 'val>
     for Statement
 where
@@ -1179,16 +1156,12 @@ where
                                         // at the beginning of the constrain function, see
                                         // `gen_template_llzk`) and generate equality constraint
                                         // with 'val'.
-                                        let location = codegen.location_from_meta(meta);
                                         let signal_val = fc.block_ctx.get_named_value(var)?;
-                                        let (lhs, rhs) = unify_constrain_eq_types(
-                                            fc,
-                                            location,
+                                        fc.append_constrain_eq(
+                                            codegen,
+                                            codegen.location_from_meta(meta),
                                             *signal_val,
                                             val,
-                                        )?;
-                                        fc.append_op_no_result(
-                                            constrain::eq(location, lhs, rhs).into(),
                                         )
                                     },
                                 )
@@ -1230,14 +1203,11 @@ where
                 // Generate Value for both sides and then generate the constraint op.
                 GenResultMultiVal::gen_exprs(&template, codegen, [lhe, rhe])?.and_then_same(
                     |fc, vals| {
-                        let (lhs, rhs) = unify_constrain_eq_types(
-                            fc,
+                        fc.append_constrain_eq(
+                            codegen,
                             codegen.location_from_meta(meta),
                             vals[0],
                             vals[1],
-                        )?;
-                        fc.append_op_no_result(
-                            constrain::eq(codegen.location_from_meta(meta), lhs, rhs).into(),
                         )
                     },
                 )

@@ -689,7 +689,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     /// Get the felt type.
     #[inline]
     pub fn felt_type(&self) -> FeltType<'ctx> {
-        FeltType::new(self.context)
+        FeltType::with_field(self.context, &self.config.prime_str)
     }
 
     /// Get the struct type for the given struct name and parameters.
@@ -823,7 +823,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
             // use required bits +1 to ensure unsigned representation
             u32::try_from(val.bits())? + 1,
             val.to_string().as_str(),
-            None,
+            Some(&self.config.prime_str),
         );
         felt::constant(location, attr).map_err(Into::into)
     }
