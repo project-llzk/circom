@@ -482,11 +482,9 @@ where
                             let template_param_attr = codegen.flat_sym(name);
                             ArrayDimensionResult::new(template_param_attr.into(), &[])
                         } else if let Some(op) = self.decl_inits.get(name) {
-                            let id_map = codegen.affine_map_attr("affine_map<()[i] -> (i)>")?;
-                            let value_range = op
-                                .results()
-                                .map(Into::<Value<'ctx, 'val>>::into)
-                                .collect::<Vec<_>>();
+                            let id_map = codegen.identity_affine_map_attr()?;
+                            let value_range: Vec<Value<'ctx, 'val>> =
+                                op.results().map(Into::into).collect();
                             ArrayDimensionResult::new(id_map, &value_range)
                         } else {
                             todo!("Handle Variable expression in dimension for non-integer, non-template parameter attributes in DeclarationInfo")

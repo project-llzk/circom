@@ -1813,7 +1813,7 @@ where
                 Expression::Variable { meta, name, access } => match access.as_slice() {
                     [] => {
                         if let Ok(v) = self.block_ctx.get_named_value(name) {
-                            let id_map = codegen.affine_map_attr("affine_map<()[i] -> (i)>")?;
+                            let id_map = codegen.identity_affine_map_attr()?;
                             ArrayDimensionResult::new(id_map, &[*v])
                         } else {
                             todo!("Handle Variable expression in dimension for non-integer, non-template parameter attributes in FunctionContext")

@@ -735,6 +735,12 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
             .ok_or_else(|| anyhow!("could not parse affine_map definition"))
     }
 
+    /// Create an identity affine_map attribute.
+    #[inline]
+    pub fn identity_affine_map_attr(&self) -> Result<Attribute<'ctx>> {
+        self.affine_map_attr("affine_map<()[i] -> (i)>")
+    }
+
     /// Creates a [`FlatSymbolRefAttribute`] from the given string.
     #[inline]
     pub fn flat_sym(&self, sym: impl AsRef<str>) -> FlatSymbolRefAttribute<'ctx> {
@@ -1445,12 +1451,11 @@ impl<'ctx, 'val> ArrayDimension<'ctx, 'val> {
 #[derive(Debug, Clone)]
 /// Conveys information about array dimension computation.
 pub enum ArrayDimensionResult<'ctx, 'val> {
-    /// Indicates that the computing context had
-    /// sufficient information to compute the array and computed it successfully.
+    /// Indicates that the computing context had sufficient information to compute the array and
+    /// computed it successfully.
     Computed(ArrayDimension<'ctx, 'val>),
-    /// Indicates that the computing context
-    /// was missing information (e.g., variables defined within the function not accessible
-    /// at template level).
+    /// Indicates that the computing context was missing information (e.g., variables defined
+    /// within the function not accessible at template level).
     InsufficientData,
 }
 
