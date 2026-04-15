@@ -19,7 +19,6 @@ use llzk::dialect::array;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::felt;
 use llzk::dialect::pod;
-use llzk::operation::move_op_after;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::verify_operation_with_diags;
@@ -46,8 +45,6 @@ use llzk::prelude::Module;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike;
 use llzk::prelude::OperationMutLike;
-use llzk::prelude::OperationRef;
-use llzk::prelude::OperationResult;
 use llzk::prelude::PassManager;
 use llzk::prelude::PodRecordAttribute;
 use llzk::prelude::PodType;
@@ -1217,83 +1214,11 @@ pub fn replace_uses_with_new_block_argument<'ctx, 'val>(
     replacement
 }
 
-/// Sets the n-th operand of the operation to the given value if the current value is an
-/// `llzk.nondet` op.
-pub fn set_operand_if_nondet<'ctx, 'op>(
-    op: OperationRef<'ctx, 'op>,
-    idx: usize,
-    value: impl ValueLike<'ctx>,
-) -> Result<()> {
-    if let Ok(arg) = OperationResult::try_from(op.operand(idx)?) {
-        if !dialect::llzk::is_nondet(&arg.owner()) {
-            anyhow::bail!("Argument {idx} was assigned twice: {arg}");
-        }
-    }
-    assert!(idx <= isize::MAX as usize, "cast to isize would overflow");
-    unsafe { mlir_sys::mlirOperationSetOperand(op.to_raw(), idx as isize, value.to_raw()) }
-    Ok(())
-}
-
-/// Moves the operation after the value if the value comes from another operation.
-///
-/// If the operation the value comes from is in an inner block, moves the op right after the parent
-/// op that is in the same block as the op about to be moved.
-///
-/// If the value is already before the op in a different but dominating block,
-/// this function does nothing.
-///
-/// # Panics
-///
-/// If the value's op is not owned by a block.
-pub fn insert_after_if_op_result<'ctx, 'val, 'op>(
-    val: Value<'ctx, 'val>,
-    op: OperationRef<'ctx, 'op>,
-) -> Result<()> {
-    if let Ok(owner) = op_result_owner(val) {
-        anyhow::ensure!(owner.block().is_some(), "reference op must belong to a block");
-        if let Some(op_block) = op.block() {
-            if let Some(owner) = find_parent_in_block(op_block, owner) {
-                move_op_after(&owner, &op);
-            }
-        }
-    }
-    Ok(())
-}
-
-/// Returns the op (or a parent op) that belongs to the block.
-fn find_parent_in_block<'ctx, 'blk, 'op>(
-    block: BlockRef<'ctx, 'blk>,
-    op: OperationRef<'ctx, 'op>,
-) -> Option<OperationRef<'ctx, 'op>> {
-    let parent_block = op.block()?;
-    if block == parent_block {
-        Some(op)
-    } else {
-        find_parent_in_block(block, parent_block.parent_operation()?)
-    }
-}
-
 /// Create new array type that is an array of the given sub-array type.
 #[inline]
 pub fn new_array_type<'c>(dim: Attribute<'c>, subarr_ty: &ArrayType<'c>) -> ArrayType<'c> {
     let dims: Vec<_> = std::iter::once(dim).chain(subarr_ty.dims()).collect();
     ArrayType::new(subarr_ty.element_type(), &dims)
-}
-
-/// Tries to obtain the owner operation of a [`Value`](Value).
-///
-/// This function works around a lifetime issue in [`OperationResult::owner`] that
-/// is resolved in [mlir-sys/melior#784](https://github.com/mlir-rs/melior/pull/784) but that
-/// we cannot benefit from yet.
-#[inline]
-pub fn op_result_owner<'ctx, 'val, 'op: 'val>(
-    value: Value<'ctx, 'val>,
-) -> Result<OperationRef<'ctx, 'op>> {
-    if !value.is_operation_result() {
-        anyhow::bail!("Value {value} is not an operation result");
-    }
-    unsafe { OperationRef::from_option_raw(mlir_sys::mlirOpResultGetOwner(value.to_raw())) }
-        .ok_or_else(|| anyhow::anyhow!("owner of {value} is not a valid operation"))
 }
 
 /// Convert unsigned field elements into relational values used for comparisons.

@@ -6,15 +6,11 @@ use crate::shared::TypeSizeExpr;
 use crate::template_ext::SignalDeclarations;
 use anyhow::Result;
 use llzk::prelude::Attribute;
-use llzk::prelude::Context;
 use llzk::prelude::Location;
 use llzk::prelude::StructType;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
-use llzk::prelude::ValueLike;
-use std::collections::HashMap;
 use std::collections::HashSet;
-use std::marker::PhantomData;
 
 /// Names used for `pod` records.
 pub mod names {
@@ -134,62 +130,6 @@ impl Eq for ST<'_> {}
 impl std::hash::Hash for ST<'_> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.0.to_raw().ptr.hash(state);
-    }
-}
-
-/// Maps the values of a subcomponent call to it's name.
-///
-/// The actual value used depends on the context; if it's a call to `@compute` then is the value
-/// returned by the call op. If it's a call to `@constrain` then is the value of the first operand
-/// of the call op.
-///
-/// # Safety
-///
-/// Uses the raw pointer as key since [`Value`] does not implement [`Hash`](std::hash::Hash). To
-/// minimize risk, it has a lifetime parameter tied to a [`Context`].
-#[derive(Debug)]
-pub struct SubcmpCallsMap<'ctx> {
-    /// Mapping between a value representing a constructor and the name of the type it constructs.
-    map: HashMap<*const std::ffi::c_void, String>,
-    /// Marker to link the lifetime of a MLIR context to this instance.
-    _marker: PhantomData<&'ctx Context>,
-}
-
-impl<'ctx> SubcmpCallsMap<'ctx> {
-    /// Creates an empty map.
-    pub fn new() -> Self {
-        Self { map: HashMap::new(), _marker: PhantomData }
-    }
-
-    /// Inserts a new mapping.
-    ///
-    /// Panics if the key already exists.
-    pub fn insert(&mut self, value: &impl ValueLike<'ctx>, name: String) {
-        assert!(self.map.insert(value.to_raw().ptr, name).is_none());
-    }
-
-    /// Returns the name of the type or `None` if not found.
-    pub fn get(&self, value: &impl ValueLike<'ctx>) -> Option<&str> {
-        self.map.get(&value.to_raw().ptr).map(String::as_str)
-    }
-
-    /// If the left value exists in the map, adds the right value with the same name.
-    ///
-    /// Returns the right value.
-    pub fn propagate<V>(&mut self, lhs: &impl ValueLike<'ctx>, rhs: V) -> V
-    where
-        V: ValueLike<'ctx>,
-    {
-        if let Some(name) = self.get(lhs) {
-            self.insert(&rhs, name.to_string())
-        }
-        rhs
-    }
-}
-
-impl Default for SubcmpCallsMap<'_> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

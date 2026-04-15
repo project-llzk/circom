@@ -137,7 +137,6 @@ impl<'ast> Lvalue<'ast> {
     ) -> Result<Value<'ctx, 'val>> {
         let indices = fc.gen_index_ops(indices.iter().copied(), codegen, location, info)?;
         fc.append_array_read(prev, &indices, location, None)
-            .map(|v| fc.subcmp_calls.propagate(&prev, v))
     }
 
     /// Handle [Lvalue::Subcmp]  in [`Lvalue::get_value`] when the signal is an output of the

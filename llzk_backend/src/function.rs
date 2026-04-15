@@ -15,7 +15,6 @@ use crate::lvalue::Root;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::append_tail;
-use crate::shared::insert_after_if_op_result;
 use crate::shared::is_bool;
 use crate::shared::is_index;
 use crate::shared::new_array_type;
@@ -25,7 +24,6 @@ use crate::shared::parent_operation_mut;
 use crate::shared::region_with_block;
 use crate::shared::remove_from_parent;
 use crate::shared::replace_uses_with_new_block_argument;
-use crate::shared::set_operand_if_nondet;
 use crate::shared::single_result_as_value;
 use crate::shared::ArrayDimension;
 use crate::shared::ArrayDimensionResult;
@@ -33,10 +31,8 @@ use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COUNT;
 use crate::subcmp::NoSubcmps;
-use crate::subcmp::SubcmpCallsMap;
 use crate::subcmp::SubcmpInfo;
 use crate::template::TemplateContext;
-use crate::template_ext::TemplateLike as _;
 use crate::try_for_loop_heuristic;
 use crate::write_chain::NoSignalsInfo;
 use crate::write_chain::SignalWriteInfo;
@@ -181,8 +177,6 @@ where
     pub(crate) func: FuncDefOpRefMut<'ctx, 'func>,
     /// Nested block context within the function.
     pub(crate) block_ctx: BlockContextStack<'ctx, 'blk, 'val>,
-    /// Calls to subcomponents
-    pub(crate) subcmp_calls: SubcmpCallsMap<'ctx>,
 }
 
 /// Cache block yield/return result value while performing early-return refactoring.
@@ -256,7 +250,7 @@ where
                     .new_nondet_at_location(codegen.location_unknown(), codegen.bool_type().into())
             })?;
         }
-        Ok(Self { func, block_ctx, subcmp_calls: Default::default() })
+        Ok(Self { func, block_ctx })
     }
 
     /// Get the return type of the function.
@@ -525,54 +519,6 @@ where
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
         self.cast_to_expected_type_if_needed(codegen, location, val, self.return_type())
-    }
-
-    /// Searches for the argument index of a subcomponent's signal.
-    pub fn lookup_arg_idx(
-        &self,
-        subcmp_signal: &str,
-        subcmp_value: &Value<'ctx, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    ) -> Result<usize> {
-        let name = self.subcmp_calls.get(subcmp_value).ok_or_else(|| {
-            anyhow::anyhow!(
-                "template constructed by {subcmp_value}@{:?} not found (map: {:?})",
-                subcmp_value.to_raw().ptr,
-                self.subcmp_calls
-            )
-        })?;
-        let template_data = codegen.find_template_data(name).ok_or_else(|| {
-            anyhow::anyhow!("template with name {name:?} constructed by {subcmp_value} not found")
-        })?;
-        template_data.get_declaration_input_idx(subcmp_signal)
-    }
-
-    /// Assigns the `rhe` value to the given subcomponent signal.
-    ///
-    /// The subcomponent is determined by
-    /// `var`, which must correspond to a named value in the current scope.
-    /// Since the subcomponent's call is different depending on the current function the
-    /// `get_call` callback needs to return the operation representing the call from the value
-    /// representing the subcomponent.
-    pub fn assign_subcmp<'op>(
-        &mut self,
-        rhe: Value<'ctx, 'val>,
-        var: &str,
-        subcmp_signal: &str,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        arg_offset: usize,
-        get_call: impl FnOnce(Value<'ctx, 'val>) -> Result<OperationRef<'ctx, 'op>>,
-    ) -> Result<()>
-    where
-        'ctx: 'op,
-    {
-        let subcmp_value = self.block_ctx.get_named_value(var)?;
-
-        let arg_idx = self.lookup_arg_idx(subcmp_signal, subcmp_value, codegen)?;
-
-        let call_op = get_call(*subcmp_value)?;
-        set_operand_if_nondet(call_op, arg_idx + arg_offset, rhe)?;
-        insert_after_if_op_result(rhe, call_op)
     }
 
     /// Copy the values in the source array into the destination array.
