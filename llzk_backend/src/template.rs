@@ -729,7 +729,7 @@ where
     'func: 'blk,
     'blk: 'val,
 {
-    fn convert_dim_expr(
+    fn get_dim_expr(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         expr: &Expression,
@@ -1286,7 +1286,7 @@ where
                     todo!("subcomponents with template parameters");
                 }
                 let location = codegen.location_from_meta(meta);
-                let dimensions = template.get_dimensions(codegen, args)?;
+                let dimensions = template.get_dim_exprs(codegen, args)?;
 
                 // Names of the template parameters
                 let params_formals = codegen.program.get_template_data(id).get_name_of_params();
@@ -1340,14 +1340,14 @@ where
             }
             Expression::UniformArray { meta, value, dimension } => {
                 let location = codegen.location_from_meta(meta);
-                let template_dim_res = template.convert_dim_expr(codegen, dimension)?;
+                let template_dim_res = template.get_dim_expr(codegen, dimension)?;
                 let value = value.gen_llzk_in_template(codegen, template)?;
                 value.and_then_same(|fc, value| {
                     // Try to convert in template first, or defer to function context if unsuccessful.
                     let final_dim = match &template_dim_res {
                         ArrayDimensionResult::Computed(array_dimension) => array_dimension,
                         ArrayDimensionResult::InsufficientData => {
-                            &Option::from(fc.convert_dim_expr(codegen, dimension)?)
+                            &Option::from(fc.get_dim_expr(codegen, dimension)?)
                                 .ok_or_else(||
                                     anyhow!("missing data required to compute uniform array dimensions in template"))?
                         },

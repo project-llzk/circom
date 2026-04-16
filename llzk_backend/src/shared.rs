@@ -1554,7 +1554,7 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
     /// To simplify the implementation, template parameters are read using `poly.read_const`
     /// and passed to an affine map rather than trying to use a symbol attribute as the
     /// dimension (which would only work for bare template parameters without computation anyways).
-    fn convert_dim_expr(
+    fn get_dim_expr(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         expr: &Expression,
@@ -1564,27 +1564,27 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
     /// - An error if one of the underlying [Expression]s generated an error,
     /// - [None] if one generates [ArrayDimensionResult::InsufficientData],
     /// - [Some] otherwise
-    fn get_dimensions_if_able(
+    fn get_dim_exprs_if_able(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         dimension_exprs: &[Expression],
     ) -> Result<Option<ArrayDimensions<'ctx, 'val>>> {
         let dim_result_vec = dimension_exprs
             .iter()
-            .map(|e| self.convert_dim_expr(codegen, e))
+            .map(|e| self.get_dim_expr(codegen, e))
             .collect::<Result<Vec<_>>>()?;
         Ok(ArrayDimensions::try_from(dim_result_vec.as_slice()).ok())
     }
 
-    /// Same as [DimExprConverter::get_dimensions_if_able], but converts [None] into an error.
+    /// Same as [DimExprConverter::get_dim_exprs_if_able], but converts [None] into an error.
     /// For cases where [ArrayDimensions] are expected to be generated and there are no fallback
     /// contexts to try.
-    fn get_dimensions(
+    fn get_dim_exprs(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         dimension_exprs: &[Expression],
     ) -> Result<ArrayDimensions<'ctx, 'val>> {
-        self.get_dimensions_if_able(codegen, dimension_exprs)?.ok_or_else(|| {
+        self.get_dim_exprs_if_able(codegen, dimension_exprs)?.ok_or_else(|| {
             anyhow!("unexpected lack of data needed to convert dimension expressions")
         })
     }

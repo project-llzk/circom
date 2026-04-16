@@ -1724,7 +1724,7 @@ where
         let dims = if mk.has_concrete_dimensions() {
             (mk.get_concrete_dimensions(), codegen).try_into()?
         } else {
-            self.get_dimensions(codegen, dimensions)?
+            self.get_dim_exprs(codegen, dimensions)?
         };
         if codegen.config.verbose {
             println!("Declaring variable '{name}' with dimensions {dims:?}");
@@ -1741,7 +1741,7 @@ where
     'func: 'blk,
     'blk: 'val,
 {
-    fn convert_dim_expr(
+    fn get_dim_expr(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         expr: &Expression,
@@ -2412,7 +2412,7 @@ where
                 let location = codegen.location_from_meta(meta);
                 // Multi-dimensional arrays are made up of array values as their elements
                 let value = value.gen_llzk_in_function(codegen, function, info)?;
-                let dim_result = function.convert_dim_expr(codegen, dimension)?;
+                let dim_result = function.get_dim_expr(codegen, dimension)?;
                 let dim = Option::from(dim_result)
                     .ok_or_else(|| anyhow!("unable to convert dimension in function context"))?;
                 function.generate_uniform_array(codegen, location, value, &dim)

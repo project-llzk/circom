@@ -300,7 +300,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                     VariableType::Var => {
                         // Create `llzk.nondet` of the appropriate type. When the actual assignment
                         // is processed later, this is replaced with the appropriate value.
-                        let dimensions = self.get_dimensions(codegen, dimensions)?;
+                        let dimensions = self.get_dim_exprs(codegen, dimensions)?;
                         self.decl_inits.insert(
                             name.clone(),
                             dimensions.new_nondet_felt_of_dimensions(codegen, meta)?,
@@ -333,7 +333,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     ) -> Result<StructType<'ctx>> {
         match expression {
             Expression::Call { meta, id, args, .. } if meta.get_type_knowledge().is_component() => {
-                let dims = self.get_dimensions(codegen, args)?;
+                let dims = self.get_dim_exprs(codegen, args)?;
                 Ok(dims.struct_type_with_concrete_dimensions(codegen, id))
             }
             Expression::ParallelOp { rhe, .. } => {
@@ -355,7 +355,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
         dimensions: &[Expression],
     ) -> Result<()> {
         let location = codegen.location_from_meta(meta);
-        let dims = self.get_dimensions(codegen, dimensions)?;
+        let dims = self.get_dim_exprs(codegen, dimensions)?;
         if self
             .subcmp_decls
             .insert(name.to_owned(), SubcmpDeclInfo::new(dims.attrs(), location))
@@ -378,7 +378,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
         base_type: Type<'ctx>,
     ) -> Result<()> {
         let location = codegen.location_from_meta(meta);
-        let dims = self.get_dimensions(codegen, dimensions)?;
+        let dims = self.get_dim_exprs(codegen, dimensions)?;
         let decl_type = dims.type_from_dimension_exprs(base_type);
         self.visit_signal_or_bus_impl(codegen, signal_type, name, location, decl_type)
     }
@@ -461,7 +461,7 @@ impl<'ast, 'ctx, 'val> DimExprConverter<'ctx, 'ast, 'val> for DeclarationInfo<'c
 where
     'ctx: 'val,
 {
-    fn convert_dim_expr(
+    fn get_dim_expr(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
         expr: &Expression,
