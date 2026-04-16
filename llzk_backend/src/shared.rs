@@ -1396,11 +1396,15 @@ impl<'ctx, 'val> ArrayDimensionResult<'ctx, 'val> {
     }
 }
 
-impl<'ctx, 'val> From<ArrayDimensionResult<'ctx, 'val>> for Option<ArrayDimension<'ctx, 'val>> {
-    fn from(value: ArrayDimensionResult<'ctx, 'val>) -> Self {
+impl<'ctx, 'val> TryFrom<ArrayDimensionResult<'ctx, 'val>> for ArrayDimension<'ctx, 'val> {
+    type Error = anyhow::Error;
+
+    fn try_from(value: ArrayDimensionResult<'ctx, 'val>) -> Result<Self> {
         match value {
-            ArrayDimensionResult::Computed(array_dimension) => Some(array_dimension),
-            ArrayDimensionResult::InsufficientData => None,
+            ArrayDimensionResult::Computed(array_dimension) => Ok(array_dimension),
+            ArrayDimensionResult::InsufficientData => {
+                Err(anyhow!("insufficient data to convert dimension expression"))
+            }
         }
     }
 }
@@ -1505,21 +1509,15 @@ impl<'ctx> IntoIterator for &ArrayDimensions<'ctx, '_> {
 
 /// Constructs a new [ArrayDimensions] if all input [ArrayDimensionResult] are
 /// [ArrayDimensionResult::Computed], returns [Err] otherwise.
-impl<'ctx, 'val> TryFrom<&[ArrayDimensionResult<'ctx, 'val>]> for ArrayDimensions<'ctx, 'val> {
-    type Error = ();
+impl<'ctx, 'val> TryFrom<Vec<ArrayDimensionResult<'ctx, 'val>>> for ArrayDimensions<'ctx, 'val> {
+    type Error = anyhow::Error;
 
-    fn try_from(dim_results: &[ArrayDimensionResult<'ctx, 'val>]) -> Result<Self, Self::Error> {
-        let dims = dim_results
-            .iter()
-            .cloned()
-            .map(Option::from)
-            .filter_map(|mut x| Option::take(&mut x))
-            .collect::<Vec<_>>();
-        if dims.len() == dim_results.len() {
-            Ok(ArrayDimensions(dims))
-        } else {
-            Err(())
-        }
+    fn try_from(dim_results: Vec<ArrayDimensionResult<'ctx, 'val>>) -> Result<Self, Self::Error> {
+        dim_results
+            .into_iter()
+            .map(ArrayDimension::try_from)
+            .collect::<Result<Vec<_>>>()
+            .map(ArrayDimensions)
     }
 }
 
@@ -1572,8 +1570,8 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
         let dim_result_vec = dimension_exprs
             .iter()
             .map(|e| self.get_dim_expr(codegen, e))
-            .collect::<Result<Vec<_>>>()?;
-        Ok(ArrayDimensions::try_from(dim_result_vec.as_slice()).ok())
+            .collect::<Result<Vec<_>>>()?; // propagate error
+        Ok(ArrayDimensions::try_from(dim_result_vec).ok()) // insufficient -> None
     }
 
     /// Same as [DimExprConverter::get_dim_exprs_if_able], but converts [None] into an error.

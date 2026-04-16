@@ -16,6 +16,7 @@ use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::comp_type;
 use crate::shared::map_array_inner_type;
+use crate::shared::ArrayDimension;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
@@ -1343,14 +1344,12 @@ where
                 let template_dim_res = template.get_dim_expr(codegen, dimension)?;
                 let value = value.gen_llzk_in_template(codegen, template)?;
                 value.and_then_same(|fc, value| {
-                    // Try to convert in template first, or defer to function context if unsuccessful.
+                    // Try to convert in template first, defer to function context if unsuccessful.
                     let final_dim = match &template_dim_res {
                         ArrayDimensionResult::Computed(array_dimension) => array_dimension,
-                        ArrayDimensionResult::InsufficientData => {
-                            &Option::from(fc.get_dim_expr(codegen, dimension)?)
-                                .ok_or_else(||
-                                    anyhow!("missing data required to compute uniform array dimensions in template"))?
-                        },
+                        ArrayDimensionResult::InsufficientData => &fc
+                            .get_dim_expr(codegen, dimension)
+                            .and_then(ArrayDimension::try_from)?,
                     };
                     fc.generate_uniform_array(codegen, location, value, final_dim)
                 })

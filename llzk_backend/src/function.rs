@@ -2412,9 +2412,8 @@ where
                 let location = codegen.location_from_meta(meta);
                 // Multi-dimensional arrays are made up of array values as their elements
                 let value = value.gen_llzk_in_function(codegen, function, info)?;
-                let dim_result = function.get_dim_expr(codegen, dimension)?;
-                let dim = Option::from(dim_result)
-                    .ok_or_else(|| anyhow!("unable to convert dimension in function context"))?;
+                let dim =
+                    function.get_dim_expr(codegen, dimension).and_then(ArrayDimension::try_from)?;
                 function.generate_uniform_array(codegen, location, value, &dim)
             }
             Expression::Call { meta, id, args } => {
