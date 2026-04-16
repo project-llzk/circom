@@ -1542,13 +1542,12 @@ impl<'ctx, 'val, P: ProgramLike> TryFrom<(&[usize], &LlzkCodegen<'_, 'ctx, P>)>
 /// A trait to generate array dimensions from the given dimension expressions.
 pub trait DimExprConverter<'ctx, 'ast, 'val> {
     /// Convert a circom [Expression] used as an array dimension to an LLZK Attribute.
-    /// Returns an error if there was an error converting a dimension that should
-    /// be convertible.
-    /// Returns [ArrayDimensionResult::InsufficientData] if a dimension is not
-    /// convertible due to lack of information in the implementer.
-    /// Users can then attempt to resolve the dimension in a different
-    /// context, or throw an error if all available contexts are unable to convert
-    /// the dimension.
+    ///
+    /// Returns an error if there was an error converting a dimension that should be convertible.
+    /// Returns [ArrayDimensionResult::InsufficientData] if a dimension is not convertible due to
+    /// lack of information in the implementer. Users can then attempt to resolve the dimension in a
+    /// different context, or throw an error if all available contexts are unable to convert the
+    /// dimension.
     ///
     /// Note: The LLZK ArrayType can only use the following Attribute types for dimensions:
     /// IntegerAttr (`index` or `i1`) or AffineMapAttr (with single result).
@@ -1563,8 +1562,7 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
 
     /// Computes the [ArrayDimensions] from the given `dimension_exprs`, returning:
     /// - An error if one of the underlying [Expression]s generated an error,
-    /// - [None] if one of the underling [Expression]s generated a
-    ///   [ArrayDimensionResult::InsufficientData]
+    /// - [None] if one generates [ArrayDimensionResult::InsufficientData],
     /// - [Some] otherwise
     fn get_dimensions_if_able(
         &self,
@@ -1578,9 +1576,9 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
         Ok(ArrayDimensions::try_from(dim_result_vec.as_slice()).ok())
     }
 
-    /// Same as [DimExprConverter::get_dimensions_if_able], but converts [None]
-    /// into an error. For cases where [ArrayDimensions] are expected to be generated
-    /// and there are no fallback contexts to try.
+    /// Same as [DimExprConverter::get_dimensions_if_able], but converts [None] into an error.
+    /// For cases where [ArrayDimensions] are expected to be generated and there are no fallback
+    /// contexts to try.
     fn get_dimensions(
         &self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
