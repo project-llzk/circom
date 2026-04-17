@@ -1,10 +1,10 @@
 //! Handles template-level LLZK code generation. The [TemplateContext] carries information about the
 //! current LLZK struct being generated and some helpers related to generating code within the
 //! struct. The [GenerateLLZKInTemplate] trait provides the visitor to generate LLZK IR for all
-//! circom [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
-//! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes. There are also a few
-//! helper traits like [GenResult] and [Chainable] that implement some boilerplate to make the
-//! actual code generation within [GenerateLLZKInTemplate] a lot simpler.
+//! circom [Expression](program_structure::ast::Expression) and
+//! [Statement](program_structure::ast::Statement) nodes. There are also a few helper traits like
+//! [GenResult] and [Chainable] that implement some boilerplate to make the actual code generation
+//! within [GenerateLLZKInTemplate] a lot simpler.
 
 use crate::function::FunctionContext;
 use crate::gen_context::BlockGenContext;
@@ -47,6 +47,7 @@ use llzk::prelude::RecordValue;
 use llzk::prelude::StringRef;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRefMut;
+use llzk::prelude::TemplateExprOp;
 use llzk::prelude::TemplateOpLike;
 use llzk::prelude::TemplateOpRefMut;
 use llzk::prelude::Type;
@@ -732,6 +733,10 @@ where
     'func: 'blk,
     'blk: 'val,
 {
+    fn callback_store_poly_expr(&self, name: String, op: TemplateExprOp<'ctx>) {
+        todo!("TemplateContext::store_template_poly_expr: {name} -> {op:?}");
+    }
+
     fn get_dim_expr(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -1020,6 +1025,7 @@ where
     where
         'val: 'r,
     {
+        let _guard = codegen.trace_statement(self);
         match self {
             Statement::InitializationBlock { initializations, .. } => {
                 gen_init_block(codegen, template, initializations)
@@ -1213,10 +1219,7 @@ where
             }
             Statement::Assert { meta, arg } => {
                 arg.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, val| {
-                    let location = codegen.location_from_meta(meta);
-                    let cond = fc.cast_to_bool_if_needed(codegen, location, val)?;
-                    let msg = Some("assertion failed");
-                    fc.append_op_no_result(llzk::dialect::bool::assert(location, cond, msg)?.into())
+                    fc.append_assert(codegen, codegen.location_from_meta(meta), val)
                 })
             }
             Statement::LogCall { meta, .. } => {

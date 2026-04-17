@@ -2,6 +2,7 @@
 // RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
 // XFAIL:.*
+// COM: failure related to the "TODO" on `DeclarationInfo::visit`
 
 pragma circom 2.1.5;
 

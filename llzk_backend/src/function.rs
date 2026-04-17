@@ -2,8 +2,8 @@
 //! structs. The [FunctionContext] carries information about the current LLZK function
 //! being generated and some helpers related to generating code within the function. The
 //! [GenerateLLZKInFunction] trait provides the visitor to generate LLZK IR for all circom
-//! [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
-//! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes.
+//! [Expression](program_structure::ast::Expression) and
+//! [Statement](program_structure::ast::Statement) nodes.
 
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::BlockGenContext;
@@ -59,7 +59,6 @@ use llzk::prelude::ValueLike as _;
 use llzk::prelude::WalkOrder;
 use llzk::prelude::WalkResult;
 use llzk::value_ext::has_uses;
-use program_structure::ast::Access;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
 use program_structure::ast::Statement;
@@ -205,11 +204,13 @@ where
     'func: 'blk,
     'blk: 'val,
 {
-    /// Create a new [FunctionContext] for the given function with an initial name-to-value mapping.
-    pub fn new<const FREE_FUNC: bool>(
+    /// Create a new [FunctionContext] for the given function with an initial name-to-value mapping
+    /// and set of visible `poly.param` and `poly.expr` names.
+    pub fn new<'n, const FREE_FUNC: bool>(
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         func: FuncDefOpRefMut<'ctx, 'func>,
         param_name_to_value: HashMap<String, Value<'ctx, 'val>>,
+        poly_template_binding_names: impl IntoIterator<Item = &'n String>,
     ) -> Result<Self> {
         let mut block_ctx = BlockContextStack::from_function(func.deref(), param_name_to_value)?;
         if FREE_FUNC {
@@ -225,7 +226,11 @@ where
                     .new_nondet_at_location(codegen.location_unknown(), codegen.bool_type().into())
             })?;
         }
-        Ok(Self { func, base: BlockGenContext::new(block_ctx) })
+        Ok(Self {
+            func,
+            base: BlockGenContext::new(block_ctx, poly_template_binding_names)
+                .with_poly_template_binding_locals(codegen, codegen.location_unknown())?,
+        })
     }
 
     /// Get the return type of the function.
@@ -847,6 +852,7 @@ where
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
         info: InfoProviders<'info>,
     ) -> Result<Self::Output> {
+        let _guard = codegen.trace_statement(self);
         match self {
             Statement::InitializationBlock { xtype, initializations, .. } => {
                 if let VariableType::Signal(..) = xtype {
@@ -880,39 +886,9 @@ where
                     // per `type_analysis/src/analyzers/functions_free_of_template_elements.rs`
                     unreachable!("Function uses template operators");
                 }
-                let rvalue = rhe.gen_llzk_in_block(codegen, function, info)?;
-                match access.as_slice() {
-                    [] => {
-                        function.handle_simple_assignment(codegen, meta, var, rvalue)?;
-                    }
-                    a => {
-                        let location = codegen.location_from_meta(meta);
-                        let indices = &a
-                            .iter()
-                            .map(|access| {
-                                let idx = match access {
-                                    Access::ArrayAccess(index_expr) => {
-                                        index_expr.gen_llzk_in_block(codegen, function, info)
-                                    }
-                                    #[allow(unused_variables)] // TODO: TEMP
-                                    Access::ComponentAccess(name) => {
-                                        todo!("Handle Substitution component access in function")
-                                    }
-                                }?;
-                                function.cast_to_index_if_needed(location, idx)
-                            })
-                            .collect::<Result<Vec<Value<'_, '_>>>>()?;
-                        let arr_ref = *function.block_ctx.get_named_value(var)?;
-                        function.append_array_write(
-                            codegen,
-                            arr_ref,
-                            indices,
-                            location,
-                            rvalue,
-                            Some(var),
-                        )?;
-                    }
-                }
+                function.handle_substitution_stmt_nonsignal(
+                    codegen, info, meta, var, access, op, rhe,
+                )?;
                 Ok(false)
             }
             Statement::UnderscoreSubstitution { op, rhe, .. } => {
@@ -942,10 +918,7 @@ where
             }
             Statement::Assert { meta, arg } => {
                 let cond = arg.gen_llzk_in_block(codegen, function, info)?;
-                let location = codegen.location_from_meta(meta);
-                let cond = function.cast_to_bool_if_needed(codegen, location, cond)?;
-                let msg = Some("assertion failed");
-                function.append_op_no_result(dialect::bool::assert(location, cond, msg)?)?;
+                function.append_assert(codegen, codegen.location_from_meta(meta), cond)?;
                 Ok(false)
             }
             Statement::LogCall { meta, .. } => {

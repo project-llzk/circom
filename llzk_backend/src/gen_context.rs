@@ -55,6 +55,7 @@ use llzk::prelude::PodType;
 use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::StructType;
+use llzk::prelude::TemplateExprOp;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
@@ -65,12 +66,15 @@ use melior::ir::AttributeLike as _;
 use melior::ir::TypeLike as _;
 use num_bigint_dig::BigInt;
 use num_traits::Zero;
+use program_structure::ast::Access;
+use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::ExpressionInfixOpcode;
 use program_structure::ast::ExpressionPrefixOpcode;
 use program_structure::ast::Meta;
 use program_structure::error_code::ReportCode;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::iter::zip;
@@ -583,6 +587,8 @@ where
 {
     /// Nested block context within the root block.
     pub(crate) block_ctx: BlockContextStack<'ctx, 'blk, 'val>,
+    /// Names of `poly.param` and `poly.expr` defs visible in the current context.
+    poly_template_binding_names: HashSet<String>,
 }
 
 impl<'ctx, 'blk, 'val> BlockGenContext<'ctx, 'blk, 'val>
@@ -590,9 +596,37 @@ where
     'ctx: 'blk,
     'blk: 'val,
 {
-    /// Create a new [BlockGenContext] with the given block context stack.
-    pub fn new(block_ctx: BlockContextStack<'ctx, 'blk, 'val>) -> Self {
-        Self { block_ctx }
+    /// Create a new [BlockGenContext] with the given block context stack and set of visible
+    /// `poly.param` and `poly.expr` names.
+    pub fn new<'n>(
+        block_ctx: BlockContextStack<'ctx, 'blk, 'val>,
+        poly_template_binding_names: impl IntoIterator<Item = &'n String>,
+    ) -> Self {
+        Self {
+            block_ctx,
+            poly_template_binding_names: poly_template_binding_names.into_iter().cloned().collect(),
+        }
+    }
+
+    /// For each name in `self.poly_template_binding_names`, generate and append a `read_const`
+    /// operation and store the resulting Value in the block context under that name. This ensures
+    /// that template parameters are available as SSA Values in the block context.
+    pub fn with_poly_template_binding_locals(
+        mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+    ) -> Result<Self> {
+        let mut sorted: Vec<_> = self.poly_template_binding_names.iter().collect();
+        if codegen.config.stabilize {
+            sorted.sort();
+        }
+        for name in sorted {
+            self.block_ctx.declare_name_ensure_not_present(
+                name,
+                poly::read_const(location, name, codegen.felt_type().into()),
+            )?;
+        }
+        Ok(self)
     }
 
     /// Append an operation.
@@ -621,21 +655,6 @@ where
         let v = self.append_op_unnamed_result(op)?;
         self.block_ctx.set_named_value(name, v)?;
         Ok(v)
-    }
-
-    /// Generate and append a `read_const` operation for the given template binding name and store
-    /// the mapping in the block context so all references to that binding name can reuse the Value.
-    #[inline]
-    pub fn append_initial_read_const(
-        &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        location: Location<'ctx>,
-        name: &str,
-    ) -> Result<()> {
-        self.block_ctx.declare_name_ensure_not_present(
-            name,
-            poly::read_const(location, name, codegen.felt_type().into()),
-        )
     }
 
     /// Insert cast operations as needed to make `lhs` and `rhs` have compatible types for equality
@@ -745,6 +764,18 @@ where
         self.append_op_unnamed_result(array_get_op)
     }
 
+    /// Cast `val` to bool and emit a `bool.assert` op.
+    pub fn append_assert(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+    ) -> Result<()> {
+        let cond = self.cast_to_bool_if_needed(codegen, location, val)?;
+        let msg = Some("assertion failed");
+        self.append_op_no_result(bool::assert(location, cond, msg)?.into())
+    }
+
     /// Create a cast to felt (field element) type.
     #[inline]
     pub fn cast_to_felt(
@@ -832,6 +863,9 @@ where
         } else if is_bool(expected) {
             self.cast_to_bool_if_needed(codegen, location, val)
         } else {
+            // TODO: Must support array types by adding a unifiable cast.
+            // Alternatively, add LLZK type unification check to `llzk-rs` API and use that above
+            // instead of full equality.
             anyhow::bail!(
                 "Unsupported 'expected' type '{expected}' with value type {}",
                 val.r#type()
@@ -944,6 +978,48 @@ where
             rvalue.r#type(),
             existing.r#type()
         )
+    }
+
+    /// Handle [program_structure::ast::Statement::Substitution] when the operator is not a signal
+    /// operator. Note: Do not use directly from `GenerateLLZKInTemplate`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn handle_substitution_stmt_nonsignal<'info>(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        info: InfoProviders<'info>,
+        meta: &Meta,
+        var: &String,
+        access: &[Access],
+        op: &AssignOp,
+        rhe: &Expression,
+    ) -> Result<()>
+    where
+        'val: 'blk,
+    {
+        assert!(!op.is_signal_operator()); // pre-condition
+
+        let rvalue = rhe.gen_llzk_in_block(codegen, self, info)?;
+        if access.is_empty() {
+            self.handle_simple_assignment(codegen, meta, var, rvalue)
+        } else {
+            let location = codegen.location_from_meta(meta);
+            let indices = &access
+                .iter()
+                .map(|access| {
+                    let idx = match access {
+                        Access::ArrayAccess(index_expr) => {
+                            index_expr.gen_llzk_in_block(codegen, self, info)
+                        }
+                        Access::ComponentAccess(_) => {
+                            todo!("Handle Substitution component access in BlockGenContext")
+                        }
+                    }?;
+                    self.cast_to_index_if_needed(location, idx)
+                })
+                .collect::<Result<Vec<Value<'_, '_>>>>()?;
+            let arr_ref = *self.block_ctx.get_named_value(var)?;
+            self.append_array_write(codegen, arr_ref, indices, location, rvalue, Some(var))
+        }
     }
 
     /// Creates LLZK ops for array indexing from the collection of elements.
@@ -1319,7 +1395,7 @@ where
     /// Generate one region for either the then-arm or else-arm of a simple scf.if operation.
     /// Used by [Self::generate_simple_scf_if].
     /// The `value_gen` function is called to generate the value to be yielded from the arm.
-    fn generate_simple_scf_if_arm<F>(
+    pub fn generate_simple_scf_if_arm<F>(
         &mut self,
         location: Location<'ctx>,
         value_gen: F,
@@ -1823,8 +1899,8 @@ where
         dimension.transform(|val| self.cast_to_index_if_needed(location, val))
     }
 
-    /// Handle a [Statement::Declaration] by generating a nondet felt value with the given
-    /// dimensions and declaring it in the current block context.
+    /// Handle a [program_structure::ast::Statement::Declaration] by generating a nondet felt value
+    /// with the given dimensions and declaring it in the current block context.
     pub fn gen_declaration(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -1858,6 +1934,10 @@ where
     'ctx: 'blk,
     'blk: 'val,
 {
+    fn callback_store_poly_expr(&self, name: String, op: TemplateExprOp<'ctx>) {
+        todo!("BlockGenContext::store_template_poly_expr: {name} -> {op:?}");
+    }
+
     fn get_dim_expr(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -1875,9 +1955,10 @@ where
                 }
                 Expression::Variable { meta, name, access } => match access.as_slice() {
                     [] => {
-                        if let Ok(v) = self.block_ctx.get_named_value(name) {
-                            let id_map = codegen.identity_affine_map_attr()?;
-                            ArrayDimensionResult::new(id_map, &[*v])
+                        if self.poly_template_binding_names.contains(name) {
+                            ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
+                        } else if let Ok(v) = self.block_ctx.get_named_value(name) {
+                            ArrayDimensionResult::new(codegen.identity_affine_map_attr()?, &[*v])
                         } else {
                             todo!("Handle Variable expression in dimension for non-integer, non-template parameter attributes in BlockGenContext")
                         }
