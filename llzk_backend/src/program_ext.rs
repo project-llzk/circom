@@ -78,7 +78,7 @@ pub trait ProgramLike: std::fmt::Debug {
     /// # Panics
     ///
     /// If the program does not have a template with that name.
-    fn get_template_data(&self, name: &str) -> &impl TemplateLike {
+    fn get_template_data<'a>(&'a self, name: &str) -> &'a (impl TemplateLike + use<'a, Self>) {
         self.get_templates(false)
             .into_iter()
             .find(|t| t.get_name() == name)
@@ -129,7 +129,7 @@ impl ProgramLike for ProgramArchive {
     fn contains_template(&self, name: &str) -> bool {
         self.contains_template(name)
     }
-    fn get_template_data(&self, name: &str) -> &impl TemplateLike {
+    fn get_template_data<'a>(&'a self, name: &str) -> &'a (impl TemplateLike + use<'a>) {
         self.get_template_data(name)
     }
 }

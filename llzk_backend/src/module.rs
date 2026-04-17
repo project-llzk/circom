@@ -326,10 +326,10 @@ impl<'ctx> DeclarationInfo<'ctx> {
     /// Searches in an [`Expression`] for a call to a subcomponent's constructor.
     ///
     /// In this context, constructor refers to `Foo(n)` in Circom, not `@Foo::@compute` in LLZK.
-    fn find_subcmp_ctor_call<'ast>(
+    fn find_subcmp_ctor_call(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
-        expression: &'ast Expression,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        expression: &Expression,
     ) -> Result<StructType<'ctx>> {
         match expression {
             Expression::Call { meta, id, args, .. } if meta.get_type_knowledge().is_component() => {
@@ -457,13 +457,13 @@ impl<'ctx> DeclarationInfo<'ctx> {
     }
 }
 
-impl<'ast, 'ctx, 'val> DimExprConverter<'ctx, 'ast, 'val> for DeclarationInfo<'ctx>
+impl<'ctx, 'val> DimExprConverter<'ctx, 'val> for DeclarationInfo<'ctx>
 where
     'ctx: 'val,
 {
     fn get_dim_expr(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         expr: &Expression,
     ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
         // First try to compute statically, falling back to literal computation if all values are
@@ -523,7 +523,7 @@ where
 /// Generate LLZK for a function-like construct. Helper to avoid code duplication.
 fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
     func_like: &'ast F,
-    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
 ) -> Result<()> {
     if codegen.config.verbose {
         println!("Generating LLZK for function {}", func_like.get_name());
@@ -555,7 +555,7 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
 /// Generate LLZK for a template-like construct. Helper to avoid code duplication.
 fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     template_like: &'ast T,
-    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
 ) -> Result<()> {
     if codegen.config.verbose {
         println!("Generating LLZK for template {}", template_like.get_name());
@@ -705,7 +705,7 @@ fn gen_subcmps_prologue_in_template<'ast, 'ctx, 'func, 'blk, 'val>(
     subcmps: impl IntoIterator<Item = SubcmpPrologueData<'ast, 'ctx>>,
     compute_ctx: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     constrain_ctx: &mut FunctionContext<'ctx, '_, '_, '_>,
-    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     subcmp_decls: &HashMap<String, SubcmpDeclInfo<'ctx>>,
 ) -> Result<()>
 where

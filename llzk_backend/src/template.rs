@@ -555,7 +555,7 @@ where
 
     /// Applies the compute and constrain generator functions to the current result, producing
     /// a new [ChainResult].
-    fn and_then<'ast, F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
+    fn and_then<F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         self,
         gen_compute: F1,
         gen_constrain: F2,
@@ -572,7 +572,7 @@ where
 
     /// Delegates to [Self::and_then] with the same handler for both compute and constrain.
     #[inline]
-    fn and_then_same<'ast, F, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
+    fn and_then_same<F, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         self,
         handle: F,
     ) -> Result<CR>
@@ -612,7 +612,7 @@ where
     #[inline]
     fn gen_exprs<'ast, I>(
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         exprs: I,
     ) -> Result<Self>
     where
@@ -647,7 +647,7 @@ where
 {
     type HandlerInput = T;
 
-    fn and_then<'ast, F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
+    fn and_then<F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         self,
         gen_compute: F1,
         gen_constrain: F2,
@@ -696,7 +696,7 @@ where
 {
     type HandlerInput = ();
 
-    fn and_then<'ast, F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
+    fn and_then<F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         self,
         gen_compute: F1,
         gen_constrain: F2,
@@ -722,7 +722,7 @@ where
     }
 }
 
-impl<'ast, 'ctx, 'func, 'blk, 'val, 'str> DimExprConverter<'ctx, 'ast, 'val>
+impl<'ctx, 'func, 'blk, 'val, 'str> DimExprConverter<'ctx, 'val>
     for TemplateContext<'ctx, 'str, 'func, 'blk, 'val>
 where
     'ctx: 'str,
@@ -732,7 +732,7 @@ where
 {
     fn get_dim_expr(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         expr: &Expression,
     ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
         // First try to compute statically, falling back to literal computation if all values are
@@ -807,11 +807,9 @@ where
         'val: 'blk;
 
     /// Generates LLZK IR from [Statement] and [Expression] nodes in a circom template.
-    ///
-    /// 'ast: lifetime of the circom AST element
-    fn gen_llzk_in_template<'ast, 'r>(
-        &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    fn gen_llzk_in_template<'r>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
@@ -832,9 +830,9 @@ where
     where
         'val: 'r;
 
-    fn gen_llzk_in_template<'ast, 'r>(
-        &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    fn gen_llzk_in_template<'r>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
@@ -855,8 +853,8 @@ where
 }
 
 /// Generate LLZK code for a circom [Statement::IfThenElse].
-fn gen_if_then_else<'ast, 'ctx, 'str, 'func, 'blk, 'val, 'r>(
-    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+fn gen_if_then_else<'ctx, 'str, 'func, 'blk, 'val, 'r>(
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
@@ -915,8 +913,8 @@ where
 }
 
 /// Generate LLZK code for a circom [Statement::While].
-fn gen_while<'ast, 'ctx, 'str, 'func, 'blk, 'val, 'r>(
-    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+fn gen_while<'ctx, 'str, 'func, 'blk, 'val, 'r>(
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
@@ -985,8 +983,8 @@ where
 /// Generate LLZK code for a circom [Statement::InitializationBlock].
 /// This is needed to support the `try_for_loop_heuristic` macro.
 #[inline]
-fn gen_init_block<'ast, 'ctx, 'str, 'func, 'blk, 'val, 'r>(
-    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+fn gen_init_block<'ctx, 'str, 'func, 'blk, 'val, 'r>(
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     initializations: &[Statement],
 ) -> Result<()>
@@ -1012,9 +1010,9 @@ where
     where
         'val: 'r;
 
-    fn gen_llzk_in_template<'ast, 'r>(
-        &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    fn gen_llzk_in_template<'r>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
@@ -1260,9 +1258,9 @@ where
     where
         'val: 'r;
 
-    fn gen_llzk_in_template<'ast, 'r>(
-        &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    fn gen_llzk_in_template<'r>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where

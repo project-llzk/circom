@@ -231,8 +231,8 @@ where
     'blk: 'val,
 {
     /// Create a new [FunctionContext] for the given function with an initial name-to-value mapping.
-    pub fn new<'ast, const FREE_FUNC: bool>(
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    pub fn new<const FREE_FUNC: bool>(
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         func: FuncDefOpRefMut<'ctx, 'func>,
         param_name_to_value: HashMap<String, Value<'ctx, 'val>>,
     ) -> Result<Self> {
@@ -293,9 +293,9 @@ where
     /// Generate and append an op to carry the value from a circom return statement. It will
     /// generate a return op if the context stack height is 1, otherwise a yield op. In either
     /// case, it is marked with the [CIRCOM_RETURN_MARKER_ATTR] attribute.
-    pub fn append_circom_return<'ast>(
+    pub fn append_circom_return(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         value: Value<'ctx, 'val>,
     ) -> Result<()> {
@@ -312,9 +312,9 @@ where
     /// Insert cast operations as needed to make `lhs` and `rhs` have compatible types for equality
     /// constraints.
     #[inline]
-    fn unify_constrain_eq_types<'ast>(
+    fn unify_constrain_eq_types(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         lhs: Value<'ctx, 'val>,
         rhs: Value<'ctx, 'val>,
@@ -332,9 +332,9 @@ where
 
     /// Generate a `constrain.eq` operation for the given values, casting to compatible felt types
     /// if necessary.
-    pub fn append_constrain_eq<'ast>(
+    pub fn append_constrain_eq(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         lhs: Value<'ctx, 'val>,
         rhs: Value<'ctx, 'val>,
@@ -418,9 +418,9 @@ where
 
     /// Create a cast to felt (field element) type.
     #[inline]
-    pub fn cast_to_felt<'ast>(
+    pub fn cast_to_felt(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -429,9 +429,9 @@ where
 
     /// Create a cast to felt (field element) type if the given value is not already a felt.
     #[inline]
-    pub fn cast_to_felt_if_needed<'ast>(
+    pub fn cast_to_felt_if_needed(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -458,9 +458,9 @@ where
 
     /// Create a cast to bool type (i1) if the given value is not already a bool.
     #[inline]
-    pub fn cast_to_bool_if_needed<'ast>(
+    pub fn cast_to_bool_if_needed(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -487,9 +487,9 @@ where
 
     /// Create an op to cast `val` to match the `expected` type.
     #[inline]
-    pub fn cast_to_expected_type_if_needed<'ast>(
+    pub fn cast_to_expected_type_if_needed(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
         expected: Type<'ctx>,
@@ -512,9 +512,9 @@ where
 
     /// Create an op to cast `val` to match the return type of the function.
     #[inline]
-    pub fn cast_to_return_type_if_needed<'ast>(
+    pub fn cast_to_return_type_if_needed(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -527,9 +527,9 @@ where
     /// General overview: create a N-dimensional nested for loop to copy. If the
     /// indices are out-of-bounds, then the array is default-filled. Otherwise,
     /// copy elements into destination
-    fn copy_into_array<'ast>(
+    fn copy_into_array(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         meta: &Meta,
         dst: Value<'ctx, 'val>,
         dst_ty: ArrayType<'ctx>,
@@ -577,9 +577,9 @@ where
     /// by updating the variable name map to have `var` -> `rvalue`, but special handling
     /// is required during array assignments where `rvalue` is a different width than the
     /// destination array (this requires 0-filling or truncation).
-    pub fn handle_simple_assignment<'ast>(
+    pub fn handle_simple_assignment(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         meta: &Meta,
         var: &String,
         rvalue: Value<'ctx, 'val>,
@@ -629,9 +629,9 @@ where
     }
 
     /// Generate LLZK code in the current function for a circom prefix operation.
-    pub fn gen_prefix_op<'ast>(
+    pub fn gen_prefix_op(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         meta: &Meta,
         op: &ExpressionPrefixOpcode,
         rhs: Value<'ctx, 'val>,
@@ -718,9 +718,9 @@ where
     }
 
     /// Generate LLZK code in the current function for an infix operation.
-    pub fn gen_infix_op<'ast>(
+    pub fn gen_infix_op(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         meta: &Meta,
         op: &ExpressionInfixOpcode,
         lhs: Value<'ctx, 'val>,
@@ -897,9 +897,9 @@ where
 
     /// Generate an `scf.if` op based on the given [NestedBlockInfo] for each branch and update the
     /// block context with the results of the `scf.if` op mapped to the given names.
-    pub fn gen_scf_if<'ast>(
+    pub fn gen_scf_if(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         mut then_info: NestedBlockInfo<'ctx, 'blk, 'val>,
@@ -981,7 +981,7 @@ where
     /// Generate one region for either the then-arm or else-arm of a simple scf.if operation.
     /// Used by [Self::generate_simple_scf_if].
     /// The `value_gen` function is called to generate the value to be yielded from the arm.
-    fn generate_simple_scf_if_arm<'ast, F>(
+    fn generate_simple_scf_if_arm<F>(
         &mut self,
         location: Location<'ctx>,
         value_gen: F,
@@ -1001,9 +1001,9 @@ where
     /// Generate a simple scf.if operation that yields the given `then_value` or `else_value`
     /// depending on the `condition` value. Unlike [Self::gen_scf_if], this assumes that the
     /// then and else arms do not modify the current block context and only produce values.
-    pub fn generate_simple_scf_if<'ast, F1, F2>(
+    pub fn generate_simple_scf_if<F1, F2>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         meta: &Meta,
         condition: Value<'ctx, 'val>,
         then_value_gen: F1,
@@ -1034,9 +1034,9 @@ where
     /// in the block context.
     /// The body function (`body_fn`) accepts a `Block` with a single argument representing
     /// the for-loop induction variable and is used to fill in the `scf.for` op.
-    pub fn gen_simple_scf_for<'ast>(
+    pub fn gen_simple_scf_for(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         start: Value<'ctx, 'val>,
         step: Value<'ctx, 'val>,
@@ -1054,9 +1054,9 @@ where
 
     /// Generate a simple `scf.for` op with normalized start=0 and step=1.
     #[inline]
-    pub fn gen_normalized_scf_for<'ast>(
+    pub fn gen_normalized_scf_for(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         end: Value<'ctx, 'val>,
         body_fn: impl FnOnce(&mut Block<'ctx>) -> Result<()>,
@@ -1307,7 +1307,7 @@ where
     pub fn gen_index_ops<'ast, 'info, E>(
         &mut self,
         indices: impl IntoIterator<Item = &'ast E>,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         info: InfoProviders<'info>,
     ) -> Result<Vec<Value<'ctx, 'val>>>
@@ -1327,9 +1327,9 @@ where
     /// expression. Useful because dimension generation differs between function
     /// and template contexts due to template parameters, but the actual array generation
     /// is otherwise the same.
-    pub fn generate_uniform_array<'ast>(
+    pub fn generate_uniform_array(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         value: Value<'ctx, 'val>,
         dimension: &ArrayDimension<'ctx, 'val>,
@@ -1414,9 +1414,9 @@ where
 
     /// Generate an `scf.while` op based on the given [NestedBlockInfo] and update the
     /// block context with the results of the `scf.while` op mapped to the given names.
-    pub fn gen_scf_while<'ast>(
+    pub fn gen_scf_while(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         loop_cond_info: NestedBlockInfo<'ctx, 'blk, 'val>,
@@ -1734,7 +1734,7 @@ where
     }
 }
 
-impl<'ast, 'ctx, 'func, 'blk, 'val> DimExprConverter<'ctx, 'ast, 'val>
+impl<'ctx, 'func, 'blk, 'val> DimExprConverter<'ctx, 'val>
     for FunctionContext<'ctx, 'func, 'blk, 'val>
 where
     'ctx: 'func,
@@ -1743,7 +1743,7 @@ where
 {
     fn get_dim_expr(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         expr: &Expression,
     ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
         // First try to compute statically, falling back to literal computation if all values are
@@ -1848,11 +1848,9 @@ where
     type Output;
 
     /// Generates LLZK IR from [Statement] and [Expression] nodes in a circom function.
-    ///
-    /// 'ast: lifetime of the circom AST element
-    fn gen_llzk_in_function<'ast, 'info>(
-        &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    fn gen_llzk_in_function<'info>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
         info: InfoProviders<'info>,
     ) -> Result<Self::Output>;
@@ -1895,8 +1893,8 @@ where
 /// Helper for [gen_if_then_else] to mangage the special return-related variables needed
 /// when a circom [Statement::IfThenElse] contains a return statement.
 #[allow(clippy::too_many_arguments)]
-fn handle_unbalanced_return<'ast, 'ctx, 'func, 'blk, 'val>(
-    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+fn handle_unbalanced_return<'ctx, 'func, 'blk, 'val>(
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     location: Location<'ctx>,
     return_val: Value<'ctx, 'val>,
@@ -1947,8 +1945,8 @@ where
 ///      function.return VAR_NAME_RETURN_VAL
 ///  }
 /// ```
-fn gen_unbalanced_return_extra<'ast, 'ctx, 'func, 'blk, 'val>(
-    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+fn gen_unbalanced_return_extra<'ctx, 'func, 'blk, 'val>(
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     location: Location<'ctx>,
 ) -> Result<()>
@@ -1972,8 +1970,8 @@ where
 }
 
 /// Generate LLZK code for a circom [Statement::IfThenElse].
-fn gen_if_then_else<'ast, 'ctx, 'func, 'blk, 'val, 'info>(
-    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+fn gen_if_then_else<'ctx, 'func, 'blk, 'val, 'info>(
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     info: InfoProviders<'info>,
     meta: &Meta,
@@ -2063,8 +2061,8 @@ where
 }
 
 /// Generate LLZK code for a circom [Statement::While].
-fn gen_while<'ast, 'ctx, 'func, 'blk, 'val, 'info>(
-    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+fn gen_while<'ctx, 'func, 'blk, 'val, 'info>(
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     info: InfoProviders<'info>,
     meta: &Meta,
@@ -2147,8 +2145,8 @@ where
 /// Generate LLZK code for a circom [Statement::InitializationBlock].
 /// This is needed to support the `try_for_loop_heuristic` macro.
 #[inline]
-fn gen_init_block<'ast, 'ctx, 'func, 'blk, 'val>(
-    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+fn gen_init_block<'ctx, 'func, 'blk, 'val>(
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
     info: InfoProviders<'_>,
     initializations: &[Statement],
@@ -2171,9 +2169,9 @@ where
 {
     type Output = SkipRestOfBlock;
 
-    fn gen_llzk_in_function<'ast, 'info>(
-        &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    fn gen_llzk_in_function<'info>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
         info: InfoProviders<'info>,
     ) -> Result<Self::Output> {
@@ -2310,9 +2308,9 @@ where
 {
     type Output = Value<'ctx, 'val>;
 
-    fn gen_llzk_in_function<'ast, 'info>(
-        &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    fn gen_llzk_in_function<'info>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
         info: InfoProviders<'info>,
     ) -> Result<Self::Output> {
@@ -2469,9 +2467,9 @@ where
 {
     type Output = ();
 
-    fn gen_llzk_in_function<'ast, 'info>(
-        &'ast self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    fn gen_llzk_in_function<'info>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
         info: InfoProviders<'info>,
     ) -> Result<Self::Output> {

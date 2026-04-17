@@ -443,7 +443,7 @@ impl<'ctx> TypeSizeExpr<'ctx> {
     /// Generate code for the expression as an index value in LLZK IR.
     pub fn to_index_value<'ast, 'func, 'blk, 'val>(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
         location: Location<'ctx>,
         env: Option<&TmplParamsInstance<'ast, 'ctx>>,
@@ -911,7 +911,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     /// Returns the data for the template with that name.
     pub fn find_template_data(
         &self,
-        name: &'ast str,
+        name: &str,
     ) -> Option<&'ast (impl TemplateLike + use<'ast, P>)> {
         if self.program.contains_template(name) {
             Some(self.program.get_template_data(name))
@@ -921,7 +921,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     }
 
     /// Returns the types of the inputs for the given template, in declaration order.
-    pub fn get_template_input_types(&self, name: &'ast str) -> Result<Vec<Type<'ctx>>> {
+    pub fn get_template_input_types(&self, name: &str) -> Result<Vec<Type<'ctx>>> {
         let data =
             self.find_template_data(name).ok_or_else(|| anyhow!("Template {name} not found"))?;
         Ok(data
@@ -1426,7 +1426,7 @@ impl<'ctx, 'val> TryFrom<&ArrayDimension<'ctx, 'val>> for IntegerAttribute<'ctx>
 #[derive(Debug, Default)]
 pub struct ArrayDimensions<'ctx, 'val>(Vec<ArrayDimension<'ctx, 'val>>);
 
-impl<'ast, 'ctx, 'val> ArrayDimensions<'ctx, 'val> {
+impl<'ctx, 'val> ArrayDimensions<'ctx, 'val> {
     /// Check if the number of dimensions is non-zero.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
@@ -1461,7 +1461,7 @@ impl<'ast, 'ctx, 'val> ArrayDimensions<'ctx, 'val> {
     #[inline]
     pub fn new_nondet_felt_of_dimensions_at_location(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Operation<'ctx>> {
         codegen.new_nondet_at_location(
@@ -1475,7 +1475,7 @@ impl<'ast, 'ctx, 'val> ArrayDimensions<'ctx, 'val> {
     #[inline]
     pub fn new_nondet_felt_of_dimensions(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         meta: &Meta,
     ) -> Result<Operation<'ctx>> {
         self.new_nondet_felt_of_dimensions_at_location(codegen, codegen.location_from_meta(meta))
@@ -1486,7 +1486,7 @@ impl<'ast, 'ctx, 'val> ArrayDimensions<'ctx, 'val> {
     /// dimension circom Expressions to LLZK Attributes.
     pub fn struct_type_with_concrete_dimensions(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         name: &str,
     ) -> StructType<'ctx> {
         if self.is_empty() {
@@ -1538,7 +1538,7 @@ impl<'ctx, 'val, P: ProgramLike> TryFrom<(&[usize], &LlzkCodegen<'_, 'ctx, P>)>
 }
 
 /// A trait to generate array dimensions from the given dimension expressions.
-pub trait DimExprConverter<'ctx, 'ast, 'val> {
+pub trait DimExprConverter<'ctx, 'val> {
     /// Convert a circom [Expression] used as an array dimension to an LLZK Attribute.
     ///
     /// Returns an error if there was an error converting a dimension that should be convertible.
@@ -1554,7 +1554,7 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
     /// dimension (which would only work for bare template parameters without computation anyways).
     fn get_dim_expr(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         expr: &Expression,
     ) -> Result<ArrayDimensionResult<'ctx, 'val>>;
 
@@ -1564,7 +1564,7 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
     /// - [Some] otherwise
     fn get_dim_exprs_if_able(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         dimension_exprs: &[Expression],
     ) -> Result<Option<ArrayDimensions<'ctx, 'val>>> {
         let dim_result_vec = dimension_exprs
@@ -1579,7 +1579,7 @@ pub trait DimExprConverter<'ctx, 'ast, 'val> {
     /// contexts to try.
     fn get_dim_exprs(
         &self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         dimension_exprs: &[Expression],
     ) -> Result<ArrayDimensions<'ctx, 'val>> {
         self.get_dim_exprs_if_able(codegen, dimension_exprs)?.ok_or_else(|| {
