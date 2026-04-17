@@ -75,11 +75,13 @@ use program_structure::ast::Expression;
 use program_structure::ast::ExpressionInfixOpcode;
 use program_structure::ast::ExpressionPrefixOpcode;
 use program_structure::ast::Meta;
+use program_structure::ast::Statement;
 use program_structure::error_code::ReportCode;
 use program_structure::error_definition::Report;
 use program_structure::file_definition::FileID;
 use program_structure::file_definition::FileLocation;
 use program_structure::wire_data::WireType;
+use std::cell::Cell;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -257,6 +259,8 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     pub config: LlzkConfig,
     /// Declaration info pre-computed for all templates.
     template_decls: RefCell<HashMap<String, DeclInfo<'ctx>>>,
+    /// Body of the function or template currently being processed.
+    current_body: Cell<Option<&'ast [Statement]>>,
     /// Operation builder
     builder: OpBuilder<'ctx>,
 }
@@ -520,6 +524,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
             module,
             config,
             template_decls: RefCell::new(Default::default()),
+            current_body: Cell::new(None),
             builder: OpBuilder::new(context),
         }
     }
@@ -527,6 +532,16 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     /// Returns a reference to the operation builder.
     pub fn op_builder(&self) -> &OpBuilder<'ctx> {
         &self.builder
+    }
+
+    /// Set the body of the function or template currently being processed.
+    pub fn set_current_body(&self, body: &'ast [Statement]) {
+        self.current_body.set(Some(body));
+    }
+
+    /// Get the body of the function or template currently being processed.
+    pub fn current_body(&self) -> Option<&'ast [Statement]> {
+        self.current_body.get()
     }
 
     /// Store the full [DeclarationInfo] for the template with the given name.

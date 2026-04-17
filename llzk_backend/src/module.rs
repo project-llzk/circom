@@ -882,13 +882,16 @@ pub trait GenerateLLZKInModule<'ctx, P: ProgramLike> {
 impl<'ctx, P: ProgramLike> GenerateLLZKInModule<'ctx, P> for P {
     fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx, P>) -> Result<()> {
         for f in self.get_functions(codegen.config.stabilize) {
+            codegen.set_current_body(f.get_body());
             gen_function_llzk(f, codegen)?;
         }
         // Collect declaration information for all templates first to avoid duplicating work.
         for t in self.get_templates(false) {
+            codegen.set_current_body(t.get_body());
             codegen.put_template_decl(t.get_name(), t.get_declarations(codegen)?);
         }
         for t in self.get_templates(codegen.config.stabilize) {
+            codegen.set_current_body(t.get_body());
             gen_template_llzk(t, codegen)?;
         }
         Ok(())
