@@ -62,26 +62,33 @@ pub trait TemplateLike: std::fmt::Debug {
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Location<'ctx>;
+
     /// Get the name of the template.
     fn get_name(&self) -> &str;
+
     /// Get the names of the parameters of the template.
     fn get_name_of_params(&self) -> &[String];
+
     /// Get the initial subcomponent declarations of the template (outside the body),
     /// if any.
     fn get_init_subcmp_decls<'ctx>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Result<HashMap<String, SubcmpDeclInfo<'ctx>>>;
+
     /// Get the body statements of the template.
     fn get_body(&self) -> &[Statement];
+
     /// Construct [DeclarationInfo] containing var and signal declarations
     /// found in this template body.
     fn get_declarations<'ctx>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Result<DeclarationInfo<'ctx>>;
+
     /// Returns the inputs in declaration order, containing name and number of dimensions.
     fn get_declaration_inputs(&'_ self) -> Cow<'_, [(String, usize)]>;
+
     /// Gets the index of the input signal with the given name from `get_declaration_inputs()`.
     fn get_declaration_input_idx(&self, signal_name: &str) -> Result<usize> {
         self.get_declaration_inputs()
@@ -92,10 +99,13 @@ pub trait TemplateLike: std::fmt::Debug {
                 anyhow::anyhow!("no input signal '{signal_name}' in template '{}'", self.get_name())
             })
     }
+
     /// Returns the inputs of the template.
     fn get_inputs(&'_ self) -> Cow<'_, HashMap<String, Self::WireDataType>>;
+
     /// Returns the outputs of the template.
     fn get_outputs(&'_ self) -> Cow<'_, HashMap<String, Self::WireDataType>>;
+
     /// Returns information about a concrete input.
     fn get_input_info(&'_ self, name: &str) -> Option<Cow<'_, Self::WireDataType>> {
         match self.get_inputs() {
@@ -103,6 +113,7 @@ pub trait TemplateLike: std::fmt::Debug {
             Cow::Owned(i) => i.get(name).cloned().map(Cow::Owned),
         }
     }
+
     /// Generate any LLZK code needed in the beginning of the template.
     fn gen_preamble<'ctx>(
         &self,
@@ -120,39 +131,49 @@ impl TemplateLike for TemplateData {
     ) -> Location<'ctx> {
         codegen.location(self.get_file_id(), self.get_param_location())
     }
+
     fn get_name(&self) -> &str {
         self.get_name()
     }
+
     fn get_name_of_params(&self) -> &[String] {
         self.get_name_of_params()
     }
+
     fn get_body(&self) -> &[Statement] {
         self.get_body_as_vec()
     }
+
     fn get_init_subcmp_decls<'ctx>(
         &self,
         _codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Result<HashMap<String, SubcmpDeclInfo<'ctx>>> {
         Ok(HashMap::new())
     }
+
     fn get_declarations<'ctx>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Result<DeclarationInfo<'ctx>> {
         DeclarationInfo::from_template(codegen, self)
     }
+
     fn get_declaration_inputs(&'_ self) -> Cow<'_, [(String, usize)]> {
         Cow::Borrowed(self.get_declaration_inputs())
     }
+
     fn get_inputs(&'_ self) -> Cow<'_, HashMap<String, WireData>> {
         Cow::Borrowed(self.get_inputs())
     }
+
     fn get_outputs(&'_ self) -> Cow<'_, HashMap<String, WireData>> {
         Cow::Borrowed(self.get_outputs())
     }
+
     fn get_input_info(&'_ self, name: &str) -> Option<Cow<'_, WireData>> {
         self.get_input_info(name).map(Cow::Borrowed)
     }
+
     fn gen_preamble<'ctx>(
         &self,
         _codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -177,15 +198,19 @@ impl TemplateLike for TemplateInstance {
     ) -> Location<'ctx> {
         codegen.location_unknown()
     }
+
     fn get_name(&self) -> &str {
         &self.template_header // this one is unique, but `template_name` is not
     }
+
     fn get_name_of_params(&self) -> &[String] {
         &[]
     }
+
     fn get_body(&self) -> &[Statement] {
         slice::from_ref(&self.code)
     }
+
     fn get_init_subcmp_decls<'ctx>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -225,6 +250,7 @@ impl TemplateLike for TemplateInstance {
         }
         Ok(subcmp_decls)
     }
+
     fn get_declarations<'ctx>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -255,6 +281,7 @@ impl TemplateLike for TemplateInstance {
         }
         Ok(declarations)
     }
+
     fn get_declaration_inputs(&'_ self) -> Cow<'_, [(String, usize)]> {
         Cow::Owned(
             self.wires
@@ -271,12 +298,15 @@ impl TemplateLike for TemplateInstance {
                 .collect(),
         )
     }
+
     fn get_inputs(&'_ self) -> Cow<'_, HashMap<String, Wire>> {
         Cow::Owned(wires_of_type(&self.wires, SignalType::Input))
     }
+
     fn get_outputs(&'_ self) -> Cow<'_, HashMap<String, Wire>> {
         Cow::Owned(wires_of_type(&self.wires, SignalType::Output))
     }
+
     fn gen_preamble<'ctx>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
