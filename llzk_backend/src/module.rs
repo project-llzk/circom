@@ -628,12 +628,8 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     // Insert Operations to read templated struct parameters into an SSA Value in each function.
     // This ensures the struct parameter is available as a Value in the block context.
     for name in template_like.get_name_of_params() {
-        compute_ctx.block_ctx.declare_name_if_not_present(name, || {
-            Ok(poly::read_const(location, name, codegen.felt_type().into()))
-        })?;
-        constrain_ctx.block_ctx.declare_name_if_not_present(name, || {
-            Ok(poly::read_const(location, name, codegen.felt_type().into()))
-        })?;
+        compute_ctx.append_initial_read_const(codegen, location, name)?;
+        constrain_ctx.append_initial_read_const(codegen, location, name)?;
     }
 
     // Insert read operations for struct fields into constrain functions.

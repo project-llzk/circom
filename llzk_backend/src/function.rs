@@ -309,6 +309,21 @@ where
         self.append_op_no_result(op)
     }
 
+    /// Generate and append a `read_const` operation for the given template binding name and store
+    /// the mapping in the block context so all references to that binding name can reuse the Value.
+    #[inline]
+    pub fn append_initial_read_const(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        name: &str,
+    ) -> Result<()> {
+        self.block_ctx.declare_name_ensure_not_present(
+            name,
+            poly::read_const(location, name, codegen.felt_type().into()),
+        )
+    }
+
     /// Insert cast operations as needed to make `lhs` and `rhs` have compatible types for equality
     /// constraints.
     #[inline]
