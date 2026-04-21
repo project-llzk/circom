@@ -518,7 +518,7 @@ where
                 // Give the same error that the circom type checker gives. The type checker ran
                 // earlier so this should technically be unreachable.
                 _ => {
-                    unreachable!("Array indexes and lengths must be single arithmetic expressions")
+                    unreachable!("Array indexes and lengths must produce a scalar value")
                 }
             }
         }
