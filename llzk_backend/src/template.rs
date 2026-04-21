@@ -1,13 +1,15 @@
 //! Handles template-level LLZK code generation. The [TemplateContext] carries information about the
 //! current LLZK struct being generated and some helpers related to generating code within the
 //! struct. The [GenerateLLZKInTemplate] trait provides the visitor to generate LLZK IR for all
-//! circom [Expression](program_structure::abstract_syntax_tree::ast::Expression) and
-//! [Statement](program_structure::abstract_syntax_tree::ast::Statement) nodes. There are also a few
-//! helper traits like [GenResult] and [Chainable] that implement some boilerplate to make the
-//! actual code generation within [GenerateLLZKInTemplate] a lot simpler.
+//! circom [Expression](program_structure::ast::Expression) and
+//! [Statement](program_structure::ast::Statement) nodes. There are also a few helper traits like
+//! [GenResult] and [Chainable] that implement some boilerplate to make the actual code generation
+//! within [GenerateLLZKInTemplate] a lot simpler.
 
 use crate::function::FunctionContext;
+use crate::gen_context::BlockGenContext;
 use crate::gen_context::GenWithCircomScopeHandling;
+use crate::gen_context::GenerateLLZKInAnyBlock;
 use crate::gen_context::NestedBlockInfo;
 use crate::lvalue::Lvalue;
 use crate::lvalue::Root;
@@ -45,6 +47,7 @@ use llzk::prelude::RecordValue;
 use llzk::prelude::StringRef;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRefMut;
+use llzk::prelude::TemplateExprOp;
 use llzk::prelude::TemplateOpLike;
 use llzk::prelude::TemplateOpRefMut;
 use llzk::prelude::Type;
@@ -414,7 +417,7 @@ where
     ) -> Result<()>
     where
         H: Fn(
-            &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            &mut BlockGenContext<'ctx, 'blk, 'val>,
             &mut NestedBlockInfo<'ctx, 'blk, 'val>,
             HashMap<String, Value<'ctx, 'val>>,
         ) -> Result<()>,
@@ -730,6 +733,10 @@ where
     'func: 'blk,
     'blk: 'val,
 {
+    fn callback_store_poly_expr(&self, name: String, op: TemplateExprOp<'ctx>) {
+        todo!("TemplateContext::store_template_poly_expr: {name} -> {op:?}");
+    }
+
     fn get_dim_expr(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -760,18 +767,16 @@ where
                     }
                 },
                 Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                    todo!("Handle Infix expression in dimension for non-integer attributes")
+                    todo!("Handle InfixOp in dimension for non-integer attributes: {:?}", expr)
                 }
                 Expression::PrefixOp { meta, prefix_op, rhe } => {
-                    todo!("Handle Prefix expression in dimension for non-integer attributes")
+                    todo!("Handle PrefixOp in dimension for non-integer attributes: {:?}", expr)
                 }
                 Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                    todo!(
-                        "Handle InlineSwitchOp expression in dimension for non-integer attributes"
-                    )
+                    todo!("Handle InlineSwitch in dimension for non-integer attributes: {:?}", expr)
                 }
                 Expression::Call { meta, id, args } => {
-                    todo!("Handle Call expression in dimension")
+                    todo!("Handle Call in dimension for non-integer attributes: {:?}", expr)
                 }
                 // The remaining cases do not produce a scalar value.
                 // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
@@ -1018,6 +1023,7 @@ where
     where
         'val: 'r,
     {
+        let _guard = codegen.trace_statement(self);
         match self {
             Statement::InitializationBlock { initializations, .. } => {
                 gen_init_block(codegen, template, initializations)
@@ -1097,14 +1103,10 @@ where
                                             signal_type,
                                         )?;
                                         // Write value to field of "self" struct.
+                                        let self_val = fc.func.self_value_of_compute()?;
                                         fc.append_op_no_result(
-                                            r#struct::writem(
-                                                location,
-                                                fc.func.self_value_of_compute()?,
-                                                var,
-                                                value,
-                                            )?
-                                            .into(),
+                                            r#struct::writem(location, self_val, var, value)?
+                                                .into(),
                                         )?;
                                         fc.block_ctx.set_named_value(var.clone(), value)
                                     })
@@ -1139,14 +1141,10 @@ where
                                             signal_type,
                                         )?;
                                         // Write value to field of "self" struct.
+                                        let self_val = fc.func.self_value_of_compute()?;
                                         fc.append_op_no_result(
-                                            r#struct::writem(
-                                                location,
-                                                fc.func.self_value_of_compute()?,
-                                                var,
-                                                value,
-                                            )?
-                                            .into(),
+                                            r#struct::writem(location, self_val, var, value)?
+                                                .into(),
                                         )?;
                                         fc.block_ctx.set_named_value(var.clone(), value)
                                     },
@@ -1155,11 +1153,11 @@ where
                                         // at the beginning of the constrain function, see
                                         // `gen_template_llzk`) and generate equality constraint
                                         // with 'val'.
-                                        let signal_val = fc.block_ctx.get_named_value(var)?;
+                                        let signal_val = *fc.block_ctx.get_named_value(var)?;
                                         fc.append_constrain_eq(
                                             codegen,
                                             codegen.location_from_meta(meta),
-                                            *signal_val,
+                                            signal_val,
                                             val,
                                         )
                                     },
@@ -1219,10 +1217,7 @@ where
             }
             Statement::Assert { meta, arg } => {
                 arg.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, val| {
-                    let location = codegen.location_from_meta(meta);
-                    let cond = fc.cast_to_bool_if_needed(codegen, location, val)?;
-                    let msg = Some("assertion failed");
-                    fc.append_op_no_result(llzk::dialect::bool::assert(location, cond, msg)?.into())
+                    fc.append_assert(codegen, codegen.location_from_meta(meta), val)
                 })
             }
             Statement::LogCall { meta, .. } => {
@@ -1354,12 +1349,7 @@ where
             }
             // Delegate any other kind of expression to the implementation in `function.rs`.
             expr => {
-                template.and_then_same(|fc, _| {
-                    // The import is here rather than top level because it is very important that
-                    // `gen_llzk_in_function()` is not used while translating statements.
-                    use crate::function::GenerateLLZKInFunction;
-                    expr.gen_llzk_in_function(codegen, fc, template.into())
-                })
+                template.and_then_same(|fc, _| expr.gen_llzk_in_block(codegen, fc, template.into()))
             }
         }
     }

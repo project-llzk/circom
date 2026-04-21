@@ -1,7 +1,7 @@
 //! Types for handling location values (a.k.a. lvalues).
 
-use crate::function::FunctionContext;
 use crate::function::InfoProviders;
+use crate::gen_context::BlockGenContext;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::LlzkCodegen;
@@ -107,12 +107,12 @@ impl<'ast> Lvalue<'ast> {
     fn get_root_signal<'ctx, 'val>(
         &self,
         var: &str,
-        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        block_gen: &mut BlockGenContext<'ctx, '_, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
         // Both compute and constrain functions should have the `var` defined:
         // compute from an existing assignment, or constrain from pre-generation
         // of the `readm` in `gen_template_llzk`.
-        fc.block_ctx.get_named_value(var).copied()
+        block_gen.block_ctx.get_named_value(var).copied()
     }
 
     /// Handle [Lvalue::Root] case of [`Lvalue::get_value`] other than
@@ -120,9 +120,9 @@ impl<'ast> Lvalue<'ast> {
     fn get_root_value<'ctx, 'val>(
         &self,
         var: &str,
-        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        block_gen: &mut BlockGenContext<'ctx, '_, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
-        fc.block_ctx.get_named_value(var).copied()
+        block_gen.block_ctx.get_named_value(var).copied()
     }
 
     /// Handle [Lvalue::Array] case of [`Lvalue::get_value`].
@@ -131,12 +131,12 @@ impl<'ast> Lvalue<'ast> {
         indices: &[&Expression],
         prev: Value<'ctx, 'val>,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        block_gen: &mut BlockGenContext<'ctx, '_, 'val>,
         location: Location<'ctx>,
         info: InfoProviders<'_>,
     ) -> Result<Value<'ctx, 'val>> {
-        let indices = fc.gen_index_ops(indices.iter().copied(), codegen, location, info)?;
-        fc.append_array_read(prev, &indices, location, None)
+        let indices = block_gen.gen_index_ops(indices.iter().copied(), codegen, location, info)?;
+        block_gen.append_array_read(prev, &indices, location, None)
     }
 
     /// Handle [Lvalue::Subcmp]  in [`Lvalue::get_value`] when the signal is an output of the
@@ -146,12 +146,12 @@ impl<'ast> Lvalue<'ast> {
         signal_name: &str,
         subcmp_value: Value<'ctx, 'val>,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        block_gen: &mut BlockGenContext<'ctx, '_, 'val>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
         let comp_value = type_switch! { let ty = subcmp_value.r#type();
             PodType => {
-                fc.append_op_unnamed_result(pod::read(
+                block_gen.append_op_unnamed_result(pod::read(
                     location,
                     subcmp_value,
                     codegen.flat_sym(COMP),
@@ -170,7 +170,7 @@ impl<'ast> Lvalue<'ast> {
         let field_ty = codegen
             .get_output_signal_type(shared::get_name_tail(&comp_value_type)?, signal_name)?;
 
-        fc.append_op_unnamed_result(r#struct::readm(
+        block_gen.append_op_unnamed_result(r#struct::readm(
             codegen.op_builder(),
             location,
             field_ty,
@@ -186,10 +186,10 @@ impl<'ast> Lvalue<'ast> {
         signal_name: &str,
         subcmp_value: Value<'ctx, 'val>,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        block_gen: &mut BlockGenContext<'ctx, '_, 'val>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
-        fc.append_op_unnamed_result(pod::read(
+        block_gen.append_op_unnamed_result(pod::read(
             location,
             subcmp_value,
             codegen.flat_sym(signal_name),
@@ -210,7 +210,7 @@ impl<'ast> Lvalue<'ast> {
     pub fn get_value<'ctx, 'val>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        block_gen: &mut BlockGenContext<'ctx, '_, 'val>,
         subcmp_info: &dyn SubcmpInfo,
         location: Location<'ctx>,
         ov: Option<&dyn OverrideVar>,
@@ -226,16 +226,16 @@ impl<'ast> Lvalue<'ast> {
 
         match self {
             Lvalue::Root { var, op: Root::Signal } => {
-                self.get_root_signal(var_name!(ov, var, Root::Signal), fc)
+                self.get_root_signal(var_name!(ov, var, Root::Signal), block_gen)
             }
             Lvalue::Root { var, op: Root::Var } => {
-                self.get_root_value(var_name!(ov, var, Root::Var), fc)
+                self.get_root_value(var_name!(ov, var, Root::Var), block_gen)
             }
             Lvalue::Array { indices, prev } => self.get_array_value(
                 indices,
-                prev.get_value(codegen, fc, subcmp_info, location, ov)?,
+                prev.get_value(codegen, block_gen, subcmp_info, location, ov)?,
                 codegen,
-                fc,
+                block_gen,
                 location,
                 InfoProviders { subcmp_info, ..Default::default() },
             ),
@@ -265,12 +265,12 @@ impl<'ast> Lvalue<'ast> {
                 let ovii = OverrideIfInput { do_override: is_input };
 
                 let subcmp_value =
-                    prev.get_value(codegen, fc, subcmp_info, location, ov.or(Some(&ovii)))?;
+                    prev.get_value(codegen, block_gen, subcmp_info, location, ov.or(Some(&ovii)))?;
 
                 if is_input {
-                    self.get_subcmp_input(signal_name, subcmp_value, codegen, fc, location)
+                    self.get_subcmp_input(signal_name, subcmp_value, codegen, block_gen, location)
                 } else {
-                    self.get_subcmp_output(signal_name, subcmp_value, codegen, fc, location)
+                    self.get_subcmp_output(signal_name, subcmp_value, codegen, block_gen, location)
                 }
             }
         }

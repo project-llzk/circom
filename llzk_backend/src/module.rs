@@ -6,6 +6,7 @@ use crate::function::GenerateLLZKInFunction as _;
 use crate::function_ext::FunctionLike;
 use crate::program_ext::ProgramLike;
 use crate::shared;
+use crate::shared::dim_expr_name;
 use crate::shared::map_array_inner_type;
 use crate::shared::map_name_to_arg_value;
 use crate::shared::ArrayDimensionResult;
@@ -55,15 +56,16 @@ use llzk::prelude::StringRef;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructType;
+use llzk::prelude::TemplateExprOp;
 use llzk::prelude::TemplateOpLike;
 use llzk::prelude::Type;
-use llzk::prelude::Value;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
 use program_structure::ast::SignalType;
 use program_structure::ast::Statement;
 use program_structure::ast::VariableType;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryFrom;
@@ -121,7 +123,10 @@ pub struct DeclarationInfo<'ctx> {
     /// Map `component` name to its declaration information.
     subcmp_decls: HashMap<String, SubcmpDeclInfo<'ctx>>,
     /// The template params that may be used to instantiate array dimensions.
+    /// Note: this is set on construction and not modified.
     template_params: HashSet<String>,
+    /// Dimension expressions mapped to generated `poly.expr` op to be inserted into the template.
+    poly_exprs: RefCell<HashMap<String, TemplateExprOp<'ctx>>>,
 }
 
 impl<'ctx> DeclarationInfo<'ctx> {
@@ -256,6 +261,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         stmt: &Statement,
     ) -> Result<()> {
+        let _guard = codegen.trace_statement(stmt);
         match stmt {
             Statement::Block { stmts, .. } => {
                 // TemplateInstance (in concrete programs) has Declaration in Block (but only for
@@ -461,6 +467,14 @@ impl<'ctx, 'val> DimExprConverter<'ctx, 'val> for DeclarationInfo<'ctx>
 where
     'ctx: 'val,
 {
+    fn poly_template_binding_names(&self) -> impl IntoIterator<Item = &String> {
+        &self.template_params
+    }
+
+    fn callback_store_poly_expr(&self, name: String, op: TemplateExprOp<'ctx>) {
+        self.poly_exprs.borrow_mut().insert(name, op);
+    }
+
     fn get_dim_expr(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -471,42 +485,33 @@ where
         if let Some(integer) = shared::try_compute_as_i64(expr, codegen.prime())? {
             ArrayDimensionResult::new(codegen.index_attr(integer).into(), &[])
         } else {
-            #[allow(unused_variables)] // TODO: TEMP
             match expr {
                 Expression::Number(_, _) => {
                     unreachable!("handled by try_compute_as_i64")
                 }
-                Expression::Variable { meta, name, access } => match access.as_slice() {
-                    [] => {
-                        if self.template_params.contains(name) {
-                            let template_param_attr = codegen.flat_sym(name);
-                            ArrayDimensionResult::new(template_param_attr.into(), &[])
-                        } else if let Some(op) = self.decl_inits.get(name) {
-                            let id_map = codegen.identity_affine_map_attr()?;
-                            let value_range: Vec<Value<'ctx, 'val>> =
-                                op.results().map(Into::into).collect();
-                            ArrayDimensionResult::new(id_map, &value_range)
-                        } else {
-                            todo!("Handle Variable expression in dimension for non-integer, non-template parameter attributes in DeclarationInfo")
-                        }
+                Expression::Variable { name, access, .. } if access.is_empty() => {
+                    if self.template_params.contains(name) {
+                        ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
+                    } else if self.poly_exprs.borrow().contains_key(name) {
+                        // This is a `Statement::Declaration` with `VariableType::Var` that was
+                        // previously encountered and converted into a `poly.expr`.
+                        ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
+                    } else if self.decl_inits.contains_key(name) {
+                        // This is a `Statement::Declaration` with `VariableType::Var` that is
+                        // encountered for the first time and must have a `poly.expr` generated.
+                        self.gen_template_poly_expr(codegen, name.clone(), expr)
+                    } else {
+                        // TODO: this happens in `circom/tests/circom_doc_examples/04.circom`
+                        // and I think it's related to the "TODO" on `DeclarationInfo::visit`.
+                        todo!("not a known circom template parameter or var declaration: {}", name)
                     }
-                    a => {
-                        todo!("Handle Variable expression with accesses in DeclarationInfo")
-                    }
-                },
-                Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                    todo!("Handle Infix expression in dimension for non-integer attributes in DeclarationInfo")
                 }
-                Expression::PrefixOp { meta, prefix_op, rhe } => {
-                    todo!("Handle Prefix expression in dimension for non-integer attributes in DeclarationInfo")
-                }
-                Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                    todo!(
-                        "Handle InlineSwitchOp expression in dimension for non-integer attributes in DeclarationInfo"
-                    )
-                }
-                Expression::Call { meta, id, args } => {
-                    todo!("Handle Call expression in dimension")
+                Expression::Variable { .. } /* with non-empty `access` */
+                | Expression::InlineSwitchOp { .. }
+                | Expression::PrefixOp { .. }
+                | Expression::InfixOp { .. }
+                | Expression::Call { .. } => {
+                    self.gen_template_poly_expr(codegen, dim_expr_name(expr), expr)
                 }
                 // The remaining cases do not produce a scalar value.
                 // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
@@ -547,7 +552,7 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
     let name_to_value = map_name_to_arg_value(func, func_like.get_name_of_params())?;
 
     // Visit the body of the function and generate LLZK IR for it.
-    let mut func_context = FunctionContext::new::<true>(codegen, func, name_to_value)?;
+    let mut func_context = FunctionContext::new::<true>(codegen, func, name_to_value, &[])?;
     func_like.get_body().gen_llzk_in_function(codegen, &mut func_context, Default::default())?;
     func_context.finalize(codegen)
 }
@@ -561,7 +566,8 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         println!("Generating LLZK for template {}", template_like.get_name());
     }
     // Collect declarations first to determine struct fields and function parameters.
-    let mut declarations = codegen.take_template_decl(template_like.get_name())?;
+    let mut declarations: DeclarationInfo<'ctx> =
+        codegen.take_template_decl(template_like.get_name())?;
     let subcmps = declarations.complete(codegen)?;
     let location = template_like.get_location(codegen);
 
@@ -574,6 +580,16 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     let llzk_template_def =
         poly::template(location, template_like.get_name(), template_region_ops)?;
     let new_template = codegen.add_template(llzk_template_def)?;
+
+    // Insert the declarations from `declarations.poly_exprs`.
+    let mut poly_exprs = declarations.poly_exprs.into_inner();
+    let mut poly_expr_names: Vec<_> = poly_exprs.keys().cloned().collect();
+    if codegen.config.stabilize {
+        poly_expr_names.sort();
+    }
+    for name in &poly_expr_names {
+        new_template.body().append_operation(poly_exprs.remove(name).unwrap().into());
+    }
 
     // Add the struct definition, prepopulated with fields, to the template body.
     let new_struct = StructDefOpRef::try_from(
@@ -616,6 +632,8 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         codegen,
         compute_func,
         map_name_to_arg_value(compute_func, arg_names.clone())?,
+        // concatenate circom template parameter names with `poly_expr_names`
+        template_like.get_name_of_params().iter().chain(poly_expr_names.iter()),
     )?;
     let mut arg_names = arg_names;
     arg_names.insert(0, "**self**".to_string());
@@ -623,14 +641,9 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         codegen,
         constrain_func,
         map_name_to_arg_value(constrain_func, arg_names)?,
+        // concatenate circom template parameter names with `poly_expr_names`
+        template_like.get_name_of_params().iter().chain(poly_expr_names.iter()),
     )?;
-
-    // Insert Operations to read templated struct parameters into an SSA Value in each function.
-    // This ensures the struct parameter is available as a Value in the block context.
-    for name in template_like.get_name_of_params() {
-        compute_ctx.append_initial_read_const(codegen, location, name)?;
-        constrain_ctx.append_initial_read_const(codegen, location, name)?;
-    }
 
     // Insert read operations for struct fields into constrain functions.
     let location = codegen.location_unknown();
@@ -882,13 +895,16 @@ pub trait GenerateLLZKInModule<'ctx, P: ProgramLike> {
 impl<'ctx, P: ProgramLike> GenerateLLZKInModule<'ctx, P> for P {
     fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx, P>) -> Result<()> {
         for f in self.get_functions(codegen.config.stabilize) {
+            codegen.set_current_body(f.get_body());
             gen_function_llzk(f, codegen)?;
         }
         // Collect declaration information for all templates first to avoid duplicating work.
         for t in self.get_templates(false) {
+            codegen.set_current_body(t.get_body());
             codegen.put_template_decl(t.get_name(), t.get_declarations(codegen)?);
         }
         for t in self.get_templates(codegen.config.stabilize) {
+            codegen.set_current_body(t.get_body());
             gen_template_llzk(t, codegen)?;
         }
         Ok(())

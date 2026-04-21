@@ -1,6 +1,12 @@
 //! Shared code generation utilities.
 
-use crate::function::FunctionContext;
+use crate::function::InfoProviders;
+use crate::gen_context::BlockContextStack;
+use crate::gen_context::BlockGenContext;
+use crate::gen_context::GenerateLLZKInAnyBlock;
+use crate::gen_context::NestedBlockInfo;
+use crate::lvalue::Lvalue;
+use crate::lvalue::Root;
 use crate::module::DeclarationInfo;
 use crate::program_ext::ProgramLike;
 use crate::subcmp::names::COMP;
@@ -19,8 +25,10 @@ use llzk::dialect::array;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::felt;
 use llzk::dialect::pod;
+use llzk::dialect::poly;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
+use llzk::prelude::melior_dialects::scf;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
@@ -53,6 +61,8 @@ use llzk::prelude::RegionLike as _;
 use llzk::prelude::StringAttribute;
 use llzk::prelude::StructType;
 use llzk::prelude::SymbolRefAttribute;
+use llzk::prelude::TemplateExprOp;
+use llzk::prelude::TemplateExprOpLike;
 use llzk::prelude::TemplateOp;
 use llzk::prelude::TemplateOpRef;
 use llzk::prelude::TemplateOpRefMut;
@@ -75,11 +85,14 @@ use program_structure::ast::Expression;
 use program_structure::ast::ExpressionInfixOpcode;
 use program_structure::ast::ExpressionPrefixOpcode;
 use program_structure::ast::Meta;
+use program_structure::ast::Statement;
+use program_structure::ast::VariableType;
 use program_structure::error_code::ReportCode;
 use program_structure::error_definition::Report;
 use program_structure::file_definition::FileID;
 use program_structure::file_definition::FileLocation;
 use program_structure::wire_data::WireType;
+use std::cell::Cell;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -257,8 +270,32 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     pub config: LlzkConfig,
     /// Declaration info pre-computed for all templates.
     template_decls: RefCell<HashMap<String, DeclInfo<'ctx>>>,
+    /// Body of the function or template currently being processed.
+    current_body: Cell<Option<&'ast [Statement]>>,
+    /// Current [Statement] (or stack thereof when within an `IfThenElse` or `While`) being visited
+    /// and/or translated. Used by [`DimExprConverter::gen_template_poly_expr`] to replicate the
+    /// body into the `poly.expr` initializer up to the current position so all variable
+    /// assignments that contribute to the target expression will be computed. Raw pointers are
+    /// used to avoid a lifetime issue from synthetic Statements created on-the-fly and translated.
+    /// They pointers must only be used for pointer equality comparisons to avoid unsafe behavior.
+    statement_trace: RefCell<Vec<*const Statement>>,
     /// Operation builder
     builder: OpBuilder<'ctx>,
+}
+
+/// RAII guard that pops one entry from the statement trace on drop.
+///
+/// Returned by [`LlzkCodegen::trace_statement`] to keep [`LlzkCodegen::statement_trace`] updated.
+#[derive(Debug)]
+pub struct StatementTraceGuard<'a> {
+    /// Reference to the statement trace managed by this guard.
+    trace: &'a RefCell<Vec<*const Statement>>,
+}
+
+impl Drop for StatementTraceGuard<'_> {
+    fn drop(&mut self) {
+        self.trace.borrow_mut().pop();
+    }
 }
 
 /// Maps parameter symbols to the attributes assigned to a concrete instances of a template.
@@ -441,10 +478,10 @@ impl<'ctx> TypeSizeExpr<'ctx> {
     }
 
     /// Generate code for the expression as an index value in LLZK IR.
-    pub fn to_index_value<'ast, 'func, 'blk, 'val>(
+    pub fn to_index_value<'ast, 'blk, 'val>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        fc: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+        fc: &mut BlockGenContext<'ctx, 'blk, 'val>,
         location: Location<'ctx>,
         env: Option<&TmplParamsInstance<'ast, 'ctx>>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -520,6 +557,8 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
             module,
             config,
             template_decls: RefCell::new(Default::default()),
+            current_body: Cell::new(None),
+            statement_trace: RefCell::new(Vec::new()),
             builder: OpBuilder::new(context),
         }
     }
@@ -527,6 +566,35 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     /// Returns a reference to the operation builder.
     pub fn op_builder(&self) -> &OpBuilder<'ctx> {
         &self.builder
+    }
+
+    /// Set the body of the function or template currently being processed.
+    pub fn set_current_body(&self, body: &'ast [Statement]) {
+        self.current_body.set(Some(body));
+    }
+
+    /// Get the body of the function or template currently being processed.
+    pub fn current_body(&self) -> Option<&'ast [Statement]> {
+        self.current_body.get()
+    }
+
+    /// Push `stmt` onto the statement trace and return a guard that pops it on drop.
+    ///
+    /// Call this at the top of every `gen_llzk_in_template`, `gen_llzk_in_function`, etc.
+    /// that traverses all body [Statement] and may end up calling the [`DimExprConverter`] so
+    /// that its [`DimExprConverter::gen_template_poly_expr`] can observe the exact path of
+    /// statements surrounding the target expression.
+    pub fn trace_statement<'a>(&'a self, stmt: &Statement) -> StatementTraceGuard<'a> {
+        self.statement_trace.borrow_mut().push(stmt as *const Statement);
+        StatementTraceGuard { trace: &self.statement_trace }
+    }
+
+    /// Snapshot the current statement trace (outermost statement first) as raw pointers.
+    ///
+    /// The pointers are valid for the duration of the AST (`'ast` lifetime of the codegen).
+    /// Use pointer equality (`std::ptr::eq`) when comparing against slice elements.
+    pub fn snapshot_statement_trace(&self) -> Vec<*const Statement> {
+        self.statement_trace.borrow().clone()
     }
 
     /// Store the full [DeclarationInfo] for the template with the given name.
@@ -1538,7 +1606,10 @@ impl<'ctx, 'val, P: ProgramLike> TryFrom<(&[usize], &LlzkCodegen<'_, 'ctx, P>)>
 }
 
 /// A trait to generate array dimensions from the given dimension expressions.
-pub trait DimExprConverter<'ctx, 'val> {
+pub trait DimExprConverter<'ctx, 'val>
+where
+    'ctx: 'val,
+{
     /// Convert a circom [Expression] used as an array dimension to an LLZK Attribute.
     ///
     /// Returns an error if there was an error converting a dimension that should be convertible.
@@ -1546,12 +1617,6 @@ pub trait DimExprConverter<'ctx, 'val> {
     /// lack of information in the implementer. Users can then attempt to resolve the dimension in a
     /// different context, or throw an error if all available contexts are unable to convert the
     /// dimension.
-    ///
-    /// Note: The LLZK ArrayType can only use the following Attribute types for dimensions:
-    /// IntegerAttr (`index` or `i1`) or AffineMapAttr (with single result).
-    /// To simplify the implementation, template parameters are read using `poly.read_const`
-    /// and passed to an affine map rather than trying to use a symbol attribute as the
-    /// dimension (which would only work for bare template parameters without computation anyways).
     fn get_dim_expr(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -1586,6 +1651,265 @@ pub trait DimExprConverter<'ctx, 'val> {
             anyhow!("unexpected lack of data needed to convert dimension expressions")
         })
     }
+
+    /// Names of `poly.param` and `poly.expr` defs visible in the current context.
+    fn poly_template_binding_names(&self) -> impl IntoIterator<Item = &String> {
+        std::iter::empty()
+    }
+
+    /// Callback to store a `poly.expr` operation generated on the fly for an array dimension.
+    fn callback_store_poly_expr(&self, name: String, op: TemplateExprOp<'ctx>);
+
+    /// Generate a new `poly.expr` operation for the given array dimension [Expression].
+    fn gen_template_poly_expr(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        name: String,
+        target_expr: &Expression, // the result that should yield from the `poly.expr`
+    ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
+        /// Fully generate LLZK for a single [Statement] in a `poly.expr` initializer without
+        /// truncating at any target expression.
+        fn gen_stmt_fully<'ctx, 'blk, 'val>(
+            stmt: &Statement,
+            codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+            gen_ctx: &mut BlockGenContext<'ctx, 'blk, 'val>,
+        ) -> Result<()>
+        where
+            'ctx: 'blk,
+            'blk: 'val,
+            'val: 'blk,
+        {
+            match stmt {
+                Statement::Block { stmts, .. } => {
+                    for s in stmts {
+                        gen_stmt_fully(s, codegen, gen_ctx)?;
+                    }
+                }
+                Statement::InitializationBlock { initializations, .. } => {
+                    for s in initializations {
+                        gen_stmt_fully(s, codegen, gen_ctx)?;
+                    }
+                }
+                Statement::Declaration { meta, xtype, name, dimensions, .. } => {
+                    if VariableType::Var == *xtype {
+                        gen_ctx.gen_declaration(codegen, meta, name, dimensions)?;
+                    }
+                }
+                Statement::Substitution { meta, var, access, op, rhe } => {
+                    // Signal assignments don't affect var values so skip those.
+                    if !op.is_signal_operator() {
+                        gen_ctx.handle_substitution_stmt_nonsignal(
+                            codegen,
+                            InfoProviders::default(),
+                            meta,
+                            var,
+                            access,
+                            op,
+                            rhe,
+                        )?;
+                    }
+                }
+                Statement::IfThenElse { meta, cond, if_case, else_case } => {
+                    let location = codegen.location_from_meta(meta);
+                    let cond_val = cond.gen_llzk_in_block(codegen, gen_ctx, Default::default())?;
+                    let cond_bool = gen_ctx.cast_to_bool_if_needed(codegen, location, cond_val)?;
+                    // Build then-branch NestedBlockInfo.
+                    let mut then_info = NestedBlockInfo::default();
+                    gen_ctx.block_ctx.push(then_info.block);
+                    gen_stmt_fully(if_case, codegen, gen_ctx)?;
+                    then_info.var_overwrites = gen_ctx.block_ctx.pop();
+                    // Build else-branch NestedBlockInfo.
+                    let mut else_info = NestedBlockInfo::default();
+                    gen_ctx.block_ctx.push(else_info.block);
+                    if let Some(ec) = else_case {
+                        gen_stmt_fully(ec, codegen, gen_ctx)?;
+                    }
+                    else_info.var_overwrites = gen_ctx.block_ctx.pop();
+                    gen_ctx.gen_scf_if(codegen, location, cond_bool, then_info, else_info)?;
+                }
+                Statement::While { .. } => {
+                    anyhow::bail!("poly.expr depending on a while loop is not yet supported")
+                }
+                Statement::Assert { meta, arg } => {
+                    let val = arg.gen_llzk_in_block(codegen, gen_ctx, Default::default())?;
+                    gen_ctx.append_assert(codegen, codegen.location_from_meta(meta), val)?
+                }
+                Statement::LogCall { meta, .. } => {
+                    codegen.emit_circom_warning(
+                        meta,
+                        "log calls are not currently supported in LLZK",
+                        ReportCode::NotAllowedOperation,
+                    );
+                }
+                Statement::Return { .. } => {
+                    unreachable!("encountered return statement while computing array dimension")
+                }
+                _ => {}
+            }
+            Ok(())
+        }
+
+        /// Generate the `scf.if` for a [Statement::IfThenElse] boundary encountered while
+        /// walking toward `target_expr`. The branch containing the target recursively calls
+        /// `gen_up_to_target`; the other branch yields a `nondet` placeholder of the same type.
+        #[allow(clippy::too_many_arguments)]
+        fn gen_if_then_else_up_to_target<'ctx, 'blk, 'val>(
+            codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+            gen_ctx: &mut BlockGenContext<'ctx, 'blk, 'val>,
+            target_expr: &Expression,
+            trace: &[*const Statement],
+            meta: &Meta,
+            cond: &Expression,
+            if_case: &Statement,
+            else_case: &Option<Box<Statement>>,
+        ) -> Result<Value<'ctx, 'val>>
+        where
+            'ctx: 'blk,
+            'blk: 'val,
+            'val: 'blk,
+        {
+            ensure!(
+                !trace.is_empty(),
+                "trace ended at IfThenElse; expected continuation into a branch"
+            );
+            let boundary_ptr: *const Statement = trace[0];
+
+            let location = codegen.location_from_meta(meta);
+            let cond_val = cond.gen_llzk_in_block(codegen, gen_ctx, Default::default())?;
+            let cond_bool = gen_ctx.cast_to_bool_if_needed(codegen, location, cond_val)?;
+
+            // Determine which branch contains the target by pointer identity.
+            let target_in_then = std::ptr::eq(if_case, boundary_ptr);
+            let containing_stmt = if target_in_then {
+                if_case
+            } else {
+                let opt = else_case.as_deref();
+                ensure!(
+                    opt.is_some_and(|ec| std::ptr::eq(ec, boundary_ptr)),
+                    "trace does not point to either branch of IfThenElse"
+                );
+                opt.expect("checked above")
+            };
+
+            // Generate the branch that contains the target, then a nondet placeholder for the
+            // other branch (using the result type from the containing branch).
+            let (containing_region, target_val) =
+                gen_ctx.generate_simple_scf_if_arm(location, |gc| {
+                    gen_up_to_target(
+                        codegen,
+                        gc,
+                        target_expr,
+                        std::slice::from_ref(containing_stmt),
+                        trace,
+                    )
+                })?;
+            let result_type = target_val.r#type();
+            let (other_region, _) = gen_ctx.generate_simple_scf_if_arm(location, |gc| {
+                gc.append_op_unnamed_result(codegen.new_nondet_at_location(location, result_type)?)
+            })?;
+
+            // Assemble the scf.if with regions in the correct order.
+            let (then_region, else_region) = if target_in_then {
+                (containing_region, other_region)
+            } else {
+                (other_region, containing_region)
+            };
+            gen_ctx.append_op_unnamed_result(scf::r#if(
+                cond_bool,
+                &[result_type],
+                then_region,
+                else_region,
+                location,
+            ))
+        }
+
+        /// Generate LLZK for all of `stmts` up to the first [Statement] in the `trace` (i.e. the
+        /// boundary). Then, pop the first [Statement] from the `trace` and, if applicable, descend
+        /// into its nested body following the same proceedure. When the trace is exhausted,
+        /// generate LLZK for the `target_expr` and return its result [Value].
+        fn gen_up_to_target<'ctx, 'blk, 'val>(
+            codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+            gen_ctx: &mut BlockGenContext<'ctx, 'blk, 'val>,
+            target_expr: &Expression,
+            stmts: &[Statement],
+            trace: &[*const Statement],
+        ) -> Result<Value<'ctx, 'val>>
+        where
+            'ctx: 'blk,
+            'blk: 'val,
+            'val: 'blk,
+        {
+            assert!(!trace.is_empty(), "trace must not be empty in gen_up_to_target");
+            let boundary_ptr: *const Statement = trace[0];
+            let inner_trace = &trace[1..];
+
+            // Generate all statements that precede the boundary, then find the boundary itself.
+            let mut boundary_stmt: Option<&Statement> = None;
+            for stmt in stmts {
+                if std::ptr::eq(stmt as *const Statement, boundary_ptr) {
+                    boundary_stmt = Some(stmt);
+                    break;
+                }
+                gen_stmt_fully(stmt, codegen, gen_ctx)?;
+            }
+            let boundary_stmt = boundary_stmt.ok_or_else(|| {
+                anyhow!("statement trace boundary not found in current stmts slice")
+            })?;
+
+            // Process the boundary statement (the one on the trace path).
+            match boundary_stmt {
+                Statement::Block { stmts, .. } => {
+                    // Target is somewhere within this block's statements; recurse.
+                    gen_up_to_target(codegen, gen_ctx, target_expr, stmts, inner_trace)
+                }
+                Statement::InitializationBlock { initializations, .. } => {
+                    gen_up_to_target(codegen, gen_ctx, target_expr, initializations, inner_trace)
+                }
+                Statement::IfThenElse { meta, cond, if_case, else_case } => {
+                    gen_if_then_else_up_to_target(
+                        codegen,
+                        gen_ctx,
+                        target_expr,
+                        inner_trace,
+                        meta,
+                        cond,
+                        if_case,
+                        else_case,
+                    )
+                }
+                Statement::While { .. } => {
+                    anyhow::bail!("poly.expr depending on a while loop is not yet supported")
+                }
+                _ => {
+                    assert!(inner_trace.is_empty(), "trace should end at a leaf statement");
+                    // Leaf: this boundary statement directly contains `target_expr` in its
+                    // dimensions. Generate the target expression in the current block context.
+                    target_expr.gen_llzk_in_block(codegen, gen_ctx, Default::default())
+                }
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////////////////////
+        // Generate `poly.expr` and fill its initializer region.
+        let location = codegen.location_from_meta(target_expr.get_meta());
+        let expr_op = poly::expr(location, &name, std::iter::empty())?;
+        let mut gen_ctx = BlockGenContext::new(
+            BlockContextStack::new(
+                expr_op.initializer_region().first_block().expect("block should have been added"),
+            ),
+            self.poly_template_binding_names(),
+        )
+        .with_poly_template_binding_locals(codegen, location)?;
+        let body_opt = codegen.current_body();
+        assert!(body_opt.is_some(), "should have been set at top level");
+        let trace = codegen.snapshot_statement_trace();
+        let val = gen_up_to_target(codegen, &mut gen_ctx, target_expr, body_opt.unwrap(), &trace)?;
+        gen_ctx.append_op_no_result(poly::r#yield(location, val)?.into())?;
+
+        let name_sym = codegen.flat_sym(&name);
+        self.callback_store_poly_expr(name, expr_op);
+        ArrayDimensionResult::new(name_sym.into(), &[])
+    }
 }
 
 /// Maps the inner type of the given type if it is an [`ArrayType`]. Returns the new type
@@ -1610,4 +1934,43 @@ pub fn region_with_block<'ctx>(arguments: &[(Type<'ctx>, Location<'ctx>)]) -> Re
 pub fn comp_type<'ctx>(pod: PodType<'ctx>) -> Result<Type<'ctx>> {
     pod.get_type_of_record(COMP)
         .ok_or_else(|| anyhow::anyhow!("missing {COMP} record in memory struct: {pod:?}"))
+}
+
+/// Generate a stable name for a dimension expression, suitable for use as a `poly.expr` name.
+///
+/// The generated name uniquely represents the expression structure so that the same expression
+/// always maps to the same name, enabling deduplication of `poly.expr` ops.
+pub fn dim_expr_name(expr: &Expression) -> String {
+    match expr {
+        Expression::Number(_, n) => n.to_string(),
+        Expression::Variable { name, access, .. } => {
+            if access.is_empty() {
+                name.clone()
+            } else {
+                // Reuse `Lvalue` string format but drop the "Var:" prefix.
+                Lvalue::new(name, Root::Var, access)
+                    .to_string()
+                    .trim_start_matches("Var:")
+                    .to_string()
+            }
+        }
+        Expression::InfixOp { lhe, infix_op, rhe, .. } => {
+            format!("{}_{infix_op:?}_{}", dim_expr_name(lhe), dim_expr_name(rhe))
+        }
+        Expression::PrefixOp { prefix_op, rhe, .. } => {
+            format!("{prefix_op:?}_{}", dim_expr_name(rhe))
+        }
+        Expression::InlineSwitchOp { cond, if_true, if_false, .. } => {
+            format!(
+                "{}?{}:{}",
+                dim_expr_name(cond),
+                dim_expr_name(if_true),
+                dim_expr_name(if_false)
+            )
+        }
+        Expression::Call { id, args, .. } => {
+            format!("{id}({})", args.iter().map(dim_expr_name).collect::<Vec<_>>().join(","))
+        }
+        _ => unreachable!("dimension expression must produce a scalar value"),
+    }
 }
