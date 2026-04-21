@@ -275,7 +275,9 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     /// Current [Statement] (or stack thereof when within an `IfThenElse` or `While`) being visited
     /// and/or translated. Used by [`DimExprConverter::gen_template_poly_expr`] to replicate the
     /// body into the `poly.expr` initializer up to the current position so all variable
-    /// assignments that contribute to the target expression will be computed.
+    /// assignments that contribute to the target expression will be computed. Raw pointers are
+    /// used to avoid a lifetime issue from synthetic Statements created on-the-fly and translated.
+    /// They pointers must only be used for pointer equality comparisons to avoid unsafe behavior.
     statement_trace: RefCell<Vec<*const Statement>>,
     /// Operation builder
     builder: OpBuilder<'ctx>,
