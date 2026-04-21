@@ -104,9 +104,9 @@ impl Default for InfoProviders<'_> {
 }
 
 impl<'tmpl, 'ctx, 'str, 'func, 'blk, 'val>
-    From<&'tmpl TemplateContext<'ctx, 'str, 'func, 'blk, 'val>> for InfoProviders<'tmpl>
+    From<&'tmpl TemplateContext<'_, 'ctx, 'str, 'func, 'blk, 'val>> for InfoProviders<'tmpl>
 {
-    fn from(template: &'tmpl TemplateContext<'ctx, 'str, 'func, 'blk, 'val>) -> Self {
+    fn from(template: &'tmpl TemplateContext<'_, 'ctx, 'str, 'func, 'blk, 'val>) -> Self {
         Self { subcmp_info: template, signal_write_info: template }
     }
 }
@@ -118,7 +118,7 @@ impl<'tmpl, 'ctx, 'str, 'func, 'blk, 'val>
 /// 'blk: lifetime of the generated `Block` instances within functions
 /// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
 #[derive(Debug)]
-pub struct FunctionContext<'ctx, 'func, 'blk, 'val>
+pub struct FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>
 where
     'ctx: 'func,
     'func: 'blk,
@@ -127,23 +127,23 @@ where
     /// The function reference.
     pub(crate) func: FuncDefOpRefMut<'ctx, 'func>,
     /// Base block generation context.
-    pub(crate) base: BlockGenContext<'ctx, 'blk, 'val>,
+    pub(crate) base: BlockGenContext<'decls, 'ctx, 'blk, 'val>,
 }
 
 /// Allows calling through to functions on the [`BlockGenContext`].
-impl<'ctx, 'blk, 'val> std::ops::Deref for FunctionContext<'ctx, '_, 'blk, 'val>
+impl<'decls, 'ctx, 'blk, 'val> std::ops::Deref for FunctionContext<'decls, 'ctx, '_, 'blk, 'val>
 where
     'ctx: 'blk,
     'blk: 'val,
 {
-    type Target = BlockGenContext<'ctx, 'blk, 'val>;
+    type Target = BlockGenContext<'decls, 'ctx, 'blk, 'val>;
 
     fn deref(&self) -> &Self::Target {
         &self.base
     }
 }
 
-impl<'ctx, 'blk, 'val> std::ops::DerefMut for FunctionContext<'ctx, '_, 'blk, 'val>
+impl<'ctx, 'blk, 'val> std::ops::DerefMut for FunctionContext<'_, 'ctx, '_, 'blk, 'val>
 where
     'ctx: 'blk,
     'blk: 'val,
@@ -198,19 +198,21 @@ impl<'ctx> RefactoringBlockResultType<'ctx> {
     }
 }
 
-impl<'ctx, 'func, 'blk, 'val> FunctionContext<'ctx, 'func, 'blk, 'val>
+impl<'decls, 'ctx, 'func, 'blk, 'val> FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>
 where
     'ctx: 'func,
     'func: 'blk,
     'blk: 'val,
 {
-    /// Create a new [FunctionContext] for the given function with an initial name-to-value mapping
-    /// and set of visible `poly.param` and `poly.expr` names.
-    pub fn new<'n, const FREE_FUNC: bool>(
+    /// Create a new [FunctionContext] for the given function with an initial name-to-value mapping,
+    /// mapping of `var` declaration names to their declared LLZK types, and set of visible
+    /// `poly.param` and `poly.expr` names.
+    pub fn new<'names, const FREE_FUNC: bool>(
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         func: FuncDefOpRefMut<'ctx, 'func>,
         param_name_to_value: HashMap<String, Value<'ctx, 'val>>,
-        poly_template_binding_names: impl IntoIterator<Item = &'n String>,
+        var_decl_types: &'decls HashMap<String, Type<'ctx>>,
+        poly_template_binding_names: impl IntoIterator<Item = &'names String>,
     ) -> Result<Self> {
         let mut block_ctx = BlockContextStack::from_function(func.deref(), param_name_to_value)?;
         if FREE_FUNC {
@@ -228,7 +230,7 @@ where
         }
         Ok(Self {
             func,
-            base: BlockGenContext::new(block_ctx, poly_template_binding_names)
+            base: BlockGenContext::new(block_ctx, var_decl_types, poly_template_binding_names)
                 .with_poly_template_binding_locals(codegen, codegen.location_unknown())?,
         })
     }
@@ -475,7 +477,7 @@ where
 
 /// The [FunctionContext] directly accesses a single [BlockContextStack] for circom scope handling.
 impl<'ctx, 'func, 'blk, 'val> GenWithCircomScopeHandling<'ctx, 'func, 'blk, 'val>
-    for FunctionContext<'ctx, 'func, 'blk, 'val>
+    for FunctionContext<'_, 'ctx, 'func, 'blk, 'val>
 where
     'ctx: 'func,
     'func: 'blk,
@@ -499,7 +501,7 @@ where
     ) -> Result<()>
     where
         H: Fn(
-            &mut BlockGenContext<'ctx, 'blk, 'val>,
+            &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
             &mut NestedBlockInfo<'ctx, 'blk, 'val>,
             HashMap<String, Value<'ctx, 'val>>,
         ) -> Result<()>,
@@ -528,7 +530,7 @@ where
     fn gen_llzk_in_function<'info>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+        function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
         info: InfoProviders<'info>,
     ) -> Result<Self::Output>;
 }
@@ -572,7 +574,7 @@ where
 #[allow(clippy::too_many_arguments)]
 fn handle_unbalanced_return<'ctx, 'func, 'blk, 'val>(
     codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
     location: Location<'ctx>,
     return_val: Value<'ctx, 'val>,
     returning_block: BlockRef<'ctx, 'blk>,
@@ -624,7 +626,7 @@ where
 /// ```
 fn gen_unbalanced_return_extra<'ctx, 'func, 'blk, 'val>(
     codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
     location: Location<'ctx>,
 ) -> Result<()>
 where
@@ -649,7 +651,7 @@ where
 /// Generate LLZK code for a circom [Statement::IfThenElse].
 fn gen_if_then_else<'ctx, 'func, 'blk, 'val, 'info>(
     codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
     info: InfoProviders<'info>,
     meta: &Meta,
     cond: &Expression,
@@ -740,7 +742,7 @@ where
 /// Generate LLZK code for a circom [Statement::While].
 fn gen_while<'ctx, 'func, 'blk, 'val, 'info>(
     codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
     info: InfoProviders<'info>,
     meta: &Meta,
     cond: &Expression,
@@ -824,7 +826,7 @@ where
 #[inline]
 fn gen_init_block<'ctx, 'func, 'blk, 'val>(
     codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+    function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
     info: InfoProviders<'_>,
     initializations: &[Statement],
 ) -> Result<()>
@@ -849,7 +851,7 @@ where
     fn gen_llzk_in_function<'info>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+        function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
         info: InfoProviders<'info>,
     ) -> Result<Self::Output> {
         let _guard = codegen.trace_statement(self);
@@ -952,7 +954,7 @@ where
     fn gen_llzk_in_function<'info>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        function: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+        function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
         info: InfoProviders<'info>,
     ) -> Result<Self::Output> {
         for s in self {

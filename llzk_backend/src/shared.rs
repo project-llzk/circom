@@ -481,7 +481,7 @@ impl<'ctx> TypeSizeExpr<'ctx> {
     pub fn to_index_value<'ast, 'blk, 'val>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        fc: &mut BlockGenContext<'ctx, 'blk, 'val>,
+        fc: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
         location: Location<'ctx>,
         env: Option<&TmplParamsInstance<'ast, 'ctx>>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -1660,6 +1660,9 @@ where
     /// Callback to store a `poly.expr` operation generated on the fly for an array dimension.
     fn callback_store_poly_expr(&self, name: String, op: TemplateExprOp<'ctx>);
 
+    /// Get the mapping of `var` name to declared LLZK type.
+    fn get_var_decl_types(&self) -> &HashMap<String, Type<'ctx>>;
+
     /// Generate a new `poly.expr` operation for the given array dimension [Expression].
     fn gen_template_poly_expr(
         &self,
@@ -1672,7 +1675,7 @@ where
         fn gen_stmt_fully<'ctx, 'blk, 'val>(
             stmt: &Statement,
             codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-            gen_ctx: &mut BlockGenContext<'ctx, 'blk, 'val>,
+            gen_ctx: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
         ) -> Result<()>
         where
             'ctx: 'blk,
@@ -1692,7 +1695,16 @@ where
                 }
                 Statement::Declaration { meta, xtype, name, dimensions, .. } => {
                     if VariableType::Var == *xtype {
-                        gen_ctx.gen_declaration(codegen, meta, name, dimensions)?;
+                        // Use the pre-computed type from DeclarationInfo (seeded into the
+                        // BlockContextStack root) to avoid triggering recursive
+                        // gen_template_poly_expr calls for non-constant dimension expressions.
+                        if let Some(ty) = gen_ctx.var_decl_types.get(name) {
+                            let op = codegen
+                                .new_nondet_at_location(codegen.location_from_meta(meta), *ty)?;
+                            gen_ctx.block_ctx.declare_name_ensure_not_present(name, op)?;
+                        } else {
+                            gen_ctx.gen_declaration(codegen, meta, name, dimensions)?;
+                        }
                     }
                 }
                 Statement::Substitution { meta, var, access, op, rhe } => {
@@ -1755,7 +1767,7 @@ where
         #[allow(clippy::too_many_arguments)]
         fn gen_if_then_else_up_to_target<'ctx, 'blk, 'val>(
             codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-            gen_ctx: &mut BlockGenContext<'ctx, 'blk, 'val>,
+            gen_ctx: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
             target_expr: &Expression,
             trace: &[*const Statement],
             meta: &Meta,
@@ -1829,7 +1841,7 @@ where
         /// generate LLZK for the `target_expr` and return its result [Value].
         fn gen_up_to_target<'ctx, 'blk, 'val>(
             codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-            gen_ctx: &mut BlockGenContext<'ctx, 'blk, 'val>,
+            gen_ctx: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
             target_expr: &Expression,
             stmts: &[Statement],
             trace: &[*const Statement],
@@ -1859,7 +1871,6 @@ where
             // Process the boundary statement (the one on the trace path).
             match boundary_stmt {
                 Statement::Block { stmts, .. } => {
-                    // Target is somewhere within this block's statements; recurse.
                     gen_up_to_target(codegen, gen_ctx, target_expr, stmts, inner_trace)
                 }
                 Statement::InitializationBlock { initializations, .. } => {
@@ -1893,18 +1904,20 @@ where
         // Generate `poly.expr` and fill its initializer region.
         let location = codegen.location_from_meta(target_expr.get_meta());
         let expr_op = poly::expr(location, &name, std::iter::empty())?;
-        let mut gen_ctx = BlockGenContext::new(
+        let mut expr_gen_ctx = BlockGenContext::new(
             BlockContextStack::new(
                 expr_op.initializer_region().first_block().expect("block should have been added"),
             ),
+            self.get_var_decl_types(),
             self.poly_template_binding_names(),
         )
         .with_poly_template_binding_locals(codegen, location)?;
         let body_opt = codegen.current_body();
         assert!(body_opt.is_some(), "should have been set at top level");
         let trace = codegen.snapshot_statement_trace();
-        let val = gen_up_to_target(codegen, &mut gen_ctx, target_expr, body_opt.unwrap(), &trace)?;
-        gen_ctx.append_op_no_result(poly::r#yield(location, val)?.into())?;
+        let val =
+            gen_up_to_target(codegen, &mut expr_gen_ctx, target_expr, body_opt.unwrap(), &trace)?;
+        expr_gen_ctx.append_op_no_result(poly::r#yield(location, val)?.into())?;
 
         let name_sym = codegen.flat_sym(&name);
         self.callback_store_poly_expr(name, expr_op);

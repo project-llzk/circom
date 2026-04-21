@@ -124,7 +124,7 @@ where
 {
     /// Create a new empty [BlockContext] for the given block.
     fn new(block: BlockRef<'ctx, 'blk>) -> Self {
-        BlockContext {
+        Self {
             block,
             scope_local_name_to_value: Default::default(),
             overwriting_name_to_value: Default::default(),
@@ -132,18 +132,10 @@ where
         }
     }
 
-    /// Create a new [BlockContext] for the given block, initializing the scope local
-    /// declarations with the mapping of parameter names to values.
-    fn new_with_params(
-        block: BlockRef<'ctx, 'blk>,
-        param_name_to_value: HashMap<String, Value<'ctx, 'val>>,
-    ) -> Self {
-        BlockContext {
-            block,
-            scope_local_name_to_value: param_name_to_value,
-            overwriting_name_to_value: Default::default(),
-            op_queue: Default::default(),
-        }
+    /// Set the scope local declarations with the mapping of parameter names to values.
+    fn with_params(mut self, param_name_to_value: HashMap<String, Value<'ctx, 'val>>) -> Self {
+        self.scope_local_name_to_value = param_name_to_value;
+        self
     }
 
     /// Get the LLZK IR SSA Value for the given circom var name. Check the local scope first since
@@ -202,7 +194,8 @@ where
     }
 
     /// Create a new [BlockContextStack] for the given function with an initial name-to-value
-    /// mapping containing function parameters.
+    /// mapping containing function parameters and a mapping of `var` declaration names to their
+    /// declared LLZK types.
     pub fn from_function(
         func: &FuncDefOp<'ctx>,
         param_name_to_value: HashMap<String, Value<'ctx, 'val>>,
@@ -210,7 +203,7 @@ where
         let root_block =
             func.region(0)?.first_block().ok_or_else(|| anyhow!("missing function entry block"))?;
         Ok(Self {
-            root: BlockContext::new_with_params(root_block, param_name_to_value),
+            root: BlockContext::new(root_block).with_params(param_name_to_value),
             other_blocks: Default::default(),
         })
     }
@@ -442,7 +435,7 @@ where
     pub fn add_missing_values(
         &mut self,
         other: &NestedBlockInfo<'ctx, 'blk, 'val>,
-        fc: &BlockGenContext<'ctx, 'blk, 'val>,
+        fc: &BlockGenContext<'_, 'ctx, 'blk, 'val>,
     ) -> Result<()> {
         for name in other.var_overwrites.keys() {
             if !self.var_overwrites.contains_key(name) {
@@ -482,7 +475,7 @@ where
     ) -> Result<()>
     where
         H: Fn(
-            &mut BlockGenContext<'ctx, 'blk, 'val>,
+            &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
             &mut NestedBlockInfo<'ctx, 'blk, 'val>,
             HashMap<String, Value<'ctx, 'val>>,
         ) -> Result<()>;
@@ -500,7 +493,7 @@ where
     ) -> Result<R>
     where
         H: Fn(
-            &mut BlockGenContext<'ctx, 'blk, 'val>,
+            &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
             &mut NestedBlockInfo<'ctx, 'blk, 'val>,
             HashMap<String, Value<'ctx, 'val>>,
         ) -> Result<()>,
@@ -581,30 +574,36 @@ fn block_not_in_stack(block: BlockRef) -> anyhow::Error {
 /// 'blk: lifetime of the generated `Block` instances within functions
 /// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
 #[derive(Debug)]
-pub struct BlockGenContext<'ctx, 'blk, 'val>
+pub struct BlockGenContext<'decls, 'ctx, 'blk, 'val>
 where
     'ctx: 'blk,
     'blk: 'val,
 {
     /// Nested block context within the root block.
     pub(crate) block_ctx: BlockContextStack<'ctx, 'blk, 'val>,
+    /// Pre-computed LLZK types for circom `var` declarations, keyed by var name. Populated from
+    /// [crate::module::DeclarationInfo] when generating `poly.expr` bodies for templates so that
+    /// dimension expressions referencing other vars do not trigger recursive code generation.
+    pub(crate) var_decl_types: &'decls HashMap<String, Type<'ctx>>,
     /// Names of `poly.param` and `poly.expr` defs visible in the current context.
     poly_template_binding_names: HashSet<String>,
 }
 
-impl<'ctx, 'blk, 'val> BlockGenContext<'ctx, 'blk, 'val>
+impl<'decls, 'ctx, 'blk, 'val> BlockGenContext<'decls, 'ctx, 'blk, 'val>
 where
     'ctx: 'blk,
     'blk: 'val,
 {
-    /// Create a new [BlockGenContext] with the given block context stack and set of visible
-    /// `poly.param` and `poly.expr` names.
-    pub fn new<'n>(
+    /// Create a new [BlockGenContext] with the given block context stack, mapping of `var` name to
+    /// declared LLZK type, and set of visible `poly.param` and `poly.expr` names.
+    pub fn new<'names>(
         block_ctx: BlockContextStack<'ctx, 'blk, 'val>,
-        poly_template_binding_names: impl IntoIterator<Item = &'n String>,
+        var_decl_types: &'decls HashMap<String, Type<'ctx>>,
+        poly_template_binding_names: impl IntoIterator<Item = &'names String>,
     ) -> Self {
         Self {
             block_ctx,
+            var_decl_types,
             poly_template_binding_names: poly_template_binding_names.into_iter().cloned().collect(),
         }
     }
@@ -1930,11 +1929,15 @@ where
     }
 }
 
-impl<'ctx, 'blk, 'val> DimExprConverter<'ctx, 'val> for BlockGenContext<'ctx, 'blk, 'val>
+impl<'ctx, 'blk, 'val> DimExprConverter<'ctx, 'val> for BlockGenContext<'_, 'ctx, 'blk, 'val>
 where
     'ctx: 'blk,
     'blk: 'val,
 {
+    fn get_var_decl_types(&self) -> &HashMap<String, Type<'ctx>> {
+        self.var_decl_types
+    }
+
     fn callback_store_poly_expr(&self, name: String, op: TemplateExprOp<'ctx>) {
         todo!("BlockGenContext::store_template_poly_expr: {name} -> {op:?}");
     }
@@ -1996,7 +1999,7 @@ where
     fn gen_llzk_in_block<'info>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        block_gen: &mut BlockGenContext<'ctx, 'blk, 'val>,
+        block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
         info: InfoProviders<'info>,
     ) -> Result<Value<'ctx, 'val>>;
 }
@@ -2016,7 +2019,7 @@ where
     fn gen_llzk_in_block<'info>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        block_gen: &mut BlockGenContext<'ctx, 'blk, 'val>,
+        block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
         info: InfoProviders<'info>,
     ) -> Result<Value<'ctx, 'val>> {
         match self {
