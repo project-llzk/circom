@@ -430,7 +430,7 @@ where
             let mut fc = rc.borrow_mut();
             let popped = fc.block_ctx.pop();
             overwrite_handler(
-                &mut fc.base,
+                &mut fc,
                 overwrite_data.compute.get_or_insert_with(NestedBlockInfo::default),
                 popped,
             )?;
@@ -439,7 +439,7 @@ where
             let mut fc = rc.borrow_mut();
             let popped = fc.block_ctx.pop();
             overwrite_handler(
-                &mut fc.base,
+                &mut fc,
                 overwrite_data.constrain.get_or_insert_with(NestedBlockInfo::default),
                 popped,
             )?;
