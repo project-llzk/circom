@@ -17,6 +17,7 @@ use crate::program_ext::ProgramInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::comp_type;
+use crate::shared::dim_expr_name;
 use crate::shared::map_array_inner_type;
 use crate::shared::ArrayDimension;
 use crate::shared::ArrayDimensionResult;
@@ -752,31 +753,21 @@ where
                 Expression::Number(_, _) => {
                     unreachable!("handled by try_compute_as_i64")
                 }
-                Expression::Variable { meta, name, access } => match access.as_slice() {
-                    [] => {
-                        // Grab the parameter name if it exists, else, defer to function generation.
-                        if self.template_def.has_const_param_named(name) {
-                            ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
-                        } else {
-                            // Other variables are unsupported, defer to function context
-                            ArrayDimensionResult::insufficient_data_result()
-                        }
+                Expression::Variable { meta, name, access } if access.is_empty() => {
+                    // Grab the parameter name if it exists, else, defer to `BlockGenContext`.
+                    if self.template_def.has_const_param_named(name) {
+                        ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
+                    } else {
+                        // Other variables are unsupported, defer to `BlockGenContext`
+                        ArrayDimensionResult::insufficient_data_result()
                     }
-                    a => {
-                        todo!("Handle Variable expression in dimension for non-integer attributes")
-                    }
-                },
-                Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                    todo!("Handle InfixOp in dimension for non-integer attributes: {:?}", expr)
                 }
-                Expression::PrefixOp { meta, prefix_op, rhe } => {
-                    todo!("Handle PrefixOp in dimension for non-integer attributes: {:?}", expr)
-                }
-                Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                    todo!("Handle InlineSwitch in dimension for non-integer attributes: {:?}", expr)
-                }
-                Expression::Call { meta, id, args } => {
-                    todo!("Handle Call in dimension for non-integer attributes: {:?}", expr)
+                Expression::Variable { .. } /* with non-empty `access` */
+                | Expression::InlineSwitchOp { .. }
+                | Expression::PrefixOp { .. }
+                | Expression::InfixOp { .. }
+                | Expression::Call { .. } => {
+                    self.gen_template_poly_expr(codegen, dim_expr_name(expr), expr)
                 }
                 // The remaining cases do not produce a scalar value.
                 // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
