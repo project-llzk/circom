@@ -1846,7 +1846,7 @@ where
             // Generate all statements that precede the boundary, then find the boundary itself.
             let mut boundary_stmt: Option<&Statement> = None;
             for stmt in stmts {
-                if std::ptr::eq(stmt as *const Statement, boundary_ptr) {
+                if std::ptr::eq(stmt, boundary_ptr) {
                     boundary_stmt = Some(stmt);
                     break;
                 }
