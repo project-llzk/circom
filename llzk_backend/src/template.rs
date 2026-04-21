@@ -767,18 +767,16 @@ where
                     }
                 },
                 Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                    todo!("Handle Infix expression in dimension for non-integer attributes")
+                    todo!("Handle InfixOp in dimension for non-integer attributes: {:?}", expr)
                 }
                 Expression::PrefixOp { meta, prefix_op, rhe } => {
-                    todo!("Handle Prefix expression in dimension for non-integer attributes")
+                    todo!("Handle PrefixOp in dimension for non-integer attributes: {:?}", expr)
                 }
                 Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                    todo!(
-                        "Handle InlineSwitchOp expression in dimension for non-integer attributes"
-                    )
+                    todo!("Handle InlineSwitch in dimension for non-integer attributes: {:?}", expr)
                 }
                 Expression::Call { meta, id, args } => {
-                    todo!("Handle Call expression in dimension")
+                    todo!("Handle Call in dimension for non-integer attributes: {:?}", expr)
                 }
                 // The remaining cases do not produce a scalar value.
                 // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
