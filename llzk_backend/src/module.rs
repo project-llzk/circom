@@ -1,6 +1,7 @@
 //! Handles the top-level constructs (i.e. circom templates and functions), by delegating
 //! to the [crate::function] and [crate::template] modules to generate the code for each.
 
+use crate::affine_map::AffineMapAttribute;
 use crate::function::FunctionContext;
 use crate::function::GenerateLLZKInFunction as _;
 use crate::function_ext::FunctionLike;
@@ -59,6 +60,8 @@ use llzk::prelude::StructType;
 use llzk::prelude::TemplateExprOp;
 use llzk::prelude::TemplateOpLike;
 use llzk::prelude::Type;
+use melior::ir::Attribute;
+use melior::ir::AttributeLike as _;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -181,58 +184,36 @@ impl<'ctx> DeclarationInfo<'ctx> {
             let instances = info.instances();
 
             let types = unique_instance_types(instances);
-            if types.is_empty() {
-                todo!("Handle uninitialized component decl")
-            }
-            if types.len() > 1 {
-                todo!("Handle subcomponents with different instantiations")
-            }
-            let mut inputs_size = TypeSizeExpr::zero();
-            let template_name = shared::get_name_tail(&types[0])?;
-            info.set_template(template_name.to_owned());
-
-            let template = codegen
-                .program
-                .get_templates(false)
-                .into_iter()
-                .find(|t| t.get_name() == template_name)
-                .ok_or_else(|| anyhow::anyhow!("template '{template_name}' not found"))?;
-            let template_params =
-                TmplParamsInstance::new(template.get_name_of_params(), types[0].params_vec());
-
-            let mut inputs = vec![];
-            for (signal_name, _) in template.get_declaration_inputs().iter() {
-                let signal_type = template_params
-                    .map_type(codegen.get_input_signal_type(template_name, signal_name)?)?;
-                inputs_size = inputs_size.add(codegen.count_input_signals(signal_type)?);
-                inputs.push(PodRecordAttribute::new(signal_name, signal_type));
-            }
-
-            let extend_dims = |t: Type<'ctx>| match info.dimensions() {
-                [] => t,
-                dims => ArrayType::new(t, dims).into(),
+            let subcmp_type = match &types[..] {
+                [] => todo!("Handle uninitialized component decl"),
+                [t] => *t,
+                types => {
+                    ensure_same_template(types, &name);
+                    // Zip the parameters of all the types and derive a common unification for
+                    // each. If all the instances of parameter N are the same we keep it,
+                    // otherwise we create an identity affine map to replace the parameter.
+                    let params = zip_struct_params(types)
+                        .into_iter()
+                        .map(|attrs| {
+                            if is_singleton(&attrs) {
+                                attrs[0]
+                            } else {
+                                AffineMapAttribute::identity(codegen.context, 1).into()
+                            }
+                        })
+                        .collect::<Vec<_>>();
+                    let name = types[0].name();
+                    StructType::new(name, &params)
+                }
             };
-            let inputs = extend_dims(PodType::new(codegen.context, &inputs).into());
-            let member_type = extend_dims(types[0].into());
-            self.struct_fields.push(MemberInfo {
-                name: name.clone(),
-                decl_type: member_type,
-                location: info.location(),
-                public: false,
-            });
-            self.struct_fields.push(MemberInfo {
-                name: crate::subcmp::names::inputs(&name),
-                decl_type: inputs,
-                location: info.location(),
-                public: false,
-            });
-            ops.push(SubcmpPrologueData {
+            record_subcmp_decl(
                 name,
-                subcmp: member_type,
-                inputs,
-                inputs_size,
-                template_params,
-            });
+                info,
+                subcmp_type,
+                codegen,
+                &mut ops,
+                &mut self.struct_fields,
+            )?;
         }
         Ok(ops)
     }
@@ -927,4 +908,110 @@ impl<'ctx, P: ProgramLike> GenerateLLZKInModule<'ctx, P> for P {
         }
         Ok(())
     }
+}
+
+#[inline]
+/// Fills out the declaration information for a subcomponent using the given type.
+fn record_subcmp_decl<'ctx, 'ast>(
+    name: String,
+    info: &mut SubcmpDeclInfo<'ctx>,
+    subcmp_type: StructType<'ctx>,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    ops: &mut Vec<SubcmpPrologueData<'ast, 'ctx>>,
+    struct_fields: &mut Vec<MemberInfo<'ctx>>,
+) -> Result<()> {
+    let mut inputs_size = TypeSizeExpr::zero();
+    let template_name = shared::get_name_tail(&subcmp_type)?;
+    info.set_template(template_name.to_owned());
+
+    let template = codegen
+        .program
+        .get_templates(false)
+        .into_iter()
+        .find(|t| t.get_name() == template_name)
+        .ok_or_else(|| anyhow::anyhow!("template '{template_name}' not found"))?;
+    let template_params =
+        TmplParamsInstance::new(template.get_name_of_params(), subcmp_type.params_vec());
+
+    let mut inputs = vec![];
+    for (signal_name, _) in template.get_declaration_inputs().iter() {
+        let signal_type =
+            template_params.map_type(codegen.get_input_signal_type(template_name, signal_name)?)?;
+        inputs_size = inputs_size.add(codegen.count_input_signals(signal_type)?);
+        inputs.push(PodRecordAttribute::new(signal_name, signal_type));
+    }
+
+    let extend_dims = |t: Type<'ctx>| match info.dimensions() {
+        [] => t,
+        dims => ArrayType::new(t, dims).into(),
+    };
+    let inputs = extend_dims(PodType::new(codegen.context, &inputs).into());
+    let member_type = extend_dims(subcmp_type.into());
+    struct_fields.push(MemberInfo {
+        name: name.clone(),
+        decl_type: member_type,
+        location: info.location(),
+        public: false,
+    });
+    struct_fields.push(MemberInfo {
+        name: crate::subcmp::names::inputs(&name),
+        decl_type: inputs,
+        location: info.location(),
+        public: false,
+    });
+    ops.push(SubcmpPrologueData {
+        name,
+        subcmp: member_type,
+        inputs,
+        inputs_size,
+        template_params,
+    });
+    Ok(())
+}
+
+#[inline]
+/// Ensures that the given collection of struct types all reference the same base type,
+/// panicking otherwise. The typechecker ensures this so this function is just a fail-safe.
+///
+/// For example, `{ A(1), A(2) }` is OK but `{ A(1), C(2) }` is not.
+///
+/// # Panics
+///
+/// If the given slice is empty or the types do not match. And only if the frontend was
+/// built with debug assertions enabled.
+fn ensure_same_template(types: &[StructType], subcmp: &str) {
+    debug_assert!(!types.is_empty());
+    let name = types[0].name();
+    let params_len = types[0].params().len();
+    for t in &types[1..] {
+        debug_assert!(t.name() == name, "Unexpected type for subcomponent instantation of '{subcmp}'. Was expecting {name} but got {}", t.name());
+        debug_assert!(t.params().len() == params_len, "Unexpected parameter count for subcomponent instantation of '{subcmp}'. Was expecting {params_len} but got {}", t.params().len());
+    }
+}
+
+fn zip_struct_params<'ctx>(types: &[StructType<'ctx>]) -> Vec<Vec<Attribute<'ctx>>> {
+    let params_len = types[0].params().len();
+    let mut outer = Vec::with_capacity(params_len);
+    for param_idx in 0..params_len {
+        let mut inner = Vec::with_capacity(types.len());
+        for t in types {
+            inner.push(t.params().get(param_idx).unwrap());
+        }
+        outer.push(inner);
+    }
+    outer
+}
+
+fn is_singleton(attrs: &[Attribute]) -> bool {
+    #[derive(PartialEq, Eq)]
+    struct A<'ctx>(Attribute<'ctx>);
+
+    impl std::hash::Hash for A<'_> {
+        fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+            self.0.to_raw().ptr.hash(state);
+        }
+    }
+    debug_assert!(!attrs.is_empty());
+    let set = attrs.iter().copied().map(A).collect::<HashSet<_>>();
+    set.len() == 1
 }
