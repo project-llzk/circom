@@ -19,7 +19,7 @@ component main = EvilArrayDims(7);
 // CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@EvilArrayDims::@EvilArrayDims<[7]>>} {
 // CHECK-NEXT:    poly.template @EvilArrayDims {
 // CHECK-NEXT:      poly.param @N
-// CHECK-NEXT:      poly.expr @"N_Greater_12?a[0]_Add_a[1]:0" {
+// CHECK-NEXT:      poly.expr @"N_Greater_12?a[0]_Add_a[1]:0@411" {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = llzk.nondet : !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  12 : <"bn128">
@@ -51,7 +51,7 @@ component main = EvilArrayDims(7);
 // CHECK-NEXT:        }
 // CHECK-NEXT:        poly.yield %[[VAL_15]] : !felt.type<"bn128">
 // CHECK-NEXT:      }
-// CHECK-NEXT:      poly.expr @"a[1]" {
+// CHECK-NEXT:      poly.expr @"a[1]@381" {
 // CHECK-NEXT:        %[[VAL_24:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_25:[0-9a-zA-Z_\.]+]] = llzk.nondet : !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_26:[0-9a-zA-Z_\.]+]] = felt.const  12 : <"bn128">
@@ -85,13 +85,13 @@ component main = EvilArrayDims(7);
 // CHECK-NEXT:        poly.yield %[[VAL_49]] : !felt.type<"bn128">
 // CHECK-NEXT:      }
 // CHECK-NEXT:      struct.def @EvilArrayDims {
-// CHECK-NEXT:        struct.member @out1 : !array.type<@"a[1]" x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        struct.member @out2 : !array.type<@"N_Greater_12?a[0]_Add_a[1]:0" x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @out1 : !array.type<@"a[1]@381" x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @out2 : !array.type<@"N_Greater_12?a[0]_Add_a[1]:0@411" x !felt.type<"bn128">> {llzk.pub}
 // CHECK-NEXT:        function.def @compute(%[[VAL_50:[0-9a-zA-Z_\.]+]]: !array.type<@x x !felt.type<"bn128">>) -> !struct.type<@EvilArrayDims::@EvilArrayDims<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = struct.new : <@EvilArrayDims::@EvilArrayDims<[@N]>>
 // CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Greater_12?a[0]_Add_a[1]:0" : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = poly.read_const @"a[1]" : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Greater_12?a[0]_Add_a[1]:0@411" : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = poly.read_const @"a[1]@381" : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_55:[0-9a-zA-Z_\.]+]] = poly.read_const @x : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = felt.const  12 : <"bn128">
 // CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -108,11 +108,11 @@ component main = EvilArrayDims(7);
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_66:[0-9a-zA-Z_\.]+]]: !struct.type<@EvilArrayDims::@EvilArrayDims<[@N]>>, %[[VAL_67:[0-9a-zA-Z_\.]+]]: !array.type<@x x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_68:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_69:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Greater_12?a[0]_Add_a[1]:0" : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_70:[0-9a-zA-Z_\.]+]] = poly.read_const @"a[1]" : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_69:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Greater_12?a[0]_Add_a[1]:0@411" : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_70:[0-9a-zA-Z_\.]+]] = poly.read_const @"a[1]@381" : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_71:[0-9a-zA-Z_\.]+]] = poly.read_const @x : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_72:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_66]][@out1] : <@EvilArrayDims::@EvilArrayDims<[@N]>>, !array.type<@"a[1]" x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_73:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_66]][@out2] : <@EvilArrayDims::@EvilArrayDims<[@N]>>, !array.type<@"N_Greater_12?a[0]_Add_a[1]:0" x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_72:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_66]][@out1] : <@EvilArrayDims::@EvilArrayDims<[@N]>>, !array.type<@"a[1]@381" x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_73:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_66]][@out2] : <@EvilArrayDims::@EvilArrayDims<[@N]>>, !array.type<@"N_Greater_12?a[0]_Add_a[1]:0@411" x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_74:[0-9a-zA-Z_\.]+]] = felt.const  12 : <"bn128">
 // CHECK-NEXT:          %[[VAL_75:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_76:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_75]], %[[VAL_75]] : <2 x !felt.type<"bn128">>

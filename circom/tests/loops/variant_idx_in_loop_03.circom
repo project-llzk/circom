@@ -20,18 +20,18 @@ component main = VariantIndex(2);
 // CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@VariantIndex::@VariantIndex<[2]>>} {
 // CHECK-NEXT:    poly.template @VariantIndex {
 // CHECK-NEXT:      poly.param @n
-// CHECK-NEXT:      poly.expr @n_Mul_n {
+// CHECK-NEXT:      poly.expr @"n_Mul_n@304" {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_0]], %[[VAL_0]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:        poly.yield %[[VAL_1]] : !felt.type<"bn128">
 // CHECK-NEXT:      }
 // CHECK-NEXT:      struct.def @VariantIndex {
-// CHECK-NEXT:        struct.member @out : !array.type<@n_Mul_n x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !array.type<@"n_Mul_n@304" x !felt.type<"bn128">> {llzk.pub}
 // CHECK-NEXT:        function.def @compute(%[[VAL_2:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@VariantIndex::@VariantIndex<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = struct.new : <@VariantIndex::@VariantIndex<[@n]>>
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = poly.read_const @n_Mul_n : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<@n_Mul_n x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = poly.read_const @"n_Mul_n@304" : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<@"n_Mul_n@304" x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_10:[0-9a-zA-Z_\.]+]] = %[[VAL_8]], %[[VAL_11:[0-9a-zA-Z_\.]+]] = %[[VAL_7]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> (!felt.type<"bn128">, !felt.type<"bn128">) {
@@ -42,18 +42,18 @@ component main = VariantIndex(2);
 // CHECK-NEXT:            %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_14]], %[[VAL_13]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.shr %[[VAL_2]], %[[VAL_13]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_17:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_15]] : !felt.type<"bn128">
-// CHECK-NEXT:            array.write %[[VAL_6]]{{\[}}%[[VAL_17]]] = %[[VAL_16]] : <@n_Mul_n x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:            array.write %[[VAL_6]]{{\[}}%[[VAL_17]]] = %[[VAL_16]] : <@"n_Mul_n@304" x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_18:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_13]], %[[VAL_18]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            scf.yield %[[VAL_19]], %[[VAL_15]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          }
-// CHECK-NEXT:          struct.writem %[[VAL_3]][@out] = %[[VAL_6]] : <@VariantIndex::@VariantIndex<[@n]>>, !array.type<@n_Mul_n x !felt.type<"bn128">>
+// CHECK-NEXT:          struct.writem %[[VAL_3]][@out] = %[[VAL_6]] : <@VariantIndex::@VariantIndex<[@n]>>, !array.type<@"n_Mul_n@304" x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_3]] : !struct.type<@VariantIndex::@VariantIndex<[@n]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_20:[0-9a-zA-Z_\.]+]]: !struct.type<@VariantIndex::@VariantIndex<[@n]>>, %[[VAL_21:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = poly.read_const @n_Mul_n : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_20]][@out] : <@VariantIndex::@VariantIndex<[@n]>>, !array.type<@n_Mul_n x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = poly.read_const @"n_Mul_n@304" : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_20]][@out] : <@VariantIndex::@VariantIndex<[@n]>>, !array.type<@"n_Mul_n@304" x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_28:[0-9a-zA-Z_\.]+]] = %[[VAL_26]], %[[VAL_29:[0-9a-zA-Z_\.]+]] = %[[VAL_25]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> (!felt.type<"bn128">, !felt.type<"bn128">) {
