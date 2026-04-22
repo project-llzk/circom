@@ -920,8 +920,45 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         }
     }
 
-    /// Run cleanup passes on the generated `Module`.
-    pub fn run_passes(&mut self) -> Result<()> {
+    /// Run the given pass pipeline on the given operation.
+    pub fn run_pass_pipeline_on<'c: 'a, 'a>(
+        &self,
+        pipeline: &str,
+        op: &impl OperationLike<'c, 'a>,
+    ) -> Result<()> {
+        if pipeline.is_empty() {
+            return Ok(());
+        }
+
+        let manager = PassManager::new(self.context);
+        // Disable verifier in case the given op is orphaned (i.e. not yet attached to a parent).
+        manager.enable_verifier(false);
+        // Print current IR on failure to make debugging easier.
+        enable_ir_printing(
+            &manager,
+            false,
+            false,
+            false,
+            false,
+            true,
+            Default::default(),
+            Default::default(),
+        );
+
+        // Setup and run the pass pipeline.
+        utility::register_all_passes();
+        utility::parse_pass_pipeline(manager.as_operation_pass_manager(), &pipeline)
+            .map_err(anyhow::Error::from)?;
+
+        let mlir_result =
+            unsafe { mlir_sys::mlirPassManagerRunOnOp(manager.to_raw(), op.to_raw()) };
+        ensure!(mlir_result.value != 0, "failed to run pass pipeline: {pipeline}");
+
+        Ok(())
+    }
+
+    /// Run the pass pipeline from the command line on the generated `Module`.
+    pub fn run_user_pass_pipeline(&mut self) -> Result<()> {
         if self.config.pass_pipeline.is_empty() {
             return Ok(());
         }
@@ -1368,6 +1405,35 @@ pub fn next_in_block_mut<'c: 'a, 'a>(
     unsafe {
         melior::ir::operation::OperationRefMut::from_option_raw(
             mlir_sys::mlirOperationGetNextInBlock(op.to_raw()),
+        )
+    }
+}
+
+/// Set IR printing options on the given [PassManager].
+///
+/// This function provides an API fix that is added in a newer release of melior via
+/// [mlir-sys/melior#802](https://github.com/mlir-rs/melior/pull/802).
+#[allow(clippy::too_many_arguments)]
+pub fn enable_ir_printing(
+    _self: &melior::pass::PassManager,
+    before_all: bool,
+    after_all: bool,
+    module_scope: bool,
+    on_change: bool,
+    on_failure: bool,
+    flags: melior::ir::operation::OperationPrintingFlags,
+    tree_printing_path: std::path::PathBuf,
+) {
+    unsafe {
+        mlir_sys::mlirPassManagerEnableIRPrinting(
+            _self.to_raw(),
+            before_all,
+            after_all,
+            module_scope,
+            on_change,
+            on_failure,
+            flags.to_raw(),
+            melior::StringRef::new(&tree_printing_path.display().to_string()).to_raw(),
         )
     }
 }
@@ -1928,6 +1994,20 @@ where
         let val =
             gen_up_to_target(codegen, &mut expr_gen_ctx, target_expr, body_opt.unwrap(), &trace)?;
         expr_gen_ctx.append_op_no_result(poly::r#yield(location, val)?.into())?;
+
+        // Run cleanup passes to simplify and normalize the generated code a bit:
+        // - remove-dead-values: drop ops whose results are not used
+        // - sccp: constant fold and propagate values
+        // - canonicalize: mainly to remove unused `llzk.nondet` (which `remove-dead-values` cannot
+        //   remove due to memory effects) but also folds felt constants, etc.
+        // This cleanup is not simply an optimization. In some cases, an `llzk.nondet` may be
+        // generated that references a symbol defined by a different `poly.expr` due to the way
+        // array declaration and initialization are split up in the circom AST. This is illegal
+        // in LLZK but that `llzk.nondet` result value is unused so it can be removed.
+        codegen.run_pass_pipeline_on(
+            "any(composite-fixed-point-pass{pipeline=\"canonicalize,sccp,remove-dead-values\"})",
+            &expr_op,
+        )?;
 
         let uniqued_name = self.callback_store_poly_expr(name, expr_op);
         // Have to convert the StringAttribute to FlatSymbolRefAttribute before returning it.
