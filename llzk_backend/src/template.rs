@@ -18,6 +18,7 @@ use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::comp_type;
 use crate::shared::dim_expr_name;
+use crate::shared::get_poly_expr_name;
 use crate::shared::map_array_inner_type;
 use crate::shared::ArrayDimension;
 use crate::shared::ArrayDimensionResult;
@@ -39,13 +40,13 @@ use llzk::dialect::constrain;
 use llzk::dialect::pod;
 use llzk::dialect::r#struct;
 use llzk::prelude::ArrayType;
-use llzk::prelude::BlockLike;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::LoopBoundsAttribute;
 use llzk::prelude::MemberDefOpLike as _;
 use llzk::prelude::PodType;
 use llzk::prelude::RecordValue;
+use llzk::prelude::StringAttribute;
 use llzk::prelude::StringRef;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRefMut;
@@ -55,6 +56,7 @@ use llzk::prelude::TemplateOpRefMut;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
+use llzk::symbol_table;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -754,8 +756,13 @@ where
         self.var_decl_types
     }
 
-    fn callback_store_poly_expr(&self, _: String, op: TemplateExprOp<'ctx>) {
-        self.template_def.body().append_operation(op.into());
+    fn callback_store_poly_expr(
+        &self,
+        _: String,
+        op: TemplateExprOp<'ctx>,
+    ) -> StringAttribute<'ctx> {
+        // Use `symbol_table::insert` instead of direct insertion to rename duplicates
+        get_poly_expr_name(&symbol_table::insert(&self.template_def, op.into()))
     }
 
     fn get_dim_expr(

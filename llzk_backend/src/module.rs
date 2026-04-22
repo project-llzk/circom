@@ -7,6 +7,7 @@ use crate::function_ext::FunctionLike;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::dim_expr_name;
+use crate::shared::get_poly_expr_name;
 use crate::shared::map_array_inner_type;
 use crate::shared::map_name_to_arg_value;
 use crate::shared::ArrayDimensionResult;
@@ -52,6 +53,7 @@ use llzk::prelude::PodType;
 use llzk::prelude::PublicAttribute;
 use llzk::prelude::RecordValue;
 use llzk::prelude::RegionLike as _;
+use llzk::prelude::StringAttribute;
 use llzk::prelude::StringRef;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRef;
@@ -484,8 +486,18 @@ where
         &self.template_params
     }
 
-    fn callback_store_poly_expr(&self, name: String, op: TemplateExprOp<'ctx>) {
-        self.poly_exprs.borrow_mut().insert(name, op);
+    fn callback_store_poly_expr(
+        &self,
+        name: String,
+        op: TemplateExprOp<'ctx>,
+    ) -> StringAttribute<'ctx> {
+        let uniqued_name = get_poly_expr_name(&op);
+        let old = self.poly_exprs.borrow_mut().insert(name, op);
+        // ASSERT: In general, `DimExprConverter` has to account for non-unique names but in this
+        // `DeclarationInfo` implementation, names will always be unique (assuming the `Meta::start`
+        // from the circom AST that `dim_expr_name()` appends to the names is accurate).
+        assert!(old.is_none(), "multiple poly.expr generated for the same dimension expression");
+        uniqued_name
     }
 
     fn get_dim_expr(
@@ -603,6 +615,8 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         poly_expr_names.sort();
     }
     for name in &poly_expr_names {
+        // Here the template is empty and the names are unique per storage in HashMap so they
+        // can be directly appended without using `symbol_table::insert` to unique names.
         new_template.body().append_operation(poly_exprs.remove(name).unwrap().into());
     }
 

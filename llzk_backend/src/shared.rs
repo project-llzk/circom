@@ -1658,7 +1658,11 @@ where
     }
 
     /// Callback to store a `poly.expr` operation generated on the fly for an array dimension.
-    fn callback_store_poly_expr(&self, name: String, op: TemplateExprOp<'ctx>);
+    fn callback_store_poly_expr(
+        &self,
+        name: String,
+        op: TemplateExprOp<'ctx>,
+    ) -> StringAttribute<'ctx>;
 
     /// Get the mapping of `var` name to declared LLZK type.
     fn get_var_decl_types(&self) -> &HashMap<String, Type<'ctx>>;
@@ -1919,9 +1923,9 @@ where
             gen_up_to_target(codegen, &mut expr_gen_ctx, target_expr, body_opt.unwrap(), &trace)?;
         expr_gen_ctx.append_op_no_result(poly::r#yield(location, val)?.into())?;
 
-        let name_sym = codegen.flat_sym(&name);
-        self.callback_store_poly_expr(name, expr_op);
-        ArrayDimensionResult::new(name_sym.into(), &[])
+        let uniqued_name = self.callback_store_poly_expr(name, expr_op);
+        // Have to convert the StringAttribute to FlatSymbolRefAttribute before returning it.
+        ArrayDimensionResult::new(codegen.flat_sym(uniqued_name.value()).into(), &[])
     }
 }
 
@@ -1954,36 +1958,44 @@ pub fn comp_type<'ctx>(pod: PodType<'ctx>) -> Result<Type<'ctx>> {
 /// The generated name uniquely represents the expression structure so that the same expression
 /// always maps to the same name, enabling deduplication of `poly.expr` ops.
 pub fn dim_expr_name(expr: &Expression) -> String {
-    match expr {
-        Expression::Number(_, n) => n.to_string(),
-        Expression::Variable { name, access, .. } => {
-            if access.is_empty() {
-                name.clone()
-            } else {
-                // Reuse `Lvalue` string format but drop the "Var:" prefix.
-                Lvalue::new(name, Root::Var, access)
-                    .to_string()
-                    .trim_start_matches("Var:")
-                    .to_string()
+    fn visit(expr: &Expression) -> String {
+        match expr {
+            Expression::Number(_, n) => n.to_string(),
+            Expression::Variable { name, access, .. } => {
+                if access.is_empty() {
+                    name.clone()
+                } else {
+                    // Reuse `Lvalue` string format but drop the "Var:" prefix.
+                    Lvalue::new(name, Root::Var, access)
+                        .to_string()
+                        .trim_start_matches("Var:")
+                        .to_string()
+                }
             }
+            Expression::InfixOp { lhe, infix_op, rhe, .. } => {
+                format!("{}_{infix_op:?}_{}", visit(lhe), visit(rhe))
+            }
+            Expression::PrefixOp { prefix_op, rhe, .. } => {
+                format!("{prefix_op:?}_{}", visit(rhe))
+            }
+            Expression::InlineSwitchOp { cond, if_true, if_false, .. } => {
+                format!("{}?{}:{}", visit(cond), visit(if_true), visit(if_false))
+            }
+            Expression::Call { id, args, .. } => {
+                format!("{id}({})", args.iter().map(visit).collect::<Vec<_>>().join(","))
+            }
+            _ => unreachable!("dimension expression must produce a scalar value"),
         }
-        Expression::InfixOp { lhe, infix_op, rhe, .. } => {
-            format!("{}_{infix_op:?}_{}", dim_expr_name(lhe), dim_expr_name(rhe))
-        }
-        Expression::PrefixOp { prefix_op, rhe, .. } => {
-            format!("{prefix_op:?}_{}", dim_expr_name(rhe))
-        }
-        Expression::InlineSwitchOp { cond, if_true, if_false, .. } => {
-            format!(
-                "{}?{}:{}",
-                dim_expr_name(cond),
-                dim_expr_name(if_true),
-                dim_expr_name(if_false)
-            )
-        }
-        Expression::Call { id, args, .. } => {
-            format!("{id}({})", args.iter().map(dim_expr_name).collect::<Vec<_>>().join(","))
-        }
-        _ => unreachable!("dimension expression must produce a scalar value"),
     }
+    // Add starting location of the expression to the name to ensure (**assuming Meta information
+    // is accurate**) context sensitivity (i.e. expressions at different code locations may have a
+    // different value store and thus should be treated as different values).
+    format!("{}@{}", visit(expr), expr.get_meta().start)
+}
+
+/// Get the `sym_name` attribute from a `poly.expr` operation.
+pub fn get_poly_expr_name<'c: 'a, 'a>(op: &impl OperationLike<'c, 'a>) -> StringAttribute<'c> {
+    assert!(poly::is_expr_op(op), "expected a poly.expr operation");
+    let a = op.attribute("sym_name").expect("`poly.expr` op has `sym_name` attribute per ODS");
+    StringAttribute::try_from(a).expect("`sym_name` attribute is StringAttr per ODS")
 }

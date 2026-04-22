@@ -55,6 +55,7 @@ use llzk::prelude::OperationRef;
 use llzk::prelude::PodType;
 use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
+use llzk::prelude::StringAttribute;
 use llzk::prelude::StructType;
 use llzk::prelude::TemplateExprOp;
 use llzk::prelude::Type;
@@ -1938,7 +1939,11 @@ where
         self.var_decl_types
     }
 
-    fn callback_store_poly_expr(&self, name: String, op: TemplateExprOp<'ctx>) {
+    fn callback_store_poly_expr(
+        &self,
+        name: String,
+        op: TemplateExprOp<'ctx>,
+    ) -> StringAttribute<'ctx> {
         todo!("BlockGenContext::store_template_poly_expr: {name} -> {op:?}");
     }
 
