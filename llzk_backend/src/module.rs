@@ -127,6 +127,9 @@ pub struct DeclarationInfo<'ctx> {
     template_params: HashSet<String>,
     /// Dimension expressions mapped to generated `poly.expr` op to be inserted into the template.
     poly_exprs: RefCell<HashMap<String, TemplateExprOp<'ctx>>>,
+    /// Pre-computed LLZK types for `var` declarations, keyed by var name. Used by
+    /// `poly.expr` body generation to avoid recursive dimension-expression recomputation.
+    var_decl_types: HashMap<String, Type<'ctx>>,
 }
 
 impl<'ctx> DeclarationInfo<'ctx> {
@@ -307,9 +310,15 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         // Create `llzk.nondet` of the appropriate type. When the actual assignment
                         // is processed later, this is replaced with the appropriate value.
                         let dimensions = self.get_dim_exprs(codegen, dimensions)?;
+                        let var_type =
+                            dimensions.type_from_dimension_exprs(codegen.felt_type().into());
+                        self.var_decl_types.insert(name.clone(), var_type);
                         self.decl_inits.insert(
                             name.clone(),
-                            dimensions.new_nondet_felt_of_dimensions(codegen, meta)?,
+                            codegen.new_nondet_at_location(
+                                codegen.location_from_meta(meta),
+                                var_type,
+                            )?,
                         );
                         Ok(())
                     }
@@ -467,6 +476,10 @@ impl<'ctx, 'val> DimExprConverter<'ctx, 'val> for DeclarationInfo<'ctx>
 where
     'ctx: 'val,
 {
+    fn get_var_decl_types(&self) -> &HashMap<String, Type<'ctx>> {
+        &self.var_decl_types
+    }
+
     fn poly_template_binding_names(&self) -> impl IntoIterator<Item = &String> {
         &self.template_params
     }
@@ -552,7 +565,9 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
     let name_to_value = map_name_to_arg_value(func, func_like.get_name_of_params())?;
 
     // Visit the body of the function and generate LLZK IR for it.
-    let mut func_context = FunctionContext::new::<true>(codegen, func, name_to_value, &[])?;
+    let var_decl_types = HashMap::new();
+    let mut func_context =
+        FunctionContext::new::<true>(codegen, func, name_to_value, &var_decl_types, &[])?;
     func_like.get_body().gen_llzk_in_function(codegen, &mut func_context, Default::default())?;
     func_context.finalize(codegen)
 }
@@ -632,6 +647,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         codegen,
         compute_func,
         map_name_to_arg_value(compute_func, arg_names.clone())?,
+        &declarations.var_decl_types,
         // concatenate circom template parameter names with `poly_expr_names`
         template_like.get_name_of_params().iter().chain(poly_expr_names.iter()),
     )?;
@@ -641,6 +657,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         codegen,
         constrain_func,
         map_name_to_arg_value(constrain_func, arg_names)?,
+        &declarations.var_decl_types,
         // concatenate circom template parameter names with `poly_expr_names`
         template_like.get_name_of_params().iter().chain(poly_expr_names.iter()),
     )?;
@@ -698,6 +715,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         compute_ctx,
         constrain_ctx,
         &subcmp_names,
+        &declarations.var_decl_types,
     );
     template_like.gen_preamble(codegen, &template_context)?;
     template_like.get_body().gen_llzk_in_template(codegen, &template_context)?;
@@ -712,8 +730,8 @@ fn scalar_or_inner<'ctx>(t: Type<'ctx>) -> Type<'ctx> {
 /// Generates the prologue related to subcomponents in a template body.
 fn gen_subcmps_prologue_in_template<'ast, 'ctx, 'func, 'blk, 'val>(
     subcmps: impl IntoIterator<Item = SubcmpPrologueData<'ast, 'ctx>>,
-    compute_ctx: &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
-    constrain_ctx: &mut FunctionContext<'ctx, '_, '_, '_>,
+    compute_ctx: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
+    constrain_ctx: &mut FunctionContext<'_, 'ctx, '_, '_, '_>,
     codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     subcmp_decls: &HashMap<String, SubcmpDeclInfo<'ctx>>,
 ) -> Result<()>

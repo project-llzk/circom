@@ -33,7 +33,7 @@ pub trait SignalWriteInfo: std::fmt::Debug {
     fn mark_signal_as_written(&self, name: String);
 }
 
-impl SignalWriteInfo for TemplateContext<'_, '_, '_, '_, '_> {
+impl SignalWriteInfo for TemplateContext<'_, '_, '_, '_, '_, '_> {
     fn signal_already_written(&self, name: &str) -> bool {
         self.signal_already_written(name)
     }
@@ -131,7 +131,7 @@ impl<'ast> WriteChain<'ast> {
         val: Value<'ctx, 'val>,
         target: WriteTarget,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
         signal_write_info: &dyn SignalWriteInfo,
         subcmp_info: &dyn SubcmpInfo,
@@ -161,7 +161,7 @@ impl<'ast> WriteChain<'ast> {
         val: Value<'ctx, 'val>,
         target: WriteTarget,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
         signal_write_info: &dyn SignalWriteInfo,
         subcmp_info: &dyn SubcmpInfo,
@@ -224,7 +224,7 @@ impl<'ast> WriteChain<'ast> {
         val: Value<'ctx, 'val>,
         target: WriteTarget,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
         signal_write_info: &dyn SignalWriteInfo,
         subcmp_info: &dyn SubcmpInfo,
@@ -234,7 +234,7 @@ impl<'ast> WriteChain<'ast> {
             var: String,
             val: Value<'ctx, 'val>,
             target: WriteTarget,
-            fc: &mut FunctionContext<'ctx, '_, '_, 'val>,
+            fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
             location: Location<'ctx>,
             signal_write_info: &dyn SignalWriteInfo,
         ) -> Result<()> {

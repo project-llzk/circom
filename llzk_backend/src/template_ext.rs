@@ -118,7 +118,7 @@ pub trait TemplateLike: std::fmt::Debug {
     fn gen_preamble<'ctx>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        template: &TemplateContext<'ctx, '_, '_, '_, '_>,
+        template: &TemplateContext<'_, 'ctx, '_, '_, '_, '_>,
     ) -> Result<()>;
 }
 
@@ -177,7 +177,7 @@ impl TemplateLike for TemplateData {
     fn gen_preamble<'ctx>(
         &self,
         _codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        _template: &TemplateContext<'ctx, '_, '_, '_, '_>,
+        _template: &TemplateContext<'_, 'ctx, '_, '_, '_, '_>,
     ) -> Result<()> {
         Ok(())
     }
@@ -310,7 +310,7 @@ impl TemplateLike for TemplateInstance {
     fn gen_preamble<'ctx>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        template: &TemplateContext<'ctx, '_, '_, '_, '_>,
+        template: &TemplateContext<'_, 'ctx, '_, '_, '_, '_>,
     ) -> Result<()> {
         fn build_nested(
             meta: &Meta,

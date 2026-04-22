@@ -107,7 +107,7 @@ impl<'ast> Lvalue<'ast> {
     fn get_root_signal<'ctx, 'val>(
         &self,
         var: &str,
-        block_gen: &mut BlockGenContext<'ctx, '_, 'val>,
+        block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
         // Both compute and constrain functions should have the `var` defined:
         // compute from an existing assignment, or constrain from pre-generation
@@ -120,7 +120,7 @@ impl<'ast> Lvalue<'ast> {
     fn get_root_value<'ctx, 'val>(
         &self,
         var: &str,
-        block_gen: &mut BlockGenContext<'ctx, '_, 'val>,
+        block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
         block_gen.block_ctx.get_named_value(var).copied()
     }
@@ -131,7 +131,7 @@ impl<'ast> Lvalue<'ast> {
         indices: &[&Expression],
         prev: Value<'ctx, 'val>,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        block_gen: &mut BlockGenContext<'ctx, '_, 'val>,
+        block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
         location: Location<'ctx>,
         info: InfoProviders<'_>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -146,7 +146,7 @@ impl<'ast> Lvalue<'ast> {
         signal_name: &str,
         subcmp_value: Value<'ctx, 'val>,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        block_gen: &mut BlockGenContext<'ctx, '_, 'val>,
+        block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
         let comp_value = type_switch! { let ty = subcmp_value.r#type();
@@ -186,7 +186,7 @@ impl<'ast> Lvalue<'ast> {
         signal_name: &str,
         subcmp_value: Value<'ctx, 'val>,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        block_gen: &mut BlockGenContext<'ctx, '_, 'val>,
+        block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
         block_gen.append_op_unnamed_result(pod::read(
@@ -210,7 +210,7 @@ impl<'ast> Lvalue<'ast> {
     pub fn get_value<'ctx, 'val>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        block_gen: &mut BlockGenContext<'ctx, '_, 'val>,
+        block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
         subcmp_info: &dyn SubcmpInfo,
         location: Location<'ctx>,
         ov: Option<&dyn OverrideVar>,

@@ -17,6 +17,7 @@ use crate::program_ext::ProgramInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::comp_type;
+use crate::shared::dim_expr_name;
 use crate::shared::map_array_inner_type;
 use crate::shared::ArrayDimension;
 use crate::shared::ArrayDimensionResult;
@@ -38,6 +39,7 @@ use llzk::dialect::constrain;
 use llzk::dialect::pod;
 use llzk::dialect::r#struct;
 use llzk::prelude::ArrayType;
+use llzk::prelude::BlockLike;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::LoopBoundsAttribute;
@@ -85,7 +87,7 @@ where
 {
     /// Returns a [TemplateFuncPair] with a default [NestedBlockInfo] for `compute`/`constrain`
     /// according to the respective [ShouldGenerate] value in the given [TemplateContext].
-    pub fn new(template: &TemplateContext<'_, '_, '_, '_, '_>) -> Self {
+    pub fn new(template: &TemplateContext<'_, '_, '_, '_, '_, '_>) -> Self {
         Self {
             compute: template.compute.is_some().then(NestedBlockInfo::default),
             constrain: template.constrain.is_some().then(NestedBlockInfo::default),
@@ -111,7 +113,7 @@ where
 /// 'blk: lifetime of the generated `Block` instances within functions
 /// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
 #[derive(Debug)]
-pub struct TemplateContext<'ctx, 'str, 'func, 'blk, 'val>
+pub struct TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>
 where
     'ctx: 'str,
     'str: 'func,
@@ -124,25 +126,33 @@ where
     /// Current LLZK `StructDefOp` within the `TemplateOp`
     struct_def: StructDefOpRefMut<'ctx, 'str>,
     /// Codegen refs for the "@compute" function within `struct_def`
-    compute: ShouldGenerate<Rc<RefCell<FunctionContext<'ctx, 'func, 'blk, 'val>>>>,
+    compute: ShouldGenerate<Rc<RefCell<FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>>>>,
     /// Codegen refs for the "@constrain" function within `struct_def`
-    constrain: ShouldGenerate<Rc<RefCell<FunctionContext<'ctx, 'func, 'blk, 'val>>>>,
+    constrain: ShouldGenerate<Rc<RefCell<FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>>>>,
     /// Map of subcomponent names to their types.
     subcmps: &'str HashMap<String, String>,
     /// Tracks for what component signals we have created their `struct.writem` op already.
     written_signals: Rc<RefCell<HashSet<String>>>,
+    /// Pre-computed LLZK types for circom `var` declarations, keyed by var name. Populated from
+    /// [crate::module::DeclarationInfo] when generating `poly.expr` bodies for templates so that
+    /// dimension expressions referencing other vars do not trigger recursive code generation.
+    ///
+    /// Note: this is also stored in `compute` and/or `constrain` but it made several things more
+    /// straightforward to just store it here as well since it's just a reference.
+    var_decl_types: &'decls HashMap<String, Type<'ctx>>,
 }
 
-impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'val> {
+impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val> {
     /// Creates a new [TemplateContext].
     #[inline]
     pub fn new(
         template_def: TemplateOpRefMut<'ctx, 'str>,
         struct_def: StructDefOpRefMut<'ctx, 'str>,
-        compute: FunctionContext<'ctx, 'func, 'blk, 'val>,
-        constrain: FunctionContext<'ctx, 'func, 'blk, 'val>,
+        compute: FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
+        constrain: FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
         subcmps: &'str HashMap<String, String>,
-    ) -> TemplateContext<'ctx, 'str, 'func, 'blk, 'val> {
+        var_decl_types: &'decls HashMap<String, Type<'ctx>>,
+    ) -> TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val> {
         Self {
             template_def,
             struct_def,
@@ -150,12 +160,13 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
             constrain: Some(Rc::new(RefCell::new(constrain))),
             subcmps,
             written_signals: Default::default(),
+            var_decl_types,
         }
     }
 
     /// Creates a new [TemplateContext] that will only generate within the "@compute" function.
     #[inline]
-    pub fn compute_only(&self) -> TemplateContext<'ctx, 'str, 'func, 'blk, 'val> {
+    pub fn compute_only(&self) -> TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val> {
         Self {
             template_def: self.template_def,
             struct_def: self.struct_def,
@@ -163,12 +174,13 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
             constrain: None,
             subcmps: self.subcmps,
             written_signals: self.written_signals.clone(),
+            var_decl_types: self.var_decl_types,
         }
     }
 
     /// Creates a new [TemplateContext] that will only generate within the "@constrain" function.
     #[inline]
-    pub fn constrain_only(&self) -> TemplateContext<'ctx, 'str, 'func, 'blk, 'val> {
+    pub fn constrain_only(&self) -> TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val> {
         Self {
             template_def: self.template_def,
             struct_def: self.struct_def,
@@ -176,6 +188,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
             constrain: self.constrain.as_ref().map(Rc::clone),
             subcmps: self.subcmps,
             written_signals: self.written_signals.clone(),
+            var_decl_types: self.var_decl_types,
         }
     }
 
@@ -358,7 +371,7 @@ impl<'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'ctx, 'str, 'func, 'blk, 'va
     }
 }
 
-impl SubcmpInfo for TemplateContext<'_, '_, '_, '_, '_> {
+impl SubcmpInfo for TemplateContext<'_, '_, '_, '_, '_, '_> {
     fn is_subcmp(&self, var: &str) -> bool {
         self.subcmps.contains_key(var)
     }
@@ -384,7 +397,7 @@ impl SubcmpInfo for TemplateContext<'_, '_, '_, '_, '_> {
 /// `TemplateContext` and is instead implemented for `&TemplateContext` which means its functions
 /// must be called via a `&mut &TemplateContext` reference.
 impl<'ctx, 'str, 'func, 'blk, 'val> GenWithCircomScopeHandling<'ctx, 'func, 'blk, 'val>
-    for &TemplateContext<'ctx, 'str, 'func, 'blk, 'val>
+    for &TemplateContext<'_, 'ctx, 'str, 'func, 'blk, 'val>
 where
     'ctx: 'str,
     'str: 'func,
@@ -417,7 +430,7 @@ where
     ) -> Result<()>
     where
         H: Fn(
-            &mut BlockGenContext<'ctx, 'blk, 'val>,
+            &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
             &mut NestedBlockInfo<'ctx, 'blk, 'val>,
             HashMap<String, Value<'ctx, 'val>>,
         ) -> Result<()>,
@@ -452,7 +465,7 @@ where
 /// per the type aliases below) that comes from generating LLZK for a circom Expression within a
 /// template.
 #[derive(Debug)]
-pub struct GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType>
+pub struct GenResult<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType>
 where
     'ctx: 'str,
     'str: 'func,
@@ -461,7 +474,7 @@ where
     'val: 'r,
 {
     /// Reference to the template context in which the expression was generated.
-    template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+    template: &'r TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>,
     /// Result for the "@compute" function.
     compute_res: ShouldGenerate<ResultType>,
     /// Result for the "@constrain" function.
@@ -469,28 +482,28 @@ where
 }
 
 /// Alias for [GenResult] containing a single SSA Value result.
-type GenResultSingleVal<'ctx, 'str, 'func, 'blk, 'val, 'r> =
-    GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, Value<'ctx, 'val>>;
+type GenResultSingleVal<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r> =
+    GenResult<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r, Value<'ctx, 'val>>;
 
 /// Alias for [GenResult] containing a list of SSA Value results.
-type GenResultMultiVal<'ctx, 'str, 'func, 'blk, 'val, 'r> =
-    GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, Vec<Value<'ctx, 'val>>>;
+type GenResultMultiVal<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r> =
+    GenResult<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r, Vec<Value<'ctx, 'val>>>;
 
 /// Alias for [GenResult] containing the unit type (i.e. nothing).
-type GenResultUnit<'ctx, 'str, 'func, 'blk, 'val, 'r> =
-    GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, ()>;
+type GenResultUnit<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r> =
+    GenResult<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r, ()>;
 
 /// This trait abstracts over the output type of [Chainable::and_then] to allow a single
 /// implementation of that function to produce different result types depending on the callback
 /// function type provided.
-trait ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r> {
+trait ChainResult<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r> {
     /// Output type of the generator callback functions.
     type HandlerOutput;
 
     /// Combines results from the "@compute" and "@constrain" generator functions into the final
     /// result of [Chainable::and_then].
     fn produce(
-        template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+        template: &'r TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>,
         compute_res: ShouldGenerate<Self::HandlerOutput>,
         constrain_res: ShouldGenerate<Self::HandlerOutput>,
     ) -> Self;
@@ -498,8 +511,9 @@ trait ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r> {
 
 /// Support [Chainable::and_then] producing a [GenResult]. This allows for chaining another
 /// generator function on this result whose input is `ResultType`.
-impl<'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType> ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>
-    for GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType>
+impl<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType>
+    ChainResult<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r>
+    for GenResult<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType>
 where
     'ctx: 'str,
     'str: 'func,
@@ -510,11 +524,11 @@ where
     type HandlerOutput = ResultType;
 
     fn produce(
-        template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+        template: &'r TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>,
         compute_res: ShouldGenerate<Self::HandlerOutput>,
         constrain_res: ShouldGenerate<Self::HandlerOutput>,
     ) -> Self {
-        GenResult::<'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType> {
+        GenResult::<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r, ResultType> {
             template,
             compute_res,
             constrain_res,
@@ -524,7 +538,8 @@ where
 
 /// Support [Chainable::and_then] producing `()` which can be used when nothing further is generated
 /// from the result and there is no [Value] available to return within the generator function.
-impl<'ctx, 'str, 'func, 'blk, 'val, 'r> ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r> for ()
+impl<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r>
+    ChainResult<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r> for ()
 where
     'ctx: 'str,
     'str: 'func,
@@ -535,7 +550,7 @@ where
     type HandlerOutput = ();
 
     fn produce(
-        _: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+        _: &'r TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>,
         _: ShouldGenerate<Self::HandlerOutput>,
         _: ShouldGenerate<Self::HandlerOutput>,
     ) -> Self {
@@ -545,7 +560,7 @@ where
 /// This trait provides a clean interface for chaining multiple code generation steps. It abstracts
 /// away most of the complexity (unwrapping, is_some assertions, etc.) that result from
 /// [GenResult] containing optional results for both "@compute" and "@constrain" functions.
-trait Chainable<'ctx, 'str, 'func, 'blk, 'val, 'r>
+trait Chainable<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r>
 where
     'ctx: 'str,
     'str: 'func,
@@ -558,31 +573,31 @@ where
 
     /// Applies the compute and constrain generator functions to the current result, producing
     /// a new [ChainResult].
-    fn and_then<F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
+    fn and_then<F1, F2, CR: ChainResult<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         self,
         gen_compute: F1,
         gen_constrain: F2,
     ) -> Result<CR>
     where
         F1: FnOnce(
-            &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
             Self::HandlerInput,
         ) -> Result<CR::HandlerOutput>,
         F2: FnOnce(
-            &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
             Self::HandlerInput,
         ) -> Result<CR::HandlerOutput>;
 
     /// Delegates to [Self::and_then] with the same handler for both compute and constrain.
     #[inline]
-    fn and_then_same<F, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
+    fn and_then_same<F, CR: ChainResult<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         self,
         handle: F,
     ) -> Result<CR>
     where
         Self: Sized,
         F: Fn(
-            &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
             Self::HandlerInput,
         ) -> Result<CR::HandlerOutput>,
     {
@@ -590,7 +605,8 @@ where
     }
 }
 
-impl<'ctx, 'str, 'func, 'blk, 'val, 'r> GenResultMultiVal<'ctx, 'str, 'func, 'blk, 'val, 'r>
+impl<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r>
+    GenResultMultiVal<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r>
 where
     'ctx: 'str,
     'str: 'func,
@@ -601,7 +617,7 @@ where
     /// Create an empty [GenResultMultiVal] (i.e. an [GenResult] where the result
     /// is a vector of SSA Values).
     #[inline]
-    fn new(template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>) -> Self {
+    fn new(template: &'r TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>) -> Self {
         GenResult {
             template,
             // This construction ensures that the result vectors are only created
@@ -614,7 +630,7 @@ where
     /// Create an [GenResultMultiVal] populated by generating LLZK for each [Expression] given.
     #[inline]
     fn gen_exprs<'ast, I>(
-        template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+        template: &'r TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         exprs: I,
     ) -> Result<Self>
@@ -639,8 +655,9 @@ where
 }
 
 /// Implementation of [Chainable] for any [GenResult].
-impl<'ctx, 'str, 'func, 'blk, 'val, 'r, T> Chainable<'ctx, 'str, 'func, 'blk, 'val, 'r>
-    for GenResult<'ctx, 'str, 'func, 'blk, 'val, 'r, T>
+impl<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r, T>
+    Chainable<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r>
+    for GenResult<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r, T>
 where
     'ctx: 'str,
     'str: 'func,
@@ -650,18 +667,18 @@ where
 {
     type HandlerInput = T;
 
-    fn and_then<F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
+    fn and_then<F1, F2, CR: ChainResult<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         self,
         gen_compute: F1,
         gen_constrain: F2,
     ) -> Result<CR>
     where
         F1: FnOnce(
-            &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
             Self::HandlerInput,
         ) -> Result<CR::HandlerOutput>,
         F2: FnOnce(
-            &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
             Self::HandlerInput,
         ) -> Result<CR::HandlerOutput>,
     {
@@ -688,8 +705,8 @@ where
 
 /// Implementation of [Chainable] for a [TemplateContext]. Useful when there is no initial
 /// [GenResult] to chain onto.
-impl<'ctx, 'str, 'func, 'blk, 'val, 'r> Chainable<'ctx, 'str, 'func, 'blk, 'val, 'r>
-    for &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>
+impl<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r> Chainable<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r>
+    for &'r TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>
 where
     'ctx: 'str,
     'str: 'func,
@@ -699,18 +716,18 @@ where
 {
     type HandlerInput = ();
 
-    fn and_then<F1, F2, CR: ChainResult<'ctx, 'str, 'func, 'blk, 'val, 'r>>(
+    fn and_then<F1, F2, CR: ChainResult<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r>>(
         self,
         gen_compute: F1,
         gen_constrain: F2,
     ) -> Result<CR>
     where
         F1: FnOnce(
-            &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
             Self::HandlerInput,
         ) -> Result<CR::HandlerOutput>,
         F2: FnOnce(
-            &mut FunctionContext<'ctx, 'func, 'blk, 'val>,
+            &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
             Self::HandlerInput,
         ) -> Result<CR::HandlerOutput>,
     {
@@ -725,16 +742,20 @@ where
     }
 }
 
-impl<'ctx, 'func, 'blk, 'val, 'str> DimExprConverter<'ctx, 'val>
-    for TemplateContext<'ctx, 'str, 'func, 'blk, 'val>
+impl<'decls, 'ctx, 'func, 'blk, 'val, 'str> DimExprConverter<'ctx, 'val>
+    for TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>
 where
     'ctx: 'str,
     'str: 'func,
     'func: 'blk,
     'blk: 'val,
 {
-    fn callback_store_poly_expr(&self, name: String, op: TemplateExprOp<'ctx>) {
-        todo!("TemplateContext::store_template_poly_expr: {name} -> {op:?}");
+    fn get_var_decl_types(&self) -> &HashMap<String, Type<'ctx>> {
+        self.var_decl_types
+    }
+
+    fn callback_store_poly_expr(&self, _: String, op: TemplateExprOp<'ctx>) {
+        self.template_def.body().append_operation(op.into());
     }
 
     fn get_dim_expr(
@@ -752,31 +773,21 @@ where
                 Expression::Number(_, _) => {
                     unreachable!("handled by try_compute_as_i64")
                 }
-                Expression::Variable { meta, name, access } => match access.as_slice() {
-                    [] => {
-                        // Grab the parameter name if it exists, else, defer to function generation.
-                        if self.template_def.has_const_param_named(name) {
-                            ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
-                        } else {
-                            // Other variables are unsupported, defer to function context
-                            ArrayDimensionResult::insufficient_data_result()
-                        }
+                Expression::Variable { meta, name, access } if access.is_empty() => {
+                    // Grab the parameter name if it exists, else, defer to `BlockGenContext`.
+                    if self.template_def.has_const_param_named(name) {
+                        ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
+                    } else {
+                        // Other variables are unsupported, defer to `BlockGenContext`
+                        ArrayDimensionResult::insufficient_data_result()
                     }
-                    a => {
-                        todo!("Handle Variable expression in dimension for non-integer attributes")
-                    }
-                },
-                Expression::InfixOp { meta, lhe, infix_op, rhe } => {
-                    todo!("Handle InfixOp in dimension for non-integer attributes: {:?}", expr)
                 }
-                Expression::PrefixOp { meta, prefix_op, rhe } => {
-                    todo!("Handle PrefixOp in dimension for non-integer attributes: {:?}", expr)
-                }
-                Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
-                    todo!("Handle InlineSwitch in dimension for non-integer attributes: {:?}", expr)
-                }
-                Expression::Call { meta, id, args } => {
-                    todo!("Handle Call in dimension for non-integer attributes: {:?}", expr)
+                Expression::Variable { .. } /* with non-empty `access` */
+                | Expression::InlineSwitchOp { .. }
+                | Expression::PrefixOp { .. }
+                | Expression::InfixOp { .. }
+                | Expression::Call { .. } => {
+                    self.gen_template_poly_expr(codegen, dim_expr_name(expr), expr)
                 }
                 // The remaining cases do not produce a scalar value.
                 // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
@@ -797,8 +808,9 @@ where
 /// 'func: lifetime of the generated `FuncDefOp` instances within the struct
 /// 'blk: lifetime of the generated `Block` instances within functions
 /// 'val: lifetime of the generated `Value` or `Operation` instances within blocks
-pub trait GenerateLLZKInTemplate<'ctx, 'str, 'func, 'blk, 'val>
+pub trait GenerateLLZKInTemplate<'decls, 'ctx, 'str, 'func, 'blk, 'val>
 where
+    'ctx: 'decls,
     'ctx: 'str,
     'str: 'func,
     'func: 'blk,
@@ -808,6 +820,7 @@ where
     /// should be the unit type whereas [Expression] nodes produce a Value.
     type Output<'r>
     where
+        'decls: 'r,
         'val: 'r,
         'val: 'blk;
 
@@ -815,15 +828,16 @@ where
     fn gen_llzk_in_template<'r>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+        template: &'r TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
         'val: 'r;
 }
 
-impl<'ctx, 'str, 'func, 'blk, 'val> GenerateLLZKInTemplate<'ctx, 'str, 'func, 'blk, 'val>
-    for [Statement]
+impl<'decls, 'ctx, 'str, 'func, 'blk, 'val>
+    GenerateLLZKInTemplate<'decls, 'ctx, 'str, 'func, 'blk, 'val> for [Statement]
 where
+    'ctx: 'decls,
     'ctx: 'str,
     'str: 'func,
     'func: 'blk,
@@ -833,12 +847,13 @@ where
     type Output<'r>
         = ()
     where
+        'decls: 'r,
         'val: 'r;
 
     fn gen_llzk_in_template<'r>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+        template: &'r TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
         'val: 'r,
@@ -860,7 +875,7 @@ where
 /// Generate LLZK code for a circom [Statement::IfThenElse].
 fn gen_if_then_else<'ctx, 'str, 'func, 'blk, 'val, 'r>(
     codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+    template: &'r TemplateContext<'_, 'ctx, 'str, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
     if_case: &Statement,
@@ -920,7 +935,7 @@ where
 /// Generate LLZK code for a circom [Statement::While].
 fn gen_while<'ctx, 'str, 'func, 'blk, 'val, 'r>(
     codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+    template: &'r TemplateContext<'_, 'ctx, 'str, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
     body_stmt: &Statement,
@@ -990,7 +1005,7 @@ where
 #[inline]
 fn gen_init_block<'ctx, 'str, 'func, 'blk, 'val, 'r>(
     codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-    template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+    template: &'r TemplateContext<'_, 'ctx, 'str, 'func, 'blk, 'val>,
     initializations: &[Statement],
 ) -> Result<()>
 where
@@ -1001,9 +1016,10 @@ where
     initializations.gen_llzk_in_template(codegen, template)
 }
 
-impl<'ctx, 'str, 'func, 'blk, 'val> GenerateLLZKInTemplate<'ctx, 'str, 'func, 'blk, 'val>
-    for Statement
+impl<'decls, 'ctx, 'str, 'func, 'blk, 'val>
+    GenerateLLZKInTemplate<'decls, 'ctx, 'str, 'func, 'blk, 'val> for Statement
 where
+    'ctx: 'decls,
     'ctx: 'str,
     'str: 'func,
     'func: 'blk,
@@ -1013,12 +1029,13 @@ where
     type Output<'r>
         = ()
     where
+        'decls: 'r,
         'val: 'r;
 
     fn gen_llzk_in_template<'r>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+        template: &'r TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
         'val: 'r,
@@ -1239,9 +1256,10 @@ where
     }
 }
 
-impl<'ctx, 'str, 'func, 'blk, 'val> GenerateLLZKInTemplate<'ctx, 'str, 'func, 'blk, 'val>
-    for Expression
+impl<'decls, 'ctx, 'str, 'func, 'blk, 'val>
+    GenerateLLZKInTemplate<'decls, 'ctx, 'str, 'func, 'blk, 'val> for Expression
 where
+    'ctx: 'decls,
     'ctx: 'str,
     'str: 'func,
     'func: 'blk,
@@ -1249,14 +1267,15 @@ where
     'val: 'blk,
 {
     type Output<'r>
-        = GenResultSingleVal<'ctx, 'str, 'func, 'blk, 'val, 'r>
+        = GenResultSingleVal<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r>
     where
+        'decls: 'r,
         'val: 'r;
 
     fn gen_llzk_in_template<'r>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        template: &'r TemplateContext<'ctx, 'str, 'func, 'blk, 'val>,
+        template: &'r TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
         'val: 'r,
