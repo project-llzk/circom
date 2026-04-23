@@ -563,6 +563,12 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         }
     }
 
+    /// Dump the current state of the LLZK module for debugging purposes.
+    #[allow(unused)]
+    pub fn dump_module(&self) {
+        println!("[LlzkCodegen::dump_module] {:?}", self.module.as_operation());
+    }
+
     /// Returns a reference to the operation builder.
     pub fn op_builder(&self) -> &OpBuilder<'ctx> {
         &self.builder
