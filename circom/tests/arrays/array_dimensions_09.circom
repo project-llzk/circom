@@ -18,10 +18,8 @@ component main = ArrayDims(7, 2);
 // CHECK-NEXT:      poly.expr @D {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = poly.read_const @M : !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
-// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : !felt.type<"bn128">
-// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_1]], %[[VAL_0]] : !felt.type<"bn128">, !felt.type<"bn128">
-// COM:               TODO: there is a lot of dead code generated here currently...
-// CHECK:             poly.yield %[[VAL_3]] : !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_1]], %[[VAL_0]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:        poly.yield %[[VAL_2]] : !felt.type<"bn128">
 // CHECK-NEXT:      }
 // CHECK-NEXT:      struct.def @ArrayDims {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@ArrayDims::@ArrayDims<[@N, @M]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

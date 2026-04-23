@@ -15,9 +15,8 @@ component main = A();
 // CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A::@A<[]>>} {
 // CHECK-NEXT:    poly.template @A {
 // CHECK-NEXT:      poly.expr @s {
-// CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = llzk.nondet : !felt.type<"bn128">
-// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  6 : <"bn128">
-// CHECK-NEXT:        poly.yield %[[VAL_1]] : !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = felt.const  6 : <"bn128">
+// CHECK-NEXT:        poly.yield %[[VAL_0]] : !felt.type<"bn128">
 // CHECK-NEXT:      }
 // CHECK-NEXT:      struct.def @A {
 // CHECK-NEXT:        function.def @compute(%[[VAL_2:[0-9a-zA-Z_\.]+]]: !array.type<@s x !felt.type<"bn128">>) -> !struct.type<@A::@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

@@ -14,16 +14,13 @@ component main = ArrayDims();
 // CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArrayDims::@ArrayDims<[]>>} {
 // CHECK-NEXT:    poly.template @ArrayDims {
 // CHECK-NEXT:      poly.expr @"a[1]@307" {
-// CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type<"bn128">>
-// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_1]], %[[VAL_1]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  123 : <"bn128">
-// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  675 : <"bn128">
-// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_3]], %[[VAL_4]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_6]] : !felt.type<"bn128">
-// CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_5]]{{\[}}%[[VAL_7]]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:        poly.yield %[[VAL_8]] : !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = felt.const  123 : <"bn128">
+// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  675 : <"bn128">
+// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_0]], %[[VAL_1]] : <2 x !felt.type<"bn128">>
+// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_2]] : !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_3]]{{\[}}%[[VAL_4]]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:        poly.yield %[[VAL_5]] : !felt.type<"bn128">
 // CHECK-NEXT:      }
 // CHECK-NEXT:      struct.def @ArrayDims {
 // CHECK-NEXT:        struct.member @outp : !array.type<@"a[1]@307" x !felt.type<"bn128">> {llzk.pub}

@@ -330,12 +330,12 @@ component main = ForUnknownIndex(252);
 // CHECK-NEXT:    poly.template @LessThan {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      poly.expr @"n_Add_1@633" {
-// CHECK-NEXT:        %[[VAL_174:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
-// CHECK-NEXT:        %[[VAL_175:[0-9a-zA-Z_\.]+]] = felt.const  252 : <"bn128">
-// CHECK-NEXT:        %[[VAL_176:[0-9a-zA-Z_\.]+]] = bool.cmp le(%[[VAL_174]], %[[VAL_175]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:        bool.assert %[[VAL_176]], "assertion failed"
-// CHECK-NEXT:        %[[VAL_177:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:        %[[VAL_178:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_174]], %[[VAL_177]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_174:[0-9a-zA-Z_\.]+]] = felt.const  252 : <"bn128">
+// CHECK-NEXT:        %[[VAL_175:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:        %[[VAL_176:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_177:[0-9a-zA-Z_\.]+]] = bool.cmp le(%[[VAL_176]], %[[VAL_174]]) : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:        bool.assert %[[VAL_177]], "assertion failed"
+// CHECK-NEXT:        %[[VAL_178:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_176]], %[[VAL_175]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:        poly.yield %[[VAL_178]] : !felt.type<"bn128">
 // CHECK-NEXT:      }
 // CHECK-NEXT:      struct.def @LessThan {

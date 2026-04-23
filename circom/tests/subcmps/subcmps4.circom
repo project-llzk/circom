@@ -41,9 +41,9 @@ component main = SubCmps4(3);
 // CHECK-NEXT:    poly.template @SubCmps4 {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      poly.expr @"n_Mul_2@443" {
-// CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
-// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_0]], %[[VAL_1]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
+// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_1]], %[[VAL_0]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:        poly.yield %[[VAL_2]] : !felt.type<"bn128">
 // CHECK-NEXT:      }
 // CHECK-NEXT:      struct.def @SubCmps4 {
