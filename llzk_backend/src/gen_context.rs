@@ -63,6 +63,7 @@ use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use llzk::prelude::FUNC_NAME_COMPUTE;
 use llzk::prelude::FUNC_NAME_CONSTRAIN;
+use llzk::typing::is_unifiable_with;
 use melior::dialect::ods::math;
 use melior::ir::AttributeLike as _;
 use melior::ir::TypeLike as _;
@@ -857,6 +858,8 @@ where
     ) -> Result<Value<'ctx, 'val>> {
         if expected == val.r#type() {
             Ok(val)
+        } else if is_unifiable_with(expected, val.r#type()) {
+            self.append_op_unnamed_result(poly::unifiable_cast(location, val, expected))
         } else if is_felt_type(expected) {
             self.cast_to_felt_if_needed(codegen, location, val)
         } else if is_index(expected) {
@@ -864,9 +867,6 @@ where
         } else if is_bool(expected) {
             self.cast_to_bool_if_needed(codegen, location, val)
         } else {
-            // TODO: Must support array types by adding a unifiable cast.
-            // Alternatively, add LLZK type unification check to `llzk-rs` API and use that above
-            // instead of full equality.
             anyhow::bail!(
                 "Unsupported 'expected' type '{expected}' with value type {}",
                 val.r#type()
