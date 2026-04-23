@@ -27,6 +27,7 @@ use crate::template_ext::TemplateLike;
 use anyhow::bail;
 use anyhow::Result;
 use llzk::attributes::NamedAttribute;
+use llzk::builder::OpBuilder;
 use llzk::dialect::array;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::function;
@@ -703,11 +704,6 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     template_context.finalize(codegen)
 }
 
-/// Returns the element type if the type is an [`ArrayType`]. Returns the type itself otherwise.
-fn scalar_or_inner<'ctx>(t: Type<'ctx>) -> Type<'ctx> {
-    ArrayType::try_from(t).map(|t| t.element_type()).unwrap_or(t)
-}
-
 /// Generates the prologue related to subcomponents in a template body.
 fn gen_subcmps_prologue_in_template<'ast, 'ctx, 'func, 'blk, 'val>(
     subcmps: impl IntoIterator<Item = SubcmpPrologueData<'ast, 'ctx>>,
@@ -720,164 +716,10 @@ where
     'val: 'blk,
 {
     let op_builder = codegen.op_builder();
-    for SubcmpPrologueData {
-        name,
-        subcmp: subcmp_type,
-        inputs: subcmp_inputs_type,
-        inputs_size: count,
-        template_params,
-    } in subcmps
-    {
-        let name_inputs = crate::subcmp::names::inputs(&name);
-        // Constrain function
-        // Do this one first to avoid cloning `name` and `name_inputs` unnecessarily.
-        {
-            let self_ref = constrain_ctx.func.self_value_of_constrain()?;
-            constrain_ctx.block_ctx.declare_name_if_not_present(&name, || {
-                Ok(r#struct::readm(
-                    op_builder,
-                    subcmp_decls[&name].location(),
-                    subcmp_type,
-                    self_ref,
-                    &name,
-                )?)
-            })?;
-            constrain_ctx.block_ctx.declare_name_if_not_present(&name_inputs, || {
-                Ok(r#struct::readm(
-                    op_builder,
-                    subcmp_decls[&name].location(),
-                    subcmp_inputs_type,
-                    self_ref,
-                    &name_inputs,
-                )?)
-            })?;
-        }
-
-        // Compute function
-        {
-            let subcmp_struct_type = scalar_or_inner(subcmp_type);
-            let records = [
-                // Counts the number of inputs pending an assignment. When it reaches 0 it's safe
-                // to call the corresponding `@compute` function.
-                (COUNT, codegen.index_type()),
-                // Holds the output of calling `@compute`. Before the call, this value is undefined
-                // and should not be read from.
-                (COMP, subcmp_struct_type),
-                // Holds the affine map operands of the subcomponents, if any.
-                (PARAMS, codegen.pod_type(&[]).into()),
-            ];
-
-            let comp_pod = map_array_inner_type(subcmp_type, codegen.pod_type(&records).into());
-            let location = codegen.location_unknown();
-            match ArrayType::try_from(comp_pod) {
-                Ok(comp_pod) => {
-                    compute_ctx.block_ctx.declare_name_ensure_not_present(
-                        &name,
-                        array::new(op_builder, location, comp_pod, ArrayCtor::Empty),
-                    )?;
-                    let comp_memory = *compute_ctx.block_ctx.get_named_value(&name)?;
-
-                    compute_ctx.gen_loop_nest_from_attrs(
-                        codegen,
-                        location,
-                        &comp_pod.dims(),
-                        |fc, indices| {
-                            let comp_memory_pod =
-                                fc.append_array_read(comp_memory, indices, location, None)?;
-
-                            let (record_name, record_value) = if count.is_const_zero() {
-                                let empty_inputs = fc.append_op_unnamed_result(pod::new(
-                                    op_builder,
-                                    location,
-                                    &[],
-                                    Some(codegen.pod_type(&[])),
-                                ))?;
-                                let instance = fc.gen_compute_call(
-                                    subcmp_struct_type.try_into()?,
-                                    empty_inputs,
-                                    location,
-                                    codegen,
-                                )?;
-                                (COMP, instance)
-                            } else {
-                                let count_value = count.to_index_value(
-                                    codegen,
-                                    fc,
-                                    location,
-                                    Some(&template_params),
-                                )?;
-                                (COUNT, count_value)
-                            };
-                            fc.append_op_no_result(codegen.new_pod_write_op(
-                                location,
-                                comp_memory_pod,
-                                record_name,
-                                record_value,
-                            ))?;
-
-                            fc.append_array_write(
-                                codegen,
-                                comp_memory,
-                                indices,
-                                location,
-                                comp_memory_pod,
-                                None,
-                            )
-                        },
-                    )?;
-                }
-                Err(_) => {
-                    let (record_name, record_value) = if count.is_const_zero() {
-                        let empty_inputs = compute_ctx.append_op_unnamed_result(pod::new(
-                            op_builder,
-                            location,
-                            &[],
-                            Some(codegen.pod_type(&[])),
-                        ))?;
-                        let instance = compute_ctx.gen_compute_call(
-                            subcmp_struct_type.try_into()?,
-                            empty_inputs,
-                            location,
-                            codegen,
-                        )?;
-                        (COMP, instance)
-                    } else {
-                        let count_value = count.to_index_value(
-                            codegen,
-                            compute_ctx,
-                            location,
-                            Some(&template_params),
-                        )?;
-                        (COUNT, count_value)
-                    };
-                    compute_ctx.block_ctx.declare_name_ensure_not_present(
-                        &name,
-                        pod::new(
-                            op_builder,
-                            location,
-                            &[RecordValue::new(StringRef::new(record_name), record_value)],
-                            Some(PodType::try_from(comp_pod)?),
-                        ),
-                    )?
-                }
-            };
-            compute_ctx.block_ctx.declare_name_ensure_not_present(
-                &name_inputs,
-                match ArrayType::try_from(subcmp_inputs_type) {
-                    Ok(subcmp_inputs_type) => {
-                        array::new(op_builder, location, subcmp_inputs_type, ArrayCtor::Empty)
-                    }
-                    Err(_) => pod::new(
-                        op_builder,
-                        location,
-                        &[],
-                        Some(PodType::try_from(subcmp_inputs_type)?),
-                    ),
-                },
-            )?;
-        }
-    }
-    Ok(())
+    subcmps.into_iter().try_for_each(|subcmp| {
+        subcmp.generate_constraint_func_prologue(constrain_ctx, &op_builder, subcmp_decls)?;
+        subcmp.generate_compute_func_prologue(compute_ctx, &op_builder, codegen)
+    })
 }
 
 /// A trait to generate LLZK IR for structural elements of the circom AST:
@@ -971,7 +813,7 @@ fn record_subcmp_decl<'ctx, 'ast>(
 
 #[inline]
 /// Ensures that the given collection of struct types all reference the same base type,
-/// panicking otherwise. The typechecker ensures this so this function is just a fail-safe.
+/// panicking otherwise. The typechecker ensures this, so this function is just a fail-safe.
 ///
 /// For example, `{ A(1), A(2) }` is OK but `{ A(1), C(2) }` is not.
 ///

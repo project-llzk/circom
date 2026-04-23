@@ -356,6 +356,21 @@ impl<'ast, 'ctx> TmplParamsInstance<'ast, 'ctx> {
     fn handle_passthrough(&self, ty: impl Into<Type<'ctx>>) -> Result<Type<'ctx>> {
         Ok(ty.into())
     }
+
+    /// Return an interator over references of the key-value pairs.
+    pub fn iter(&self) -> <&HashMap<&'ast str, Attribute<'ctx>> as IntoIterator>::IntoIter {
+        (&self).into_iter()
+    }
+}
+
+impl<'i, 'ast, 'ctx> IntoIterator for &'i TmplParamsInstance<'ast, 'ctx> {
+    type Item = <&'i HashMap<&'ast str, Attribute<'ctx>> as IntoIterator>::Item;
+
+    type IntoIter = <&'i HashMap<&'ast str, Attribute<'ctx>> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (&self.map).into_iter()
+    }
 }
 
 /// Represents the size of a Type as an expression of its parts.
