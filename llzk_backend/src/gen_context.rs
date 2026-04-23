@@ -984,6 +984,9 @@ where
             // Replace existing value reference to rvalue
             return self.block_ctx.set_named_value(var.clone(), rvalue);
         }
+        if types_equal_or_unifiable(existing.r#type(), rvalue.r#type()) {
+            todo!("'handle_simple_assignment' with unifiable but different types if this happens");
+        }
         let existing_arr_ty = ArrayType::try_from(existing.r#type());
         let rvalue_arr_ty = ArrayType::try_from(rvalue.r#type());
         if existing_arr_ty.is_ok() && rvalue_arr_ty.is_ok() {
