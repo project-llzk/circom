@@ -778,7 +778,7 @@ where
         self.append_op_no_result(bool::assert(location, cond, msg)?.into())
     }
 
-    /// Create a cast to felt (field element) type.
+    /// Append a cast to felt (field element) type.
     #[inline]
     pub fn cast_to_felt(
         &mut self,
@@ -789,7 +789,7 @@ where
         self.append_op_unnamed_result(cast::tofelt(location, val, Some(codegen.felt_type())))
     }
 
-    /// Create a cast to felt (field element) type if the given value is not already a felt.
+    /// Append a cast to felt (field element) type if the given value is not already a felt.
     #[inline]
     pub fn cast_to_felt_if_needed(
         &mut self,
@@ -804,7 +804,7 @@ where
         }
     }
 
-    /// Create a cast to index type if the given value is not already an index.
+    /// Append a cast to index type if the given value is not already an index.
     #[inline]
     pub fn cast_to_index_if_needed(
         &mut self,
@@ -818,7 +818,7 @@ where
         }
     }
 
-    /// Create a cast to bool type (i1) if the given value is not already a bool.
+    /// Append a cast to bool type (i1) if the given value is not already a bool.
     #[inline]
     pub fn cast_to_bool_if_needed(
         &mut self,
@@ -847,7 +847,7 @@ where
         }
     }
 
-    /// Create an op to cast `val` to match the `expected` type.
+    /// Append an op to cast `val` to `expected` type, if it does not already have that type.
     #[inline]
     pub fn cast_to_expected_type_if_needed(
         &mut self,
@@ -874,12 +874,12 @@ where
         }
     }
 
-    /// Copy the values in the source array into the destination array.
-    /// Assumes both arrays have the same number of dimensions, but each dimension
-    /// may be wider/narrower than the destination type.
-    /// General overview: create a N-dimensional nested for loop to copy. If the
-    /// indices are out-of-bounds, then the array is default-filled. Otherwise,
-    /// copy elements into destination
+    /// Copy the values in the source array into the destination array. Assumes both arrays have
+    /// unifiable element types the same number of dimensions, but each dimension may be wider or
+    /// narrower than the destination type.
+    ///
+    /// General overview: create a N-dimensional nested `for` loop to copy. If the indices are
+    /// out-of-bounds, then the array is default-filled. Otherwise, copy elements into destination.
     fn copy_into_array(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -940,13 +940,13 @@ where
     where
         'val: 'blk,
     {
-        // Since there's no simple assignment in LLZK, just update the mapped Value
-        // which essentially propagates the assignment. The exception here is the ArrayType case:
-        // Circom allows (with a warning) arrays to be assigned to array variables
-        // of differing widths (wider/narrower) as long as both arrays have
-        // the same number of dimensions (e.g., var x[2][2] = y, where y is var[1][7], is allowed).
-        // If the dimension is wider, the values are truncated, and if they are narrower,
-        // the array is left in its current state.
+        // Since there's no simple assignment in LLZK, just update the mapped Value which
+        // essentially propagates the assignment. The exception here is the ArrayType case:
+        // Circom allows (with a warning) arrays to be assigned to array variables of differing
+        // widths (wider/narrower) as long as both arrays have the same number of dimensions
+        // (e.g., var x[2][2] = y, where y is var[1][7], is allowed). If the dimension is
+        // wider, the values are truncated, and if they are narrower, the array is left in
+        // its current state.
         let Ok(existing) = self.block_ctx.get_named_value(var) else {
             // Otherwise, set the var to point to rvalue
             return self.block_ctx.set_named_value(var.clone(), rvalue);
