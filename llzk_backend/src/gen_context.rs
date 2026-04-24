@@ -34,6 +34,7 @@ use llzk::dialect::function;
 use llzk::dialect::pod;
 use llzk::dialect::poly;
 use llzk::prelude::is_felt_type;
+use llzk::prelude::is_type_variable;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::melior_dialects::index;
 use llzk::prelude::melior_dialects::scf;
@@ -1007,7 +1008,9 @@ where
             }
         }
         if types_unify(existing.r#type(), rvalue.r#type()) {
-            todo!("'handle_simple_assignment' with unifiable but different types if this happens");
+            let location = codegen.location_from_meta(meta);
+            let rvalue = self.unifiable_cast(location, rvalue, existing.r#type())?;
+            return self.block_ctx.set_named_value(var.clone(), rvalue);
         }
         anyhow::bail!(
             "could not assign value of type '{}' to '{var}', which has type '{}'",
@@ -2216,22 +2219,39 @@ where
                     .zip(param_types)
                     .map(|(arg, expected_type)| {
                         let operand_val = arg.gen_llzk_in_block(codegen, block_gen, info)?;
-                        block_gen.cast_to_expected_type_if_needed(
-                            codegen,
-                            location,
-                            operand_val,
-                            expected_type,
-                        )
+                        if is_type_variable(expected_type) {
+                            // If the expected type is `TVarType`, the function can accept any type
+                            // so no need to cast. In fact, adding a unifiable cast would introduce
+                            // an illegal reference to a `poly.param` from the target function! In
+                            // concrete mode, function arguments will have more specific types but
+                            // in non-concrete mode, they will all be `TVarType`.
+                            Ok(operand_val)
+                        } else {
+                            block_gen.cast_to_expected_type_if_needed(
+                                codegen,
+                                location,
+                                operand_val,
+                                expected_type,
+                            )
+                        }
                     })
                     .collect::<Result<Vec<Value>>>()?;
-                // Create the CallOp in each function using the collected args.
+                let return_type = target_function_data.get_type_of_return(codegen);
+                let return_type = if is_type_variable(return_type) {
+                    // This `TVarType` references a symbol from the callee function, which is not
+                    // valid within the caller. Must add a new `poly.param` in the caller for a new
+                    // `TVarType` and use that as the return type.
+                    codegen.felt_type().into() // TODO: placeholder
+                } else {
+                    return_type
+                };
                 block_gen.append_op_unnamed_result(
                     function::call(
                         codegen.op_builder(),
                         location,
-                        codegen.flat_sym(id),
+                        codegen.double_ref_sym(id),
                         &call_operands,
-                        &[target_function_data.get_type_of_return(codegen)],
+                        &[return_type],
                     )?
                     .into(),
                 )

@@ -571,8 +571,19 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
             Ok(f)
         })?;
     func_def.set_allow_non_native_field_ops_attr(true);
-    // Store function to the module.
-    let func: FuncDefOpRefMut = codegen.add_function(func_def)?;
+
+    let template_region_ops = func_like
+        .get_type_param_names()
+        .iter()
+        .map(|name| poly::param(location, name, Some(codegen.tvar_type(name))).map(Into::into))
+        .collect::<Vec<_>>();
+    let llzk_template_def = poly::template(location, func_like.get_name(), template_region_ops)?;
+    let new_template = codegen.add_template(llzk_template_def)?;
+
+    // Store function inside the `poly.template` so its type variables can resolve to the params.
+    let func = FuncDefOpRefMut::from(FuncDefOpRef::try_from(
+        new_template.body().append_operation(func_def.into()),
+    )?);
 
     // Generate mapping from parameter names to SSA Values.
     let name_to_value = map_name_to_arg_value(func, func_like.get_name_of_params())?;
