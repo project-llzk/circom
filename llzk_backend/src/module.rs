@@ -59,6 +59,7 @@ use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructType;
 use llzk::prelude::TemplateExprOp;
+use llzk::prelude::TemplateExprOpLike as _;
 use llzk::prelude::TemplateOpLike;
 use llzk::prelude::Type;
 use program_structure::ast::AssignOp;
@@ -482,8 +483,10 @@ where
         &self.var_decl_types
     }
 
-    fn poly_template_binding_names(&self) -> impl IntoIterator<Item = &String> {
-        &self.template_params
+    fn poly_template_binding_names(
+        &self,
+    ) -> impl IntoIterator<Item = (String, Option<Type<'ctx>>)> {
+        self.template_params.iter().map(|name| (name.clone(), None))
     }
 
     fn callback_store_poly_expr(
@@ -579,8 +582,13 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
 
     // Visit the body of the function and generate LLZK IR for it.
     let var_decl_types = HashMap::new();
-    let mut func_context =
-        FunctionContext::new::<true>(codegen, func, name_to_value, &var_decl_types, &[])?;
+    let mut func_context = FunctionContext::new::<true>(
+        codegen,
+        func,
+        name_to_value,
+        &var_decl_types,
+        std::iter::empty(),
+    )?;
     func_like.get_body().gen_llzk_in_function(codegen, &mut func_context, Default::default())?;
     func_context.finalize(codegen)
 }
@@ -611,11 +619,12 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
 
     // Insert the declarations from `declarations.poly_exprs`.
     let mut poly_exprs = declarations.poly_exprs.into_inner();
-    let mut poly_expr_names: Vec<_> = poly_exprs.keys().cloned().collect();
+    let mut poly_expr_names: Vec<_> =
+        poly_exprs.iter().map(|(name, op)| (name.clone(), op.expr_type())).collect();
     if codegen.config.stabilize {
-        poly_expr_names.sort();
+        poly_expr_names.sort_by(|(a, _), (b, _)| a.cmp(b));
     }
-    for name in &poly_expr_names {
+    for (name, _) in &poly_expr_names {
         // Here the template is empty and the names are unique per storage in HashMap so they
         // can be directly appended without using `symbol_table::insert` to unique names.
         new_template.body().append_operation(poly_exprs.remove(name).unwrap().into());
@@ -664,7 +673,11 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         map_name_to_arg_value(compute_func, arg_names.clone())?,
         &declarations.var_decl_types,
         // concatenate circom template parameter names with `poly_expr_names`
-        template_like.get_name_of_params().iter().chain(poly_expr_names.iter()),
+        template_like
+            .get_name_of_params()
+            .iter()
+            .map(|name| (name.clone(), None))
+            .chain(poly_expr_names.iter().map(|(name, ty)| (name.clone(), Some(*ty)))),
     )?;
     let mut arg_names = arg_names;
     arg_names.insert(0, "**self**".to_string());
@@ -674,7 +687,11 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         map_name_to_arg_value(constrain_func, arg_names)?,
         &declarations.var_decl_types,
         // concatenate circom template parameter names with `poly_expr_names`
-        template_like.get_name_of_params().iter().chain(poly_expr_names.iter()),
+        template_like
+            .get_name_of_params()
+            .iter()
+            .map(|name| (name.clone(), None))
+            .chain(poly_expr_names.iter().map(|(name, ty)| (name.clone(), Some(*ty)))),
     )?;
 
     // Insert read operations for struct fields into constrain functions.

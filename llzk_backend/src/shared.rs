@@ -1725,7 +1725,9 @@ where
     }
 
     /// Names of `poly.param` and `poly.expr` defs visible in the current context.
-    fn poly_template_binding_names(&self) -> impl IntoIterator<Item = &String> {
+    fn poly_template_binding_names(
+        &self,
+    ) -> impl IntoIterator<Item = (String, Option<Type<'ctx>>)> {
         std::iter::empty()
     }
 
