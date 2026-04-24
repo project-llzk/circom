@@ -1745,7 +1745,6 @@ where
     fn gen_template_poly_expr(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        name: String,
         target_expr: &Expression, // the result that should yield from the `poly.expr`
     ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
         /// Fully generate LLZK for a single [Statement] in a `poly.expr` initializer without
@@ -1980,6 +1979,7 @@ where
 
         //////////////////////////////////////////////////////////////////////////////////////////
         // Generate `poly.expr` and fill its initializer region.
+        let name = dim_expr_name(target_expr);
         let location = codegen.location_from_meta(target_expr.get_meta());
         let expr_op = poly::expr(location, &name, std::iter::empty())?;
         let mut expr_gen_ctx = BlockGenContext::new(

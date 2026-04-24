@@ -781,12 +781,17 @@ where
                     unreachable!("handled by try_compute_as_i64")
                 }
                 Expression::Variable { meta, name, access } if access.is_empty() => {
-                    // Grab the parameter name if it exists, else, defer to `BlockGenContext`.
+                    // Grab the template symbol binding name if it exists (first try `poly.param`
+                    // name then try `poly.expr` name). Otherwise, defer to `BlockGenContext`.
                     if self.template_def.has_const_param_named(name) {
                         ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
                     } else {
-                        // Other variables are unsupported, defer to `BlockGenContext`
-                        ArrayDimensionResult::insufficient_data_result()
+                        let expr_name = dim_expr_name(expr);
+                        if self.template_def.has_const_expr_named(&expr_name) {
+                            ArrayDimensionResult::new(codegen.flat_sym(expr_name).into(), &[])
+                        } else {
+                            ArrayDimensionResult::insufficient_data_result() // defer to `BlockGenContext`
+                        }
                     }
                 }
                 // Variable case with non-empty `access`
@@ -794,9 +799,7 @@ where
                 | Expression::InlineSwitchOp { .. }
                 | Expression::PrefixOp { .. }
                 | Expression::InfixOp { .. }
-                | Expression::Call { .. } => {
-                    self.gen_template_poly_expr(codegen, dim_expr_name(expr), expr)
-                }
+                | Expression::Call { .. } => self.gen_template_poly_expr(codegen, expr),
                 // The remaining cases do not produce a scalar value.
                 // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
                 // Give the same error that the circom type checker gives. The type checker ran
