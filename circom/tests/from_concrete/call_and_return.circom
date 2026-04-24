@@ -22,31 +22,33 @@ function negative(n){
 component main = C();
 
 // CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@C_0::@C_0<[]>>} {
-// CHECK-NEXT:    function.def @negative_0(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !felt.type<"bn128"> attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_0]], %[[VAL_1]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_2]] -> (!felt.type<"bn128">) {
-// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:        scf.yield %[[VAL_4]] : !felt.type<"bn128">
-// CHECK-NEXT:      } else {
-// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:        scf.yield %[[VAL_5]] : !felt.type<"bn128">
+// CHECK-NEXT:    poly.template @negative_0 {
+// CHECK-NEXT:      function.def @negative_0(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !felt.type<"bn128"> attributes {function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_0]], %[[VAL_1]]) : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_2]] -> (!felt.type<"bn128">) {
+// CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:          scf.yield %[[VAL_4]] : !felt.type<"bn128">
+// CHECK-NEXT:        } else {
+// CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          scf.yield %[[VAL_5]] : !felt.type<"bn128">
+// CHECK-NEXT:        }
+// CHECK-NEXT:        function.return %[[VAL_3]] : !felt.type<"bn128">
 // CHECK-NEXT:      }
-// CHECK-NEXT:      function.return %[[VAL_3]] : !felt.type<"bn128">
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @C_0 {
 // CHECK-NEXT:      struct.def @C_0 {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
 // CHECK-NEXT:        function.def @compute(%[[VAL_6:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@C_0::@C_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = struct.new : <@C_0::@C_0<[]>>
-// CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  12
-// CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = function.call @negative_0(%[[VAL_6]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  12 : <"bn128">
+// CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = function.call @negative_0::@negative_0(%[[VAL_6]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
 // CHECK-NEXT:          struct.writem %[[VAL_7]][@out] = %[[VAL_9]] : <@C_0::@C_0<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_7]] : !struct.type<@C_0::@C_0<[]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_10:[0-9a-zA-Z_\.]+]]: !struct.type<@C_0::@C_0<[]>>, %[[VAL_11:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-DAG:           %[[VAL_12:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_10]][@out] : <@C_0::@C_0<[]>>, !felt.type<"bn128">
-// CHECK-DAG:           %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  12
+// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_10]][@out] : <@C_0::@C_0<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  12 : <"bn128">
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

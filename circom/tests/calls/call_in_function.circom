@@ -22,26 +22,37 @@ template CallInFnTest() {
 component main = CallInFnTest();
 
 // CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@CallInFnTest::@CallInFnTest<[]>>} {
-// CHECK-NEXT:    function.def @passthrough(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !felt.type<"bn128"> attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:      function.return %[[VAL_0]] : !felt.type<"bn128">
+// CHECK-NEXT:    poly.template @passthrough {
+// CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
+// CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
+// CHECK-NEXT:      function.def @passthrough(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0>) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_0]] : (!poly.tvar<@T_arg0>) -> !poly.tvar<@T_return>
+// CHECK-NEXT:        function.return %[[VAL_1]] : !poly.tvar<@T_return>
+// CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-NEXT:    function.def @sum(%[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !felt.type<"bn128"> attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = function.call @passthrough(%[[VAL_1]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:      %[[VAL_4:[0-9a-zA-Z_\.]+]] = function.call @passthrough(%[[VAL_2]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:      %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_3]], %[[VAL_4]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:      function.return %[[VAL_5]] : !felt.type<"bn128">
+// CHECK-NEXT:    poly.template @sum {
+// CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
+// CHECK-NEXT:      poly.param @T_arg1 : !poly.tvar<@T_arg1>
+// CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
+// CHECK-NEXT:      function.def @sum(%[[VAL_2:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0>, %[[VAL_3:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg1>) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = function.call @passthrough::@passthrough(%[[VAL_2]]) : (!poly.tvar<@T_arg0>) -> !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = function.call @passthrough::@passthrough(%[[VAL_3]]) : (!poly.tvar<@T_arg1>) -> !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_4]], %[[VAL_5]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_6]] : (!felt.type<"bn128">) -> !poly.tvar<@T_return>
+// CHECK-NEXT:        function.return %[[VAL_7]] : !poly.tvar<@T_return>
+// CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @CallInFnTest {
 // CHECK-NEXT:      struct.def @CallInFnTest {
 // CHECK-NEXT:        struct.member @z : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_6:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_7:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@CallInFnTest::@CallInFnTest<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.new : <@CallInFnTest::@CallInFnTest<[]>>
-// CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = function.call @sum(%[[VAL_6]], %[[VAL_7]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          struct.writem %[[VAL_8]][@z] = %[[VAL_9]] : <@CallInFnTest::@CallInFnTest<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          function.return %[[VAL_8]] : !struct.type<@CallInFnTest::@CallInFnTest<[]>>
+// CHECK-NEXT:        function.def @compute(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@CallInFnTest::@CallInFnTest<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = struct.new : <@CallInFnTest::@CallInFnTest<[]>>
+// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = function.call @sum::@sum(%[[VAL_8]], %[[VAL_9]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> !felt.type<"bn128">
+// CHECK-NEXT:          struct.writem %[[VAL_10]][@z] = %[[VAL_11]] : <@CallInFnTest::@CallInFnTest<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          function.return %[[VAL_10]] : !struct.type<@CallInFnTest::@CallInFnTest<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_10:[0-9a-zA-Z_\.]+]]: !struct.type<@CallInFnTest::@CallInFnTest<[]>>, %[[VAL_11:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_12:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_10]][@z] : <@CallInFnTest::@CallInFnTest<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:        function.def @constrain(%[[VAL_12:[0-9a-zA-Z_\.]+]]: !struct.type<@CallInFnTest::@CallInFnTest<[]>>, %[[VAL_13:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_14:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_12]][@z] : <@CallInFnTest::@CallInFnTest<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
