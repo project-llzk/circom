@@ -98,7 +98,7 @@ pub fn generate_llzk(program: &impl ProgramLike, config: LlzkConfig) -> Result<(
     }
 
     // Run user-specified MLIR pass pipeline
-    codegen.run_passes().map_err(|err| {
+    codegen.run_user_pass_pipeline().map_err(|err| {
         if codegen.config.verbose {
             eprintln!("{} {err:?}", Color::Red.paint("Failed to run pass pipeline:"));
         } else {
