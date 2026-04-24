@@ -986,9 +986,6 @@ where
             // Replace existing value reference to rvalue
             return self.block_ctx.set_named_value(var.clone(), rvalue);
         }
-        if types_unify(existing.r#type(), rvalue.r#type()) {
-            todo!("'handle_simple_assignment' with unifiable but different types if this happens");
-        }
         let existing_arr_ty = ArrayType::try_from(existing.r#type());
         let rvalue_arr_ty = ArrayType::try_from(rvalue.r#type());
         if let (Ok(existing_arr_ty), Ok(rvalue_arr_ty)) = (existing_arr_ty, rvalue_arr_ty) {
@@ -1008,6 +1005,9 @@ where
                     rvalue_arr_ty,
                 );
             }
+        }
+        if types_unify(existing.r#type(), rvalue.r#type()) {
+            todo!("'handle_simple_assignment' with unifiable but different types if this happens");
         }
         anyhow::bail!(
             "could not assign value of type '{}' to '{var}', which has type '{}'",
