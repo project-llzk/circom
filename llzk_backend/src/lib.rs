@@ -18,6 +18,7 @@ mod program_ext;
 #[macro_use]
 mod shared;
 mod affine_map;
+mod ast_ext;
 mod lvalue;
 mod subcmp;
 mod template;

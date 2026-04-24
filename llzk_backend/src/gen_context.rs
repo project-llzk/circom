@@ -33,6 +33,7 @@ use llzk::dialect::felt;
 use llzk::dialect::function;
 use llzk::dialect::pod;
 use llzk::dialect::poly;
+use llzk::map_operands::MapOperandsBuilder;
 use llzk::prelude::is_array_type;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
@@ -62,6 +63,8 @@ use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use llzk::prelude::FUNC_NAME_COMPUTE;
 use llzk::prelude::FUNC_NAME_CONSTRAIN;
+use llzk::value_ext::OwningValueRange;
+use llzk::value_ext::ValueRange;
 use melior::dialect::ods::math;
 use melior::ir::AttributeLike as _;
 use melior::ir::TypeLike as _;
@@ -1528,30 +1531,56 @@ where
             .collect()
     }
 
+    fn read_required_params(
+        &mut self,
+        struct_type: StructType<'ctx>,
+        params_value: Value<'ctx, '_>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+    ) -> Result<Vec<OwningValueRange<'ctx, '_>>> {
+        let params = PodType::try_from(params_value.r#type())?.get_records();
+        params_requiring_map_operands(struct_type)
+            .into_iter()
+            .map(|idx| {
+                let record_name = params[idx].name();
+                let record_name = record_name.as_string_ref();
+                Ok(OwningValueRange::from(
+                    [self.append_op_unnamed_result(codegen.new_pod_read_op(
+                        params_value,
+                        record_name.as_str()?,
+                        location,
+                    )?)?]
+                    .as_slice(),
+                ))
+            })
+            .collect()
+    }
+
     /// Generates a call to `@compute` for the given struct type.
     ///
     /// The arguments for the call are given as a value of [`PodType`] representing the inputs of
     /// the subcomponent.
-    ///
-    /// # TODO
-    ///
-    /// Map operands are missing.
     pub fn gen_compute_call(
         &mut self,
         struct_type: StructType<'ctx>,
         inputs: Value<'ctx, 'val>,
+        params: Value<'ctx, 'val>,
         location: Location<'ctx>,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> Result<Value<'ctx, 'val>> {
         let input_values = self.gen_decompose_pod(inputs, codegen, location)?;
         let func_name = append_tail(&struct_type.name(), FUNC_NAME_COMPUTE.as_ref());
+        let params = self.read_required_params(struct_type, params, codegen, location)?;
+        let mut map_operands = MapOperandsBuilder::new();
+        fill_map_operands_for_subcmp_call(&params, &mut map_operands)?;
         self.append_op_unnamed_result(
-            function::call(
+            function::call_with_map_operands(
                 codegen.op_builder(),
                 location,
                 func_name,
                 &input_values,
                 &[struct_type],
+                map_operands,
             )?
             .into(),
         )
@@ -2185,4 +2214,29 @@ where
             }
         }
     }
+}
+
+/// Returns the indices of the struct parameters that require affine map operands.
+fn params_requiring_map_operands(struct_type: StructType) -> Vec<usize> {
+    struct_type
+        .params()
+        .into_iter()
+        .enumerate()
+        .filter_map(|(n, attr)| attr.is_affine_map().then_some(n))
+        .collect()
+}
+
+/// Fills the map operands builder with the subcomponent params that are required for the final
+/// struct type.
+fn fill_map_operands_for_subcmp_call(
+    params: &[OwningValueRange<'_, '_>],
+    map_operands: &mut MapOperandsBuilder,
+) -> Result<()> {
+    for required_param in params {
+        let range = ValueRange::try_from(required_param)?;
+        map_operands.append_operands(range);
+        map_operands.append_dim_count(1);
+    }
+
+    Ok(())
 }

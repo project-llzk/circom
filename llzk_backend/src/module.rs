@@ -2,6 +2,7 @@
 //! to the [crate::function] and [crate::template] modules to generate the code for each.
 
 use crate::affine_map::AffineMapAttribute;
+use crate::ast_ext::ExpressionExt as _;
 use crate::function::FunctionContext;
 use crate::function::GenerateLLZKInFunction as _;
 use crate::function_ext::FunctionLike;
@@ -19,6 +20,7 @@ use crate::subcmp::names::COMP;
 use crate::subcmp::names::COUNT;
 use crate::subcmp::names::PARAMS;
 use crate::subcmp::unique_instance_types;
+use crate::subcmp::CtorCall;
 use crate::subcmp::SubcmpDeclInfo;
 use crate::subcmp::SubcmpPrologueData;
 use crate::template::GenerateLLZKInTemplate as _;
@@ -316,7 +318,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                     }
                 }
             }
-            stmt => self.search_component_instances(codegen, stmt),
+            stmt => self.search_component_instances(codegen, stmt, false),
         }
     }
 
@@ -327,11 +329,19 @@ impl<'ctx> DeclarationInfo<'ctx> {
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         expression: &Expression,
-    ) -> Result<StructType<'ctx>> {
+    ) -> Result<CtorCall<'ctx>> {
         match expression {
             Expression::Call { meta, id, args, .. } if meta.get_type_knowledge().is_component() => {
+                //for (n, arg) in args.into_iter().enumerate() {
+                //    let name = format!("{id}_{n}_{}", arg.elem_id());
+                //    let generated_expr = self.gen_template_poly_expr(codegen, name.clone(), arg)?;
+                //    let exprs = self.poly_exprs.borrow();
+                //    let expr = exprs.get(&name);
+                //
+                //    println!("For arg\n\t{arg:?}\nwe generated ({generated_expr:?}) expression\n\t{expr:?}");
+                //}
                 let dims = self.get_dim_exprs(codegen, args)?;
-                Ok(dims.struct_type_with_concrete_dimensions(codegen, id))
+                Ok(CtorCall::new(dims.struct_type_with_concrete_dimensions(codegen, id)))
             }
             Expression::ParallelOp { rhe, .. } => {
                 // `parallel` is a tag used to generate parallelized code for the C++
@@ -420,32 +430,35 @@ impl<'ctx> DeclarationInfo<'ctx> {
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         stmt: &Statement,
+        push_trace: bool,
     ) -> Result<()> {
+        // The first call to this function comes from visit, which already pushes a trace on stmt.
+        let _guard = push_trace.then(|| codegen.trace_statement(stmt));
         match stmt {
             Statement::Substitution { var, op, rhe, .. }
                 if matches!(op, AssignOp::AssignVar) && self.subcmp_decls.contains_key(var) =>
             {
-                let struct_type = self.find_subcmp_ctor_call(codegen, rhe)?;
+                let ctor_call = self.find_subcmp_ctor_call(codegen, rhe)?;
                 self.subcmp_decls.entry(var.clone()).and_modify(|info| {
-                    info.instances_mut().push(struct_type);
+                    info.instances_mut().push(ctor_call);
                 });
 
                 Ok(())
             }
             Statement::IfThenElse { if_case, else_case, .. } => {
-                self.search_component_instances(codegen, if_case.as_ref())?;
+                self.search_component_instances(codegen, if_case.as_ref(), true)?;
                 if let Some(else_case) = else_case.as_deref() {
-                    self.search_component_instances(codegen, else_case)?;
+                    self.search_component_instances(codegen, else_case, true)?;
                 }
                 Ok(())
             }
             Statement::While { stmt, .. } => {
-                self.search_component_instances(codegen, stmt.as_ref())
+                self.search_component_instances(codegen, stmt.as_ref(), true)
             }
             Statement::InitializationBlock { initializations: stmts, .. }
             | Statement::Block { stmts, .. } => {
                 for stmt in stmts {
-                    self.search_component_instances(codegen, stmt)?;
+                    self.search_component_instances(codegen, stmt, true)?;
                 }
                 Ok(())
             }
@@ -669,6 +682,19 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         constrain_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op))?;
     }
     let subcmp_decls = declarations.subcmp_decls;
+    let subcmp_names = subcmps
+        .iter()
+        .map(|subcmp| {
+            let template_name = subcmp_decls
+                .get(&subcmp.name)
+                .and_then(|decl| decl.template())
+                .ok_or_else(|| {
+                    anyhow::anyhow!("could not deduce the type of subcomponent '{}'", subcmp.name)
+                })?;
+
+            Ok((subcmp.name.clone(), (template_name.to_owned(), subcmp.comp_pod(codegen))))
+        })
+        .collect::<Result<_>>()?;
     // Insert the Operations created from subcomponent Declaration statements and map the
     // circom variable name to a LLZK op result Value.
     gen_subcmps_prologue_in_template(
@@ -678,17 +704,6 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         codegen,
         &subcmp_decls,
     )?;
-
-    let subcmp_names = subcmp_decls
-        .into_iter()
-        .map(|(subcmp, decl)| {
-            decl.template()
-                .map(|template_name| (subcmp.clone(), template_name.to_owned()))
-                .ok_or_else(|| {
-                    anyhow::anyhow!("could not deduce the type of subcomponent '{subcmp}'")
-                })
-        })
-        .collect::<Result<_>>()?;
 
     // Visit the body of the template and generate LLZK IR for it within the struct functions.
     let template_context = TemplateContext::new(
@@ -803,6 +818,7 @@ fn record_subcmp_decl<'ctx, 'ast>(
     });
     ops.push(SubcmpPrologueData {
         name,
+        template_name: template_name.to_owned(),
         subcmp: member_type,
         inputs,
         inputs_size,

@@ -1,5 +1,6 @@
 //! Shared code generation utilities.
 
+use crate::function::FunctionContext;
 use crate::function::InfoProviders;
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::BlockGenContext;
@@ -26,6 +27,7 @@ use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::felt;
 use llzk::dialect::pod;
 use llzk::dialect::poly;
+use llzk::map_operands::MapOperandsBuilder;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::melior_dialects::scf;

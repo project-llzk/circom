@@ -36,7 +36,9 @@ use anyhow::anyhow;
 use anyhow::Result;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::constrain;
+use llzk::dialect::llzk::nondet;
 use llzk::dialect::pod;
+use llzk::dialect::poly;
 use llzk::dialect::r#struct;
 use llzk::prelude::ArrayType;
 use llzk::prelude::BlockLike;
@@ -130,7 +132,7 @@ where
     /// Codegen refs for the "@constrain" function within `struct_def`
     constrain: ShouldGenerate<Rc<RefCell<FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>>>>,
     /// Map of subcomponent names to their types.
-    subcmps: &'str HashMap<String, String>,
+    subcmps: &'str HashMap<String, (String, Type<'ctx>)>,
     /// Tracks for what component signals we have created their `struct.writem` op already.
     written_signals: Rc<RefCell<HashSet<String>>>,
     /// Pre-computed LLZK types for circom `var` declarations, keyed by var name. Populated from
@@ -150,7 +152,7 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
         struct_def: StructDefOpRefMut<'ctx, 'str>,
         compute: FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
         constrain: FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
-        subcmps: &'str HashMap<String, String>,
+        subcmps: &'str HashMap<String, (String, Type<'ctx>)>,
         var_decl_types: &'decls HashMap<String, Type<'ctx>>,
     ) -> TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val> {
         Self {
@@ -369,6 +371,12 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
             .finalize_queue()?
             .and_then_same(|fc, _| fc.finalize(codegen))
     }
+
+    /// Returns the real type of the subcomponent, which may be a more general version
+    /// than the one returned by the IR generation for constructor calls.
+    fn get_subcmp_type(&self, var: &str) -> Result<Type<'ctx>> {
+        Ok(self.subcmps.get(var).ok_or_else(|| anyhow!("subcomponent '{var}' not found"))?.1)
+    }
 }
 
 impl SubcmpInfo for TemplateContext<'_, '_, '_, '_, '_, '_> {
@@ -381,7 +389,7 @@ impl SubcmpInfo for TemplateContext<'_, '_, '_, '_, '_, '_> {
         var: &str,
         info: &'i dyn ProgramInfo,
     ) -> Result<&'i dyn SignalDeclarations> {
-        let template_name =
+        let (template_name, _) =
             self.subcmps.get(var).ok_or_else(|| anyhow!("subcomponent '{var}' not found"))?;
         info.find_template(template_name)
     }
@@ -1046,7 +1054,12 @@ where
                 gen_init_block(codegen, template, initializations)
             }
             Statement::Declaration { meta, name, dimensions, .. } => {
-                template.and_then_same(|fc, _| fc.gen_declaration(codegen, meta, name, dimensions))
+                template.and_then_same(|fc, _| {
+                    if !template.is_subcmp(name) {
+                        return fc.gen_declaration(codegen, meta, name, dimensions);
+                    }
+                    Ok(())
+                })
             }
             Statement::Block { meta, stmts } => {
                 let mut template = template; // satisfy the &mut in `GenWithCircomScopeHandling`
@@ -1064,14 +1077,33 @@ where
                 match op {
                     AssignOp::AssignVar => {
                         if access.is_empty() {
-                            if template.is_subcmp(var) {
-                                // Do nothing.
-                                Ok(())
-                            } else {
-                                rhe.gen_llzk_in_template(codegen, template)?.and_then_same(
-                                    |fc, val| fc.handle_simple_assignment(codegen, meta, var, val),
-                                )
-                            }
+                            rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                                |fc, mut val| {
+                                    // Unify-cast the value if the variable is a subcomponent.
+                                    if template.is_subcmp(var) {
+                                        let subcmp_type = template.get_subcmp_type(var)?;
+
+                                        if val.r#type() != subcmp_type {
+                                            val =
+                                                fc.append_op_unnamed_result(poly::unifiable_cast(
+                                                    codegen.location_from_meta(meta),
+                                                    val,
+                                                    template.get_subcmp_type(var)?,
+                                                ))?;
+                                        }
+                                    };
+
+                                    fc.handle_simple_assignment(codegen, meta, var, val)
+                                },
+                                |fc, val| {
+                                    // Ignore subcmp vars in the constraint function since they are
+                                    // handled separately in the prologue and epilogue.
+                                    if !template.is_subcmp(var) {
+                                        fc.handle_simple_assignment(codegen, meta, var, val)?;
+                                    }
+                                    Ok(())
+                                },
+                            )
                         } else {
                             let location = codegen.location_from_meta(meta);
                             rhe.gen_llzk_in_template(codegen, template)?.and_then(
@@ -1293,18 +1325,20 @@ where
                 if meta.get_type_knowledge().is_component()
                     && codegen.program.contains_template(id) =>
             {
-                // We don't handle template parameters until the general structure of the procedure
-                // is done.
-                if !args.is_empty() {
-                    todo!("subcomponents with template parameters");
-                }
                 let location = codegen.location_from_meta(meta);
                 let dimensions = template.get_dim_exprs(codegen, args)?;
 
                 // Names of the template parameters
                 let params_formals = codegen.program.get_template_data(id).get_name_of_params();
+
                 let subcmp_type = dimensions.struct_type_with_concrete_dimensions(codegen, id);
                 let count = codegen.count_input_signals(subcmp_type.into())?;
+                let params_pod_type = codegen.pod_type(
+                    &params_formals
+                        .iter()
+                        .map(|formal| (formal.as_str(), codegen.index_type().into()))
+                        .collect::<Vec<_>>(),
+                );
                 let records = [
                     // Counts the number of inputs pending an assignment. When it reaches 0 it's
                     // safe to call the corresponding `@compute` function.
@@ -1313,40 +1347,69 @@ where
                     // undefined and should not be read from.
                     (COMP, subcmp_type.into()),
                     // Holds the affine map operands of the subcomponents, if any.
-                    (PARAMS, codegen.pod_type(&[]).into()),
+                    (PARAMS, params_pod_type.into()),
                 ];
 
                 // Create a `pod.new` operation with the memory for the subcomponent.
                 template.and_then_same(|fc, _| {
+                    let params = std::iter::zip(
+                        params_formals,
+                        dimensions.attrs().into_iter().map(|attr| {
+                            // Temporary
+                            fc.append_op_unnamed_result(nondet(
+                                location,
+                                codegen.index_type().into(),
+                            ))
+                        }),
+                    )
+                    .map(|(formal, value)| Ok(RecordValue::new(StringRef::new(formal), value?)))
+                    .collect::<Result<Vec<_>>>()?;
+                    let params_pod = fc.append_op_unnamed_result(pod::new(
+                        codegen.op_builder(),
+                        location,
+                        &params,
+                        Some(params_pod_type),
+                    ))?;
                     let pod_type = Some(codegen.pod_type(&records));
                     // If the count == 0 means that the subcomponent has no inputs. In that case we
                     // call `@compute` here directly and store it into COMP.
-                    let (name, value) = if count.is_const_zero() {
+                    let records = if count.is_const_zero() {
                         let empty_inputs = fc.append_op_unnamed_result(pod::new(
                             codegen.op_builder(),
                             location,
                             &[],
                             Some(codegen.pod_type(&[])),
                         ))?;
-                        let instance =
-                            fc.gen_compute_call(subcmp_type, empty_inputs, location, codegen)?;
-                        (COMP, instance)
+                        let instance = fc.gen_compute_call(
+                            subcmp_type,
+                            empty_inputs,
+                            params_pod,
+                            location,
+                            codegen,
+                        )?;
+                        vec![(COMP, instance)]
                     } else {
-                        (
-                            COUNT,
-                            count.to_index_value(
-                                codegen,
-                                fc,
-                                location,
-                                Some(&TmplParamsInstance::new(params_formals, &dimensions)),
-                            )?,
-                        )
-                    };
+                        vec![
+                            (
+                                COUNT,
+                                count.to_index_value(
+                                    codegen,
+                                    fc,
+                                    location,
+                                    Some(&TmplParamsInstance::new(params_formals, &dimensions)),
+                                )?,
+                            ),
+                            (PARAMS, params_pod),
+                        ]
+                    }
+                    .into_iter()
+                    .map(|(name, value)| RecordValue::new(StringRef::new(name), value))
+                    .collect::<Vec<_>>();
 
                     fc.append_op_unnamed_result(pod::new(
                         codegen.op_builder(),
                         location,
-                        &[RecordValue::new(StringRef::new(name), value)],
+                        &records,
                         pod_type,
                     ))
                 })
