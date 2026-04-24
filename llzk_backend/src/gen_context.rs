@@ -7,7 +7,6 @@ use crate::lvalue::Root;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::append_tail;
-use crate::shared::dim_expr_name;
 use crate::shared::is_bool;
 use crate::shared::is_index;
 use crate::shared::new_array_type;
@@ -2026,9 +2025,7 @@ where
                 | Expression::InlineSwitchOp { .. }
                 | Expression::PrefixOp { .. }
                 | Expression::InfixOp { .. }
-                | Expression::Call { .. } => {
-                    self.gen_template_poly_expr(codegen, dim_expr_name(expr), expr)
-                }
+                | Expression::Call { .. } => self.gen_template_poly_expr(codegen, expr),
                 // The remaining cases do not produce a scalar value.
                 // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
                 // Give the same error that the circom type checker gives. The type checker ran

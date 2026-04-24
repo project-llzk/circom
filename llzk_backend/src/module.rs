@@ -6,7 +6,6 @@ use crate::function::GenerateLLZKInFunction as _;
 use crate::function_ext::FunctionLike;
 use crate::program_ext::ProgramLike;
 use crate::shared;
-use crate::shared::dim_expr_name;
 use crate::shared::get_poly_expr_name;
 use crate::shared::map_array_inner_type;
 use crate::shared::map_name_to_arg_value;
@@ -527,7 +526,7 @@ where
                     } else if self.decl_inits.contains_key(name) {
                         // This is a `Statement::Declaration` with `VariableType::Var` that is
                         // encountered for the first time and must have a `poly.expr` generated.
-                        self.gen_template_poly_expr(codegen, name.clone(), expr)
+                        self.gen_template_poly_expr(codegen, expr)
                     } else {
                         // TODO: this happens in `circom/tests/circom_doc_examples/04.circom`
                         // and I think it's related to the "TODO" on `DeclarationInfo::visit`.
@@ -539,9 +538,7 @@ where
                 | Expression::InlineSwitchOp { .. }
                 | Expression::PrefixOp { .. }
                 | Expression::InfixOp { .. }
-                | Expression::Call { .. } => {
-                    self.gen_template_poly_expr(codegen, dim_expr_name(expr), expr)
-                }
+                | Expression::Call { .. } => self.gen_template_poly_expr(codegen, expr),
                 // The remaining cases do not produce a scalar value.
                 // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
                 // Give the same error that the circom type checker gives. The type checker ran
