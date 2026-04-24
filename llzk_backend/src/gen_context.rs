@@ -33,7 +33,6 @@ use llzk::dialect::felt;
 use llzk::dialect::function;
 use llzk::dialect::pod;
 use llzk::dialect::poly;
-use llzk::prelude::is_array_type;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::melior_dialects::index;
@@ -63,7 +62,7 @@ use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use llzk::prelude::FUNC_NAME_COMPUTE;
 use llzk::prelude::FUNC_NAME_CONSTRAIN;
-use llzk::typing::is_unifiable_with;
+use llzk::typing::types_equal_or_unifiable;
 use melior::dialect::ods::math;
 use melior::ir::AttributeLike as _;
 use melior::ir::TypeLike as _;
@@ -778,6 +777,18 @@ where
         self.append_op_no_result(bool::assert(location, cond, msg)?.into())
     }
 
+    /// Append a `unifiable_cast` operation to cast `val` to the `expected` type.
+    #[inline]
+    pub fn unifiable_cast(
+        &mut self,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+        expected: Type<'ctx>,
+    ) -> Result<Value<'ctx, 'val>> {
+        assert!(types_equal_or_unifiable(val.r#type(), expected)); // pre-condition
+        self.append_op_unnamed_result(poly::unifiable_cast(location, val, expected))
+    }
+
     /// Append a cast to felt (field element) type.
     #[inline]
     pub fn cast_to_felt(
@@ -858,8 +869,8 @@ where
     ) -> Result<Value<'ctx, 'val>> {
         if expected == val.r#type() {
             Ok(val)
-        } else if is_unifiable_with(expected, val.r#type()) {
-            self.append_op_unnamed_result(poly::unifiable_cast(location, val, expected))
+        } else if types_equal_or_unifiable(expected, val.r#type()) {
+            self.unifiable_cast(location, val, expected)
         } else if is_felt_type(expected) {
             self.cast_to_felt_if_needed(codegen, location, val)
         } else if is_index(expected) {
@@ -892,14 +903,27 @@ where
     where
         'val: 'blk,
     {
-        let elem_ty = dst_ty.element_type();
-        assert!(elem_ty == src_ty.element_type());
-        assert!(dst_ty.num_dims() == src_ty.num_dims());
+        if codegen.config.verbose {
+            println!("[copy_into_array] src: {src}");
+            println!("[copy_into_array] src_ty: {src_ty}");
+            println!("[copy_into_array] dst: {dst}");
+            println!("[copy_into_array] dst_ty: {dst_ty}");
+        }
+        // Check caller pre-conditions to ensure this function is being used correctly.
+        assert_eq!(src.r#type(), src_ty.into());
+        assert_eq!(dst.r#type(), dst_ty.into());
+        assert_eq!(dst_ty.num_dims(), src_ty.num_dims());
+        let src_elem_ty = src_ty.element_type();
+        let dst_elem_ty = dst_ty.element_type();
+        assert!(types_equal_or_unifiable(src_elem_ty, dst_elem_ty));
 
         let location = codegen.location_from_meta(meta);
 
         let bounds = zip(src_ty.dims(), dst_ty.dims())
             .map(|(src_dim, dest_dim)| {
+                if codegen.config.verbose {
+                    println!("[copy_into_array]   src_dim: {src_dim} -> dest_dim: {dest_dim}");
+                }
                 let src_val = self.array_dim_attr_to_idx_val(codegen, location, src_dim)?;
                 let dest_val = self.array_dim_attr_to_idx_val(codegen, location, dest_dim)?;
                 let condition = self.append_op_unnamed_result(arith::cmpi(
@@ -920,9 +944,14 @@ where
             })
             .collect::<Result<Vec<_>>>()?;
 
+        let element_types_not_equal = src_elem_ty != dst_elem_ty;
         self.gen_loop_nest(codegen, location, &bounds, move |fc, indices| {
-            let read = fc.append_op_unnamed_result(array::read(location, elem_ty, src, indices))?;
-            fc.append_op_no_result(array::write(location, dst, indices, read))
+            let mut val =
+                fc.append_op_unnamed_result(array::read(location, src_elem_ty, src, indices))?;
+            if element_types_not_equal {
+                val = fc.unifiable_cast(location, val, dst_elem_ty)?;
+            }
+            fc.append_op_no_result(array::write(location, dst, indices, val))
         })
     }
 
@@ -955,12 +984,21 @@ where
             // Replace existing value reference to rvalue
             return self.block_ctx.set_named_value(var.clone(), rvalue);
         }
-        if is_array_type(existing.r#type()) && is_array_type(rvalue.r#type()) {
-            let existing_arr_ty = ArrayType::try_from(existing.r#type()).unwrap();
-            let new_arr_ty = ArrayType::try_from(rvalue.r#type()).unwrap();
-            if existing_arr_ty.element_type() == new_arr_ty.element_type()
-                && existing_arr_ty.num_dims() == new_arr_ty.num_dims()
-                && existing_arr_ty.dims() != new_arr_ty.dims()
+        if types_equal_or_unifiable(existing.r#type(), rvalue.r#type()) {
+            todo!("'handle_simple_assignment' with unifiable but different types if this happens");
+        }
+        let existing_arr_ty = ArrayType::try_from(existing.r#type());
+        let rvalue_arr_ty = ArrayType::try_from(rvalue.r#type());
+        if existing_arr_ty.is_ok() && rvalue_arr_ty.is_ok() {
+            let existing_arr_ty = existing_arr_ty.unwrap();
+            let rvalue_arr_ty = rvalue_arr_ty.unwrap();
+            // If the arrays have the same number of dimensions and unifiable element type,
+            // then copy values from the `rvalue` array into the existing array.
+            if existing_arr_ty.num_dims() == rvalue_arr_ty.num_dims()
+                && types_equal_or_unifiable(
+                    existing_arr_ty.element_type(),
+                    rvalue_arr_ty.element_type(),
+                )
             {
                 // Copy values from the rvalue into the existing array.
                 // No need to update named value here.
@@ -970,7 +1008,7 @@ where
                     *existing,
                     existing_arr_ty,
                     rvalue,
-                    new_arr_ty,
+                    rvalue_arr_ty,
                 );
             }
         }
