@@ -531,7 +531,8 @@ where
                         todo!("not a known circom template parameter or var declaration: {}", name)
                     }
                 }
-                Expression::Variable { .. } /* with non-empty `access` */
+                // Variable case with non-empty `access`
+                Expression::Variable { .. }
                 | Expression::InlineSwitchOp { .. }
                 | Expression::PrefixOp { .. }
                 | Expression::InfixOp { .. }

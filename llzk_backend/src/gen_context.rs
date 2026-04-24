@@ -1995,7 +1995,7 @@ where
                 Expression::Number(_, _) => {
                     unreachable!("handled by try_compute_as_i64")
                 }
-                Expression::Variable { meta, name, access } if access.is_empty()=> {
+                Expression::Variable { meta, name, access } if access.is_empty() => {
                     if self.poly_template_binding_names.contains(name) {
                         ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
                     } else if let Ok(v) = self.block_ctx.get_named_value(name) {
@@ -2003,8 +2003,9 @@ where
                     } else {
                         todo!("Handle Variable expression in dimension for non-integer, non-template parameter attributes in BlockGenContext")
                     }
-                },
-                Expression::Variable { .. } /* with non-empty `access` */
+                }
+                // Variable case with non-empty `access`
+                Expression::Variable { .. }
                 | Expression::InlineSwitchOp { .. }
                 | Expression::PrefixOp { .. }
                 | Expression::InfixOp { .. }

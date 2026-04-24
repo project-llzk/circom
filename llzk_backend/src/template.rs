@@ -789,7 +789,8 @@ where
                         ArrayDimensionResult::insufficient_data_result()
                     }
                 }
-                Expression::Variable { .. } /* with non-empty `access` */
+                // Variable case with non-empty `access`
+                Expression::Variable { .. }
                 | Expression::InlineSwitchOp { .. }
                 | Expression::PrefixOp { .. }
                 | Expression::InfixOp { .. }
