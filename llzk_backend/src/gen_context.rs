@@ -76,7 +76,6 @@ use program_structure::ast::ExpressionPrefixOpcode;
 use program_structure::ast::Meta;
 use program_structure::error_code::ReportCode;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::iter::zip;
@@ -586,8 +585,10 @@ where
     /// [crate::module::DeclarationInfo] when generating `poly.expr` bodies for templates so that
     /// dimension expressions referencing other vars do not trigger recursive code generation.
     pub(crate) var_decl_types: &'decls HashMap<String, Type<'ctx>>,
-    /// Names of `poly.param` and `poly.expr` defs visible in the current context.
-    poly_template_binding_names: HashSet<String>,
+    /// Mapping of `poly.param` and `poly.expr` symbol names visible in the current context to
+    /// their optional type restriction. The `poly.param` generally don't have a type restriction,
+    /// but the `poly.expr` always produces a specific typed result.
+    poly_template_binding_names: HashMap<String, Option<Type<'ctx>>>,
 }
 
 impl<'decls, 'ctx, 'blk, 'val> BlockGenContext<'decls, 'ctx, 'blk, 'val>
@@ -597,15 +598,15 @@ where
 {
     /// Create a new [BlockGenContext] with the given block context stack, mapping of `var` name to
     /// declared LLZK type, and set of visible `poly.param` and `poly.expr` names.
-    pub fn new<'names>(
+    pub fn new(
         block_ctx: BlockContextStack<'ctx, 'blk, 'val>,
         var_decl_types: &'decls HashMap<String, Type<'ctx>>,
-        poly_template_binding_names: impl IntoIterator<Item = &'names String>,
+        poly_template_binding_names: impl IntoIterator<Item = (String, Option<Type<'ctx>>)>,
     ) -> Self {
         Self {
             block_ctx,
             var_decl_types,
-            poly_template_binding_names: poly_template_binding_names.into_iter().cloned().collect(),
+            poly_template_binding_names: poly_template_binding_names.into_iter().collect(),
         }
     }
 
@@ -619,12 +620,13 @@ where
     ) -> Result<Self> {
         let mut sorted: Vec<_> = self.poly_template_binding_names.iter().collect();
         if codegen.config.stabilize {
-            sorted.sort();
+            sorted.sort_by(|(a, _), (b, _)| a.cmp(b));
         }
-        for name in sorted {
+        for (name, ty) in sorted {
+            // If there is no type restriction use `felt` since it's circom's basic type.
             self.block_ctx.declare_name_ensure_not_present(
                 name,
-                poly::read_const(location, name, codegen.felt_type().into()),
+                poly::read_const(location, name, ty.unwrap_or_else(|| codegen.felt_type().into())),
             )?;
         }
         Ok(self)
@@ -1633,11 +1635,23 @@ where
             return self.append_op_unnamed_result(arith::constant(codegen.context, dim, location));
         }
         if let Ok(sym_ref) = FlatSymbolRefAttribute::try_from(dim) {
-            return self.append_op_unnamed_result(poly::read_const(
-                location,
-                sym_ref.value(),
-                codegen.index_type(),
-            ));
+            // Check if this is a template binding reference
+            let sym_name = sym_ref.value();
+            if let Some(type_restriction) = self.poly_template_binding_names.get(sym_name) {
+                if let Some(ty) = type_restriction {
+                    // Read as the restricted type and then cast to index.
+                    let op =
+                        self.append_op_unnamed_result(poly::read_const(location, sym_name, *ty))?;
+                    return self.cast_to_index_if_needed(location, op);
+                } else {
+                    // If there is no type restriction just use `index`.
+                    return self.append_op_unnamed_result(poly::read_const(
+                        location,
+                        sym_name,
+                        codegen.index_type(),
+                    ));
+                }
+            }
         }
         unreachable!("Unhandled attribute in array dimensions {}", dim)
     }
@@ -1977,7 +1991,10 @@ where
         name: String,
         op: TemplateExprOp<'ctx>,
     ) -> StringAttribute<'ctx> {
-        todo!("BlockGenContext::store_template_poly_expr: {name} -> {op:?}");
+        // TODO: How/where can it be store when using this general BlockGenContext?
+        // TODO: Also, add new name+type to `self.poly_template_binding_names` so future
+        //       calls to `get_dim_expr` can find it. The field will need RefCell.
+        todo!("BlockGenContext::callback_store_poly_expr: {name} -> {op:?}");
     }
 
     fn get_dim_expr(
@@ -1996,7 +2013,7 @@ where
                     unreachable!("handled by try_compute_as_i64")
                 }
                 Expression::Variable { meta, name, access } if access.is_empty() => {
-                    if self.poly_template_binding_names.contains(name) {
+                    if self.poly_template_binding_names.contains_key(name) {
                         ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
                     } else if let Ok(v) = self.block_ctx.get_named_value(name) {
                         ArrayDimensionResult::new(codegen.identity_affine_map_attr()?, &[*v])
