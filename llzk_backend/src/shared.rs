@@ -947,7 +947,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
 
         // Setup and run the pass pipeline.
         utility::register_all_passes();
-        utility::parse_pass_pipeline(manager.as_operation_pass_manager(), &pipeline)
+        utility::parse_pass_pipeline(manager.as_operation_pass_manager(), pipeline)
             .map_err(anyhow::Error::from)?;
 
         let mlir_result =

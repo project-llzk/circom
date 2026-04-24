@@ -989,9 +989,7 @@ where
         }
         let existing_arr_ty = ArrayType::try_from(existing.r#type());
         let rvalue_arr_ty = ArrayType::try_from(rvalue.r#type());
-        if existing_arr_ty.is_ok() && rvalue_arr_ty.is_ok() {
-            let existing_arr_ty = existing_arr_ty.unwrap();
-            let rvalue_arr_ty = rvalue_arr_ty.unwrap();
+        if let (Ok(existing_arr_ty), Ok(rvalue_arr_ty)) = (existing_arr_ty, rvalue_arr_ty) {
             // If the arrays have the same number of dimensions and unifiable element type,
             // then copy values from the `rvalue` array into the existing array.
             if existing_arr_ty.num_dims() == rvalue_arr_ty.num_dims()
