@@ -8,7 +8,7 @@ use crate::function::GenerateLLZKInFunction as _;
 use crate::function_ext::FunctionLike;
 use crate::program_ext::ProgramLike;
 use crate::shared;
-use crate::shared::dim_expr_name;
+use crate::shared::get_poly_expr_name;
 use crate::shared::map_array_inner_type;
 use crate::shared::map_name_to_arg_value;
 use crate::shared::ArrayDimensionResult;
@@ -56,11 +56,13 @@ use llzk::prelude::PodType;
 use llzk::prelude::PublicAttribute;
 use llzk::prelude::RecordValue;
 use llzk::prelude::RegionLike as _;
+use llzk::prelude::StringAttribute;
 use llzk::prelude::StringRef;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructType;
 use llzk::prelude::TemplateExprOp;
+use llzk::prelude::TemplateExprOpLike as _;
 use llzk::prelude::TemplateOpLike;
 use llzk::prelude::Type;
 use melior::ir::Attribute;
@@ -475,12 +477,24 @@ where
         &self.var_decl_types
     }
 
-    fn poly_template_binding_names(&self) -> impl IntoIterator<Item = &String> {
-        &self.template_params
+    fn poly_template_binding_names(
+        &self,
+    ) -> impl IntoIterator<Item = (String, Option<Type<'ctx>>)> {
+        self.template_params.iter().map(|name| (name.clone(), None))
     }
 
-    fn callback_store_poly_expr(&self, name: String, op: TemplateExprOp<'ctx>) {
-        self.poly_exprs.borrow_mut().insert(name, op);
+    fn callback_store_poly_expr(
+        &self,
+        name: String,
+        op: TemplateExprOp<'ctx>,
+    ) -> StringAttribute<'ctx> {
+        let uniqued_name = get_poly_expr_name(&op);
+        let old = self.poly_exprs.borrow_mut().insert(name, op);
+        // ASSERT: In general, `DimExprConverter` has to account for non-unique names but in this
+        // `DeclarationInfo` implementation, names will always be unique (assuming the `Meta::start`
+        // from the circom AST that `dim_expr_name()` appends to the names is accurate).
+        assert!(old.is_none(), "multiple poly.expr generated for the same dimension expression");
+        uniqued_name
     }
 
     fn get_dim_expr(
@@ -507,20 +521,19 @@ where
                     } else if self.decl_inits.contains_key(name) {
                         // This is a `Statement::Declaration` with `VariableType::Var` that is
                         // encountered for the first time and must have a `poly.expr` generated.
-                        self.gen_template_poly_expr(codegen, name.clone(), expr)
+                        self.gen_template_poly_expr(codegen, expr)
                     } else {
                         // TODO: this happens in `circom/tests/circom_doc_examples/04.circom`
                         // and I think it's related to the "TODO" on `DeclarationInfo::visit`.
                         todo!("not a known circom template parameter or var declaration: {}", name)
                     }
                 }
-                Expression::Variable { .. } /* with non-empty `access` */
+                // Variable case with non-empty `access`
+                Expression::Variable { .. }
                 | Expression::InlineSwitchOp { .. }
                 | Expression::PrefixOp { .. }
                 | Expression::InfixOp { .. }
-                | Expression::Call { .. } => {
-                    self.gen_template_poly_expr(codegen, dim_expr_name(expr), expr)
-                }
+                | Expression::Call { .. } => self.gen_template_poly_expr(codegen, expr),
                 // The remaining cases do not produce a scalar value.
                 // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
                 // Give the same error that the circom type checker gives. The type checker ran
@@ -561,8 +574,13 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
 
     // Visit the body of the function and generate LLZK IR for it.
     let var_decl_types = HashMap::new();
-    let mut func_context =
-        FunctionContext::new::<true>(codegen, func, name_to_value, &var_decl_types, &[])?;
+    let mut func_context = FunctionContext::new::<true>(
+        codegen,
+        func,
+        name_to_value,
+        &var_decl_types,
+        std::iter::empty(),
+    )?;
     func_like.get_body().gen_llzk_in_function(codegen, &mut func_context, Default::default())?;
     func_context.finalize(codegen)
 }
@@ -593,11 +611,14 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
 
     // Insert the declarations from `declarations.poly_exprs`.
     let mut poly_exprs = declarations.poly_exprs.into_inner();
-    let mut poly_expr_names: Vec<_> = poly_exprs.keys().cloned().collect();
+    let mut poly_expr_names: Vec<_> =
+        poly_exprs.iter().map(|(name, op)| (name.clone(), op.expr_type())).collect();
     if codegen.config.stabilize {
-        poly_expr_names.sort();
+        poly_expr_names.sort_by(|(a, _), (b, _)| a.cmp(b));
     }
-    for name in &poly_expr_names {
+    for (name, _) in &poly_expr_names {
+        // Here the template is empty and the names are unique per storage in HashMap so they
+        // can be directly appended without using `symbol_table::insert` to unique names.
         new_template.body().append_operation(poly_exprs.remove(name).unwrap().into());
     }
 
@@ -644,7 +665,11 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         map_name_to_arg_value(compute_func, arg_names.clone())?,
         &declarations.var_decl_types,
         // concatenate circom template parameter names with `poly_expr_names`
-        template_like.get_name_of_params().iter().chain(poly_expr_names.iter()),
+        template_like
+            .get_name_of_params()
+            .iter()
+            .map(|name| (name.clone(), None))
+            .chain(poly_expr_names.iter().map(|(name, ty)| (name.clone(), Some(*ty)))),
     )?;
     let mut arg_names = arg_names;
     arg_names.insert(0, "**self**".to_string());
@@ -654,7 +679,11 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         map_name_to_arg_value(constrain_func, arg_names)?,
         &declarations.var_decl_types,
         // concatenate circom template parameter names with `poly_expr_names`
-        template_like.get_name_of_params().iter().chain(poly_expr_names.iter()),
+        template_like
+            .get_name_of_params()
+            .iter()
+            .map(|name| (name.clone(), None))
+            .chain(poly_expr_names.iter().map(|(name, ty)| (name.clone(), Some(*ty)))),
     )?;
 
     // Insert read operations for struct fields into constrain functions.

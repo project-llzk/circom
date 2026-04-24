@@ -18,6 +18,7 @@ use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::comp_type;
 use crate::shared::dim_expr_name;
+use crate::shared::get_poly_expr_name;
 use crate::shared::map_array_inner_type;
 use crate::shared::ArrayDimension;
 use crate::shared::ArrayDimensionResult;
@@ -41,13 +42,13 @@ use llzk::dialect::pod;
 use llzk::dialect::poly;
 use llzk::dialect::r#struct;
 use llzk::prelude::ArrayType;
-use llzk::prelude::BlockLike;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::LoopBoundsAttribute;
 use llzk::prelude::MemberDefOpLike as _;
 use llzk::prelude::PodType;
 use llzk::prelude::RecordValue;
+use llzk::prelude::StringAttribute;
 use llzk::prelude::StringRef;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRefMut;
@@ -57,6 +58,7 @@ use llzk::prelude::TemplateOpRefMut;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
+use llzk::symbol_table;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -762,8 +764,13 @@ where
         self.var_decl_types
     }
 
-    fn callback_store_poly_expr(&self, _: String, op: TemplateExprOp<'ctx>) {
-        self.template_def.body().append_operation(op.into());
+    fn callback_store_poly_expr(
+        &self,
+        _: String,
+        op: TemplateExprOp<'ctx>,
+    ) -> StringAttribute<'ctx> {
+        // Use `symbol_table::insert` instead of direct insertion to rename duplicates
+        get_poly_expr_name(&symbol_table::insert(&self.template_def, op.into()))
     }
 
     fn get_dim_expr(
@@ -782,21 +789,25 @@ where
                     unreachable!("handled by try_compute_as_i64")
                 }
                 Expression::Variable { meta, name, access } if access.is_empty() => {
-                    // Grab the parameter name if it exists, else, defer to `BlockGenContext`.
+                    // Grab the template symbol binding name if it exists (first try `poly.param`
+                    // name then try `poly.expr` name). Otherwise, defer to `BlockGenContext`.
                     if self.template_def.has_const_param_named(name) {
                         ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
                     } else {
-                        // Other variables are unsupported, defer to `BlockGenContext`
-                        ArrayDimensionResult::insufficient_data_result()
+                        let expr_name = dim_expr_name(expr);
+                        if self.template_def.has_const_expr_named(&expr_name) {
+                            ArrayDimensionResult::new(codegen.flat_sym(expr_name).into(), &[])
+                        } else {
+                            ArrayDimensionResult::insufficient_data_result() // defer to `BlockGenContext`
+                        }
                     }
                 }
-                Expression::Variable { .. } /* with non-empty `access` */
+                // Variable case with non-empty `access`
+                Expression::Variable { .. }
                 | Expression::InlineSwitchOp { .. }
                 | Expression::PrefixOp { .. }
                 | Expression::InfixOp { .. }
-                | Expression::Call { .. } => {
-                    self.gen_template_poly_expr(codegen, dim_expr_name(expr), expr)
-                }
+                | Expression::Call { .. } => self.gen_template_poly_expr(codegen, expr),
                 // The remaining cases do not produce a scalar value.
                 // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
                 // Give the same error that the circom type checker gives. The type checker ran

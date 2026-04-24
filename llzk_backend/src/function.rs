@@ -207,12 +207,12 @@ where
     /// Create a new [FunctionContext] for the given function with an initial name-to-value mapping,
     /// mapping of `var` declaration names to their declared LLZK types, and set of visible
     /// `poly.param` and `poly.expr` names.
-    pub fn new<'names, const FREE_FUNC: bool>(
+    pub fn new<const FREE_FUNC: bool>(
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         func: FuncDefOpRefMut<'ctx, 'func>,
         param_name_to_value: HashMap<String, Value<'ctx, 'val>>,
         var_decl_types: &'decls HashMap<String, Type<'ctx>>,
-        poly_template_binding_names: impl IntoIterator<Item = &'names String>,
+        poly_template_binding_names: impl IntoIterator<Item = (String, Option<Type<'ctx>>)>,
     ) -> Result<Self> {
         let mut block_ctx = BlockContextStack::from_function(func.deref(), param_name_to_value)?;
         if FREE_FUNC {

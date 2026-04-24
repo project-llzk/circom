@@ -56,6 +56,7 @@ use llzk::prelude::OperationRef;
 use llzk::prelude::PodType;
 use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
+use llzk::prelude::StringAttribute;
 use llzk::prelude::StructType;
 use llzk::prelude::TemplateExprOp;
 use llzk::prelude::Type;
@@ -65,6 +66,7 @@ use llzk::prelude::FUNC_NAME_COMPUTE;
 use llzk::prelude::FUNC_NAME_CONSTRAIN;
 use llzk::value_ext::OwningValueRange;
 use llzk::value_ext::ValueRange;
+use llzk::typing::types_unify;
 use melior::dialect::ods::math;
 use melior::ir::AttributeLike as _;
 use melior::ir::TypeLike as _;
@@ -78,7 +80,6 @@ use program_structure::ast::ExpressionPrefixOpcode;
 use program_structure::ast::Meta;
 use program_structure::error_code::ReportCode;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::iter::zip;
@@ -588,8 +589,10 @@ where
     /// [crate::module::DeclarationInfo] when generating `poly.expr` bodies for templates so that
     /// dimension expressions referencing other vars do not trigger recursive code generation.
     pub(crate) var_decl_types: &'decls HashMap<String, Type<'ctx>>,
-    /// Names of `poly.param` and `poly.expr` defs visible in the current context.
-    poly_template_binding_names: HashSet<String>,
+    /// Mapping of `poly.param` and `poly.expr` symbol names visible in the current context to
+    /// their optional type restriction. The `poly.param` generally don't have a type restriction,
+    /// but the `poly.expr` always produces a specific typed result.
+    poly_template_binding_names: HashMap<String, Option<Type<'ctx>>>,
 }
 
 impl<'decls, 'ctx, 'blk, 'val> BlockGenContext<'decls, 'ctx, 'blk, 'val>
@@ -599,15 +602,15 @@ where
 {
     /// Create a new [BlockGenContext] with the given block context stack, mapping of `var` name to
     /// declared LLZK type, and set of visible `poly.param` and `poly.expr` names.
-    pub fn new<'names>(
+    pub fn new(
         block_ctx: BlockContextStack<'ctx, 'blk, 'val>,
         var_decl_types: &'decls HashMap<String, Type<'ctx>>,
-        poly_template_binding_names: impl IntoIterator<Item = &'names String>,
+        poly_template_binding_names: impl IntoIterator<Item = (String, Option<Type<'ctx>>)>,
     ) -> Self {
         Self {
             block_ctx,
             var_decl_types,
-            poly_template_binding_names: poly_template_binding_names.into_iter().cloned().collect(),
+            poly_template_binding_names: poly_template_binding_names.into_iter().collect(),
         }
     }
 
@@ -621,12 +624,13 @@ where
     ) -> Result<Self> {
         let mut sorted: Vec<_> = self.poly_template_binding_names.iter().collect();
         if codegen.config.stabilize {
-            sorted.sort();
+            sorted.sort_by(|(a, _), (b, _)| a.cmp(b));
         }
-        for name in sorted {
+        for (name, ty) in sorted {
+            // If there is no type restriction use `felt` since it's circom's basic type.
             self.block_ctx.declare_name_ensure_not_present(
                 name,
-                poly::read_const(location, name, codegen.felt_type().into()),
+                poly::read_const(location, name, ty.unwrap_or_else(|| codegen.felt_type().into())),
             )?;
         }
         Ok(self)
@@ -779,7 +783,19 @@ where
         self.append_op_no_result(bool::assert(location, cond, msg)?.into())
     }
 
-    /// Create a cast to felt (field element) type.
+    /// Append a `unifiable_cast` operation to cast `val` to the `expected` type.
+    #[inline]
+    pub fn unifiable_cast(
+        &mut self,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+        expected: Type<'ctx>,
+    ) -> Result<Value<'ctx, 'val>> {
+        assert!(types_unify(val.r#type(), expected)); // pre-condition
+        self.append_op_unnamed_result(poly::unifiable_cast(location, val, expected))
+    }
+
+    /// Append a cast to felt (field element) type.
     #[inline]
     pub fn cast_to_felt(
         &mut self,
@@ -790,7 +806,7 @@ where
         self.append_op_unnamed_result(cast::tofelt(location, val, Some(codegen.felt_type())))
     }
 
-    /// Create a cast to felt (field element) type if the given value is not already a felt.
+    /// Append a cast to felt (field element) type if the given value is not already a felt.
     #[inline]
     pub fn cast_to_felt_if_needed(
         &mut self,
@@ -805,7 +821,7 @@ where
         }
     }
 
-    /// Create a cast to index type if the given value is not already an index.
+    /// Append a cast to index type if the given value is not already an index.
     #[inline]
     pub fn cast_to_index_if_needed(
         &mut self,
@@ -819,7 +835,7 @@ where
         }
     }
 
-    /// Create a cast to bool type (i1) if the given value is not already a bool.
+    /// Append a cast to bool type (i1) if the given value is not already a bool.
     #[inline]
     pub fn cast_to_bool_if_needed(
         &mut self,
@@ -848,7 +864,7 @@ where
         }
     }
 
-    /// Create an op to cast `val` to match the `expected` type.
+    /// Append an op to cast `val` to `expected` type, if it does not already have that type.
     #[inline]
     pub fn cast_to_expected_type_if_needed(
         &mut self,
@@ -859,6 +875,8 @@ where
     ) -> Result<Value<'ctx, 'val>> {
         if expected == val.r#type() {
             Ok(val)
+        } else if types_unify(expected, val.r#type()) {
+            self.unifiable_cast(location, val, expected)
         } else if is_felt_type(expected) {
             self.cast_to_felt_if_needed(codegen, location, val)
         } else if is_index(expected) {
@@ -866,9 +884,6 @@ where
         } else if is_bool(expected) {
             self.cast_to_bool_if_needed(codegen, location, val)
         } else {
-            // TODO: Must support array types by adding a unifiable cast.
-            // Alternatively, add LLZK type unification check to `llzk-rs` API and use that above
-            // instead of full equality.
             anyhow::bail!(
                 "Unsupported 'expected' type '{expected}' with value type {}",
                 val.r#type()
@@ -876,12 +891,12 @@ where
         }
     }
 
-    /// Copy the values in the source array into the destination array.
-    /// Assumes both arrays have the same number of dimensions, but each dimension
-    /// may be wider/narrower than the destination type.
-    /// General overview: create a N-dimensional nested for loop to copy. If the
-    /// indices are out-of-bounds, then the array is default-filled. Otherwise,
-    /// copy elements into destination
+    /// Copy the values in the source array into the destination array. Assumes both arrays have
+    /// unifiable element types the same number of dimensions, but each dimension may be wider or
+    /// narrower than the destination type.
+    ///
+    /// General overview: create a N-dimensional nested `for` loop to copy. If the indices are
+    /// out-of-bounds, then the array is default-filled. Otherwise, copy elements into destination.
     fn copy_into_array(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -894,14 +909,27 @@ where
     where
         'val: 'blk,
     {
-        let elem_ty = dst_ty.element_type();
-        assert!(elem_ty == src_ty.element_type());
-        assert!(dst_ty.num_dims() == src_ty.num_dims());
+        if codegen.config.verbose {
+            println!("[copy_into_array] src: {src}");
+            println!("[copy_into_array] src_ty: {src_ty}");
+            println!("[copy_into_array] dst: {dst}");
+            println!("[copy_into_array] dst_ty: {dst_ty}");
+        }
+        // Check caller pre-conditions to ensure this function is being used correctly.
+        assert_eq!(src.r#type(), src_ty.into());
+        assert_eq!(dst.r#type(), dst_ty.into());
+        assert_eq!(dst_ty.num_dims(), src_ty.num_dims());
+        let src_elem_ty = src_ty.element_type();
+        let dst_elem_ty = dst_ty.element_type();
+        assert!(types_unify(src_elem_ty, dst_elem_ty));
 
         let location = codegen.location_from_meta(meta);
 
         let bounds = zip(src_ty.dims(), dst_ty.dims())
             .map(|(src_dim, dest_dim)| {
+                if codegen.config.verbose {
+                    println!("[copy_into_array]   src_dim: {src_dim} -> dest_dim: {dest_dim}");
+                }
                 let src_val = self.array_dim_attr_to_idx_val(codegen, location, src_dim)?;
                 let dest_val = self.array_dim_attr_to_idx_val(codegen, location, dest_dim)?;
                 let condition = self.append_op_unnamed_result(arith::cmpi(
@@ -922,9 +950,14 @@ where
             })
             .collect::<Result<Vec<_>>>()?;
 
+        let element_types_not_equal = src_elem_ty != dst_elem_ty;
         self.gen_loop_nest(codegen, location, &bounds, move |fc, indices| {
-            let read = fc.append_op_unnamed_result(array::read(location, elem_ty, src, indices))?;
-            fc.append_op_no_result(array::write(location, dst, indices, read))
+            let mut val =
+                fc.append_op_unnamed_result(array::read(location, src_elem_ty, src, indices))?;
+            if element_types_not_equal {
+                val = fc.unifiable_cast(location, val, dst_elem_ty)?;
+            }
+            fc.append_op_no_result(array::write(location, dst, indices, val))
         })
     }
 
@@ -942,13 +975,13 @@ where
     where
         'val: 'blk,
     {
-        // Since there's no simple assignment in LLZK, just update the mapped Value
-        // which essentially propagates the assignment. The exception here is the ArrayType case:
-        // Circom allows (with a warning) arrays to be assigned to array variables
-        // of differing widths (wider/narrower) as long as both arrays have
-        // the same number of dimensions (e.g., var x[2][2] = y, where y is var[1][7], is allowed).
-        // If the dimension is wider, the values are truncated, and if they are narrower,
-        // the array is left in its current state.
+        // Since there's no simple assignment in LLZK, just update the mapped Value which
+        // essentially propagates the assignment. The exception here is the ArrayType case:
+        // Circom allows (with a warning) arrays to be assigned to array variables of differing
+        // widths (wider/narrower) as long as both arrays have the same number of dimensions
+        // (e.g., var x[2][2] = y, where y is var[1][7], is allowed). If the dimension is
+        // wider, the values are truncated, and if they are narrower, the array is left in
+        // its current state.
         let Ok(existing) = self.block_ctx.get_named_value(var) else {
             // Otherwise, set the var to point to rvalue
             return self.block_ctx.set_named_value(var.clone(), rvalue);
@@ -957,12 +990,13 @@ where
             // Replace existing value reference to rvalue
             return self.block_ctx.set_named_value(var.clone(), rvalue);
         }
-        if is_array_type(existing.r#type()) && is_array_type(rvalue.r#type()) {
-            let existing_arr_ty = ArrayType::try_from(existing.r#type()).unwrap();
-            let new_arr_ty = ArrayType::try_from(rvalue.r#type()).unwrap();
-            if existing_arr_ty.element_type() == new_arr_ty.element_type()
-                && existing_arr_ty.num_dims() == new_arr_ty.num_dims()
-                && existing_arr_ty.dims() != new_arr_ty.dims()
+        let existing_arr_ty = ArrayType::try_from(existing.r#type());
+        let rvalue_arr_ty = ArrayType::try_from(rvalue.r#type());
+        if let (Ok(existing_arr_ty), Ok(rvalue_arr_ty)) = (existing_arr_ty, rvalue_arr_ty) {
+            // If the arrays have the same number of dimensions and unifiable element type,
+            // then copy values from the `rvalue` array into the existing array.
+            if existing_arr_ty.num_dims() == rvalue_arr_ty.num_dims()
+                && types_unify(existing_arr_ty.element_type(), rvalue_arr_ty.element_type())
             {
                 // Copy values from the rvalue into the existing array.
                 // No need to update named value here.
@@ -972,9 +1006,12 @@ where
                     *existing,
                     existing_arr_ty,
                     rvalue,
-                    new_arr_ty,
+                    rvalue_arr_ty,
                 );
             }
+        }
+        if types_unify(existing.r#type(), rvalue.r#type()) {
+            todo!("'handle_simple_assignment' with unifiable but different types if this happens");
         }
         anyhow::bail!(
             "could not assign value of type '{}' to '{var}', which has type '{}'",
@@ -1628,11 +1665,23 @@ where
             return self.append_op_unnamed_result(arith::constant(codegen.context, dim, location));
         }
         if let Ok(sym_ref) = FlatSymbolRefAttribute::try_from(dim) {
-            return self.append_op_unnamed_result(poly::read_const(
-                location,
-                sym_ref.value(),
-                codegen.index_type(),
-            ));
+            // Check if this is a template binding reference
+            let sym_name = sym_ref.value();
+            if let Some(type_restriction) = self.poly_template_binding_names.get(sym_name) {
+                if let Some(ty) = type_restriction {
+                    // Read as the restricted type and then cast to index.
+                    let op =
+                        self.append_op_unnamed_result(poly::read_const(location, sym_name, *ty))?;
+                    return self.cast_to_index_if_needed(location, op);
+                } else {
+                    // If there is no type restriction just use `index`.
+                    return self.append_op_unnamed_result(poly::read_const(
+                        location,
+                        sym_name,
+                        codegen.index_type(),
+                    ));
+                }
+            }
         }
         unreachable!("Unhandled attribute in array dimensions {}", dim)
     }
@@ -1967,8 +2016,15 @@ where
         self.var_decl_types
     }
 
-    fn callback_store_poly_expr(&self, name: String, op: TemplateExprOp<'ctx>) {
-        todo!("BlockGenContext::store_template_poly_expr: {name} -> {op:?}");
+    fn callback_store_poly_expr(
+        &self,
+        name: String,
+        op: TemplateExprOp<'ctx>,
+    ) -> StringAttribute<'ctx> {
+        // TODO: How/where can it be store when using this general BlockGenContext?
+        // TODO: Also, add new name+type to `self.poly_template_binding_names` so future
+        //       calls to `get_dim_expr` can find it. The field will need RefCell.
+        todo!("BlockGenContext::callback_store_poly_expr: {name} -> {op:?}");
     }
 
     fn get_dim_expr(
@@ -1986,22 +2042,29 @@ where
                 Expression::Number(_, _) => {
                     unreachable!("handled by try_compute_as_i64")
                 }
-                Expression::Variable { meta, name, access } if access.is_empty()=> {
-                    if self.poly_template_binding_names.contains(name) {
+                Expression::Variable { meta, name, access } if access.is_empty() => {
+                    // Grab the template symbol binding name if it exists (first try `poly.param`
+                    // name then try `poly.expr` name). Otherwise, use `affine_map` to convert Value
+                    // to Attribute.
+                    if self.poly_template_binding_names.contains_key(name) {
                         ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
-                    } else if let Ok(v) = self.block_ctx.get_named_value(name) {
-                        ArrayDimensionResult::new(codegen.identity_affine_map_attr()?, &[*v])
                     } else {
-                        todo!("Handle Variable expression in dimension for non-integer, non-template parameter attributes in BlockGenContext")
+                        let expr_name = dim_expr_name(expr);
+                        if self.poly_template_binding_names.contains_key(&expr_name) {
+                            ArrayDimensionResult::new(codegen.flat_sym(expr_name).into(), &[])
+                        } else if let Ok(v) = self.block_ctx.get_named_value(name) {
+                            ArrayDimensionResult::new(codegen.identity_affine_map_attr()?, &[*v])
+                        } else {
+                            todo!("Handle dimension Variable expression in BlockGenContext")
+                        }
                     }
-                },
-                Expression::Variable { .. } /* with non-empty `access` */
+                }
+                // Variable case with non-empty `access`
+                Expression::Variable { .. }
                 | Expression::InlineSwitchOp { .. }
                 | Expression::PrefixOp { .. }
                 | Expression::InfixOp { .. }
-                | Expression::Call { .. } => {
-                    self.gen_template_poly_expr(codegen, dim_expr_name(expr), expr)
-                }
+                | Expression::Call { .. } => self.gen_template_poly_expr(codegen, expr),
                 // The remaining cases do not produce a scalar value.
                 // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
                 // Give the same error that the circom type checker gives. The type checker ran

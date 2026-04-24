@@ -580,6 +580,12 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         }
     }
 
+    /// Dump the current state of the LLZK module for debugging purposes.
+    #[allow(unused)]
+    pub fn dump_module(&self) {
+        println!("[LlzkCodegen::dump_module] {:?}", self.module.as_operation());
+    }
+
     /// Returns a reference to the operation builder.
     pub fn op_builder(&self) -> &OpBuilder<'ctx> {
         &self.builder
@@ -931,8 +937,45 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         }
     }
 
-    /// Run cleanup passes on the generated `Module`.
-    pub fn run_passes(&mut self) -> Result<()> {
+    /// Run the given pass pipeline on the given operation.
+    pub fn run_pass_pipeline_on<'c: 'a, 'a>(
+        &self,
+        pipeline: &str,
+        op: &impl OperationLike<'c, 'a>,
+    ) -> Result<()> {
+        if pipeline.is_empty() {
+            return Ok(());
+        }
+
+        let manager = PassManager::new(self.context);
+        // Disable verifier in case the given op is orphaned (i.e. not yet attached to a parent).
+        manager.enable_verifier(false);
+        // Print current IR on failure to make debugging easier.
+        enable_ir_printing(
+            &manager,
+            false,
+            false,
+            false,
+            false,
+            true,
+            Default::default(),
+            Default::default(),
+        );
+
+        // Setup and run the pass pipeline.
+        utility::register_all_passes();
+        utility::parse_pass_pipeline(manager.as_operation_pass_manager(), pipeline)
+            .map_err(anyhow::Error::from)?;
+
+        let mlir_result =
+            unsafe { mlir_sys::mlirPassManagerRunOnOp(manager.to_raw(), op.to_raw()) };
+        ensure!(mlir_result.value != 0, "failed to run pass pipeline: {pipeline}");
+
+        Ok(())
+    }
+
+    /// Run the pass pipeline from the command line on the generated `Module`.
+    pub fn run_user_pass_pipeline(&mut self) -> Result<()> {
         if self.config.pass_pipeline.is_empty() {
             return Ok(());
         }
@@ -1383,6 +1426,35 @@ pub fn next_in_block_mut<'c: 'a, 'a>(
     }
 }
 
+/// Set IR printing options on the given [PassManager].
+///
+/// This function provides an API fix that is added in a newer release of melior via
+/// [mlir-sys/melior#802](https://github.com/mlir-rs/melior/pull/802).
+#[allow(clippy::too_many_arguments)]
+pub fn enable_ir_printing(
+    _self: &melior::pass::PassManager,
+    before_all: bool,
+    after_all: bool,
+    module_scope: bool,
+    on_change: bool,
+    on_failure: bool,
+    flags: melior::ir::operation::OperationPrintingFlags,
+    tree_printing_path: std::path::PathBuf,
+) {
+    unsafe {
+        mlir_sys::mlirPassManagerEnableIRPrinting(
+            _self.to_raw(),
+            before_all,
+            after_all,
+            module_scope,
+            on_change,
+            on_failure,
+            flags.to_raw(),
+            melior::StringRef::new(&tree_printing_path.display().to_string()).to_raw(),
+        )
+    }
+}
+
 /// Removes itself from a parent block and returns the owned [Operation].
 pub fn remove_from_parent<'c: 'a, 'a>(op: &mut impl OperationMutLike<'c, 'a>) -> Operation<'c> {
     unsafe {
@@ -1670,12 +1742,18 @@ where
     }
 
     /// Names of `poly.param` and `poly.expr` defs visible in the current context.
-    fn poly_template_binding_names(&self) -> impl IntoIterator<Item = &String> {
+    fn poly_template_binding_names(
+        &self,
+    ) -> impl IntoIterator<Item = (String, Option<Type<'ctx>>)> {
         std::iter::empty()
     }
 
     /// Callback to store a `poly.expr` operation generated on the fly for an array dimension.
-    fn callback_store_poly_expr(&self, name: String, op: TemplateExprOp<'ctx>);
+    fn callback_store_poly_expr(
+        &self,
+        name: String,
+        op: TemplateExprOp<'ctx>,
+    ) -> StringAttribute<'ctx>;
 
     /// Get the mapping of `var` name to declared LLZK type.
     fn get_var_decl_types(&self) -> &HashMap<String, Type<'ctx>>;
@@ -1684,7 +1762,6 @@ where
     fn gen_template_poly_expr(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        name: String,
         target_expr: &Expression, // the result that should yield from the `poly.expr`
     ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
         /// Fully generate LLZK for a single [Statement] in a `poly.expr` initializer without
@@ -1919,6 +1996,7 @@ where
 
         //////////////////////////////////////////////////////////////////////////////////////////
         // Generate `poly.expr` and fill its initializer region.
+        let name = dim_expr_name(target_expr);
         let location = codegen.location_from_meta(target_expr.get_meta());
         let expr_op = poly::expr(location, &name, std::iter::empty())?;
         let mut expr_gen_ctx = BlockGenContext::new(
@@ -1936,9 +2014,23 @@ where
             gen_up_to_target(codegen, &mut expr_gen_ctx, target_expr, body_opt.unwrap(), &trace)?;
         expr_gen_ctx.append_op_no_result(poly::r#yield(location, val)?.into())?;
 
-        let name_sym = codegen.flat_sym(&name);
-        self.callback_store_poly_expr(name, expr_op);
-        ArrayDimensionResult::new(name_sym.into(), &[])
+        // Run cleanup passes to simplify and normalize the generated code a bit:
+        // - remove-dead-values: drop ops whose results are not used
+        // - sccp: constant fold and propagate values
+        // - canonicalize: mainly to remove unused `llzk.nondet` (which `remove-dead-values` cannot
+        //   remove due to memory effects) but also folds felt constants, etc.
+        // This cleanup is not simply an optimization. In some cases, an `llzk.nondet` may be
+        // generated that references a symbol defined by a different `poly.expr` due to the way
+        // array declaration and initialization are split up in the circom AST. This is illegal
+        // in LLZK but that `llzk.nondet` result value is unused so it can be removed.
+        codegen.run_pass_pipeline_on(
+            "any(composite-fixed-point-pass{pipeline=\"canonicalize,sccp,remove-dead-values\"})",
+            &expr_op,
+        )?;
+
+        let uniqued_name = self.callback_store_poly_expr(name, expr_op);
+        // Have to convert the StringAttribute to FlatSymbolRefAttribute before returning it.
+        ArrayDimensionResult::new(codegen.flat_sym(uniqued_name.value()).into(), &[])
     }
 }
 
@@ -1971,36 +2063,44 @@ pub fn comp_type<'ctx>(pod: PodType<'ctx>) -> Result<Type<'ctx>> {
 /// The generated name uniquely represents the expression structure so that the same expression
 /// always maps to the same name, enabling deduplication of `poly.expr` ops.
 pub fn dim_expr_name(expr: &Expression) -> String {
-    match expr {
-        Expression::Number(_, n) => n.to_string(),
-        Expression::Variable { name, access, .. } => {
-            if access.is_empty() {
-                name.clone()
-            } else {
-                // Reuse `Lvalue` string format but drop the "Var:" prefix.
-                Lvalue::new(name, Root::Var, access)
-                    .to_string()
-                    .trim_start_matches("Var:")
-                    .to_string()
+    fn visit(expr: &Expression) -> String {
+        match expr {
+            Expression::Number(_, n) => n.to_string(),
+            Expression::Variable { name, access, .. } => {
+                if access.is_empty() {
+                    name.clone()
+                } else {
+                    // Reuse `Lvalue` string format but drop the "Var:" prefix.
+                    Lvalue::new(name, Root::Var, access)
+                        .to_string()
+                        .trim_start_matches("Var:")
+                        .to_string()
+                }
             }
+            Expression::InfixOp { lhe, infix_op, rhe, .. } => {
+                format!("{}_{infix_op:?}_{}", visit(lhe), visit(rhe))
+            }
+            Expression::PrefixOp { prefix_op, rhe, .. } => {
+                format!("{prefix_op:?}_{}", visit(rhe))
+            }
+            Expression::InlineSwitchOp { cond, if_true, if_false, .. } => {
+                format!("{}?{}:{}", visit(cond), visit(if_true), visit(if_false))
+            }
+            Expression::Call { id, args, .. } => {
+                format!("{id}({})", args.iter().map(visit).collect::<Vec<_>>().join(","))
+            }
+            _ => unreachable!("dimension expression must produce a scalar value"),
         }
-        Expression::InfixOp { lhe, infix_op, rhe, .. } => {
-            format!("{}_{infix_op:?}_{}", dim_expr_name(lhe), dim_expr_name(rhe))
-        }
-        Expression::PrefixOp { prefix_op, rhe, .. } => {
-            format!("{prefix_op:?}_{}", dim_expr_name(rhe))
-        }
-        Expression::InlineSwitchOp { cond, if_true, if_false, .. } => {
-            format!(
-                "{}?{}:{}",
-                dim_expr_name(cond),
-                dim_expr_name(if_true),
-                dim_expr_name(if_false)
-            )
-        }
-        Expression::Call { id, args, .. } => {
-            format!("{id}({})", args.iter().map(dim_expr_name).collect::<Vec<_>>().join(","))
-        }
-        _ => unreachable!("dimension expression must produce a scalar value"),
     }
+    // Add starting location of the expression to the name to ensure (**assuming Meta information
+    // is accurate**) context sensitivity (i.e. expressions at different code locations may have a
+    // different value store and thus should be treated as different values).
+    format!("{}@{}", visit(expr), expr.get_meta().start)
+}
+
+/// Get the `sym_name` attribute from a `poly.expr` operation.
+pub fn get_poly_expr_name<'c: 'a, 'a>(op: &impl OperationLike<'c, 'a>) -> StringAttribute<'c> {
+    assert!(poly::is_expr_op(op), "expected a poly.expr operation");
+    let a = op.attribute("sym_name").expect("`poly.expr` op has `sym_name` attribute per ODS");
+    StringAttribute::try_from(a).expect("`sym_name` attribute is StringAttr per ODS")
 }
