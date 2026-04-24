@@ -62,7 +62,7 @@ use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use llzk::prelude::FUNC_NAME_COMPUTE;
 use llzk::prelude::FUNC_NAME_CONSTRAIN;
-use llzk::typing::types_equal_or_unifiable;
+use llzk::typing::types_unify;
 use melior::dialect::ods::math;
 use melior::ir::AttributeLike as _;
 use melior::ir::TypeLike as _;
@@ -785,7 +785,7 @@ where
         val: Value<'ctx, 'val>,
         expected: Type<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
-        assert!(types_equal_or_unifiable(val.r#type(), expected)); // pre-condition
+        assert!(types_unify(val.r#type(), expected)); // pre-condition
         self.append_op_unnamed_result(poly::unifiable_cast(location, val, expected))
     }
 
@@ -869,7 +869,7 @@ where
     ) -> Result<Value<'ctx, 'val>> {
         if expected == val.r#type() {
             Ok(val)
-        } else if types_equal_or_unifiable(expected, val.r#type()) {
+        } else if types_unify(expected, val.r#type()) {
             self.unifiable_cast(location, val, expected)
         } else if is_felt_type(expected) {
             self.cast_to_felt_if_needed(codegen, location, val)
@@ -915,7 +915,7 @@ where
         assert_eq!(dst_ty.num_dims(), src_ty.num_dims());
         let src_elem_ty = src_ty.element_type();
         let dst_elem_ty = dst_ty.element_type();
-        assert!(types_equal_or_unifiable(src_elem_ty, dst_elem_ty));
+        assert!(types_unify(src_elem_ty, dst_elem_ty));
 
         let location = codegen.location_from_meta(meta);
 
@@ -984,7 +984,7 @@ where
             // Replace existing value reference to rvalue
             return self.block_ctx.set_named_value(var.clone(), rvalue);
         }
-        if types_equal_or_unifiable(existing.r#type(), rvalue.r#type()) {
+        if types_unify(existing.r#type(), rvalue.r#type()) {
             todo!("'handle_simple_assignment' with unifiable but different types if this happens");
         }
         let existing_arr_ty = ArrayType::try_from(existing.r#type());
@@ -995,10 +995,7 @@ where
             // If the arrays have the same number of dimensions and unifiable element type,
             // then copy values from the `rvalue` array into the existing array.
             if existing_arr_ty.num_dims() == rvalue_arr_ty.num_dims()
-                && types_equal_or_unifiable(
-                    existing_arr_ty.element_type(),
-                    rvalue_arr_ty.element_type(),
-                )
+                && types_unify(existing_arr_ty.element_type(), rvalue_arr_ty.element_type())
             {
                 // Copy values from the rvalue into the existing array.
                 // No need to update named value here.
