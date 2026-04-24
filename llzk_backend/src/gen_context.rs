@@ -1991,7 +1991,10 @@ where
         name: String,
         op: TemplateExprOp<'ctx>,
     ) -> StringAttribute<'ctx> {
-        todo!("BlockGenContext::store_template_poly_expr: {name} -> {op:?}");
+        // TODO: How/where can it be store when using this general BlockGenContext?
+        // TODO: Also, add new name+type to `self.poly_template_binding_names` so future
+        //       calls to `get_dim_expr` can find it. The field will need RefCell.
+        todo!("BlockGenContext::callback_store_poly_expr: {name} -> {op:?}");
     }
 
     fn get_dim_expr(
