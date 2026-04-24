@@ -7,6 +7,7 @@ use crate::lvalue::Root;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::append_tail;
+use crate::shared::dim_expr_name;
 use crate::shared::is_bool;
 use crate::shared::is_index;
 use crate::shared::new_array_type;
@@ -2012,12 +2013,20 @@ where
                     unreachable!("handled by try_compute_as_i64")
                 }
                 Expression::Variable { meta, name, access } if access.is_empty() => {
+                    // Grab the template symbol binding name if it exists (first try `poly.param`
+                    // name then try `poly.expr` name). Otherwise, use `affine_map` to convert Value
+                    // to Attribute.
                     if self.poly_template_binding_names.contains_key(name) {
                         ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
-                    } else if let Ok(v) = self.block_ctx.get_named_value(name) {
-                        ArrayDimensionResult::new(codegen.identity_affine_map_attr()?, &[*v])
                     } else {
-                        todo!("Handle Variable expression in dimension for non-integer, non-template parameter attributes in BlockGenContext")
+                        let expr_name = dim_expr_name(expr);
+                        if self.poly_template_binding_names.contains_key(&expr_name) {
+                            ArrayDimensionResult::new(codegen.flat_sym(expr_name).into(), &[])
+                        } else if let Ok(v) = self.block_ctx.get_named_value(name) {
+                            ArrayDimensionResult::new(codegen.identity_affine_map_attr()?, &[*v])
+                        } else {
+                            todo!("Handle dimension Variable expression in BlockGenContext")
+                        }
                     }
                 }
                 // Variable case with non-empty `access`

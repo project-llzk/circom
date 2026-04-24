@@ -17,6 +17,7 @@ use crate::program_ext::ProgramInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::comp_type;
+use crate::shared::dim_expr_name;
 use crate::shared::get_poly_expr_name;
 use crate::shared::map_array_inner_type;
 use crate::shared::ArrayDimension;
@@ -780,12 +781,17 @@ where
                     unreachable!("handled by try_compute_as_i64")
                 }
                 Expression::Variable { meta, name, access } if access.is_empty() => {
-                    // Grab the parameter name if it exists, else, defer to `BlockGenContext`.
+                    // Grab the template symbol binding name if it exists (first try `poly.param`
+                    // name then try `poly.expr` name). Otherwise, defer to `BlockGenContext`.
                     if self.template_def.has_const_param_named(name) {
                         ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
                     } else {
-                        // Other variables are unsupported, defer to `BlockGenContext`
-                        ArrayDimensionResult::insufficient_data_result()
+                        let expr_name = dim_expr_name(expr);
+                        if self.template_def.has_const_expr_named(&expr_name) {
+                            ArrayDimensionResult::new(codegen.flat_sym(expr_name).into(), &[])
+                        } else {
+                            ArrayDimensionResult::insufficient_data_result() // defer to `BlockGenContext`
+                        }
                     }
                 }
                 // Variable case with non-empty `access`
