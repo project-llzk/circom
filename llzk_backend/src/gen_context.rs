@@ -814,24 +814,39 @@ where
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
-        if !is_felt_type(val.r#type()) {
-            self.cast_to_felt(codegen, location, val)
-        } else {
+        if is_felt_type(val.r#type()) {
             Ok(val)
+        } else if is_type_variable(val.r#type()) {
+            self.unifiable_cast(location, val, codegen.felt_type().into())
+        } else {
+            self.cast_to_felt(codegen, location, val)
         }
+    }
+
+    /// Append a cast to index type.
+    #[inline]
+    pub fn cast_to_index(
+        &mut self,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        self.append_op_unnamed_result(cast::toindex(location, val).into())
     }
 
     /// Append a cast to index type if the given value is not already an index.
     #[inline]
     pub fn cast_to_index_if_needed(
         &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
-        if !is_index(val.r#type()) {
-            self.append_op_unnamed_result(cast::toindex(location, val).into())
-        } else {
+        if is_index(val.r#type()) {
             Ok(val)
+        } else if is_type_variable(val.r#type()) {
+            self.unifiable_cast(location, val, codegen.index_type())
+        } else {
+            self.cast_to_index(location, val)
         }
     }
 
@@ -885,7 +900,7 @@ where
         } else if is_felt_type(expected) {
             self.cast_to_felt_if_needed(codegen, location, val)
         } else if is_index(expected) {
-            self.cast_to_index_if_needed(location, val)
+            self.cast_to_index_if_needed(codegen, location, val)
         } else if is_bool(expected) {
             self.cast_to_bool_if_needed(codegen, location, val)
         } else {
@@ -1061,7 +1076,7 @@ where
                             todo!("Handle Substitution component access in BlockGenContext")
                         }
                     }?;
-                    self.cast_to_index_if_needed(location, idx)
+                    self.cast_to_index_if_needed(codegen, location, idx)
                 })
                 .collect::<Result<Vec<Value<'_, '_>>>>()?;
             let arr_ref = *self.block_ctx.get_named_value(var)?;
@@ -1084,7 +1099,7 @@ where
             .into_iter()
             .map(|e| {
                 let val = e.gen_llzk_in_block(codegen, self, info)?;
-                self.append_op_unnamed_result(cast::toindex(location, val))
+                self.cast_to_index(location, val)
             })
             .collect()
     }
@@ -1653,7 +1668,7 @@ where
                     // Read as the restricted type and then cast to index.
                     let op =
                         self.append_op_unnamed_result(poly::read_const(location, sym_name, *ty))?;
-                    return self.cast_to_index_if_needed(location, op);
+                    return self.cast_to_index_if_needed(codegen, location, op);
                 } else {
                     // If there is no type restriction just use `index`.
                     return self.append_op_unnamed_result(poly::read_const(
@@ -1761,7 +1776,7 @@ where
         dimension: &ArrayDimension<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
         // Ensure all symbols are of index type
-        let dimension = &self.transform_symbols_to_index(location, dimension)?;
+        let dimension = &self.transform_symbols_to_index(codegen, location, dimension)?;
         let const_dim = IntegerAttribute::try_from(dimension);
         if let Ok(subarr_ty) = ArrayType::try_from(value.r#type()) {
             let arr_ty = dimension.new_array_type(&subarr_ty.into());
@@ -1952,10 +1967,11 @@ where
     #[inline]
     fn transform_symbols_to_index(
         &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         dimension: &ArrayDimension<'ctx, 'val>,
     ) -> Result<ArrayDimension<'ctx, 'val>> {
-        dimension.transform(|val| self.cast_to_index_if_needed(location, val))
+        dimension.transform(|val| self.cast_to_index_if_needed(codegen, location, val))
     }
 
     /// Handle a [program_structure::ast::Statement::Declaration] by generating a nondet felt value

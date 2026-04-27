@@ -512,7 +512,7 @@ impl<'ctx> TypeSizeExpr<'ctx> {
                             e.to_index_value(codegen, fc, location, None)),
                     None => {
                         let v = fc.block_ctx.get_named_value(a.root().as_str()?)?;
-                        fc.cast_to_index_if_needed(location, *v)
+                        fc.cast_to_index_if_needed(codegen, location, *v)
                     }
                 }
             }
