@@ -180,7 +180,7 @@ impl<'ctx> SubcmpType<'ctx> {
 
     /// Type used to represent template parameters.
     pub fn param_type(&self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Type<'ctx> {
-        codegen.index_type().into()
+        codegen.felt_type().into()
     }
 
     /// Returns the pod type for the template parameters.

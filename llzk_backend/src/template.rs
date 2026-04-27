@@ -772,6 +772,17 @@ where
         self.var_decl_types
     }
 
+    fn poly_template_binding_names(
+        &self,
+    ) -> impl IntoIterator<Item = (String, Option<Type<'ctx>>)> {
+        self.struct_def.r#type().params_vec().into_iter().map(|attr| {
+            let sym: FlatSymbolRefAttribute = attr.try_into().unwrap();
+            // TODO: Replace this harcoded None with the type once support for it reaches
+            // downstream.
+            (sym.value().to_owned(), None)
+        })
+    }
+
     fn callback_store_poly_expr(
         &self,
         _: String,
