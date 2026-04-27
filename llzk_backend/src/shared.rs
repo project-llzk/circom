@@ -1091,7 +1091,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
                 Ok(acc.add(self.count_input_signals(r.r#type())?))
             })
         } else if let Ok(st) = StructType::try_from(t) {
-            dbg!(self.get_template_input_types(get_name_tail(&st)?)?)
+            self.get_template_input_types(get_name_tail(&st)?)?
                 .iter()
                 .try_fold(TypeSizeExpr::zero(), |acc, t| Ok(acc.add(self.count_input_signals(*t)?)))
         } else {
