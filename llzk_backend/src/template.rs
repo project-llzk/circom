@@ -1419,6 +1419,7 @@ where
                             &[],
                             Some(codegen.pod_type(&[])),
                         ))?;
+                        // We can't have this call inside the constraint function.
                         let instance = fc.gen_compute_call(
                             subcmp_type.r#type().try_into()?,
                             empty_inputs,
