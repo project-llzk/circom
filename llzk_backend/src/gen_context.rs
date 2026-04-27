@@ -2185,34 +2185,14 @@ where
                 let cond_val = cond.gen_llzk_in_block(codegen, block_gen, info)?;
                 let condition = block_gen.cast_to_bool_if_needed(codegen, location, cond_val)?;
 
-                // Then arm: generate in a nested block so `gen_llzk_in_block` can use `block_gen`
-                let then_region = Region::new();
-                let then_block = then_region.append_block(Block::new(&[]));
-                block_gen.block_ctx.push(then_block);
-                let then_value = if_true.gen_llzk_in_block(codegen, block_gen, info)?;
-                block_gen.block_ctx.pop();
-                no_results(then_block.append_operation(scf::r#yield(&[then_value], location)))?;
-
-                // Else arm
-                let else_region = Region::new();
-                let else_block = else_region.append_block(Block::new(&[]));
-                block_gen.block_ctx.push(else_block);
-                let else_value = if_false.gen_llzk_in_block(codegen, block_gen, info)?;
-                block_gen.block_ctx.pop();
-                no_results(else_block.append_operation(scf::r#yield(&[else_value], location)))?;
-
-                assert_eq!(
-                    then_value.r#type(),
-                    else_value.r#type(),
-                    "then and else branches of scf.if must have matching value types"
-                );
-                block_gen.append_op_unnamed_result(scf::r#if(
-                    condition,
-                    &[then_value.r#type()],
-                    then_region,
-                    else_region,
-                    location,
-                ))
+                // Generate branch arms nested blocks so `gen_llzk_in_block` can use `block_gen`
+                let then_info = block_gen.gen_scf_if_arm_no_var_overwrites(location, |g| {
+                    if_true.gen_llzk_in_block(codegen, g, info)
+                })?;
+                let else_info = block_gen.gen_scf_if_arm_no_var_overwrites(location, |g| {
+                    if_false.gen_llzk_in_block(codegen, g, info)
+                })?;
+                block_gen.gen_scf_if(codegen, location, condition, then_info, else_info, None)
             }
             Expression::ArrayInLine { meta, values } => {
                 let location = codegen.location_from_meta(meta);
