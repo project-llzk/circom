@@ -25,6 +25,7 @@ use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
 use crate::shared::TmplParamsInstance;
+use crate::shared::TypeSizeExpr;
 use crate::subcmp::names::COMP;
 use crate::subcmp::names::COUNT;
 use crate::subcmp::names::PARAMS;
@@ -38,7 +39,6 @@ use anyhow::anyhow;
 use anyhow::Result;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::constrain;
-use llzk::dialect::llzk::nondet;
 use llzk::dialect::pod;
 use llzk::dialect::poly;
 use llzk::dialect::r#struct;
@@ -55,6 +55,7 @@ use llzk::prelude::StringAttribute;
 use llzk::prelude::StringRef;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRefMut;
+use llzk::prelude::StructType;
 use llzk::prelude::TemplateExprOp;
 use llzk::prelude::TemplateOpLike;
 use llzk::prelude::TemplateOpRefMut;
@@ -1302,6 +1303,40 @@ where
     }
 }
 
+/// Counts the size of the inputs.
+fn count_input_size<'ctx>(
+    subcmp_struct_type: StructType<'ctx>,
+    template_name: &str,
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+) -> Result<TypeSizeExpr<'ctx>> {
+    let template_data = codegen
+        .program
+        .get_templates(false)
+        .into_iter()
+        .find(|t| t.get_name() == template_name)
+        .ok_or_else(|| anyhow::anyhow!("template '{template_name}' not found"))?;
+    let template_params = TmplParamsInstance::new(
+        template_data.get_name_of_params(),
+        subcmp_struct_type.params_vec(),
+    );
+
+    fn acc_add<'ctx>(
+        acc: TypeSizeExpr<'ctx>,
+        signal_size: Result<TypeSizeExpr<'ctx>>,
+    ) -> Result<TypeSizeExpr<'ctx>> {
+        Ok(acc.add(signal_size?))
+    }
+    template_data
+        .get_declaration_inputs()
+        .iter()
+        .map(|(signal_name, _)| -> Result<TypeSizeExpr<'ctx>> {
+            let signal_type = template_params
+                .map_type(codegen.get_input_signal_type(template_name, signal_name)?)?;
+            codegen.count_input_signals(signal_type)
+        })
+        .try_fold(TypeSizeExpr::zero(), acc_add)
+}
+
 impl<'decls, 'ctx, 'str, 'func, 'blk, 'val>
     GenerateLLZKInTemplate<'decls, 'ctx, 'str, 'func, 'blk, 'val> for Expression
 where
@@ -1345,11 +1380,12 @@ where
                 // Names of the template parameters
                 let params_formals = codegen.program.get_template_data(id).get_name_of_params();
 
-                let subcmp_type = SubcmpType::new(
-                    dimensions.struct_type_with_concrete_dimensions(codegen, id).into(),
-                    id.clone(),
-                );
-                let count = codegen.count_input_signals(subcmp_type.r#type())?;
+                let subcmp_struct_type =
+                    dimensions.struct_type_with_concrete_dimensions(codegen, id);
+                let subcmp_type = SubcmpType::new(subcmp_struct_type.into(), id.clone());
+
+                let count = count_input_size(subcmp_struct_type, id, codegen)?;
+
                 let records = subcmp_type.comp_pod_records(codegen);
 
                 // Create a `pod.new` operation with the memory for the subcomponent.
