@@ -1237,6 +1237,19 @@ where
             }};
         }
 
+        // If both sides can be converted to `felt` type via `unifiable_cast`, do so and then
+        // generate the op. This should only be used as a last resort after more specific type
+        // checks and conversions because it will generate what's described or return an `Err`.
+        macro_rules! try_unifiable_felt_op {
+            ($op_path:path) => {{
+                let loc = codegen.location_from_meta(meta);
+                let felt_ty = codegen.felt_type().into();
+                let lhs = self.unifiable_cast(loc, lhs, felt_ty)?;
+                let rhs = self.unifiable_cast(loc, rhs, felt_ty)?;
+                return self.append_op_unnamed_result($op_path(loc, lhs, rhs)?);
+            }};
+        }
+
         macro_rules! try_index_op {
             ($op_path:path) => {{
                 try_callback_for_type!(shared::is_index, |_| {
@@ -1256,11 +1269,12 @@ where
         }
 
         // Macro to handle the common pattern for felt and index type checks.
-        // For index operations that use felt:: module and simple index operations.
+        // For index operations that use `felt::` module and simple index operations.
         macro_rules! try_felt_or_index_op {
             ($felt_op:path, $index_op:path) => {{
                 try_felt_op!($felt_op);
                 try_index_op!($index_op);
+                try_unifiable_felt_op!($felt_op);
             }};
         }
 
@@ -1268,11 +1282,12 @@ where
             ($felt_op:path, $math_op:path) => {{
                 try_felt_op!($felt_op);
                 try_math_op!($math_op);
+                try_unifiable_felt_op!($felt_op);
             }};
         }
 
         // Macro to handle the common pattern for felt and index type checks.
-        // For comparison operations that use bool:: module and index::cmpi.
+        // For comparison operations that use `bool::` module and `index::cmpi`.
         macro_rules! try_bool_cmp_op {
             ($bool_op:path, $cmp:ident) => {{
                 try_felt_op!($bool_op);
@@ -1280,6 +1295,7 @@ where
                     let loc = codegen.location_from_meta(meta);
                     Ok(index::cmp(codegen.context, arith::CmpiPredicate::$cmp, lhs, rhs, loc))
                 });
+                try_unifiable_felt_op!($bool_op);
             }};
         }
 
@@ -1345,14 +1361,6 @@ where
                 try_felt_or_index_op!(felt::bit_xor, index::xor);
             }
         }
-        let err_msg = format!(
-            "Cannot generate LLZK for infix {:?} with LHS type '{}' and RHS type '{}'",
-            op,
-            lhs.r#type(),
-            rhs.r#type()
-        );
-        codegen.emit_circom_error(meta, err_msg.as_str(), ReportCode::InfixOperatorWithWrongTypes);
-        Err(anyhow!(err_msg))
     }
 
     /// Create a new `scf.yield` op, in the given block, that yields multiple values with associated
