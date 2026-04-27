@@ -1096,12 +1096,11 @@ where
                                         let subcmp_type = template.get_subcmp_type(var)?;
 
                                         if val.r#type() != subcmp_type {
-                                            val =
-                                                fc.append_op_unnamed_result(poly::unifiable_cast(
-                                                    codegen.location_from_meta(meta),
-                                                    val,
-                                                    template.get_subcmp_type(var)?,
-                                                ))?;
+                                            val = fc.unifiable_cast(
+                                                codegen.location_from_meta(meta),
+                                                val,
+                                                template.get_subcmp_type(var)?,
+                                            )?;
                                         }
                                     };
 
