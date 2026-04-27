@@ -683,9 +683,20 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         })?;
     }
 
+    fn decl_inits<'ctx>(
+        decl_inits: HashMap<String, Operation<'ctx>>,
+        sort: bool,
+    ) -> Vec<(String, Operation<'ctx>)> {
+        let mut v: Vec<_> = decl_inits.into_iter().collect();
+        if sort {
+            v.sort_by(|(lhs, _), (rhs, _)| lhs.cmp(rhs));
+        }
+        v
+    }
+
     // Insert the Operations created from variable Declaration statements and map the circom
     // variable name to LLZK op result Value (do this in each function).
-    for (name, op) in declarations.decl_inits {
+    for (name, op) in decl_inits(declarations.decl_inits, codegen.config.stabilize) {
         // Insert (a clone of) the declaration into the compute function.
         compute_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op.clone()))?;
         // Insert the declaration into the constrain function.
