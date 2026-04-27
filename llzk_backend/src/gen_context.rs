@@ -788,8 +788,11 @@ where
         val: Value<'ctx, 'val>,
         expected: Type<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
-        assert!(types_unify(val.r#type(), expected)); // pre-condition
-        self.append_op_unnamed_result(poly::unifiable_cast(location, val, expected))
+        if types_unify(val.r#type(), expected) {
+            self.append_op_unnamed_result(poly::unifiable_cast(location, val, expected))
+        } else {
+            anyhow::bail!("Unsupported cast to '{expected}' from value type '{}'", val.r#type())
+        }
     }
 
     /// Append a cast to felt (field element) type.
@@ -842,11 +845,12 @@ where
     ) -> Result<Value<'ctx, 'val>> {
         // The conversion to bool is simply to check `!=0` which is the same as
         // `normalize()` in `modular_arithmetic.rs`.
-        if is_felt_type(val.r#type()) {
+        let val_type = val.r#type();
+        if is_felt_type(val_type) {
             let zero = self
                 .append_op_unnamed_result(codegen.new_felt_const_op(&BigInt::zero(), location)?)?;
             self.append_op_unnamed_result(bool::ne(location, val, zero)?)
-        } else if is_index(val.r#type()) {
+        } else if is_index(val_type) {
             let zero = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
             self.append_op_unnamed_result(index::cmp(
                 codegen.context,
@@ -856,8 +860,12 @@ where
                 location,
             ))
         } else {
-            assert!(is_bool(val.r#type()));
-            Ok(val)
+            let bool_type = codegen.bool_type().into();
+            if val_type == bool_type {
+                Ok(val)
+            } else {
+                self.unifiable_cast(location, val, bool_type)
+            }
         }
     }
 
