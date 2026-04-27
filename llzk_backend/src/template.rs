@@ -22,6 +22,7 @@ use crate::shared::get_poly_expr_name;
 use crate::shared::map_array_inner_type;
 use crate::shared::ArrayDimension;
 use crate::shared::ArrayDimensionResult;
+use crate::shared::ArrayDimensions;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
 use crate::shared::TmplParamsInstance;
@@ -64,6 +65,8 @@ use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use llzk::symbol_table;
 use melior::dialect::arith;
+use melior::ir::Attribute;
+use melior::ir::Location;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -1374,85 +1377,48 @@ where
                 if meta.get_type_knowledge().is_component()
                     && codegen.program.contains_template(id) =>
             {
-                let location = codegen.location_from_meta(meta);
-                let dimensions = template.get_dim_exprs(codegen, args)?;
-
-                // Names of the template parameters
-                let params_formals = codegen.program.get_template_data(id).get_name_of_params();
-
-                let subcmp_struct_type =
-                    dimensions.struct_type_with_concrete_dimensions(codegen, id);
-                let subcmp_type = SubcmpType::new(subcmp_struct_type.into(), id.clone());
-
-                let count = count_input_size(subcmp_struct_type, id, codegen)?;
-
-                let records = subcmp_type.comp_pod_records(codegen);
+                let scope = CtorCallScope::new(meta, id, args, codegen, template)?;
 
                 // Create a `pod.new` operation with the memory for the subcomponent.
-                template.and_then_same(|fc, _| {
-                    let params = std::iter::zip(
-                        params_formals,
-                        dimensions.attrs().into_iter().map(|attr| {
-                            let op = type_switch! { attr,
-                                IntegerAttribute as _ => arith::constant(codegen.context, attr, location),
-                                FlatSymbolRefAttribute as sym => poly::read_const(location, sym.value(), subcmp_type.param_type(codegen)),
-                                else => unreachable!("Attribute {}", attr)
-                            };
-                            fc.append_op_unnamed_result(op)
-                        }),
-                    )
-                    .map(|(formal, value)| Ok(RecordValue::new(StringRef::new(formal), value?)))
-                    .collect::<Result<Vec<_>>>()?;
-                    let params_pod = fc.append_op_unnamed_result(pod::new(
-                        codegen.op_builder(),
-                        location,
-                        &params,
-                        Some(subcmp_type.params_pod_type(codegen)),
-                    ))?;
-                    let pod_type = Some(codegen.pod_type(&records));
-                    // If the count == 0 means that the subcomponent has no inputs. In that case we
-                    // call `@compute` here directly and store it into COMP.
-                    let records = if count.is_const_zero() {
-                        let empty_inputs = fc.append_op_unnamed_result(pod::new(
-                            codegen.op_builder(),
-                            location,
-                            &[],
-                            Some(codegen.pod_type(&[])),
-                        ))?;
-                        // We can't have this call inside the constraint function.
-                        let instance = fc.gen_compute_call(
-                            subcmp_type.r#type().try_into()?,
-                            empty_inputs,
-                            params_pod,
-                            location,
-                            codegen,
-                        )?;
-                        vec![(COMP, instance)]
-                    } else {
-                        vec![
-                            (
-                                COUNT,
-                                count.to_index_value(
+                template.and_then(
+                    |fc, _| {
+                        scope.emit_ctor_call(codegen, fc, |fc, params_pod| {
+                            // If the count == 0 means that the subcomponent has no inputs. In that case we
+                            // call `@compute` here directly and store it into COMP.
+                            Ok(if scope.count.is_const_zero() {
+                                let empty_inputs = fc.append_op_unnamed_result(pod::new(
+                                    codegen.op_builder(),
+                                    scope.location,
+                                    &[],
+                                    Some(codegen.pod_type(&[])),
+                                ))?;
+                                // We can't have this call inside the constraint function.
+                                let instance = fc.gen_compute_call(
+                                    scope.subcmp_type.r#type().try_into()?,
+                                    empty_inputs,
+                                    params_pod,
+                                    scope.location,
                                     codegen,
-                                    fc,
-                                    location,
-                                    Some(&TmplParamsInstance::new(params_formals, &dimensions)),
-                                )?,
-                            ),
-                            (PARAMS, params_pod),
-                        ]
-                    }
-                    .into_iter()
-                    .map(|(name, value)| RecordValue::new(StringRef::new(name), value))
-                    .collect::<Vec<_>>();
-
-                    fc.append_op_unnamed_result(pod::new(
-                        codegen.op_builder(),
-                        location,
-                        &records,
-                        pod_type,
-                    ))
-                })
+                                )?;
+                                vec![(COMP, instance)]
+                            } else {
+                                vec![
+                                    (
+                                        COUNT,
+                                        scope.count.to_index_value(
+                                            codegen,
+                                            fc,
+                                            scope.location,
+                                            Some(&scope.tmpl_params_instance(codegen)),
+                                        )?,
+                                    ),
+                                    (PARAMS, params_pod),
+                                ]
+                            })
+                        })
+                    },
+                    |fc, _| scope.emit_ctor_call(codegen, fc, |_, _| Ok(vec![])),
+                )
             }
             Expression::UniformArray { meta, value, dimension } => {
                 let location = codegen.location_from_meta(meta);
@@ -1474,5 +1440,125 @@ where
                 template.and_then_same(|fc, _| expr.gen_llzk_in_block(codegen, fc, template.into()))
             }
         }
+    }
+}
+
+/// Groups the related data for emitting IR for subcomponent constructor calls.
+///
+/// Exposes helper functions for emitting the common parts of the IR between the `compute` and
+/// `constrain` functions.
+struct CtorCallScope<'ast, 'ctx, 'val> {
+    /// Name of the subcomponent's template
+    id: &'ast str,
+    /// Source location.
+    location: Location<'ctx>,
+    /// Dimensions derived from the template parameters.
+    dimensions: ArrayDimensions<'ctx, 'val>,
+    /// Type of the subcomponent.
+    subcmp_type: SubcmpType<'ctx>,
+    /// The input size count of the subcomponent.
+    count: TypeSizeExpr<'ctx>,
+    /// Subcomponent memory pod type.
+    pod_type: PodType<'ctx>,
+}
+
+impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
+    /// Creates a new scope.
+    fn new(
+        meta: &'ast Meta,
+        id: &'ast str,
+        args: &'ast [Expression],
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        template: &TemplateContext<'_, 'ctx, '_, '_, '_, 'val>,
+    ) -> Result<Self> {
+        let location = codegen.location_from_meta(meta);
+        let dimensions = template.get_dim_exprs(codegen, args)?;
+        let subcmp_struct_type = dimensions.struct_type_with_concrete_dimensions(codegen, id);
+        let subcmp_type = SubcmpType::new(subcmp_struct_type.into(), id.to_owned());
+
+        let count = count_input_size(subcmp_struct_type, id, codegen)?;
+
+        let records = subcmp_type.comp_pod_records(codegen);
+        let pod_type = codegen.pod_type(&records);
+        Ok(Self { id, location, dimensions, subcmp_type, count, pod_type })
+    }
+
+    /// Returns the list of formals associated to the template parameters.
+    fn params_formals<'f>(
+        &self,
+        codegen: &LlzkCodegen<'f, 'ctx, impl ProgramLike>,
+    ) -> &'f [String] {
+        codegen.program.get_template_data(self.id).get_name_of_params()
+    }
+
+    /// Returns an instance of a template parameters instance map.
+    fn tmpl_params_instance<'f>(
+        &self,
+        codegen: &LlzkCodegen<'f, 'ctx, impl ProgramLike>,
+    ) -> TmplParamsInstance<'f, 'ctx> {
+        TmplParamsInstance::new(self.params_formals(codegen), &self.dimensions)
+    }
+
+    /// Emits IR for reading a template parameter, represented by the given attribute.
+    fn emit_param_op(
+        &self,
+        attr: Attribute<'ctx>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        let op = type_switch! { attr,
+            IntegerAttribute as _ => arith::constant(codegen.context, attr, self.location),
+            FlatSymbolRefAttribute as sym => poly::read_const(self.location, sym.value(), self.subcmp_type.param_type(codegen)),
+            else => unreachable!("Attribute {}", attr)
+        };
+        fc.append_op_unnamed_result(op)
+    }
+
+    /// Emits IR representing a read of each template parameter.
+    fn emit_params<'decls, 'func, 'blk>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        fc: &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
+    ) -> Result<Vec<RecordValue<'ctx, 'val>>> {
+        std::iter::zip(self.params_formals(codegen), self.dimensions.attrs())
+            .map(|(formal, attr)| {
+                let value = self.emit_param_op(attr, codegen, fc)?;
+                Ok(RecordValue::new(StringRef::new(formal), value))
+            })
+            .collect()
+    }
+
+    /// Shared parts between the constraint and compute functions when emitting IR for subcomponent
+    /// constructor calls.
+    ///
+    /// Accepts a callback that returns the list of initialized records in the subcomponent memory pod.
+    fn emit_ctor_call<'r, 'decls, 'str, 'func, 'blk>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        fc: &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
+        mut cb: impl FnMut(
+            &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
+            Value<'ctx, 'val>,
+        ) -> Result<Vec<(&'static str, Value<'ctx, 'val>)>>,
+    ) -> Result<Value<'ctx, 'val>> {
+        let params = self.emit_params(codegen, fc)?;
+        let params_pod = fc.append_op_unnamed_result(pod::new(
+            codegen.op_builder(),
+            self.location,
+            &params,
+            Some(self.subcmp_type.params_pod_type(codegen)),
+        ))?;
+
+        let records = cb(fc, params_pod)?
+            .into_iter()
+            .map(|(name, value)| RecordValue::new(StringRef::new(name), value))
+            .collect::<Vec<_>>();
+
+        fc.append_op_unnamed_result(pod::new(
+            codegen.op_builder(),
+            self.location,
+            &records,
+            Some(self.pod_type),
+        ))
     }
 }
