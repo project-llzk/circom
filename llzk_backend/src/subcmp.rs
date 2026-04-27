@@ -178,12 +178,17 @@ impl<'ctx> SubcmpType<'ctx> {
         ArrayType::try_from(self.inner).map(|t| t.element_type()).unwrap_or(self.inner)
     }
 
+    /// Type used to represent template parameters.
+    pub fn param_type(&self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Type<'ctx> {
+        codegen.index_type().into()
+    }
+
     /// Returns the pod type for the template parameters.
     pub fn params_pod_type(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     ) -> PodType<'ctx> {
-        let param_type = Type::from(codegen.index_type());
+        let param_type = self.param_type(codegen);
         // These need to be in declaration order.
         let params_records = codegen
             .program

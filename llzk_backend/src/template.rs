@@ -40,10 +40,13 @@ use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::constrain;
 use llzk::dialect::llzk::nondet;
 use llzk::dialect::pod;
+use llzk::dialect::poly;
 use llzk::dialect::r#struct;
 use llzk::prelude::ArrayType;
 use llzk::prelude::BlockRef;
+use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
+use llzk::prelude::IntegerAttribute;
 use llzk::prelude::LoopBoundsAttribute;
 use llzk::prelude::MemberDefOpLike as _;
 use llzk::prelude::PodType;
@@ -59,6 +62,7 @@ use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use llzk::symbol_table;
+use melior::dialect::arith;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -1353,12 +1357,12 @@ where
                     let params = std::iter::zip(
                         params_formals,
                         dimensions.attrs().into_iter().map(|attr| {
-                            let _ = attr;
-                            // Temporary
-                            fc.append_op_unnamed_result(nondet(
-                                location,
-                                codegen.index_type().into(),
-                            ))
+                            let op = type_switch! { attr,
+                                IntegerAttribute as _ => arith::constant(codegen.context, attr, location),
+                                FlatSymbolRefAttribute as sym => poly::read_const(location, sym.value(), subcmp_type.param_type(codegen)),
+                                else => unreachable!("Attribute {}", attr)
+                            };
+                            fc.append_op_unnamed_result(op)
                         }),
                     )
                     .map(|(formal, value)| Ok(RecordValue::new(StringRef::new(formal), value?)))
