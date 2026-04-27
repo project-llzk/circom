@@ -14,18 +14,12 @@ use crate::subcmp::SubcmpInfo;
 use crate::template::TemplateContext;
 use anyhow::Result;
 use llzk::dialect::r#struct;
-use llzk::map_operands::MapOperandsBuilder;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
-use llzk::prelude::PodType;
-use llzk::prelude::StructType;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
-use llzk::value_ext::OwningValueRange;
-use llzk::value_ext::ValueRange;
 use program_structure::ast::Access;
 use program_structure::ast::Expression;
-use std::convert::TryFrom as _;
 use std::convert::TryInto as _;
 use std::fmt;
 

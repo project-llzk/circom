@@ -1,14 +1,10 @@
 //! Helper types for handling subcomponents.
 
 use crate::function::FunctionContext;
-use crate::gen_context::BlockGenContext;
 use crate::program_ext::ProgramInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared::map_array_inner_type;
 use crate::shared::LlzkCodegen;
-use crate::shared::TmplParamsInstance;
-use crate::shared::TypeSizeExpr;
-use crate::template;
 use crate::template_ext::SignalDeclarations;
 use crate::template_ext::TemplateLike as _;
 use anyhow::Result;
@@ -172,6 +168,7 @@ pub struct SubcmpType<'ctx> {
 }
 
 impl<'ctx> SubcmpType<'ctx> {
+    /// Creates a new subcomponent type wrapper.
     pub fn new(inner: Type<'ctx>, template_name: String) -> Self {
         Self { inner, template_name }
     }
@@ -336,10 +333,12 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
         )
     }
 
+    /// Returns the inputs type casted into the given type.
     fn inputs_as<T: TryFrom<Type<'ctx>>>(&self) -> Result<T, <T as TryFrom<Type<'ctx>>>::Error> {
         T::try_from(self.inputs)
     }
 
+    /// Returns the name of the subcomponent.
     pub fn name(&self) -> &str {
         &self.name
     }

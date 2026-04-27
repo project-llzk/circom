@@ -40,7 +40,6 @@ use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::constrain;
 use llzk::dialect::llzk::nondet;
 use llzk::dialect::pod;
-use llzk::dialect::poly;
 use llzk::dialect::r#struct;
 use llzk::prelude::ArrayType;
 use llzk::prelude::BlockRef;
@@ -1354,6 +1353,7 @@ where
                     let params = std::iter::zip(
                         params_formals,
                         dimensions.attrs().into_iter().map(|attr| {
+                            let _ = attr;
                             // Temporary
                             fc.append_op_unnamed_result(nondet(
                                 location,

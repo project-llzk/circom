@@ -2,23 +2,17 @@
 //! to the [crate::function] and [crate::template] modules to generate the code for each.
 
 use crate::affine_map::AffineMapAttribute;
-use crate::ast_ext::ExpressionExt as _;
 use crate::function::FunctionContext;
 use crate::function::GenerateLLZKInFunction as _;
 use crate::function_ext::FunctionLike;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::get_poly_expr_name;
-use crate::shared::map_array_inner_type;
 use crate::shared::map_name_to_arg_value;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
 use crate::shared::TmplParamsInstance;
-use crate::shared::TypeSizeExpr;
-use crate::subcmp::names::COMP;
-use crate::subcmp::names::COUNT;
-use crate::subcmp::names::PARAMS;
 use crate::subcmp::unique_instance_types;
 use crate::subcmp::SubcmpDeclInfo;
 use crate::subcmp::SubcmpPrologueData;
@@ -28,17 +22,12 @@ use crate::template_ext::TemplateLike;
 use anyhow::bail;
 use anyhow::Result;
 use llzk::attributes::NamedAttribute;
-use llzk::builder::OpBuilder;
-use llzk::dialect::array;
-use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::function;
-use llzk::dialect::pod;
 use llzk::dialect::poly;
 use llzk::dialect::r#struct;
 use llzk::dialect::r#struct::helpers::compute_fn;
 use llzk::dialect::r#struct::helpers::constrain_fn;
 use llzk::error::Error;
-use llzk::prelude::ArrayType;
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::FuncDefOpLike as _;
@@ -53,10 +42,8 @@ use llzk::prelude::OperationLike as _;
 use llzk::prelude::PodRecordAttribute;
 use llzk::prelude::PodType;
 use llzk::prelude::PublicAttribute;
-use llzk::prelude::RecordValue;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::StringAttribute;
-use llzk::prelude::StringRef;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructType;
@@ -753,10 +740,18 @@ fn gen_subcmps_prologue_in_template<'ast, 'ctx, 'func, 'blk, 'val>(
 where
     'val: 'blk,
 {
-    let op_builder = codegen.op_builder();
     subcmps.into_iter().try_for_each(|subcmp| {
-        subcmp.generate_constraint_func_prologue(constrain_ctx, &op_builder, subcmp_decls)?;
-        subcmp.generate_compute_func_prologue(compute_ctx, &op_builder, codegen, subcmp_decls)
+        subcmp.generate_constraint_func_prologue(
+            constrain_ctx,
+            codegen.op_builder(),
+            subcmp_decls,
+        )?;
+        subcmp.generate_compute_func_prologue(
+            compute_ctx,
+            codegen.op_builder(),
+            codegen,
+            subcmp_decls,
+        )
     })
 }
 

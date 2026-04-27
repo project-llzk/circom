@@ -1,6 +1,5 @@
 //! Shared code generation utilities.
 
-use crate::function::FunctionContext;
 use crate::function::InfoProviders;
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::BlockGenContext;
@@ -27,7 +26,6 @@ use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::felt;
 use llzk::dialect::pod;
 use llzk::dialect::poly;
-use llzk::map_operands::MapOperandsBuilder;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::melior_dialects::scf;
@@ -361,7 +359,7 @@ impl<'ast, 'ctx> TmplParamsInstance<'ast, 'ctx> {
 
     /// Return an interator over references of the key-value pairs.
     pub fn iter(&self) -> <&HashMap<&'ast str, Attribute<'ctx>> as IntoIterator>::IntoIter {
-        (&self).into_iter()
+        self.into_iter()
     }
 }
 
@@ -371,7 +369,7 @@ impl<'i, 'ast, 'ctx> IntoIterator for &'i TmplParamsInstance<'ast, 'ctx> {
     type IntoIter = <&'i HashMap<&'ast str, Attribute<'ctx>> as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        (&self.map).into_iter()
+        self.map.iter()
     }
 }
 

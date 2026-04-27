@@ -3,8 +3,13 @@
 use melior::{ir::Attribute, Context};
 use mlir_sys::{mlirAffineMapAttrGet, mlirAffineMapMultiDimIdentityGet};
 
+/// Represents an affine map attribute in MLIR.
+///
+/// This type exists because melior doesn't have it and should be moved to the
+/// `llzk` crate at some point.
 #[derive(Debug)]
 pub struct AffineMapAttribute<'ctx> {
+    /// Inner attribute.
     inner: Attribute<'ctx>,
 }
 
