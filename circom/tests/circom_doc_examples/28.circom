@@ -80,14 +80,13 @@ component main = Caller();
 // CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_23]][@a] : <@Caller::@Caller<[]>>, !struct.type<@A::@A<[]>>
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_23]][@a$inputs] : <@Caller::@Caller<[]>>, !pod.type<[@in: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_29]], @params = %[[VAL_28]] }  : <[@count: index, @comp: !struct.type<@A::@A<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_27]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CHECK-NEXT:          constrain.eq %[[VAL_31]], %[[VAL_24]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_26]][@out] : <@A::@A<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          constrain.eq %[[VAL_25]], %[[VAL_32]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_27]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CHECK-NEXT:          function.call @A::@A::@constrain(%[[VAL_26]], %[[VAL_33]]) : (!struct.type<@A::@A<[]>>, !felt.type<"bn128">) -> ()
+// CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@A::@A<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_27]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
+// CHECK-NEXT:          constrain.eq %[[VAL_30]], %[[VAL_24]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_26]][@out] : <@A::@A<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          constrain.eq %[[VAL_25]], %[[VAL_31]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_27]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
+// CHECK-NEXT:          function.call @A::@A::@constrain(%[[VAL_26]], %[[VAL_32]]) : (!struct.type<@A::@A<[]>>, !felt.type<"bn128">) -> ()
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

@@ -1,7 +1,6 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
-// XFAIL:.*
 
 pragma circom 2.0.0;
 
@@ -29,7 +28,7 @@ template B(N){
 
 component main = B(1);
 
-// CHECK-LABEL: #[[$ATTR_0]] = affine_map<(d0) -> (d0)>
+// CHECK:       #[[$ATTR_0:[0-9a-zA-Z_\.]+]] = affine_map<(d0) -> (d0)>
 // CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@B::@B<[1]>>} {
 // CHECK-NEXT:    poly.template @A {
 // CHECK-NEXT:      poly.param @N
@@ -116,22 +115,20 @@ component main = B(1);
 // CHECK-NEXT:            %[[VAL_47:[0-9a-zA-Z_\.]+]] = poly.read_const @N : index
 // CHECK-NEXT:            %[[VAL_48:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:            %[[VAL_49:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_47]], @M = %[[VAL_48]] }  : <[@N: index, @M: index]>
-// CHECK-NEXT:            %[[VAL_50:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:            %[[VAL_51:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_50]], @params = %[[VAL_49]] }  : <[@count: index, @comp: !struct.type<@A::@A<[@N, 1]>>, @params: !pod.type<[@N: index, @M: index]>]>
+// CHECK-NEXT:            %[[VAL_50:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@A::@A<[@N, 1]>>, @params: !pod.type<[@N: index, @M: index]>]>
 // CHECK-NEXT:          } else {
-// CHECK-NEXT:            %[[VAL_52:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:            %[[VAL_53:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:            %[[VAL_54:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_52]], @M = %[[VAL_53]] }  : <[@N: index, @M: index]>
-// CHECK-NEXT:            %[[VAL_55:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:            %[[VAL_56:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_55]], @params = %[[VAL_54]] }  : <[@count: index, @comp: !struct.type<@A::@A<[0, 1]>>, @params: !pod.type<[@N: index, @M: index]>]>
+// CHECK-NEXT:            %[[VAL_51:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
+// CHECK-NEXT:            %[[VAL_52:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
+// CHECK-NEXT:            %[[VAL_53:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_51]], @M = %[[VAL_52]] }  : <[@N: index, @M: index]>
+// CHECK-NEXT:            %[[VAL_54:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@A::@A<[0, 1]>>, @params: !pod.type<[@N: index, @M: index]>]>
 // CHECK-NEXT:          }
-// CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:          %[[VAL_55:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_44]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
+// CHECK-NEXT:          constrain.eq %[[VAL_56]], %[[VAL_55]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_43]][@out] : <@A::@A<[#[[$ATTR_0]], 1]>>, !felt.type<"bn128">
+// CHECK-NEXT:          constrain.eq %[[VAL_42]], %[[VAL_57]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_58:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_44]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CHECK-NEXT:          constrain.eq %[[VAL_58]], %[[VAL_57]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_59:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_43]][@out] : <@A::@A<[#[[$ATTR_0]], 1]>>, !felt.type<"bn128">
-// CHECK-NEXT:          constrain.eq %[[VAL_42]], %[[VAL_59]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_60:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_44]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CHECK-NEXT:          function.call @A::@A::@constrain(%[[VAL_43]], %[[VAL_60]]) : (!struct.type<@A::@A<[#[[$ATTR_0]], 1]>>, !felt.type<"bn128">) -> ()
+// CHECK-NEXT:          function.call @A::@A::@constrain(%[[VAL_43]], %[[VAL_58]]) : (!struct.type<@A::@A<[#[[$ATTR_0]], 1]>>, !felt.type<"bn128">) -> ()
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
