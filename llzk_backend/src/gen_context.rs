@@ -1574,10 +1574,10 @@ where
     /// information so we conservatively put all parameters in the pod. Hence the need for
     /// filtering what template parameters are actually required by the call.
     ///
-    /// For example, consider a subcomponent of type `A(X, Y)`, with instances `A(1, N)` and `A(1, M)`. The type eraser
-    /// will create the caller struct member with type `A(1, ?)` since `1` is common across all
-    /// instances. This means that the call to `compute` only expects one affine map operand for
-    /// the second parameter.
+    /// For example, consider a subcomponent of type `A(X, Y)`, with instances `A(1, N)` and
+    /// `A(1, M)`. The type eraser will create the caller struct member with type `A(1, ?)` since
+    /// `1` is common across all instances. This means that the call to `compute` only expects
+    /// one affine map operand for the second parameter.
     fn read_required_params(
         &mut self,
         struct_type: StructType<'ctx>,

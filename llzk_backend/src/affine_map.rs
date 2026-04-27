@@ -1,7 +1,9 @@
 //! Implementation for affine map attributes, since melior does not have support for them.
 
-use melior::{ir::Attribute, Context};
-use mlir_sys::{mlirAffineMapAttrGet, mlirAffineMapMultiDimIdentityGet};
+use melior::ir::Attribute;
+use melior::Context;
+use mlir_sys::mlirAffineMapAttrGet;
+use mlir_sys::mlirAffineMapMultiDimIdentityGet;
 
 /// Represents an affine map attribute in MLIR.
 ///
