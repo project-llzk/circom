@@ -775,12 +775,10 @@ where
     fn poly_template_binding_names(
         &self,
     ) -> impl IntoIterator<Item = (String, Option<Type<'ctx>>)> {
-        self.struct_def.r#type().params_vec().into_iter().map(|attr| {
-            let sym: FlatSymbolRefAttribute = attr.try_into().unwrap();
-            // TODO: Replace this harcoded None with the type once support for it reaches
-            // downstream.
-            (sym.value().to_owned(), None)
-        })
+        self.template_def
+            .const_binding_ops()
+            .into_iter()
+            .map(|binding| (binding.name().to_owned(), binding.type_opt()))
     }
 
     fn callback_store_poly_expr(
