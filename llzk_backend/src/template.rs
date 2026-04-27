@@ -30,7 +30,9 @@ use crate::shared::TypeSizeExpr;
 use crate::subcmp::names::COMP;
 use crate::subcmp::names::COUNT;
 use crate::subcmp::names::PARAMS;
+use crate::subcmp::SubcmpBinding;
 use crate::subcmp::SubcmpInfo;
+use crate::subcmp::SubcmpLayout;
 use crate::subcmp::SubcmpType;
 use crate::template_ext::SignalDeclarations;
 use crate::template_ext::TemplateLike as _;
@@ -141,8 +143,8 @@ where
     compute: ShouldGenerate<Rc<RefCell<FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>>>>,
     /// Codegen refs for the "@constrain" function within `struct_def`
     constrain: ShouldGenerate<Rc<RefCell<FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>>>>,
-    /// Map of subcomponent names to their types.
-    subcmps: &'str HashMap<String, (String, Type<'ctx>)>,
+    /// Map of subcomponent names to their binding metadata.
+    subcmps: &'str HashMap<String, SubcmpBinding<'ctx>>,
     /// Tracks for what component signals we have created their `struct.writem` op already.
     written_signals: Rc<RefCell<HashSet<String>>>,
     /// Pre-computed LLZK types for circom `var` declarations, keyed by var name. Populated from
@@ -162,7 +164,7 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
         struct_def: StructDefOpRefMut<'ctx, 'str>,
         compute: FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
         constrain: FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
-        subcmps: &'str HashMap<String, (String, Type<'ctx>)>,
+        subcmps: &'str HashMap<String, SubcmpBinding<'ctx>>,
         var_decl_types: &'decls HashMap<String, Type<'ctx>>,
     ) -> TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val> {
         Self {
@@ -259,6 +261,7 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
                 // Write the subcomponent declarations to self.
                 let self_value = fc.func.self_value_of_compute()?;
                 subcmps.iter().try_for_each(|name| {
+                    let binding = &self.subcmps[*name];
                     // Write the inputs of the subcomponent.
                     let name_inputs = crate::subcmp::names::inputs(name);
                     let name_inputs_val = *fc.block_ctx.get_named_value(&name_inputs)?;
@@ -272,48 +275,76 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
                     // This value is the memory SSA value. We need to extract the component from
                     // it.
                     let mem = *fc.block_ctx.get_named_value(name)?;
-                    let value = type_switch! { ty = mem.r#type(),
-                        ArrayType => {
-                            // Copy the components into an array of the same dimensions.
-                            let struct_type = comp_type(ty.element_type().try_into()?)?;
+                    let value = match binding.layout() {
+                        SubcmpLayout::Uniform => type_switch! { ty = mem.r#type(),
+                            ArrayType => {
+                                // Copy the components into an array of the same dimensions.
+                                let struct_type = comp_type(ty.element_type().try_into()?)?;
 
-                            let comp_array = fc.append_op_unnamed_result(codegen.new_array_new_op(
-                                location,
-                                map_array_inner_type(ty.into(), struct_type).try_into()?,
-                                ArrayCtor::Empty
-                            ))?;
-
-                            fc.gen_loop_nest_from_attrs(codegen, codegen.location_unknown(), &ty.dims(), |fc, indices| {
-                                let comp_memory = fc.append_array_read(
-                                    mem,
-                                    indices,
+                                let comp_array = fc.append_op_unnamed_result(codegen.new_array_new_op(
                                     location,
-                                    None
-                                )?;
+                                    map_array_inner_type(ty.into(), struct_type).try_into()?,
+                                    ArrayCtor::Empty
+                                ))?;
+
+                                fc.gen_loop_nest_from_attrs(codegen, codegen.location_unknown(), &ty.dims(), |fc, indices| {
+                                    let comp_memory = fc.append_array_read(
+                                        mem,
+                                        indices,
+                                        location,
+                                        None
+                                    )?;
+                                    let comp_instance = fc.append_op_unnamed_result(pod::read(
+                                        location,
+                                        comp_memory,
+                                        comp_sym,
+                                        struct_type
+                                    ))?;
+                                    fc.append_array_write(
+                                        codegen,
+                                        comp_array,
+                                        indices,
+                                        location,
+                                        comp_instance,
+                                        None
+                                    )
+                                })?;
+
+                                comp_array
+                            }
+                            PodType => {
+                                fc.append_op_unnamed_result(pod::read(
+                                    location,
+                                    mem,
+                                    comp_sym,
+                                    comp_type(ty)?
+                                ))?
+                            }
+                        },
+                        SubcmpLayout::Mixed(layout) => {
+                            let records = layout.entries().iter().map(|entry| {
+                                let comp_memory = fc.append_op_unnamed_result(pod::read(
+                                    location,
+                                    mem,
+                                    codegen.flat_sym(entry.record_name()),
+                                    entry.memory_type().into(),
+                                ))?;
                                 let comp_instance = fc.append_op_unnamed_result(pod::read(
                                     location,
                                     comp_memory,
                                     comp_sym,
-                                    struct_type
+                                    entry.struct_type().into(),
                                 ))?;
-                                fc.append_array_write(
-                                    codegen,
-                                    comp_array,
-                                    indices,
-                                    location,
+                                Ok(RecordValue::new(
+                                    StringRef::new(entry.record_name()),
                                     comp_instance,
-                                    None
-                                )
-                            })?;
-
-                            comp_array
-                        }
-                        PodType => {
-                            fc.append_op_unnamed_result(pod::read(
+                                ))
+                            }).collect::<Result<Vec<_>>>()?;
+                            fc.append_op_unnamed_result(pod::new(
+                                codegen.op_builder(),
                                 location,
-                                mem,
-                                comp_sym,
-                                comp_type(ty)?
+                                &records,
+                                Some(layout.component_type()),
                             ))?
                         }
                     };
@@ -329,6 +360,7 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
 
         }, |fc, _| {
                 subcmps.iter().try_for_each(|name| {
+                    let binding = &self.subcmps[*name];
                     // Read the subcomponent
                     let subcmp = *fc.block_ctx.get_named_value(name)?;
 
@@ -336,34 +368,58 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
                     // which matches the order of the `@constrain` function.
                     let inputs = *fc.block_ctx.get_named_value(&crate::subcmp::names::inputs(name))?;
                     // Call `@constrain`
-                    type_switch! { inputs_type = inputs.r#type(),
-                        ArrayType => {
-                            let dims = inputs_type.dims();
-                            let subcmp_type = ArrayType::try_from(subcmp.r#type())?;
-                            assert_eq!(dims, subcmp_type.dims());
+                    match binding.layout() {
+                        SubcmpLayout::Uniform => type_switch! { inputs_type = inputs.r#type(),
+                            ArrayType => {
+                                let dims = inputs_type.dims();
+                                let subcmp_type = ArrayType::try_from(subcmp.r#type())?;
+                                assert_eq!(dims, subcmp_type.dims());
 
-                            fc.gen_loop_nest_from_attrs(codegen, location, &dims, |fc, indices| {
-                                let subcmp_instance = fc.append_array_read(
-                                        subcmp,
-                                        indices,
+                                fc.gen_loop_nest_from_attrs(codegen, location, &dims, |fc, indices| {
+                                    let subcmp_instance = fc.append_array_read(
+                                            subcmp,
+                                            indices,
+                                            location,
+                                            None
+                                        )?;
+                                    let subcmp_inputs = fc.append_array_read(
+                                            inputs,
+                                            indices,
+                                            location,
+                                            None
+                                        )?;
+                                    fc.gen_constrain_call(
+                                       subcmp_instance,
+                                        subcmp_inputs,
                                         location,
-                                        None
-                                    )?;
-                                let subcmp_inputs = fc.append_array_read(
-                                        inputs,
-                                        indices,
-                                        location,
-                                        None
-                                    )?;
+                                        codegen
+                                    )
+                                })
+                            }
+                            PodType as _ => fc.gen_constrain_call(subcmp, inputs,  location, codegen),
+                        },
+                        SubcmpLayout::Mixed(layout) => {
+                            layout.entries().iter().try_for_each(|entry| {
+                                let subcmp_instance = fc.append_op_unnamed_result(pod::read(
+                                    location,
+                                    subcmp,
+                                    codegen.flat_sym(entry.record_name()),
+                                    entry.struct_type().into(),
+                                ))?;
+                                let subcmp_inputs = fc.append_op_unnamed_result(pod::read(
+                                    location,
+                                    inputs,
+                                    codegen.flat_sym(entry.record_name()),
+                                    entry.inputs_type().into(),
+                                ))?;
                                 fc.gen_constrain_call(
-                                   subcmp_instance,
+                                    subcmp_instance,
                                     subcmp_inputs,
                                     location,
-                                    codegen
+                                    codegen,
                                 )
                             })
                         }
-                        PodType as _ => fc.gen_constrain_call(subcmp, inputs,  location, codegen),
                     }
                 })
         })?;
@@ -385,7 +441,11 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
     /// Returns the real type of the subcomponent, which may be a more general version
     /// than the one returned by the IR generation for constructor calls.
     fn get_subcmp_type(&self, var: &str) -> Result<Type<'ctx>> {
-        Ok(self.subcmps.get(var).ok_or_else(|| anyhow!("subcomponent '{var}' not found"))?.1)
+        Ok(self
+            .subcmps
+            .get(var)
+            .ok_or_else(|| anyhow!("subcomponent '{var}' not found"))?
+            .memory_type())
     }
 }
 
@@ -394,14 +454,29 @@ impl SubcmpInfo for TemplateContext<'_, '_, '_, '_, '_, '_> {
         self.subcmps.contains_key(var)
     }
 
+    fn mixed_subcmp_record_for_indices<'a>(
+        &'a self,
+        var: &str,
+        indices: &[usize],
+    ) -> Option<&'a str> {
+        let binding = self.subcmps.get(var)?;
+        let SubcmpLayout::Mixed(layout) = binding.layout() else {
+            return None;
+        };
+        layout
+            .entries()
+            .iter()
+            .find_map(|entry| (entry.indexed_with() == indices).then(|| entry.record_name()))
+    }
+
     fn subcmp_info<'i>(
         &self,
         var: &str,
         info: &'i dyn ProgramInfo,
     ) -> Result<&'i dyn SignalDeclarations> {
-        let (template_name, _) =
+        let binding =
             self.subcmps.get(var).ok_or_else(|| anyhow!("subcomponent '{var}' not found"))?;
-        info.find_template(template_name)
+        info.find_template(binding.template_name())
     }
 }
 

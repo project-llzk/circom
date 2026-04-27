@@ -14,6 +14,8 @@ use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
 use crate::shared::TmplParamsInstance;
 use crate::subcmp::unique_instance_types;
+use crate::subcmp::MixedSubcmpEntry;
+use crate::subcmp::MixedSubcmpLayout;
 use crate::subcmp::SubcmpDeclInfo;
 use crate::subcmp::SubcmpPrologueData;
 use crate::template::GenerateLLZKInTemplate as _;
@@ -172,6 +174,11 @@ impl<'ctx> DeclarationInfo<'ctx> {
         }
         for name in subcmps {
             let info = self.subcmp_decls.get_mut(&name).unwrap();
+            if info.is_mixed() {
+                record_mixed_subcmp_decl(name, info, codegen, &mut ops, &mut self.struct_fields)?;
+                continue;
+            }
+
             let instances = info.instances();
 
             let types = unique_instance_types(instances);
@@ -706,14 +713,11 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     let subcmp_names = subcmps
         .iter()
         .map(|subcmp| {
-            let template_name = subcmp_decls
-                .get(subcmp.name())
-                .and_then(|decl| decl.template())
-                .ok_or_else(|| {
-                    anyhow::anyhow!("could not deduce the type of subcomponent '{}'", subcmp.name())
-                })?;
+            let _ = subcmp_decls.get(subcmp.name()).and_then(|decl| decl.template()).ok_or_else(
+                || anyhow::anyhow!("could not deduce the type of subcomponent '{}'", subcmp.name()),
+            )?;
 
-            Ok((subcmp.name().to_owned(), (template_name.to_owned(), subcmp.comp_pod(codegen))))
+            Ok((subcmp.name().to_owned(), subcmp.binding(codegen)))
         })
         .collect::<Result<_>>()?;
     // Insert the Operations created from subcomponent Declaration statements and map the
@@ -851,6 +855,62 @@ fn record_subcmp_decl<'ctx, 'ast>(
         public: false,
     });
     ops.push(SubcmpPrologueData::new(name, template_name.to_owned(), member_type, inputs));
+    Ok(())
+}
+
+/// Fills out declaration information for a mixed concrete subcomponent binding.
+fn record_mixed_subcmp_decl<'ctx, 'ast>(
+    name: String,
+    info: &mut SubcmpDeclInfo<'ctx>,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    ops: &mut Vec<SubcmpPrologueData<'ctx>>,
+    struct_fields: &mut Vec<MemberInfo<'ctx>>,
+) -> Result<()> {
+    let first_instance = info
+        .mixed_instances()
+        .first()
+        .ok_or_else(|| anyhow::anyhow!("mixed subcomponent '{name}' has no concrete instances"))?;
+    let template_name = shared::get_name_tail(&first_instance.struct_type())?.to_owned();
+    info.set_template(template_name.clone());
+
+    let mut entries = Vec::with_capacity(info.mixed_instances().len());
+    let mut component_records = Vec::with_capacity(info.mixed_instances().len());
+    let mut memory_records = Vec::with_capacity(info.mixed_instances().len());
+    let mut inputs_records = Vec::with_capacity(info.mixed_instances().len());
+    for instance in info.mixed_instances() {
+        let instance_template_name = shared::get_name_tail(&instance.struct_type())?;
+        let subcmp_type = crate::subcmp::SubcmpType::new(
+            instance.struct_type().into(),
+            instance_template_name.to_owned(),
+        );
+        let memory_type = subcmp_type.comp_pod(codegen).try_into()?;
+        let inputs_type =
+            collect_inputs(instance_template_name, instance.struct_type(), codegen)?.try_into()?;
+        entries.push(MixedSubcmpEntry::new(instance, memory_type, inputs_type));
+        component_records
+            .push(PodRecordAttribute::new(instance.record_name(), instance.struct_type().into()));
+        memory_records.push(PodRecordAttribute::new(instance.record_name(), memory_type.into()));
+        inputs_records.push(PodRecordAttribute::new(instance.record_name(), inputs_type.into()));
+    }
+
+    let component_type = PodType::new(codegen.context, &component_records);
+    let memory_type = PodType::new(codegen.context, &memory_records);
+    let inputs_type = PodType::new(codegen.context, &inputs_records);
+    let layout = MixedSubcmpLayout::new(component_type, memory_type, inputs_type, entries);
+
+    struct_fields.push(MemberInfo {
+        name: name.clone(),
+        decl_type: component_type.into(),
+        location: info.location(),
+        public: false,
+    });
+    struct_fields.push(MemberInfo {
+        name: crate::subcmp::names::inputs(&name),
+        decl_type: inputs_type.into(),
+        location: info.location(),
+        public: false,
+    });
+    ops.push(SubcmpPrologueData::new_mixed(name, template_name, layout));
     Ok(())
 }
 

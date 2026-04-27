@@ -49,6 +49,15 @@ pub trait SubcmpInfo: std::fmt::Debug {
     /// Returns true if the given variable name is a subcomponent.
     fn is_subcmp(&self, var: &str) -> bool;
 
+    /// Returns the mixed subcomponent pod record for the given concrete index tuple, if any.
+    fn mixed_subcmp_record_for_indices<'a>(
+        &'a self,
+        _var: &str,
+        _indices: &[usize],
+    ) -> Option<&'a str> {
+        None
+    }
+
     /// Returns the template information for the given subcomponent.
     fn subcmp_info<'i>(
         &self,
@@ -86,12 +95,20 @@ pub struct SubcmpDeclInfo<'ctx> {
     location: Location<'ctx>,
     /// Instances of the subcomponent type.
     instances: Vec<StructType<'ctx>>,
+    /// Instances of a mixed concrete subcomponent binding.
+    mixed_instances: Vec<MixedSubcmpInstance<'ctx>>,
 }
 
 impl<'ctx> SubcmpDeclInfo<'ctx> {
     /// Creates a new declaration instance.
     pub fn new(dimensions: Vec<Attribute<'ctx>>, location: Location<'ctx>) -> Self {
-        Self { template: None, dimensions, location, instances: Default::default() }
+        Self {
+            template: None,
+            dimensions,
+            location,
+            instances: Default::default(),
+            mixed_instances: Default::default(),
+        }
     }
 
     /// Sets the name of the subcomponent's template type.
@@ -124,6 +141,21 @@ impl<'ctx> SubcmpDeclInfo<'ctx> {
         &self.instances
     }
 
+    /// Returns a mutable reference to the mixed concrete instances.
+    pub fn mixed_instances_mut(&mut self) -> &mut Vec<MixedSubcmpInstance<'ctx>> {
+        &mut self.mixed_instances
+    }
+
+    /// Returns a reference to the mixed concrete instances.
+    pub fn mixed_instances(&self) -> &[MixedSubcmpInstance<'ctx>] {
+        &self.mixed_instances
+    }
+
+    /// Returns true if the declaration uses a mixed concrete representation.
+    pub fn is_mixed(&self) -> bool {
+        !self.mixed_instances.is_empty()
+    }
+
     /// Applies the dimensions to the given type, wrapping it in an array type if necessary.
     pub fn extend_dims(&self, t: Type<'ctx>) -> Type<'ctx> {
         match self.dimensions() {
@@ -136,6 +168,196 @@ impl<'ctx> SubcmpDeclInfo<'ctx> {
 /// Returns a list with the unique struct types in the given instances.
 pub fn unique_instance_types<'ctx>(instances: &[StructType<'ctx>]) -> Vec<StructType<'ctx>> {
     instances.iter().copied().map(ST).collect::<HashSet<_>>().into_iter().map(|s| s.0).collect()
+}
+
+/// A concrete instance in a mixed subcomponent binding.
+#[derive(Clone, Debug)]
+pub struct MixedSubcmpInstance<'ctx> {
+    /// Stable pod record name for this instance.
+    record_name: String,
+    /// Concrete index tuple used to instantiate the component.
+    indexed_with: Vec<usize>,
+    /// Concrete struct type for this instance.
+    struct_type: StructType<'ctx>,
+}
+
+impl<'ctx> MixedSubcmpInstance<'ctx> {
+    /// Creates a new mixed subcomponent instance.
+    pub fn new(
+        record_name: String,
+        indexed_with: Vec<usize>,
+        struct_type: StructType<'ctx>,
+    ) -> Self {
+        Self { record_name, indexed_with, struct_type }
+    }
+
+    /// Returns the pod record name for this instance.
+    pub fn record_name(&self) -> &str {
+        &self.record_name
+    }
+
+    /// Returns the concrete index tuple for this instance.
+    pub fn indexed_with(&self) -> &[usize] {
+        &self.indexed_with
+    }
+
+    /// Returns the concrete struct type for this instance.
+    pub fn struct_type(&self) -> StructType<'ctx> {
+        self.struct_type
+    }
+}
+
+/// A fully typed record in a mixed subcomponent binding.
+#[derive(Clone, Debug)]
+pub struct MixedSubcmpEntry<'ctx> {
+    /// Stable pod record name for this instance.
+    record_name: String,
+    /// Concrete index tuple used to instantiate the component.
+    indexed_with: Vec<usize>,
+    /// Concrete struct type for this instance.
+    struct_type: StructType<'ctx>,
+    /// Memory pod type for this instance.
+    memory_type: PodType<'ctx>,
+    /// Inputs pod type for this instance.
+    inputs_type: PodType<'ctx>,
+}
+
+impl<'ctx> MixedSubcmpEntry<'ctx> {
+    /// Creates a new typed mixed subcomponent entry.
+    pub fn new(
+        instance: &MixedSubcmpInstance<'ctx>,
+        memory_type: PodType<'ctx>,
+        inputs_type: PodType<'ctx>,
+    ) -> Self {
+        Self {
+            record_name: instance.record_name.clone(),
+            indexed_with: instance.indexed_with.clone(),
+            struct_type: instance.struct_type,
+            memory_type,
+            inputs_type,
+        }
+    }
+
+    /// Returns the pod record name for this entry.
+    pub fn record_name(&self) -> &str {
+        &self.record_name
+    }
+
+    /// Returns the concrete index tuple for this entry.
+    pub fn indexed_with(&self) -> &[usize] {
+        &self.indexed_with
+    }
+
+    /// Returns the concrete struct type for this entry.
+    pub fn struct_type(&self) -> StructType<'ctx> {
+        self.struct_type
+    }
+
+    /// Returns the memory pod type for this entry.
+    pub fn memory_type(&self) -> PodType<'ctx> {
+        self.memory_type
+    }
+
+    /// Returns the inputs pod type for this entry.
+    pub fn inputs_type(&self) -> PodType<'ctx> {
+        self.inputs_type
+    }
+}
+
+/// Fully typed data for a mixed subcomponent binding.
+#[derive(Clone, Debug)]
+pub struct MixedSubcmpLayout<'ctx> {
+    /// Type of the owner struct member containing computed component instances.
+    component_type: PodType<'ctx>,
+    /// Type of the compute-time memory binding.
+    memory_type: PodType<'ctx>,
+    /// Type of the owner struct member containing component inputs.
+    inputs_type: PodType<'ctx>,
+    /// Per-position entries.
+    entries: Vec<MixedSubcmpEntry<'ctx>>,
+}
+
+impl<'ctx> MixedSubcmpLayout<'ctx> {
+    /// Creates a new mixed subcomponent layout.
+    pub fn new(
+        component_type: PodType<'ctx>,
+        memory_type: PodType<'ctx>,
+        inputs_type: PodType<'ctx>,
+        entries: Vec<MixedSubcmpEntry<'ctx>>,
+    ) -> Self {
+        Self { component_type, memory_type, inputs_type, entries }
+    }
+
+    /// Returns the owner struct member type containing computed component instances.
+    pub fn component_type(&self) -> PodType<'ctx> {
+        self.component_type
+    }
+
+    /// Returns the compute-time memory binding type.
+    pub fn memory_type(&self) -> PodType<'ctx> {
+        self.memory_type
+    }
+
+    /// Returns the owner struct member type containing component inputs.
+    pub fn inputs_type(&self) -> PodType<'ctx> {
+        self.inputs_type
+    }
+
+    /// Returns per-position entries.
+    pub fn entries(&self) -> &[MixedSubcmpEntry<'ctx>] {
+        &self.entries
+    }
+}
+
+/// Runtime layout for a subcomponent binding.
+#[derive(Clone, Debug)]
+pub enum SubcmpLayout<'ctx> {
+    /// Uniform scalar or array binding.
+    Uniform,
+    /// Mixed concrete binding.
+    Mixed(MixedSubcmpLayout<'ctx>),
+}
+
+/// Template context metadata for a subcomponent binding.
+#[derive(Clone, Debug)]
+pub struct SubcmpBinding<'ctx> {
+    /// Template used for signal declaration lookup.
+    template_name: String,
+    /// Compute-time memory binding type.
+    memory_type: Type<'ctx>,
+    /// Binding layout.
+    layout: SubcmpLayout<'ctx>,
+}
+
+impl<'ctx> SubcmpBinding<'ctx> {
+    /// Creates a new uniform binding.
+    pub fn new_uniform(template_name: String, memory_type: Type<'ctx>) -> Self {
+        Self { template_name, memory_type, layout: SubcmpLayout::Uniform }
+    }
+
+    /// Creates a new mixed binding.
+    pub fn new_mixed(template_name: String, layout: MixedSubcmpLayout<'ctx>) -> Self {
+        Self {
+            template_name,
+            memory_type: layout.memory_type().into(),
+            layout: SubcmpLayout::Mixed(layout),
+        }
+    }
+
+    /// Returns the template used for signal declaration lookup.
+    pub fn template_name(&self) -> &str {
+        &self.template_name
+    }
+
+    /// Returns the compute-time memory binding type.
+    pub fn memory_type(&self) -> Type<'ctx> {
+        self.memory_type
+    }
+
+    /// Returns the binding layout.
+    pub fn layout(&self) -> &SubcmpLayout<'ctx> {
+        &self.layout
+    }
 }
 
 /// Newtype for implementing Hash in StructType.
@@ -253,10 +475,23 @@ pub struct SubcmpPrologueData<'ctx> {
     name: String,
     /// Name of the subcomponent inputs.
     name_inputs: String,
-    /// Type of the subcomponent.
-    subcmp: SubcmpType<'ctx>,
+    /// Template used for signal declaration lookup.
+    template_name: String,
+    /// Type representing the computed subcomponent binding.
+    component_type: Type<'ctx>,
     /// Type representing the inputs of the subcomponent.
     inputs: Type<'ctx>,
+    /// Prologue layout.
+    layout: SubcmpPrologueLayout<'ctx>,
+}
+
+/// Layout data used by the prologue.
+#[derive(Debug)]
+enum SubcmpPrologueLayout<'ctx> {
+    /// Uniform scalar or array binding.
+    Uniform(SubcmpType<'ctx>),
+    /// Mixed concrete binding.
+    Mixed(MixedSubcmpLayout<'ctx>),
 }
 
 impl<'ctx> SubcmpPrologueData<'ctx> {
@@ -268,7 +503,42 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
         inputs: Type<'ctx>,
     ) -> Self {
         let name_inputs = names::inputs(&name);
-        Self { name, name_inputs, subcmp: SubcmpType::new(subcmp, template_name), inputs }
+        Self {
+            name,
+            name_inputs,
+            template_name: template_name.clone(),
+            component_type: subcmp,
+            inputs,
+            layout: SubcmpPrologueLayout::Uniform(SubcmpType::new(subcmp, template_name)),
+        }
+    }
+
+    /// Creates a new mixed concrete instance.
+    pub fn new_mixed(name: String, template_name: String, layout: MixedSubcmpLayout<'ctx>) -> Self {
+        let name_inputs = names::inputs(&name);
+        Self {
+            name,
+            name_inputs,
+            template_name,
+            component_type: layout.component_type().into(),
+            inputs: layout.inputs_type().into(),
+            layout: SubcmpPrologueLayout::Mixed(layout),
+        }
+    }
+
+    /// Returns binding metadata for template lowering.
+    pub fn binding(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> SubcmpBinding<'ctx> {
+        match &self.layout {
+            SubcmpPrologueLayout::Uniform(subcmp) => {
+                SubcmpBinding::new_uniform(self.template_name.clone(), subcmp.comp_pod(codegen))
+            }
+            SubcmpPrologueLayout::Mixed(layout) => {
+                SubcmpBinding::new_mixed(self.template_name.clone(), layout.clone())
+            }
+        }
     }
 
     /// Generates the subcomponents prologue in the constraint function.
@@ -287,7 +557,7 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
             Ok(r#struct::readm(
                 op_builder,
                 decl.location(),
-                self.subcmp.r#type(),
+                self.component_type,
                 self_ref,
                 self.name(),
             )?)
@@ -320,13 +590,13 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
     where
         'val: 'blk,
     {
-        let comp_pod = self.subcmp.comp_pod(codegen);
         let decl = &subcmp_decls[self.name()];
+        let memory_type = self.memory_type(codegen);
         compute_ctx.block_ctx.declare_name_ensure_not_present(
             self.name(),
-            match ArrayType::try_from(comp_pod) {
+            match ArrayType::try_from(memory_type) {
                 Ok(comp_pod) => array::new(op_builder, decl.location(), comp_pod, ArrayCtor::Empty),
-                Err(_) => nondet(decl.location(), comp_pod),
+                Err(_) => nondet(decl.location(), memory_type),
             },
         )?;
         compute_ctx.block_ctx.declare_name_ensure_not_present(
@@ -336,6 +606,14 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
                 Err(_) => pod::new(op_builder, decl.location(), &[], Some(self.inputs_as()?)),
             },
         )
+    }
+
+    /// Returns the compute-time memory type for this binding.
+    fn memory_type(&self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Type<'ctx> {
+        match &self.layout {
+            SubcmpPrologueLayout::Uniform(subcmp) => subcmp.comp_pod(codegen),
+            SubcmpPrologueLayout::Mixed(layout) => layout.memory_type().into(),
+        }
     }
 
     /// Returns the inputs type casted into the given type.
@@ -351,13 +629,5 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
     /// Returns the name of the inputs member for this subcomponent.
     pub fn name_inputs(&self) -> &str {
         &self.name_inputs
-    }
-}
-
-impl<'ctx> std::ops::Deref for SubcmpPrologueData<'ctx> {
-    type Target = SubcmpType<'ctx>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.subcmp
     }
 }
