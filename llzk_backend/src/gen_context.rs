@@ -95,6 +95,36 @@ pub(crate) const CIRCOM_RETURN_MARKER_ATTR: &str = "from_circom_return";
 /// of an `scf.yield` op.
 pub(crate) const OPERAND_VAL_NAMES: &str = "operand_val_names";
 
+/// Trait for types that can be yielded from an `scf.if` arm via `scf::yield`.
+///
+/// Implementors must be `Copy` so that the value can be both passed to `scf::yield`
+/// and returned from `gen_scf_if_arm_no_var_overwrites()` after being consumed.
+pub trait ScfYieldable<'ctx, 'val>: Copy {
+    type YieldValues: AsRef<[Value<'ctx, 'val>]>;
+    fn to_yield_values(self) -> Self::YieldValues;
+}
+
+impl<'ctx, 'val> ScfYieldable<'ctx, 'val> for Value<'ctx, 'val> {
+    type YieldValues = [Value<'ctx, 'val>; 1];
+    fn to_yield_values(self) -> [Value<'ctx, 'val>; 1] {
+        [self]
+    }
+}
+
+impl<'ctx, 'val> ScfYieldable<'ctx, 'val> for () {
+    type YieldValues = [Value<'ctx, 'val>; 0];
+    fn to_yield_values(self) -> [Value<'ctx, 'val>; 0] {
+        []
+    }
+}
+
+impl<'ctx, 'val, const N: usize> ScfYieldable<'ctx, 'val> for [Value<'ctx, 'val>; N] {
+    type YieldValues = [Value<'ctx, 'val>; N];
+    fn to_yield_values(self) -> [Value<'ctx, 'val>; N] {
+        self
+    }
+}
+
 /// Single frame in the [BlockContextStack].
 ///
 /// 'ctx: lifetime of the `LlzkContext` and generated `Module`
@@ -1469,13 +1499,14 @@ where
 
     /// Generate one region for either the then-arm or else-arm of a simple scf.if operation.
     /// The `value_gen` function is called to generate the value to be yielded from the arm.
-    pub fn gen_scf_if_arm_no_var_overwrites<F>(
+    pub fn gen_scf_if_arm_no_var_overwrites<F, Y>(
         &mut self,
         location: Location<'ctx>,
         value_gen: F,
-    ) -> Result<(Region<'ctx>, Value<'ctx, 'val>)>
+    ) -> Result<(Region<'ctx>, Y)>
     where
-        F: FnOnce(&mut Self) -> Result<Value<'ctx, 'val>>,
+        F: FnOnce(&mut Self) -> Result<Y>,
+        Y: ScfYieldable<'ctx, 'val>,
     {
         let region = Region::new();
         let block = region.append_block(Block::new(&[]));
@@ -1483,7 +1514,8 @@ where
         let arm_val = value_gen(self)?;
         let overwrites = self.block_ctx.pop();
         assert!(overwrites.is_empty(), "expected no variable overwrites");
-        no_results(block.append_operation(scf::r#yield(&[arm_val], location)))?;
+        let yield_vals = arm_val.to_yield_values();
+        no_results(block.append_operation(scf::r#yield(yield_vals.as_ref(), location)))?;
         Ok((region, arm_val))
     }
 
