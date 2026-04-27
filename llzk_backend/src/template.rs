@@ -29,6 +29,7 @@ use crate::subcmp::names::COMP;
 use crate::subcmp::names::COUNT;
 use crate::subcmp::names::PARAMS;
 use crate::subcmp::SubcmpInfo;
+use crate::subcmp::SubcmpType;
 use crate::template_ext::SignalDeclarations;
 use crate::template_ext::TemplateLike as _;
 use crate::write_chain::WriteChain;
@@ -1342,24 +1343,12 @@ where
                 // Names of the template parameters
                 let params_formals = codegen.program.get_template_data(id).get_name_of_params();
 
-                let subcmp_type = dimensions.struct_type_with_concrete_dimensions(codegen, id);
-                let count = codegen.count_input_signals(subcmp_type.into())?;
-                let params_pod_type = codegen.pod_type(
-                    &params_formals
-                        .iter()
-                        .map(|formal| (formal.as_str(), codegen.index_type().into()))
-                        .collect::<Vec<_>>(),
+                let subcmp_type = SubcmpType::new(
+                    dimensions.struct_type_with_concrete_dimensions(codegen, id).into(),
+                    id.clone(),
                 );
-                let records = [
-                    // Counts the number of inputs pending an assignment. When it reaches 0 it's
-                    // safe to call the corresponding `@compute` function.
-                    (COUNT, codegen.index_type()),
-                    // Holds the output of calling `@compute`. Before the call, this value is
-                    // undefined and should not be read from.
-                    (COMP, subcmp_type.into()),
-                    // Holds the affine map operands of the subcomponents, if any.
-                    (PARAMS, params_pod_type.into()),
-                ];
+                let count = codegen.count_input_signals(subcmp_type.r#type())?;
+                let records = subcmp_type.comp_pod_records(codegen);
 
                 // Create a `pod.new` operation with the memory for the subcomponent.
                 template.and_then_same(|fc, _| {
@@ -1379,7 +1368,7 @@ where
                         codegen.op_builder(),
                         location,
                         &params,
-                        Some(params_pod_type),
+                        Some(subcmp_type.params_pod_type(codegen)),
                     ))?;
                     let pod_type = Some(codegen.pod_type(&records));
                     // If the count == 0 means that the subcomponent has no inputs. In that case we
@@ -1392,7 +1381,7 @@ where
                             Some(codegen.pod_type(&[])),
                         ))?;
                         let instance = fc.gen_compute_call(
-                            subcmp_type,
+                            subcmp_type.r#type().try_into()?,
                             empty_inputs,
                             params_pod,
                             location,

@@ -3,7 +3,6 @@
 use crate::module::DeclarationInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared::LlzkCodegen;
-use crate::subcmp::CtorCall;
 use crate::subcmp::SubcmpDeclInfo;
 use crate::template::GenerateLLZKInTemplate;
 use crate::template::TemplateContext;
@@ -244,9 +243,7 @@ impl TemplateLike for TemplateInstance {
                         todo!("Support mixed type subcomponent instantiations")
                     }
                     ClusterType::Uniform { header, .. } => {
-                        subcmp_decl
-                            .instances_mut()
-                            .push(CtorCall::new(codegen.struct_type(header)));
+                        subcmp_decl.instances_mut().push(codegen.struct_type(header));
                     }
                 }
             }

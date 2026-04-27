@@ -20,7 +20,6 @@ use crate::subcmp::names::COMP;
 use crate::subcmp::names::COUNT;
 use crate::subcmp::names::PARAMS;
 use crate::subcmp::unique_instance_types;
-use crate::subcmp::CtorCall;
 use crate::subcmp::SubcmpDeclInfo;
 use crate::subcmp::SubcmpPrologueData;
 use crate::template::GenerateLLZKInTemplate as _;
@@ -177,7 +176,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     fn complete<'ast>(
         &mut self,
         codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
-    ) -> Result<Vec<SubcmpPrologueData<'ast, 'ctx>>> {
+    ) -> Result<Vec<SubcmpPrologueData<'ctx>>> {
         let mut ops = vec![];
         let mut subcmps: Vec<_> = self.subcmp_decls.keys().cloned().collect();
         if codegen.config.stabilize {
@@ -193,7 +192,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 [] => todo!("Handle uninitialized component decl"),
                 [t] => *t,
                 types => {
-                    ensure_same_template(types, &name);
+                    let name = ensure_same_template(types, &name).name();
                     // Zip the parameters of all the types and derive a common unification for
                     // each. If all the instances of parameter N are the same we keep it,
                     // otherwise we create an identity affine map to replace the parameter.
@@ -207,7 +206,6 @@ impl<'ctx> DeclarationInfo<'ctx> {
                             }
                         })
                         .collect::<Vec<_>>();
-                    let name = types[0].name();
                     StructType::new(name, &params)
                 }
             };
@@ -331,19 +329,11 @@ impl<'ctx> DeclarationInfo<'ctx> {
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         expression: &Expression,
-    ) -> Result<CtorCall<'ctx>> {
+    ) -> Result<StructType<'ctx>> {
         match expression {
             Expression::Call { meta, id, args, .. } if meta.get_type_knowledge().is_component() => {
-                //for (n, arg) in args.into_iter().enumerate() {
-                //    let name = format!("{id}_{n}_{}", arg.elem_id());
-                //    let generated_expr = self.gen_template_poly_expr(codegen, name.clone(), arg)?;
-                //    let exprs = self.poly_exprs.borrow();
-                //    let expr = exprs.get(&name);
-                //
-                //    println!("For arg\n\t{arg:?}\nwe generated ({generated_expr:?}) expression\n\t{expr:?}");
-                //}
                 let dims = self.get_dim_exprs(codegen, args)?;
-                Ok(CtorCall::new(dims.struct_type_with_concrete_dimensions(codegen, id)))
+                Ok(dims.struct_type_with_concrete_dimensions(codegen, id))
             }
             Expression::ParallelOp { rhe, .. } => {
                 // `parallel` is a tag used to generate parallelized code for the C++
@@ -428,6 +418,10 @@ impl<'ctx> DeclarationInfo<'ctx> {
 
     /// Traverses the AST looking for assigments of subcomponents and collects the instances used
     /// for them.
+    ///
+    /// Passing `true` to `push_trace` pushes the statement to the trace. Callers of this function
+    /// should pass `false` to `push_trace` if `stmt` has already been pushed into the statements
+    /// trace.
     fn search_component_instances(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -715,13 +709,13 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         .iter()
         .map(|subcmp| {
             let template_name = subcmp_decls
-                .get(&subcmp.name)
+                .get(subcmp.name())
                 .and_then(|decl| decl.template())
                 .ok_or_else(|| {
-                    anyhow::anyhow!("could not deduce the type of subcomponent '{}'", subcmp.name)
+                    anyhow::anyhow!("could not deduce the type of subcomponent '{}'", subcmp.name())
                 })?;
 
-            Ok((subcmp.name.clone(), (template_name.to_owned(), subcmp.comp_pod(codegen))))
+            Ok((subcmp.name().to_owned(), (template_name.to_owned(), subcmp.comp_pod(codegen))))
         })
         .collect::<Result<_>>()?;
     // Insert the Operations created from subcomponent Declaration statements and map the
@@ -750,7 +744,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
 
 /// Generates the prologue related to subcomponents in a template body.
 fn gen_subcmps_prologue_in_template<'ast, 'ctx, 'func, 'blk, 'val>(
-    subcmps: impl IntoIterator<Item = SubcmpPrologueData<'ast, 'ctx>>,
+    subcmps: impl IntoIterator<Item = SubcmpPrologueData<'ctx>>,
     compute_ctx: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
     constrain_ctx: &mut FunctionContext<'_, 'ctx, '_, '_, '_>,
     codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -762,7 +756,7 @@ where
     let op_builder = codegen.op_builder();
     subcmps.into_iter().try_for_each(|subcmp| {
         subcmp.generate_constraint_func_prologue(constrain_ctx, &op_builder, subcmp_decls)?;
-        subcmp.generate_compute_func_prologue(compute_ctx, &op_builder, codegen)
+        subcmp.generate_compute_func_prologue(compute_ctx, &op_builder, codegen, subcmp_decls)
     })
 }
 
@@ -796,20 +790,13 @@ impl<'ctx, P: ProgramLike> GenerateLLZKInModule<'ctx, P> for P {
     }
 }
 
+/// Collects the inputs' types of a template in a pod type.
 #[inline]
-/// Fills out the declaration information for a subcomponent using the given type.
-fn record_subcmp_decl<'ctx, 'ast>(
-    name: String,
-    info: &mut SubcmpDeclInfo<'ctx>,
+fn collect_inputs<'ctx>(
+    template_name: &str,
     subcmp_type: StructType<'ctx>,
-    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
-    ops: &mut Vec<SubcmpPrologueData<'ast, 'ctx>>,
-    struct_fields: &mut Vec<MemberInfo<'ctx>>,
-) -> Result<()> {
-    let mut inputs_size = TypeSizeExpr::zero();
-    let template_name = shared::get_name_tail(&subcmp_type)?;
-    info.set_template(template_name.to_owned());
-
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+) -> Result<Type<'ctx>> {
     let template = codegen
         .program
         .get_templates(false)
@@ -818,21 +805,33 @@ fn record_subcmp_decl<'ctx, 'ast>(
         .ok_or_else(|| anyhow::anyhow!("template '{template_name}' not found"))?;
     let template_params =
         TmplParamsInstance::new(template.get_name_of_params(), subcmp_type.params_vec());
+    let inputs = template
+        .get_declaration_inputs()
+        .iter()
+        .map(|(signal_name, _)| {
+            let signal_type = template_params
+                .map_type(codegen.get_input_signal_type(template_name, signal_name)?)?;
+            Ok(PodRecordAttribute::new(signal_name, signal_type))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    Ok(PodType::new(codegen.context, &inputs).into())
+}
 
-    let mut inputs = vec![];
-    for (signal_name, _) in template.get_declaration_inputs().iter() {
-        let signal_type =
-            template_params.map_type(codegen.get_input_signal_type(template_name, signal_name)?)?;
-        inputs_size = inputs_size.add(codegen.count_input_signals(signal_type)?);
-        inputs.push(PodRecordAttribute::new(signal_name, signal_type));
-    }
+/// Fills out the declaration information for a subcomponent using the given type.
+#[inline]
+fn record_subcmp_decl<'ctx, 'ast>(
+    name: String,
+    info: &mut SubcmpDeclInfo<'ctx>,
+    subcmp_type: StructType<'ctx>,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    ops: &mut Vec<SubcmpPrologueData<'ctx>>,
+    struct_fields: &mut Vec<MemberInfo<'ctx>>,
+) -> Result<()> {
+    let template_name = shared::get_name_tail(&subcmp_type)?;
+    info.set_template(template_name.to_owned());
 
-    let extend_dims = |t: Type<'ctx>| match info.dimensions() {
-        [] => t,
-        dims => ArrayType::new(t, dims).into(),
-    };
-    let inputs = extend_dims(PodType::new(codegen.context, &inputs).into());
-    let member_type = extend_dims(subcmp_type.into());
+    let inputs = info.extend_dims(collect_inputs(template_name, subcmp_type, codegen)?);
+    let member_type = info.extend_dims(subcmp_type.into());
     struct_fields.push(MemberInfo {
         name: name.clone(),
         decl_type: member_type,
@@ -845,20 +844,13 @@ fn record_subcmp_decl<'ctx, 'ast>(
         location: info.location(),
         public: false,
     });
-    ops.push(SubcmpPrologueData {
-        name,
-        template_name: template_name.to_owned(),
-        subcmp: member_type,
-        inputs,
-        inputs_size,
-        template_params,
-    });
+    ops.push(SubcmpPrologueData::new(name, template_name.to_owned(), member_type, inputs));
     Ok(())
 }
 
-#[inline]
 /// Ensures that the given collection of struct types all reference the same base type,
 /// panicking otherwise. The typechecker ensures this, so this function is just a fail-safe.
+/// Returns the type of the *unique* template.
 ///
 /// For example, `{ A(1), A(2) }` is OK but `{ A(1), C(2) }` is not.
 ///
@@ -866,7 +858,8 @@ fn record_subcmp_decl<'ctx, 'ast>(
 ///
 /// If the given slice is empty or the types do not match. And only if the frontend was
 /// built with debug assertions enabled.
-fn ensure_same_template(types: &[StructType], subcmp: &str) {
+#[inline]
+fn ensure_same_template<'ctx>(types: &[StructType<'ctx>], subcmp: &str) -> StructType<'ctx> {
     debug_assert!(!types.is_empty());
     let name = types[0].name();
     let params_len = types[0].params().len();
@@ -874,8 +867,11 @@ fn ensure_same_template(types: &[StructType], subcmp: &str) {
         debug_assert!(t.name() == name, "Unexpected type for subcomponent instantation of '{subcmp}'. Was expecting {name} but got {}", t.name());
         debug_assert!(t.params().len() == params_len, "Unexpected parameter count for subcomponent instantation of '{subcmp}'. Was expecting {params_len} but got {}", t.params().len());
     }
+
+    types[0]
 }
 
+/// Groups the template parameters of the given structs by their declaration order.
 fn zip_struct_params<'ctx>(types: &[StructType<'ctx>]) -> Vec<Vec<Attribute<'ctx>>> {
     let params_len = types[0].params().len();
     let mut outer = Vec::with_capacity(params_len);
@@ -889,6 +885,7 @@ fn zip_struct_params<'ctx>(types: &[StructType<'ctx>]) -> Vec<Vec<Attribute<'ctx
     outer
 }
 
+/// Returns wether the given list of attributes is a singleton set.
 fn is_singleton(attrs: &[Attribute]) -> bool {
     #[derive(PartialEq, Eq)]
     struct A<'ctx>(Attribute<'ctx>);

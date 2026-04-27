@@ -7,26 +7,8 @@ pub(crate) trait ExpressionExt {
     fn elem_id(&self) -> usize;
 }
 
-#[inline]
-fn get_meta(expr: &Expression) -> &Meta {
-    match expr {
-        Expression::InfixOp { meta, .. }
-        | Expression::PrefixOp { meta, .. }
-        | Expression::InlineSwitchOp { meta, .. }
-        | Expression::ParallelOp { meta, .. }
-        | Expression::Variable { meta, .. }
-        | Expression::Number(meta, _)
-        | Expression::Call { meta, .. }
-        | Expression::BusCall { meta, .. }
-        | Expression::AnonymousComp { meta, .. }
-        | Expression::ArrayInLine { meta, .. }
-        | Expression::Tuple { meta, .. }
-        | Expression::UniformArray { meta, .. } => meta,
-    }
-}
-
 impl ExpressionExt for Expression {
     fn elem_id(&self) -> usize {
-        get_meta(self).elem_id
+        self.get_meta().elem_id
     }
 }
