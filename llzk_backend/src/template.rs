@@ -1392,8 +1392,8 @@ where
                 template.and_then(
                     |fc, _| {
                         scope.emit_ctor_call(codegen, fc, |fc, params_pod| {
-                            // If the count == 0 means that the subcomponent has no inputs. In that case we
-                            // call `@compute` here directly and store it into COMP.
+                            // If the count == 0 means that the subcomponent has no inputs. In that
+                            // case we call `@compute` here directly and store it into COMP.
                             Ok(if scope.count.is_const_zero() {
                                 let empty_inputs = fc.append_op_unnamed_result(pod::new(
                                     codegen.op_builder(),
@@ -1540,7 +1540,8 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
     /// Shared parts between the constraint and compute functions when emitting IR for subcomponent
     /// constructor calls.
     ///
-    /// Accepts a callback that returns the list of initialized records in the subcomponent memory pod.
+    /// Accepts a callback that returns the list of initialized records in the subcomponent memory
+    /// pod.
     fn emit_ctor_call<'r, 'decls, 'str, 'func, 'blk>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
