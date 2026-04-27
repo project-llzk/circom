@@ -1591,14 +1591,12 @@ where
             .map(|idx| {
                 let record_name = params[idx].name();
                 let record_name = record_name.as_string_ref();
-                let mut value = self.append_op_unnamed_result(codegen.new_pod_read_op(
+                let value = self.append_op_unnamed_result(codegen.new_pod_read_op(
                     params_value,
                     record_name.as_str()?,
                     location,
                 )?)?;
-                if value.r#type() != codegen.index_type() {
-                    value = self.unifiable_cast(location, value, codegen.index_type())?;
-                }
+                let value = self.cast_to_index_if_needed(location, value)?;
 
                 Ok(OwningValueRange::from([value].as_slice()))
             })

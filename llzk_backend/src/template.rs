@@ -40,11 +40,13 @@ use anyhow::anyhow;
 use anyhow::Result;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::constrain;
+use llzk::dialect::felt;
 use llzk::dialect::pod;
 use llzk::dialect::poly;
 use llzk::dialect::r#struct;
 use llzk::prelude::ArrayType;
 use llzk::prelude::BlockRef;
+use llzk::prelude::FeltConstAttribute;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::IntegerAttribute;
@@ -67,6 +69,7 @@ use llzk::symbol_table;
 use melior::dialect::arith;
 use melior::ir::Attribute;
 use melior::ir::Location;
+use num_bigint_dig::BigInt;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -1518,7 +1521,7 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
         fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
         let op = type_switch! { attr,
-            IntegerAttribute as _ => arith::constant(codegen.context, attr, self.location),
+            IntegerAttribute as int => codegen.new_felt_const_op(&BigInt::from(int.value()), self.location)?,
             FlatSymbolRefAttribute as sym => poly::read_const(self.location, sym.value(), self.subcmp_type.param_type(codegen)),
             else => unreachable!("Attribute {}", attr)
         };
