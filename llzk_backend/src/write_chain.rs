@@ -9,19 +9,18 @@ use crate::program_ext::ProgramLike;
 use crate::shared::comp_type;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COMP;
+use crate::subcmp::names::PARAMS;
 use crate::subcmp::SubcmpInfo;
 use crate::template::TemplateContext;
 use anyhow::Result;
 use llzk::dialect::r#struct;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
-use llzk::prelude::PodType;
-use llzk::prelude::StructType;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use program_structure::ast::Access;
 use program_structure::ast::Expression;
-use std::convert::TryFrom as _;
+use std::convert::TryInto as _;
 use std::fmt;
 
 /// Gives information about signals written into the component.
@@ -195,10 +194,15 @@ impl<'ast> WriteChain<'ast> {
 
         let counter = fc.gen_subcmp_decrease_counter(codegen, location, subcmp_value, 1)?;
         fc.gen_scf_if_is_zero(counter, location, codegen, |fc| {
-            let struct_type =
-                StructType::try_from(comp_type(PodType::try_from(subcmp_value.r#type())?)?)?;
+            let params = fc.append_op_unnamed_result(codegen.new_pod_read_op(
+                subcmp_value,
+                PARAMS,
+                location,
+            )?)?;
+            let struct_type = comp_type(subcmp_value.r#type().try_into()?)?.try_into()?;
+
             let subcmp_instance =
-                fc.gen_compute_call(struct_type, subcmp_value_inputs, location, codegen)?;
+                fc.gen_compute_call(struct_type, subcmp_value_inputs, params, location, codegen)?;
             fc.append_op_no_result(codegen.new_pod_write_op(
                 location,
                 subcmp_value,
