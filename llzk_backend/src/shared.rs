@@ -1829,7 +1829,9 @@ where
                         gen_stmt_fully(ec, codegen, gen_ctx)?;
                     }
                     else_info.var_overwrites = gen_ctx.block_ctx.pop();
-                    gen_ctx.gen_scf_if(codegen, location, cond_bool, then_info, else_info)?;
+                    gen_ctx.gen_scf_if_with_var_overwrites(
+                        codegen, location, cond_bool, then_info, else_info,
+                    )?;
                 }
                 Statement::While { .. } => {
                     anyhow::bail!("poly.expr depending on a while loop is not yet supported")
@@ -1898,7 +1900,7 @@ where
             // Generate the branch that contains the target, then a nondet placeholder for the
             // other branch (using the result type from the containing branch).
             let (containing_region, target_val) =
-                gen_ctx.generate_simple_scf_if_arm(location, |gc| {
+                gen_ctx.gen_scf_if_arm_no_var_overwrites(location, |gc| {
                     gen_up_to_target(
                         codegen,
                         gc,
@@ -1908,7 +1910,7 @@ where
                     )
                 })?;
             let result_type = target_val.r#type();
-            let (other_region, _) = gen_ctx.generate_simple_scf_if_arm(location, |gc| {
+            let (other_region, _) = gen_ctx.gen_scf_if_arm_no_var_overwrites(location, |gc| {
                 gc.append_op_unnamed_result(codegen.new_nondet_at_location(location, result_type)?)
             })?;
 

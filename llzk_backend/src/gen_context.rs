@@ -790,8 +790,11 @@ where
         val: Value<'ctx, 'val>,
         expected: Type<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
-        assert!(types_unify(val.r#type(), expected)); // pre-condition
-        self.append_op_unnamed_result(poly::unifiable_cast(location, val, expected))
+        if types_unify(val.r#type(), expected) {
+            self.append_op_unnamed_result(poly::unifiable_cast(location, val, expected))
+        } else {
+            anyhow::bail!("Unsupported cast to '{expected}' from value type '{}'", val.r#type())
+        }
     }
 
     /// Append a cast to felt (field element) type.
@@ -938,14 +941,13 @@ where
                     dest_val,
                     location,
                 ))?;
-                let if_op = self.generate_simple_scf_if(
+                self.gen_scf_if_no_var_overwrites(
                     codegen,
-                    meta,
+                    location,
                     condition,
                     |_| Ok(src_val),
                     |_| Ok(dest_val),
-                )?;
-                self.append_op_unnamed_result(if_op)
+                )
             })
             .collect::<Result<Vec<_>>>()?;
 
@@ -1348,9 +1350,43 @@ where
         no_results(block.append_operation(op))
     }
 
+    /// Append an `scf.if` op using pre-generated branch regions that each yield one value.
+    /// Ensures both yielded values have the same type, emits the `scf.if`, and casts the
+    /// result to `expected_result_type` when provided and unifiable.
+    pub fn gen_scf_if(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        condition: Value<'ctx, 'val>,
+        (then_region, then_value): (Region<'ctx>, Value<'ctx, 'val>),
+        (else_region, else_value): (Region<'ctx>, Value<'ctx, 'val>),
+        expected_result_type: Option<Type<'ctx>>,
+    ) -> Result<Value<'ctx, 'val>> {
+        // Ensure values yielded from both blocks have the same type. Strict equality per `scf.if`.
+        let yield_type = then_value.r#type();
+        assert_eq!(
+            yield_type,
+            else_value.r#type(),
+            "branches of scf.if must yield identical value types"
+        );
+        let if_op_result = self.append_op_unnamed_result(scf::r#if(
+            condition,
+            &[yield_type],
+            then_region,
+            else_region,
+            location,
+        ));
+
+        // If the yielded type does not match the expected result type see if unifiable cast helps.
+        if let Some(expect) = expected_result_type {
+            return self.cast_to_expected_type_if_needed(codegen, location, if_op_result?, expect);
+        }
+        if_op_result
+    }
+
     /// Generate an `scf.if` op based on the given [NestedBlockInfo] for each branch and update the
     /// block context with the results of the `scf.if` op mapped to the given names.
-    pub fn gen_scf_if(
+    pub fn gen_scf_if_with_var_overwrites(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
@@ -1432,9 +1468,8 @@ where
     }
 
     /// Generate one region for either the then-arm or else-arm of a simple scf.if operation.
-    /// Used by [Self::generate_simple_scf_if].
     /// The `value_gen` function is called to generate the value to be yielded from the arm.
-    pub fn generate_simple_scf_if_arm<F>(
+    pub fn gen_scf_if_arm_no_var_overwrites<F>(
         &mut self,
         location: Location<'ctx>,
         value_gen: F,
@@ -1446,41 +1481,30 @@ where
         let block = region.append_block(Block::new(&[]));
         self.block_ctx.push(block);
         let arm_val = value_gen(self)?;
-        self.block_ctx.pop();
+        let overwrites = self.block_ctx.pop();
+        assert!(overwrites.is_empty(), "expected no variable overwrites");
         no_results(block.append_operation(scf::r#yield(&[arm_val], location)))?;
         Ok((region, arm_val))
     }
 
     /// Generate a simple scf.if operation that yields the given `then_value` or `else_value`
-    /// depending on the `condition` value. Unlike [Self::gen_scf_if], this assumes that the
-    /// then and else arms do not modify the current block context and only produce values.
-    pub fn generate_simple_scf_if<F1, F2>(
+    /// depending on the `condition` value. Unlike [Self::gen_scf_if_with_var_overwrites], this
+    /// assumes that the branches do not modify the current block context and only produce values.
+    pub fn gen_scf_if_no_var_overwrites<F1, F2>(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        meta: &Meta,
+        location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         then_value_gen: F1,
         else_value_gen: F2,
-    ) -> Result<Operation<'ctx>>
+    ) -> Result<Value<'ctx, 'val>>
     where
         F1: FnOnce(&mut Self) -> Result<Value<'ctx, 'val>>,
         F2: FnOnce(&mut Self) -> Result<Value<'ctx, 'val>>,
     {
-        let location = codegen.location_from_meta(meta);
-
-        let (then_region, then_value) =
-            self.generate_simple_scf_if_arm(location, then_value_gen)?;
-        let (else_region, else_value) =
-            self.generate_simple_scf_if_arm(location, else_value_gen)?;
-
-        // Ensure then_value and else_value have the same types
-        assert_eq!(
-            then_value.r#type(),
-            else_value.r#type(),
-            "then and else branches of scf.if must have matching value types"
-        );
-
-        Ok(scf::r#if(condition, &[then_value.r#type()], then_region, else_region, location))
+        let then_info = self.gen_scf_if_arm_no_var_overwrites(location, then_value_gen)?;
+        let else_info = self.gen_scf_if_arm_no_var_overwrites(location, else_value_gen)?;
+        self.gen_scf_if(codegen, location, condition, then_info, else_info, None)
     }
 
     /// Generate a simple `scf.for` op that doesn't need to override variables

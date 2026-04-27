@@ -723,7 +723,7 @@ where
         )?;
     }
 
-    function.gen_scf_if(codegen, location, condition, then_info, else_info)?;
+    function.gen_scf_if_with_var_overwrites(codegen, location, condition, then_info, else_info)?;
 
     // Finally, if both blocks ended with a return, then add a new return/yield here. Else,
     // if only one block returned, gen additional code to handle the unbalanced return.
