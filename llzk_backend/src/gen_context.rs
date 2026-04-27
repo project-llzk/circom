@@ -1567,7 +1567,7 @@ where
             .collect()
     }
 
-    /// Generates `pod.read` instructions for the template parameters that are require for
+    /// Generates `pod.read` instructions for the template parameters that are required for
     /// instantiating a struct type in its `compute` function.
     ///
     /// At the step where we create the params pod we don't have that
