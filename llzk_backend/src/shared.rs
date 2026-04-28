@@ -28,7 +28,6 @@ use llzk::dialect::pod;
 use llzk::dialect::poly;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
-use llzk::prelude::melior_dialects::scf;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
@@ -1829,7 +1828,9 @@ where
                         gen_stmt_fully(ec, codegen, gen_ctx)?;
                     }
                     else_info.var_overwrites = gen_ctx.block_ctx.pop();
-                    gen_ctx.gen_scf_if(codegen, location, cond_bool, then_info, else_info)?;
+                    gen_ctx.gen_scf_if_with_var_overwrites(
+                        codegen, location, cond_bool, then_info, else_info,
+                    )?;
                 }
                 Statement::While { .. } => {
                     anyhow::bail!("poly.expr depending on a while loop is not yet supported")
@@ -1897,34 +1898,34 @@ where
 
             // Generate the branch that contains the target, then a nondet placeholder for the
             // other branch (using the result type from the containing branch).
-            let (containing_region, target_val) =
-                gen_ctx.generate_simple_scf_if_arm(location, |gc| {
-                    gen_up_to_target(
-                        codegen,
-                        gc,
-                        target_expr,
-                        std::slice::from_ref(containing_stmt),
-                        trace,
-                    )
-                })?;
-            let result_type = target_val.r#type();
-            let (other_region, _) = gen_ctx.generate_simple_scf_if_arm(location, |gc| {
+            let containing_arm_info = gen_ctx.gen_scf_if_arm_no_var_overwrites(location, |gc| {
+                gen_up_to_target(
+                    codegen,
+                    gc,
+                    target_expr,
+                    std::slice::from_ref(containing_stmt),
+                    trace,
+                )
+            })?;
+            let result_type = containing_arm_info.1.r#type();
+            let other_arm_info = gen_ctx.gen_scf_if_arm_no_var_overwrites(location, |gc| {
                 gc.append_op_unnamed_result(codegen.new_nondet_at_location(location, result_type)?)
             })?;
 
             // Assemble the scf.if with regions in the correct order.
-            let (then_region, else_region) = if target_in_then {
-                (containing_region, other_region)
+            let (then_arm_info, else_arm_info) = if target_in_then {
+                (containing_arm_info, other_arm_info)
             } else {
-                (other_region, containing_region)
+                (other_arm_info, containing_arm_info)
             };
-            gen_ctx.append_op_unnamed_result(scf::r#if(
-                cond_bool,
-                &[result_type],
-                then_region,
-                else_region,
+            gen_ctx.gen_safe_scf_if(
+                codegen,
                 location,
-            ))
+                cond_bool,
+                then_arm_info,
+                else_arm_info,
+                Some(result_type),
+            )
         }
 
         /// Generate LLZK for all of `stmts` up to the first [Statement] in the `trace` (i.e. the
@@ -2042,12 +2043,26 @@ where
 pub fn map_array_inner_type<'ctx>(t: Type<'ctx>, new_inner: Type<'ctx>) -> Type<'ctx> {
     ArrayType::try_from(t).map(|t| ArrayType::new(new_inner, &t.dims()).into()).unwrap_or(new_inner)
 }
+/// Returns a new region that is empty.
+#[inline]
+pub fn new_region_empty<'ctx>() -> Region<'ctx> {
+    Region::new()
+}
 
-/// Returns a region that contains one block with the given arguments.
-pub fn region_with_block<'ctx>(arguments: &[(Type<'ctx>, Location<'ctx>)]) -> Region<'ctx> {
-    let region = Region::new();
-    region.append_block(Block::new(arguments));
-    region
+/// Returns a new region that contains the given block.
+#[inline]
+pub fn new_region<'ctx: 'blk, 'blk>(b: Block<'ctx>) -> (Region<'ctx>, BlockRef<'ctx, 'blk>) {
+    let r = new_region_empty();
+    let b = r.append_block(b);
+    (r, b)
+}
+
+/// Returns a new region that contains one block with the given arguments.
+#[inline]
+pub fn new_region_and_block<'ctx: 'blk, 'blk>(
+    arguments: &[(Type<'ctx>, Location<'ctx>)],
+) -> (Region<'ctx>, BlockRef<'ctx, 'blk>) {
+    new_region(Block::new(arguments))
 }
 
 /// Returns the type of a subcomponent as defined in its memory.

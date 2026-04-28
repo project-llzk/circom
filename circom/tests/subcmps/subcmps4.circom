@@ -99,7 +99,6 @@ component main = SubCmps4(3);
 // CHECK-NEXT:                %[[VAL_46:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_26]][@inp] : <[@inp: !array.type<@n x !felt.type<"bn128">>]>, !array.type<@n x !felt.type<"bn128">>
 // CHECK-NEXT:                %[[VAL_47:[0-9a-zA-Z_\.]+]] = function.call @Sum::@Sum::@compute(%[[VAL_46]]) : (!array.type<@n x !felt.type<"bn128">>) -> !struct.type<@Sum::@Sum<[@n]>>
 // CHECK-NEXT:                pod.write %[[VAL_13]][@comp] = %[[VAL_47]] : <[@count: index, @comp: !struct.type<@Sum::@Sum<[@n]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, !struct.type<@Sum::@Sum<[@n]>>
-// CHECK-NEXT:              } else {
 // CHECK-NEXT:              }
 // CHECK-NEXT:              scf.yield %[[VAL_26]], %[[VAL_27]] : !pod.type<[@inp: !array.type<@n x !felt.type<"bn128">>]>, !pod.type<[@inp: !array.type<@n x !felt.type<"bn128">>]>
 // CHECK-NEXT:            } else {
@@ -122,7 +121,6 @@ component main = SubCmps4(3);
 // CHECK-NEXT:                %[[VAL_60:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_27]][@inp] : <[@inp: !array.type<@n x !felt.type<"bn128">>]>, !array.type<@n x !felt.type<"bn128">>
 // CHECK-NEXT:                %[[VAL_61:[0-9a-zA-Z_\.]+]] = function.call @Sum::@Sum::@compute(%[[VAL_60]]) : (!array.type<@n x !felt.type<"bn128">>) -> !struct.type<@Sum::@Sum<[@n]>>
 // CHECK-NEXT:                pod.write %[[VAL_17]][@comp] = %[[VAL_61]] : <[@count: index, @comp: !struct.type<@Sum::@Sum<[@n]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, !struct.type<@Sum::@Sum<[@n]>>
-// CHECK-NEXT:              } else {
 // CHECK-NEXT:              }
 // CHECK-NEXT:              scf.yield %[[VAL_26]], %[[VAL_27]] : !pod.type<[@inp: !array.type<@n x !felt.type<"bn128">>]>, !pod.type<[@inp: !array.type<@n x !felt.type<"bn128">>]>
 // CHECK-NEXT:            }

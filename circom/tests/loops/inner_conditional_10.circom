@@ -80,7 +80,6 @@ component main = Poseidon();
 // CHECK-NEXT:                pod.write %[[VAL_31]][@comp] = %[[VAL_39]] : <[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>, !struct.type<@Sigma::@Sigma<[]>>
 // CHECK-NEXT:                %[[VAL_40:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_20]] : !felt.type<"bn128">
 // CHECK-NEXT:                array.write %[[VAL_2]]{{\[}}%[[VAL_40]]] = %[[VAL_31]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:              } else {
 // CHECK-NEXT:              }
 // CHECK-NEXT:              scf.yield %[[VAL_11]] : !array.type<2 x !pod.type<[@inp: !felt.type<"bn128">]>>
 // CHECK-NEXT:            } else {

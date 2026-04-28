@@ -82,7 +82,6 @@ component main = Good(2);
 // CHECK-NEXT:                pod.write %[[VAL_35]][@comp] = %[[VAL_43]] : <[@count: index, @comp: !struct.type<@Mult::@Mult<[]>>, @params: !pod.type<[]>]>, !struct.type<@Mult::@Mult<[]>>
 // CHECK-NEXT:                %[[VAL_44:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_11]] : !felt.type<"bn128">
 // CHECK-NEXT:                array.write %[[VAL_3]]{{\[}}%[[VAL_44]]] = %[[VAL_35]] : <@N x !pod.type<[@count: index, @comp: !struct.type<@Mult::@Mult<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Mult::@Mult<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:              } else {
 // CHECK-NEXT:              }
 // CHECK-NEXT:              %[[VAL_45:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:              %[[VAL_46:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_23]], %[[VAL_45]] : !felt.type<"bn128">, !felt.type<"bn128">

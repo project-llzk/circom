@@ -355,7 +355,6 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:                  %[[VAL_234:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_186]] : !felt.type<"bn128">
 // CHECK-NEXT:                  %[[VAL_235:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_196]] : !felt.type<"bn128">
 // CHECK-NEXT:                  array.write %[[VAL_172]]{{\[}}%[[VAL_234]], %[[VAL_235]]] = %[[VAL_224]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0::@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0::@matElemMul_0<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:                } else {
 // CHECK-NEXT:                }
 // CHECK-NEXT:                %[[VAL_236:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_205]] : !felt.type<"bn128">
 // CHECK-NEXT:                %[[VAL_237:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_196]] : !felt.type<"bn128">
@@ -393,7 +392,6 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:                  %[[VAL_263:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_186]] : !felt.type<"bn128">
 // CHECK-NEXT:                  %[[VAL_264:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_196]] : !felt.type<"bn128">
 // CHECK-NEXT:                  array.write %[[VAL_172]]{{\[}}%[[VAL_263]], %[[VAL_264]]] = %[[VAL_253]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0::@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0::@matElemMul_0<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:                } else {
 // CHECK-NEXT:                }
 // CHECK-NEXT:                %[[VAL_265:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:                %[[VAL_266:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_205]], %[[VAL_265]] : !felt.type<"bn128">, !felt.type<"bn128">
@@ -447,7 +445,6 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:                  %[[VAL_307:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_186]] : !felt.type<"bn128">
 // CHECK-NEXT:                  %[[VAL_308:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_196]] : !felt.type<"bn128">
 // CHECK-NEXT:                  array.write %[[VAL_174]]{{\[}}%[[VAL_307]], %[[VAL_308]]] = %[[VAL_298]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1::@matElemSum_1<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1::@matElemSum_1<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:                } else {
 // CHECK-NEXT:                }
 // CHECK-NEXT:                %[[VAL_309:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:                %[[VAL_310:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_273]], %[[VAL_309]] : !felt.type<"bn128">, !felt.type<"bn128">
