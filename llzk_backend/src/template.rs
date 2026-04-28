@@ -964,7 +964,13 @@ where
     };
     // Generate the actual LLZK `scf.if` operations in both functions.
     blocks_and_cond.and_then_same(|fc, (then_info, else_info, condition)| {
-        fc.gen_scf_if(codegen, codegen.location_from_meta(meta), condition, then_info, else_info)
+        fc.gen_scf_if_with_var_overwrites(
+            codegen,
+            codegen.location_from_meta(meta),
+            condition,
+            then_info,
+            else_info,
+        )
     })
 }
 
