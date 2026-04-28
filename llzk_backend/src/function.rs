@@ -291,15 +291,14 @@ where
             zero,
             location,
         ))?;
+
         let then_region = region_with_block(&[]);
         self.block_ctx.push(then_region.first_block().unwrap());
         body(self)?;
         self.append_op_no_result(scf::r#yield(&[], location))?;
         self.block_ctx.pop();
-        let else_region = region_with_block(&[]);
-        else_region.first_block().unwrap().append_operation(scf::r#yield(&[], location));
 
-        self.append_op_no_result(scf::r#if(cmp, &[], then_region, else_region, location))
+        self.append_op_no_result(scf::r#if(cmp, &[], then_region, Region::new(), location))
     }
 
     /// Finalizes the context.
