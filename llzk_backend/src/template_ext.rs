@@ -243,7 +243,7 @@ impl TemplateLike for TemplateInstance {
                         todo!("Support mixed type subcomponent instantiations")
                     }
                     ClusterType::Uniform { header, .. } => {
-                        subcmp_decl.instances_mut().push(codegen.struct_type(header).into());
+                        subcmp_decl.instances_mut().push(codegen.struct_type(header));
                     }
                 }
             }
