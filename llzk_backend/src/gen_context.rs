@@ -1537,7 +1537,7 @@ where
 
     /// Generate a simple `scf.for` op that doesn't need to override variables
     /// in the block context.
-    /// The body function (`body_fn`) accepts a `Block` with a single argument representing
+    /// The body function (`body_fn`) accepts a `BlockRef` with a single argument representing
     /// the for-loop induction variable and is used to fill in the `scf.for` op.
     pub fn gen_simple_scf_for(
         &mut self,
