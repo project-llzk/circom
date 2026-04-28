@@ -28,7 +28,6 @@ use llzk::dialect::pod;
 use llzk::dialect::poly;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
-use llzk::prelude::melior_dialects::scf;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;

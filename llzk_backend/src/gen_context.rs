@@ -100,7 +100,13 @@ pub(crate) const OPERAND_VAL_NAMES: &str = "operand_val_names";
 /// Implementors must be `Copy` so that the value can be both passed to `scf::yield`
 /// and returned from `gen_scf_if_arm_no_var_overwrites()` after being consumed.
 pub trait ScfYieldable<'ctx, 'val>: Copy {
+    /// Container of LLZK values to pass to `scf.yield`.
+    ///
+    /// This is typically a fixed-size array, allowing implementors to expose zero
+    /// or more yielded values without heap allocation.
     type YieldValues: AsRef<[Value<'ctx, 'val>]>;
+
+    /// Converts this value into the values yielded by the current `scf.if` arm.
     fn to_yield_values(self) -> Self::YieldValues;
 }
 
@@ -115,13 +121,6 @@ impl<'ctx, 'val> ScfYieldable<'ctx, 'val> for () {
     type YieldValues = [Value<'ctx, 'val>; 0];
     fn to_yield_values(self) -> [Value<'ctx, 'val>; 0] {
         []
-    }
-}
-
-impl<'ctx, 'val, const N: usize> ScfYieldable<'ctx, 'val> for [Value<'ctx, 'val>; N] {
-    type YieldValues = [Value<'ctx, 'val>; N];
-    fn to_yield_values(self) -> [Value<'ctx, 'val>; N] {
-        self
     }
 }
 
