@@ -644,6 +644,7 @@ where
     })?;
 
     let condition = *function.block_ctx.get_named_value(VAR_NAME_HAD_RETURN)?;
+    // No need to use `gen_safe_scf_if()` here since there's no result value.
     function.append_op_no_result(scf::r#if(condition, &[], then_region, Region::new(), location))
 }
 
@@ -723,7 +724,7 @@ where
         )?;
     }
 
-    function.gen_scf_if(codegen, location, condition, then_info, else_info)?;
+    function.gen_scf_if_with_var_overwrites(codegen, location, condition, then_info, else_info)?;
 
     // Finally, if both blocks ended with a return, then add a new return/yield here. Else,
     // if only one block returned, gen additional code to handle the unbalanced return.
