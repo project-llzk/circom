@@ -1409,8 +1409,8 @@ where
     }
 
     /// Append an `scf.if` op using pre-generated branch regions that each yield one value.
-    /// Ensures both yielded values have the same type, emits the `scf.if`, and casts the
-    /// result to `expected_result_type` when provided and unifiable.
+    /// Asserts both yielded values have the same type, emits the `scf.if`, and casts the
+    /// result to `expected_result_type` when provided and legal. Otherwise, returns Err.
     pub fn gen_safe_scf_if(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -1440,6 +1440,85 @@ where
             return self.cast_to_expected_type_if_needed(codegen, location, if_op_result?, expect);
         }
         if_op_result
+    }
+
+    /// Append an `scf.if` op using pre-generated branch regions that each yield N values.
+    /// Asserts corresponding yielded values have the same type, emits the `scf.if`, and casts the
+    /// results to `expected_result_types` when provided and legal. Otherwise, returns Err.
+    ///
+    /// Each [Region] is assumed to contain a single block with an `scf.yield` terminator. If
+    /// `then_values` or `else_values` is None, the Values are retrieved from the block terminator.
+    #[allow(clippy::too_many_arguments)]
+    pub fn gen_safe_scf_if_multi(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        condition: Value<'ctx, 'val>,
+        then_region: Region<'ctx>,
+        then_values: Option<&[Value<'ctx, 'val>]>,
+        else_region: Region<'ctx>,
+        else_values: Option<&[Value<'ctx, 'val>]>,
+        expected_result_types: Option<&[Type<'ctx>]>,
+    ) -> Result<Vec<Value<'ctx, 'val>>> {
+        let yielded_values_from_region =
+            |region: &Region<'ctx>, branch_name: &str| -> Result<Vec<Value<'ctx, 'val>>> {
+                let block = region
+                    .first_block()
+                    .with_context(|| format!("scf.if {branch_name} region has no block"))?;
+                let terminator = block
+                    .terminator()
+                    .with_context(|| format!("scf.if {branch_name} region has no terminator"))?;
+                ensure!(
+                    scf::is_scf_yield(&terminator),
+                    "scf.if {branch_name} block has terminator other than scf.yield"
+                );
+                Ok(terminator.operands().collect())
+            };
+
+        let then_values = match then_values {
+            Some(values) => values.to_vec(),
+            None => yielded_values_from_region(&then_region, "then")?,
+        };
+        let else_values = match else_values {
+            Some(values) => values.to_vec(),
+            None => yielded_values_from_region(&else_region, "else")?,
+        };
+
+        assert_eq!(
+            then_values.len(),
+            else_values.len(),
+            "branches of scf.if must yield the same number of values"
+        );
+
+        let yield_types = zip(&then_values, &else_values)
+            .map(|(then_value, else_value)| {
+                let yield_type = then_value.r#type();
+                assert_eq!(
+                    yield_type,
+                    else_value.r#type(),
+                    "branches of scf.if must yield identical value types"
+                );
+                yield_type
+            })
+            .collect::<Vec<_>>();
+
+        let scf_if_op =
+            self.append_op(scf::r#if(condition, &yield_types, then_region, else_region, location));
+        let results = scf_if_op.results().map(Value::from).collect::<Vec<_>>();
+
+        if let Some(expected) = expected_result_types {
+            assert_eq!(
+                then_values.len(),
+                expected.len(),
+                "scf.if expected result types must match the number of yielded values"
+            );
+            return zip(results, expected)
+                .map(|(result, expected)| {
+                    self.cast_to_expected_type_if_needed(codegen, location, result, *expected)
+                })
+                .collect();
+        }
+        Ok(results)
     }
 
     /// Generate an `scf.if` op based on the given [NestedBlockInfo] for each branch and update the
@@ -1509,19 +1588,22 @@ where
         // Cast condition value to bool type if needed.
         let condition = self.cast_to_bool_if_needed(codegen, location, condition)?;
         // Generate the `scf.if` op for the circom `IfThenElse` statement.
-        let scf_if_op = self.append_op(scf::r#if(
-            condition,
-            &result_types,
-            then_info.region,
-            else_info.region,
+        let scf_if_results = self.gen_safe_scf_if_multi(
+            codegen,
             location,
-        ));
+            condition,
+            then_info.region,
+            Some(&then_values),
+            else_info.region,
+            Some(&else_values),
+            Some(&result_types),
+        )?;
 
         // Update the current block context with results from the `scf.if` op.
         overwrite_names
             .into_iter()
-            .zip(scf_if_op.results())
-            .try_for_each(|(name, result)| self.block_ctx.set_named_value(name, result.into()))?;
+            .zip(scf_if_results)
+            .try_for_each(|(name, result)| self.block_ctx.set_named_value(name, result))?;
         Ok(())
     }
 
