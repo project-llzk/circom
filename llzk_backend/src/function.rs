@@ -15,10 +15,11 @@ use crate::gen_context::OPERAND_VAL_NAMES;
 use crate::gen_context::VAR_NAME_HAD_RETURN;
 use crate::gen_context::VAR_NAME_RETURN_VAL;
 use crate::program_ext::ProgramLike;
+use crate::shared::new_region_and_block;
+use crate::shared::new_region_empty;
 use crate::shared::next_in_block_mut;
 use crate::shared::no_results;
 use crate::shared::parent_operation_mut;
-use crate::shared::region_with_block;
 use crate::shared::remove_from_parent;
 use crate::shared::single_result_as_value;
 use crate::shared::LlzkCodegen;
@@ -40,7 +41,6 @@ use llzk::prelude::melior_dialects::scf;
 use llzk::prelude::melior_dialects::scf::is_scf_if;
 use llzk::prelude::melior_dialects::scf::is_scf_yield;
 use llzk::prelude::Attribute;
-use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FuncDefOpLike as _;
@@ -51,8 +51,6 @@ use llzk::prelude::Operation;
 use llzk::prelude::OperationLike as _;
 use llzk::prelude::OperationMutLike;
 use llzk::prelude::OperationRefMut;
-use llzk::prelude::Region;
-use llzk::prelude::RegionLike as _;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
@@ -292,13 +290,13 @@ where
             location,
         ))?;
 
-        let then_region = region_with_block(&[]);
-        self.block_ctx.push(then_region.first_block().unwrap());
+        let (then_region, then_block) = new_region_and_block(&[]);
+        self.block_ctx.push(then_block);
         body(self)?;
         self.append_op_no_result(scf::r#yield(&[], location))?;
         self.block_ctx.pop();
 
-        self.append_op_no_result(scf::r#if(cmp, &[], then_region, Region::new(), location))
+        self.append_op_no_result(scf::r#if(cmp, &[], then_region, new_region_empty(), location))
     }
 
     /// Finalizes the context.
@@ -365,7 +363,7 @@ where
         assert!(is_scf_if(&parent_if_op)); // precondition
 
         // Move all ops after the `scf.if` into a new block for "else" branch of new `scf.if`.
-        let new_else_block = Block::new(&[]);
+        let (new_else_region, new_else_block) = new_region_and_block(&[]);
         let new_else_result_info: RefactoringBlockResultType;
         {
             // Collect all ops before removing any to avoid invalidating references.
@@ -401,7 +399,7 @@ where
         }
 
         // Create "then" block for new `scf.if` and add yield converted from `ret_op`.
-        let new_then_block = Block::new(&[]);
+        let (new_then_region, new_then_block) = new_region_and_block(&[]);
         {
             assert_eq!(ret_op.operand_count(), 1, "circom functions must return a single value");
             let ret_val = ret_op.operand(0).unwrap();
@@ -446,15 +444,11 @@ where
         // Create new `scf.if` op using the new "then" and "else" blocks. Replace `parent_if_op`
         // with this new `scf.if` and then append a return/yield with the new `scf.if` results.
         let blk = parent_if_op.block().context("expected parent block for original `if`")?;
-        let else_region = Region::new();
-        else_region.append_block(new_else_block);
-        let then_region = Region::new();
-        then_region.append_block(new_then_block);
         let new_if_ref = blk.append_operation(scf::r#if(
             parent_if_op.operand(0)?,
             new_else_result_info.result_types(),
-            then_region,
-            else_region,
+            new_then_region,
+            new_else_region,
             parent_if_op.location(),
         ));
 
@@ -633,8 +627,7 @@ where
     'func: 'blk,
     'blk: 'val,
 {
-    let then_region = Region::new();
-    let then_block = then_region.append_block(Block::new(&[]));
+    let (then_region, then_block) = new_region_and_block(&[]);
     function.gen_in_given_block_with_new_circom_scope_and_merge_overwrites(then_block, |fc| {
         let ret_val = fc.block_ctx.get_named_value(VAR_NAME_RETURN_VAL)?;
         let value = fc.cast_to_return_type_if_needed(codegen, location, *ret_val)?;
@@ -645,7 +638,13 @@ where
 
     let condition = *function.block_ctx.get_named_value(VAR_NAME_HAD_RETURN)?;
     // No need to use `gen_safe_scf_if()` here since there's no result value.
-    function.append_op_no_result(scf::r#if(condition, &[], then_region, Region::new(), location))
+    function.append_op_no_result(scf::r#if(
+        condition,
+        &[],
+        then_region,
+        new_region_empty(),
+        location,
+    ))
 }
 
 /// Generate LLZK code for a circom [Statement::IfThenElse].

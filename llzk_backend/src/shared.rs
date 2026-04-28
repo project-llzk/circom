@@ -2043,12 +2043,26 @@ where
 pub fn map_array_inner_type<'ctx>(t: Type<'ctx>, new_inner: Type<'ctx>) -> Type<'ctx> {
     ArrayType::try_from(t).map(|t| ArrayType::new(new_inner, &t.dims()).into()).unwrap_or(new_inner)
 }
+/// Returns a new region that is empty.
+#[inline]
+pub fn new_region_empty<'ctx>() -> Region<'ctx> {
+    Region::new()
+}
 
-/// Returns a region that contains one block with the given arguments.
-pub fn region_with_block<'ctx>(arguments: &[(Type<'ctx>, Location<'ctx>)]) -> Region<'ctx> {
-    let region = Region::new();
-    region.append_block(Block::new(arguments));
-    region
+/// Returns a new region that contains the given block.
+#[inline]
+pub fn new_region<'ctx: 'blk, 'blk>(b: Block<'ctx>) -> (Region<'ctx>, BlockRef<'ctx, 'blk>) {
+    let r = new_region_empty();
+    let b = r.append_block(b);
+    (r, b)
+}
+
+/// Returns a new region that contains one block with the given arguments.
+#[inline]
+pub fn new_region_and_block<'ctx: 'blk, 'blk>(
+    arguments: &[(Type<'ctx>, Location<'ctx>)],
+) -> (Region<'ctx>, BlockRef<'ctx, 'blk>) {
+    new_region(Block::new(arguments))
 }
 
 /// Returns the type of a subcomponent as defined in its memory.
