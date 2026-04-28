@@ -1055,7 +1055,7 @@ where
     pub fn handle_substitution_stmt_nonsignal<'info>(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        info: InfoProviders<'info>,
+        info: InfoProviders<'info, 'ctx>,
         meta: &Meta,
         var: &String,
         access: &[Access],
@@ -1097,7 +1097,7 @@ where
         indices: impl IntoIterator<Item = &'ast E>,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
-        info: InfoProviders<'info>,
+        info: InfoProviders<'info, 'ctx>,
     ) -> Result<Vec<Value<'ctx, 'val>>>
     where
         E: GenerateLLZKInAnyBlock<'ctx, 'blk, 'val> + 'ast,
@@ -2157,7 +2157,7 @@ where
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
-        info: InfoProviders<'info>,
+        info: InfoProviders<'info, 'ctx>,
     ) -> Result<Value<'ctx, 'val>>;
 }
 
@@ -2177,7 +2177,7 @@ where
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
-        info: InfoProviders<'info>,
+        info: InfoProviders<'info, 'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
         match self {
             Expression::Number(meta, big_int) => {

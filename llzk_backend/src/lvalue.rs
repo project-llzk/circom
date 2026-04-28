@@ -8,13 +8,21 @@ use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COMP;
 use crate::subcmp::SubcmpInfo;
 use anyhow::Result;
+use llzk::dialect::llzk::nondet;
 use llzk::dialect::pod;
 use llzk::dialect::r#struct;
+use llzk::prelude::IntegerAttribute;
 use llzk::prelude::Location;
 use llzk::prelude::PodType;
 use llzk::prelude::StructType;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
+use melior::dialect::arith;
+use melior::dialect::ods::scf;
+use melior::ir::Block;
+use melior::ir::BlockLike;
+use melior::ir::Region;
+use melior::ir::RegionLike;
 use num_traits::ToPrimitive;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
@@ -127,6 +135,11 @@ impl<'ast> Lvalue<'ast> {
     }
 
     /// Handle [Lvalue::Array] case of [`Lvalue::get_value`].
+    ///
+    /// The value read from the array is returned via the continuation.
+    /// If the array is an actual LLZK array then the continuation is called only once.
+    /// However, if the array is actual an array of mixed subcomponents, the continuation is
+    /// called for each branch of the dispatch table.
     fn get_array_value<'ctx, 'val>(
         &self,
         indices: &[&Expression],
@@ -134,30 +147,162 @@ impl<'ast> Lvalue<'ast> {
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
         location: Location<'ctx>,
-        info: InfoProviders<'_>,
+        info: InfoProviders<'_, 'ctx>,
+        cont: &impl Fn(
+            Value<'ctx, 'val>,
+            &mut BlockGenContext<'_, 'ctx, '_, 'val>,
+        ) -> Result<Value<'ctx, 'val>>,
     ) -> Result<Value<'ctx, 'val>> {
-        if let Ok(prev_pod_type) = PodType::try_from(prev.r#type()) {
-            if let Some(indices) = concrete_indices(indices) {
-                if let Some(record_name) =
-                    info.subcmp_info.mixed_subcmp_record_for_indices(self.root_var(), &indices)
-                {
-                    let record_type =
-                        prev_pod_type.get_type_of_record(record_name).ok_or_else(|| {
-                            anyhow::anyhow!(
-                                "record {record_name} not found in mixed subcomponent pod: {prev}"
-                            )
-                        })?;
-                    return block_gen.append_op_unnamed_result(pod::read(
-                        location,
-                        prev,
-                        codegen.flat_sym(record_name),
-                        record_type,
-                    ));
-                }
-            }
-        }
         let indices = block_gen.gen_index_ops(indices.iter().copied(), codegen, location, info)?;
-        block_gen.append_array_read(prev, &indices, location, None)
+        // Whatever I do on `WriteChain::write_array` I need to do a similar thing here for reading
+        // the "arrays".
+        let Ok(prev_pod_type) = PodType::try_from(prev.r#type()) else {
+            let value = block_gen.append_array_read(prev, &indices, location, None)?;
+            return cont(value, block_gen);
+        };
+        // Constant true used as starting point for concatenating the conditions for a particular
+        // index set together with a fold.
+        let true_value = {
+            let attr = IntegerAttribute::new(codegen.bool_type().into(), 1);
+            block_gen.append_op_unnamed_result(arith::constant(
+                codegen.context,
+                attr.into(),
+                location,
+            ))
+        }?;
+
+        // I need the dimensions of the array. I need to know the number of dimensions and the size
+        // of each dimension. Since this stuff happens in `--concrete` I don't need to worry about
+        // arrays having a size that is unknown at compile time.
+        let mixed_subcmp_layout = info.subcmp_info.mixed_subcmp_info(self.root_var())?;
+
+        let entries = mixed_subcmp_layout
+            .indices()
+            .into_iter()
+            .map(|entry_indices| {
+                let cond = emit_condition(
+                    entry_indices,
+                    codegen,
+                    block_gen,
+                    location,
+                    true_value,
+                    &indices,
+                )?;
+
+                let (region, yield_value) = self.emit_mixed_subcmp_if_body(
+                    prev,
+                    entry_indices,
+                    codegen,
+                    block_gen,
+                    location,
+                    prev_pod_type,
+                    info,
+                    cont,
+                )?;
+
+                Ok((cond, region, yield_value))
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        if entries.is_empty() {
+            anyhow::bail!("No indices for mixed subcomponent array '{}'", self.root_var());
+        }
+
+        let fallthrough_type = entries[0].2.r#type();
+        let tail = {
+            let region = Region::new();
+            let body = region.append_block(Block::new(&[]));
+            block_gen.block_ctx.push(body);
+
+            let value = block_gen.append_op_unnamed_result(nondet(location, fallthrough_type))?;
+
+            let overwrites = block_gen.block_ctx.pop();
+            assert!(overwrites.is_empty());
+
+            (region, value)
+        };
+
+        let (region, yield_value) = entries.into_iter().try_fold(
+            tail,
+            |(tail_region, tail_value),
+             (condition, region, yield_value)|
+             -> Result<(Region<'ctx>, Value<'ctx, 'val>)> {
+                let new_region = Region::new();
+                let body = new_region.append_block(Block::new(&[]));
+
+                block_gen.block_ctx.push(body);
+                let yield_value = block_gen.gen_safe_scf_if(
+                    codegen,
+                    location,
+                    condition,
+                    (region, yield_value),
+                    (tail_region, tail_value),
+                    None,
+                )?;
+
+                let overwrites = block_gen.block_ctx.pop();
+                assert!(overwrites.is_empty());
+
+                Ok((new_region, yield_value))
+            },
+        )?;
+
+        // Wrap the region in a scf.execute_region. It's easier to add ops than to steal the ops
+        // inside the region and the canonicalizer will get rid of it.
+        {
+            // Pass the yield_value to a scf.yield op to satisfy scf.execute_region's requirements.
+            let yield_op = scf::r#yield(codegen.context, &[yield_value], location);
+            let fst = region.first_block().unwrap(); // We just created it!
+            assert!(fst.next_in_region().is_none(), "should create only one block!");
+            fst.append_operation(yield_op.into());
+        }
+        block_gen
+            .append_op_unnamed_result(scf::execute_region(codegen.context, region, location).into())
+    }
+
+    /// Emits the IR for a conditional check for array indices in a mixed subcomponent.
+    fn emit_mixed_subcmp_if_body<'ctx, 'val>(
+        &self,
+        prev: Value<'ctx, 'val>,
+        entry_indices: &[usize],
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
+        location: Location<'ctx>,
+        prev_pod_type: PodType<'ctx>,
+        info: InfoProviders<'_, 'ctx>,
+        cont: &impl Fn(
+            Value<'ctx, 'val>,
+            &mut BlockGenContext<'_, 'ctx, '_, 'val>,
+        ) -> Result<Value<'ctx, 'val>>,
+    ) -> Result<(Region<'ctx>, Value<'ctx, 'val>)> {
+        let region = Region::new();
+        let body = region.append_block(Block::new(&[]));
+        block_gen.block_ctx.push(body);
+
+        let record_name = info
+            .subcmp_info
+            .mixed_subcmp_record_for_indices(self.root_var(), entry_indices)
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Mixed subcomponent entry for '{}'{entry_indices:?} not found",
+                    self.root_var()
+                )
+            })?;
+        let record_type = prev_pod_type.get_type_of_record(record_name).ok_or_else(|| {
+            anyhow::anyhow!("record {record_name} not found in mixed subcomponent pod: {prev}")
+        })?;
+        let read_value = block_gen.append_op_unnamed_result(pod::read(
+            location,
+            prev,
+            codegen.flat_sym(record_name),
+            record_type,
+        ))?;
+
+        let yield_value = cont(read_value, block_gen)?;
+
+        let overwrites = block_gen.block_ctx.pop();
+        assert!(overwrites.is_empty());
+        Ok((region, yield_value))
     }
 
     /// Handle [Lvalue::Subcmp]  in [`Lvalue::get_value`] when the signal is an output of the
@@ -232,9 +377,28 @@ impl<'ast> Lvalue<'ast> {
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
-        subcmp_info: &dyn SubcmpInfo,
+        subcmp_info: &dyn SubcmpInfo<'ctx>,
         location: Location<'ctx>,
         ov: Option<&dyn OverrideVar>,
+    ) -> Result<Value<'ctx, 'val>> {
+        self.get_value_impl(codegen, block_gen, subcmp_info, location, ov, &|value, _| Ok(value))
+    }
+
+    /// Internal implementation of `get_value`.
+    ///
+    /// Uses continuation passing style for handling recursivity. This allows for replaying a leaf
+    /// branch multiple times by a parent (for example, for handling mixed subcomponents)
+    fn get_value_impl<'ctx, 'val>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
+        subcmp_info: &dyn SubcmpInfo<'ctx>,
+        location: Location<'ctx>,
+        ov: Option<&dyn OverrideVar>,
+        cont: &impl Fn(
+            Value<'ctx, 'val>,
+            &mut BlockGenContext<'_, 'ctx, '_, 'val>,
+        ) -> Result<Value<'ctx, 'val>>,
     ) -> Result<Value<'ctx, 'val>> {
         macro_rules! var_name {
             ($ov:ident, $var:ident, $op:expr) => {
@@ -247,18 +411,31 @@ impl<'ast> Lvalue<'ast> {
 
         match self {
             Lvalue::Root { var, op: Root::Signal } => {
-                self.get_root_signal(var_name!(ov, var, Root::Signal), block_gen)
+                let root_signal =
+                    self.get_root_signal(var_name!(ov, var, Root::Signal), block_gen)?;
+                cont(root_signal, block_gen)
             }
             Lvalue::Root { var, op: Root::Var } => {
-                self.get_root_value(var_name!(ov, var, Root::Var), block_gen)
+                let root_value = self.get_root_value(var_name!(ov, var, Root::Var), block_gen)?;
+                cont(root_value, block_gen)
             }
-            Lvalue::Array { indices, prev } => self.get_array_value(
-                indices,
-                prev.get_value(codegen, block_gen, subcmp_info, location, ov)?,
+            Lvalue::Array { indices, prev } => prev.get_value_impl(
                 codegen,
                 block_gen,
+                subcmp_info,
                 location,
-                InfoProviders { subcmp_info, ..Default::default() },
+                ov,
+                &|prev, block_gen| {
+                    self.get_array_value(
+                        indices,
+                        prev,
+                        codegen,
+                        block_gen,
+                        location,
+                        InfoProviders { subcmp_info, ..Default::default() },
+                        cont,
+                    )
+                },
             ),
             Lvalue::Subcmp { name: signal_name, prev } => {
                 let root = prev.root_var();
@@ -285,14 +462,33 @@ impl<'ast> Lvalue<'ast> {
                 let is_input = info.signal_is_input(signal_name);
                 let ovii = OverrideIfInput { do_override: is_input };
 
-                let subcmp_value =
-                    prev.get_value(codegen, block_gen, subcmp_info, location, ov.or(Some(&ovii)))?;
-
-                if is_input {
-                    self.get_subcmp_input(signal_name, subcmp_value, codegen, block_gen, location)
-                } else {
-                    self.get_subcmp_output(signal_name, subcmp_value, codegen, block_gen, location)
-                }
+                prev.get_value_impl(
+                    codegen,
+                    block_gen,
+                    subcmp_info,
+                    location,
+                    ov.or(Some(&ovii)),
+                    &|subcmp_value, block_gen| {
+                        let subcmp_member_value = if is_input {
+                            self.get_subcmp_input(
+                                signal_name,
+                                subcmp_value,
+                                codegen,
+                                block_gen,
+                                location,
+                            )
+                        } else {
+                            self.get_subcmp_output(
+                                signal_name,
+                                subcmp_value,
+                                codegen,
+                                block_gen,
+                                location,
+                            )
+                        }?;
+                        cont(subcmp_member_value, block_gen)
+                    },
+                )
             }
         }
     }
@@ -503,4 +699,42 @@ impl fmt::Display for Lvalue<'_> {
             }
         }
     }
+}
+
+/// Emits the IR for a conditional check for array indices in a mixed subcomponent.
+fn emit_condition<'ctx, 'val>(
+    entry_indices: &[usize],
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
+    location: Location<'ctx>,
+    true_value: Value<'ctx, 'val>,
+    indices: &[Value<'ctx, 'val>],
+) -> Result<Value<'ctx, 'val>> {
+    let entry_indices_values = entry_indices
+        .iter()
+        .map(|idx| {
+            let attr = IntegerAttribute::new(codegen.index_type(), *idx as i64);
+            block_gen.append_op_unnamed_result(arith::constant(
+                codegen.context,
+                attr.into(),
+                location,
+            ))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    if entry_indices_values.len() != indices.len() {
+        anyhow::bail!(
+            "Array indices and mixed subcomponent indices len do not match: {} != {}",
+            entry_indices_values.len(),
+            indices.len()
+        );
+    }
+
+    let eqs = std::iter::zip(indices, entry_indices_values)
+        .map(|(lhs, rhs)| {
+            block_gen.append_op_unnamed_result(llzk::dialect::bool::eq(location, *lhs, rhs)?)
+        })
+        .collect::<Result<Vec<_>>>()?;
+    eqs.into_iter().try_fold(true_value, |acc, cmp| {
+        block_gen.append_op_unnamed_result(llzk::dialect::bool::and(location, acc, cmp)?)
+    })
 }

@@ -86,14 +86,14 @@ impl WriteTarget {
 
 /// Overrides a subcomponent's variable name.
 #[derive(Clone, Copy)]
-struct Override<'info> {
+struct Override<'info, 'ctx> {
     /// If true, means that the write chain is storing the result of a call to compute.
     compute_result: bool,
     /// Reference to a subcomponent information provider.
-    subcmp_info: &'info dyn SubcmpInfo,
+    subcmp_info: &'info dyn SubcmpInfo<'ctx>,
 }
 
-impl OverrideVar for Override<'_> {
+impl OverrideVar for Override<'_, '_> {
     fn override_var(&self, var: &str, op: Root) -> Option<String> {
         (!self.compute_result && self.subcmp_info.is_subcmp(var) && op == Root::Signal)
             .then(|| crate::subcmp::names::inputs(var))
@@ -136,7 +136,7 @@ impl<'ast> WriteChain<'ast> {
         fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
         signal_write_info: &dyn SignalWriteInfo,
-        subcmp_info: &dyn SubcmpInfo,
+        subcmp_info: &dyn SubcmpInfo<'ctx>,
     ) -> Result<()> {
         let arr_ref = prev.lvalue.get_value(
             codegen,
@@ -145,44 +145,65 @@ impl<'ast> WriteChain<'ast> {
             location,
             Some(&prev.ov(subcmp_info)),
         )?;
-        if let Ok(pod_type) = PodType::try_from(arr_ref.r#type()) {
-            if let Some(indices) = concrete_indices(&indices) {
-                if let Some(record_name) =
-                    subcmp_info.mixed_subcmp_record_for_indices(prev.lvalue.root_var(), &indices)
-                {
-                    let record_type =
-                        pod_type.get_type_of_record(record_name).ok_or_else(|| {
-                            anyhow::anyhow!(
-                            "record {record_name} not found in mixed subcomponent pod: {arr_ref}"
-                        )
-                        })?;
-                    let val =
-                        fc.cast_to_expected_type_if_needed(codegen, location, val, record_type)?;
-                    fc.append_op_no_result(codegen.new_pod_write_op(
-                        location,
-                        arr_ref,
-                        record_name,
-                        val,
-                    ))?;
-                    return prev.write(
-                        arr_ref,
-                        target,
-                        codegen,
-                        fc,
-                        location,
-                        signal_write_info,
-                        subcmp_info,
-                    );
-                }
-            }
-        }
+        // TEMP
+        let indices_ast = indices.clone();
         let indices = fc.gen_index_ops(
             indices,
             codegen,
             location,
             InfoProviders { subcmp_info, signal_write_info },
         )?;
-        fc.append_array_write(codegen, arr_ref, &indices, location, val, None)?;
+
+        let Ok(pod_type) = PodType::try_from(arr_ref.r#type()) else {
+            fc.append_array_write(codegen, arr_ref, &indices, location, val, None)?;
+
+            return prev.write(
+                arr_ref,
+                target,
+                codegen,
+                fc,
+                location,
+                signal_write_info,
+                subcmp_info,
+            );
+        };
+
+        // The problem here is that concrete_indices expects that the indices are always
+        // literal, which is not always the case.
+        // We need to take each expression, convert it to values (that is done below with
+        // `fc.gen_index_ops`), and then check with a massive if then else for each possible
+        // index. The optimizer should be able to remove the dead branches on literal cases...
+        if let Some(indices) = concrete_indices(&indices_ast) {
+            // Using `root_var` here is somewhat safe since this representation can only be done on
+            // subcomponents (unless we can do it on buses as well but I'm not sure) and
+            // subcomponents are always top level variables.
+            if let Some(record_name) =
+                subcmp_info.mixed_subcmp_record_for_indices(prev.lvalue.root_var(), &indices)
+            {
+                let record_type = pod_type.get_type_of_record(record_name).ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "record {record_name} not found in mixed subcomponent pod: {arr_ref}"
+                    )
+                })?;
+                let val =
+                    fc.cast_to_expected_type_if_needed(codegen, location, val, record_type)?;
+                fc.append_op_no_result(codegen.new_pod_write_op(
+                    location,
+                    arr_ref,
+                    record_name,
+                    val,
+                ))?;
+                return prev.write(
+                    arr_ref,
+                    target,
+                    codegen,
+                    fc,
+                    location,
+                    signal_write_info,
+                    subcmp_info,
+                );
+            }
+        }
         prev.write(arr_ref, target, codegen, fc, location, signal_write_info, subcmp_info)
     }
 
@@ -197,7 +218,7 @@ impl<'ast> WriteChain<'ast> {
         fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
         signal_write_info: &dyn SignalWriteInfo,
-        subcmp_info: &dyn SubcmpInfo,
+        subcmp_info: &dyn SubcmpInfo<'ctx>,
     ) -> Result<()> {
         let subcmp_value_inputs = prev.lvalue.get_value(
             codegen,
@@ -265,7 +286,7 @@ impl<'ast> WriteChain<'ast> {
         fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
         signal_write_info: &dyn SignalWriteInfo,
-        subcmp_info: &dyn SubcmpInfo,
+        subcmp_info: &dyn SubcmpInfo<'ctx>,
     ) -> Result<()> {
         /// Handle [Lvalue::Root] with [Root::Signal] case.
         fn write_root_signal<'ctx, 'val>(
@@ -350,7 +371,7 @@ impl<'ast> WriteChain<'ast> {
 
     /// Creates an override configuration for the given template and the internal `compute_result`
     /// state.
-    fn ov<'info>(&self, template: &'info dyn SubcmpInfo) -> Override<'info> {
+    fn ov<'info, 'ctx>(&self, template: &'info dyn SubcmpInfo<'ctx>) -> Override<'info, 'ctx> {
         Override { compute_result: self.compute_result, subcmp_info: template }
     }
 }
