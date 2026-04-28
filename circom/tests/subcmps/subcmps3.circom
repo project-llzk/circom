@@ -71,7 +71,6 @@ component main = SubCmps3();
 // CHECK-NEXT:              %[[VAL_28:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_17]][@inp] : <[@inp: !array.type<4 x !felt.type<"bn128">>]>, !array.type<4 x !felt.type<"bn128">>
 // CHECK-NEXT:              %[[VAL_29:[0-9a-zA-Z_\.]+]] = function.call @Sum::@Sum::@compute(%[[VAL_28]]) : (!array.type<4 x !felt.type<"bn128">>) -> !struct.type<@Sum::@Sum<[4]>>
 // CHECK-NEXT:              pod.write %[[VAL_7]][@comp] = %[[VAL_29]] : <[@count: index, @comp: !struct.type<@Sum::@Sum<[4]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, !struct.type<@Sum::@Sum<[4]>>
-// CHECK-NEXT:            } else {
 // CHECK-NEXT:            }
 // CHECK-NEXT:            %[[VAL_30:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
 // CHECK-NEXT:            %[[VAL_31:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_15]], %[[VAL_30]]) : !felt.type<"bn128">, !felt.type<"bn128">

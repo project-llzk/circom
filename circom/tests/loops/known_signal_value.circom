@@ -49,7 +49,6 @@ component main = KnownLoopViaSignal();
 // CHECK-NEXT:            %[[VAL_12:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_1]][@i] : <[@i: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_13:[0-9a-zA-Z_\.]+]] = function.call @accumulate::@accumulate::@compute(%[[VAL_12]]) : (!felt.type<"bn128">) -> !struct.type<@accumulate::@accumulate<[]>>
 // CHECK-NEXT:            pod.write %[[VAL_4]][@comp] = %[[VAL_13]] : <[@count: index, @comp: !struct.type<@accumulate::@accumulate<[]>>, @params: !pod.type<[]>]>, !struct.type<@accumulate::@accumulate<[]>>
-// CHECK-NEXT:          } else {
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_4]][@comp] : <[@count: index, @comp: !struct.type<@accumulate::@accumulate<[]>>, @params: !pod.type<[]>]>, !struct.type<@accumulate::@accumulate<[]>>
 // CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_14]][@o] : <@accumulate::@accumulate<[]>>, !felt.type<"bn128">

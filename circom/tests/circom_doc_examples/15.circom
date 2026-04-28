@@ -87,7 +87,6 @@ component main = mult4();
 // CHECK-NEXT:            %[[VAL_41:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_21]][@in] : <[@in: !array.type<2 x !felt.type<"bn128">>]>, !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_42:[0-9a-zA-Z_\.]+]] = function.call @mult::@mult::@compute(%[[VAL_41]]) : (!array.type<2 x !felt.type<"bn128">>) -> !struct.type<@mult::@mult<[]>>
 // CHECK-NEXT:            pod.write %[[VAL_25]][@comp] = %[[VAL_42]] : <[@count: index, @comp: !struct.type<@mult::@mult<[]>>, @params: !pod.type<[]>]>, !struct.type<@mult::@mult<[]>>
-// CHECK-NEXT:          } else {
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_43:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_44:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_43]] : !felt.type<"bn128">
@@ -108,7 +107,6 @@ component main = mult4();
 // CHECK-NEXT:            %[[VAL_55:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_22]][@in] : <[@in: !array.type<2 x !felt.type<"bn128">>]>, !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_56:[0-9a-zA-Z_\.]+]] = function.call @mult::@mult::@compute(%[[VAL_55]]) : (!array.type<2 x !felt.type<"bn128">>) -> !struct.type<@mult::@mult<[]>>
 // CHECK-NEXT:            pod.write %[[VAL_28]][@comp] = %[[VAL_56]] : <[@count: index, @comp: !struct.type<@mult::@mult<[]>>, @params: !pod.type<[]>]>, !struct.type<@mult::@mult<[]>>
-// CHECK-NEXT:          } else {
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          %[[VAL_58:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_57]] : !felt.type<"bn128">
@@ -129,7 +127,6 @@ component main = mult4();
 // CHECK-NEXT:            %[[VAL_69:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_22]][@in] : <[@in: !array.type<2 x !felt.type<"bn128">>]>, !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_70:[0-9a-zA-Z_\.]+]] = function.call @mult::@mult::@compute(%[[VAL_69]]) : (!array.type<2 x !felt.type<"bn128">>) -> !struct.type<@mult::@mult<[]>>
 // CHECK-NEXT:            pod.write %[[VAL_28]][@comp] = %[[VAL_70]] : <[@count: index, @comp: !struct.type<@mult::@mult<[]>>, @params: !pod.type<[]>]>, !struct.type<@mult::@mult<[]>>
-// CHECK-NEXT:          } else {
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_71:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
 // CHECK-NEXT:          %[[VAL_72:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_71]] : !felt.type<"bn128">
@@ -150,7 +147,6 @@ component main = mult4();
 // CHECK-NEXT:            %[[VAL_83:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_21]][@in] : <[@in: !array.type<2 x !felt.type<"bn128">>]>, !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_84:[0-9a-zA-Z_\.]+]] = function.call @mult::@mult::@compute(%[[VAL_83]]) : (!array.type<2 x !felt.type<"bn128">>) -> !struct.type<@mult::@mult<[]>>
 // CHECK-NEXT:            pod.write %[[VAL_25]][@comp] = %[[VAL_84]] : <[@count: index, @comp: !struct.type<@mult::@mult<[]>>, @params: !pod.type<[]>]>, !struct.type<@mult::@mult<[]>>
-// CHECK-NEXT:          } else {
 // CHECK-NEXT:          }
 // CHECK-NEXT:          struct.writem %[[VAL_20]][@comp1$inputs] = %[[VAL_21]] : <@mult4::@mult4<[]>>, !pod.type<[@in: !array.type<2 x !felt.type<"bn128">>]>
 // CHECK-NEXT:          %[[VAL_85:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_25]][@comp] : <[@count: index, @comp: !struct.type<@mult::@mult<[]>>, @params: !pod.type<[]>]>, !struct.type<@mult::@mult<[]>>

@@ -85,7 +85,6 @@ component main = Num2Bits(3);
 // CHECK-NEXT:              pod.write %[[VAL_28]][@comp] = %[[VAL_36]] : <[@count: index, @comp: !struct.type<@Inner::@Inner<[]>>, @params: !pod.type<[]>]>, !struct.type<@Inner::@Inner<[]>>
 // CHECK-NEXT:              %[[VAL_37:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_19]] : !felt.type<"bn128">
 // CHECK-NEXT:              array.write %[[VAL_11]]{{\[}}%[[VAL_37]]] = %[[VAL_28]] : <@n x !pod.type<[@count: index, @comp: !struct.type<@Inner::@Inner<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Inner::@Inner<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:            } else {
 // CHECK-NEXT:            }
 // CHECK-NEXT:            %[[VAL_38:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_19]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_39:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_11]]{{\[}}%[[VAL_38]]] : <@n x !pod.type<[@count: index, @comp: !struct.type<@Inner::@Inner<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Inner::@Inner<[]>>, @params: !pod.type<[]>]>
