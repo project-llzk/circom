@@ -11,8 +11,8 @@ use crate::shared::dim_expr_name;
 use crate::shared::is_bool;
 use crate::shared::is_index;
 use crate::shared::new_array_type;
+use crate::shared::new_region_and_block;
 use crate::shared::no_results;
-use crate::shared::region_with_block;
 use crate::shared::replace_uses_with_new_block_argument;
 use crate::shared::single_result_as_value;
 use crate::shared::ArrayDimension;
@@ -40,7 +40,6 @@ use llzk::prelude::melior_dialects::index;
 use llzk::prelude::melior_dialects::scf;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
-use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FlatSymbolRefAttribute;
@@ -451,8 +450,7 @@ where
 impl Default for NestedBlockInfo<'_, '_, '_> {
     #[inline]
     fn default() -> Self {
-        let region = Region::new();
-        let block = region.append_block(Block::new(&[]));
+        let (region, block) = new_region_and_block(&[]);
         NestedBlockInfo { region, block, var_overwrites: Default::default() }
     }
 }
@@ -1507,8 +1505,7 @@ where
         F: FnOnce(&mut Self) -> Result<Y>,
         Y: ScfYieldable<'ctx, 'val>,
     {
-        let region = Region::new();
-        let block = region.append_block(Block::new(&[]));
+        let (region, block) = new_region_and_block(&[]);
         self.block_ctx.push(block);
         let arm_val = value_gen(self)?;
         let overwrites = self.block_ctx.pop();
@@ -1549,13 +1546,11 @@ where
         start: Value<'ctx, 'val>,
         step: Value<'ctx, 'val>,
         end: Value<'ctx, 'val>,
-        body_fn: impl FnOnce(&mut Block<'ctx>) -> Result<()>,
+        body_fn: impl FnOnce(BlockRef<'ctx, '_>) -> Result<()>,
     ) -> Result<()> {
         let block_arg = (codegen.index_type(), location);
-        let mut block = Block::new(&[block_arg]);
-        body_fn(&mut block)?;
-        let region = Region::new();
-        region.append_block(block);
+        let (region, block) = new_region_and_block(&[block_arg]);
+        body_fn(block)?;
         let scf_op = scf::r#for(start, end, step, region, location);
         self.append_op_no_result(scf_op)
     }
@@ -1567,7 +1562,7 @@ where
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
         end: Value<'ctx, 'val>,
-        body_fn: impl FnOnce(&mut Block<'ctx>) -> Result<()>,
+        body_fn: impl FnOnce(BlockRef<'ctx, '_>) -> Result<()>,
     ) -> Result<()> {
         let start = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
         let step = self.append_op_unnamed_result(codegen.new_index_const_op(1, location))?;
@@ -1797,7 +1792,8 @@ where
         // Create the loop nest
         let mut block: Option<BlockRef<'_, '_>> = None;
         for dim in dim_values {
-            let op = scf::r#for(zero, *dim, one, region_with_block(&loop_block_args), location);
+            let op =
+                scf::r#for(zero, *dim, one, new_region_and_block(&loop_block_args).0, location);
             let loop_op = match &block {
                 Some(block_ref) => block_ref.append_operation(op),
                 None => self.append_op(op),
