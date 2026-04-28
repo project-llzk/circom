@@ -1383,7 +1383,7 @@ where
     /// Append an `scf.if` op using pre-generated branch regions that each yield one value.
     /// Ensures both yielded values have the same type, emits the `scf.if`, and casts the
     /// result to `expected_result_type` when provided and unifiable.
-    pub fn gen_scf_if(
+    pub fn gen_safe_scf_if(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
@@ -1536,7 +1536,7 @@ where
     {
         let then_info = self.gen_scf_if_arm_no_var_overwrites(location, then_value_gen)?;
         let else_info = self.gen_scf_if_arm_no_var_overwrites(location, else_value_gen)?;
-        self.gen_scf_if(codegen, location, condition, then_info, else_info, None)
+        self.gen_safe_scf_if(codegen, location, condition, then_info, else_info, None)
     }
 
     /// Generate a simple `scf.for` op that doesn't need to override variables
@@ -2224,7 +2224,7 @@ where
                 let else_info = block_gen.gen_scf_if_arm_no_var_overwrites(location, |g| {
                     if_false.gen_llzk_in_block(codegen, g, info)
                 })?;
-                block_gen.gen_scf_if(codegen, location, condition, then_info, else_info, None)
+                block_gen.gen_safe_scf_if(codegen, location, condition, then_info, else_info, None)
             }
             Expression::ArrayInLine { meta, values } => {
                 let location = codegen.location_from_meta(meta);

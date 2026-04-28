@@ -1899,34 +1899,34 @@ where
 
             // Generate the branch that contains the target, then a nondet placeholder for the
             // other branch (using the result type from the containing branch).
-            let (containing_region, target_val) =
-                gen_ctx.gen_scf_if_arm_no_var_overwrites(location, |gc| {
-                    gen_up_to_target(
-                        codegen,
-                        gc,
-                        target_expr,
-                        std::slice::from_ref(containing_stmt),
-                        trace,
-                    )
-                })?;
-            let result_type = target_val.r#type();
-            let (other_region, _) = gen_ctx.gen_scf_if_arm_no_var_overwrites(location, |gc| {
+            let containing_arm_info = gen_ctx.gen_scf_if_arm_no_var_overwrites(location, |gc| {
+                gen_up_to_target(
+                    codegen,
+                    gc,
+                    target_expr,
+                    std::slice::from_ref(containing_stmt),
+                    trace,
+                )
+            })?;
+            let result_type = containing_arm_info.1.r#type();
+            let other_arm_info = gen_ctx.gen_scf_if_arm_no_var_overwrites(location, |gc| {
                 gc.append_op_unnamed_result(codegen.new_nondet_at_location(location, result_type)?)
             })?;
 
             // Assemble the scf.if with regions in the correct order.
-            let (then_region, else_region) = if target_in_then {
-                (containing_region, other_region)
+            let (then_arm_info, else_arm_info) = if target_in_then {
+                (containing_arm_info, other_arm_info)
             } else {
-                (other_region, containing_region)
+                (other_arm_info, containing_arm_info)
             };
-            gen_ctx.append_op_unnamed_result(scf::r#if(
-                cond_bool,
-                &[result_type],
-                then_region,
-                else_region,
+            gen_ctx.gen_safe_scf_if(
+                codegen,
                 location,
-            ))
+                cond_bool,
+                then_arm_info,
+                else_arm_info,
+                Some(result_type),
+            )
         }
 
         /// Generate LLZK for all of `stmts` up to the first [Statement] in the `trace` (i.e. the

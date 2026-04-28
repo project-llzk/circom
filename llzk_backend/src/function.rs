@@ -644,6 +644,7 @@ where
     })?;
 
     let condition = *function.block_ctx.get_named_value(VAR_NAME_HAD_RETURN)?;
+    // No need to use `gen_safe_scf_if()` here since there's no result value.
     function.append_op_no_result(scf::r#if(condition, &[], then_region, Region::new(), location))
 }
 
