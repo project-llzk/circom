@@ -1630,7 +1630,7 @@ where
                     record_name.as_str()?,
                     location,
                 )?)?;
-                let value = self.cast_to_index_if_needed(location, value)?;
+                let value = self.cast_to_index_if_needed(codegen, location, value)?;
 
                 Ok(OwningValueRange::from([value].as_slice()))
             })
