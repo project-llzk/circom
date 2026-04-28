@@ -51,7 +51,6 @@ component main = UnknownLoopComponent();
 // CHECK-NEXT:            %[[VAL_12:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_2]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_13:[0-9a-zA-Z_\.]+]] = function.call @nbits::@nbits::@compute(%[[VAL_12]]) : (!felt.type<"bn128">) -> !struct.type<@nbits::@nbits<[]>>
 // CHECK-NEXT:            pod.write %[[VAL_5]][@comp] = %[[VAL_13]] : <[@count: index, @comp: !struct.type<@nbits::@nbits<[]>>, @params: !pod.type<[]>]>, !struct.type<@nbits::@nbits<[]>>
-// CHECK-NEXT:          } else {
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_5]][@comp] : <[@count: index, @comp: !struct.type<@nbits::@nbits<[]>>, @params: !pod.type<[]>]>, !struct.type<@nbits::@nbits<[]>>
 // CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_14]][@out] : <@nbits::@nbits<[]>>, !felt.type<"bn128">

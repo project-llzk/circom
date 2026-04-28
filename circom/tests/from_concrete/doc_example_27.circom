@@ -50,7 +50,6 @@ component main = A();
 // CHECK-NEXT:            %[[VAL_10:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_3]][@in] : <[@in: !array.type<10 x !felt.type<"bn128">>]>, !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_11:[0-9a-zA-Z_\.]+]] = function.call @Bits2Num_0::@Bits2Num_0::@compute(%[[VAL_10]]) : (!array.type<10 x !felt.type<"bn128">>) -> !struct.type<@Bits2Num_0::@Bits2Num_0<[]>>
 // CHECK-NEXT:            pod.write %[[VAL_2]][@comp] = %[[VAL_11]] : <[@count: index, @comp: !struct.type<@Bits2Num_0::@Bits2Num_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@Bits2Num_0::@Bits2Num_0<[]>>
-// CHECK-NEXT:          } else {
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_2]][@comp] : <[@count: index, @comp: !struct.type<@Bits2Num_0::@Bits2Num_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@Bits2Num_0::@Bits2Num_0<[]>>
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_12]][@out] : <@Bits2Num_0::@Bits2Num_0<[]>>, !felt.type<"bn128">

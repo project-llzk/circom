@@ -115,7 +115,6 @@ component main = AliasCheck();
 // CHECK-NEXT:              %[[VAL_22:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_10]][@in] : <[@in: !array.type<254 x !felt.type<"bn128">>]>, !array.type<254 x !felt.type<"bn128">>
 // CHECK-NEXT:              %[[VAL_23:[0-9a-zA-Z_\.]+]] = function.call @CompConstant_1::@CompConstant_1::@compute(%[[VAL_22]]) : (!array.type<254 x !felt.type<"bn128">>) -> !struct.type<@CompConstant_1::@CompConstant_1<[]>>
 // CHECK-NEXT:              pod.write %[[VAL_2]][@comp] = %[[VAL_23]] : <[@count: index, @comp: !struct.type<@CompConstant_1::@CompConstant_1<[]>>, @params: !pod.type<[]>]>, !struct.type<@CompConstant_1::@CompConstant_1<[]>>
-// CHECK-NEXT:            } else {
 // CHECK-NEXT:            }
 // CHECK-NEXT:            %[[VAL_24:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_25:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_11]], %[[VAL_24]] : !felt.type<"bn128">, !felt.type<"bn128">
@@ -290,7 +289,6 @@ component main = AliasCheck();
 // CHECK-NEXT:            %[[VAL_168:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_51]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_169:[0-9a-zA-Z_\.]+]] = function.call @Num2Bits_0::@Num2Bits_0::@compute(%[[VAL_168]]) : (!felt.type<"bn128">) -> !struct.type<@Num2Bits_0::@Num2Bits_0<[]>>
 // CHECK-NEXT:            pod.write %[[VAL_50]][@comp] = %[[VAL_169]] : <[@count: index, @comp: !struct.type<@Num2Bits_0::@Num2Bits_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@Num2Bits_0::@Num2Bits_0<[]>>
-// CHECK-NEXT:          } else {
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_170:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_50]][@comp] : <[@count: index, @comp: !struct.type<@Num2Bits_0::@Num2Bits_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@Num2Bits_0::@Num2Bits_0<[]>>
 // CHECK-NEXT:          %[[VAL_171:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_170]][@out] : <@Num2Bits_0::@Num2Bits_0<[]>>, !array.type<135 x !felt.type<"bn128">>

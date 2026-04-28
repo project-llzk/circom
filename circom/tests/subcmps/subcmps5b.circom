@@ -59,7 +59,6 @@ component main = SubCmp();
 // CHECK-NEXT:            %[[VAL_17:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_7]][@i] : <[@i: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_18:[0-9a-zA-Z_\.]+]] = function.call @Nop::@Nop::@compute(%[[VAL_17]]) : (!felt.type<"bn128">) -> !struct.type<@Nop::@Nop<[]>>
 // CHECK-NEXT:            pod.write %[[VAL_10]][@comp] = %[[VAL_18]] : <[@count: index, @comp: !struct.type<@Nop::@Nop<[]>>, @params: !pod.type<[]>]>, !struct.type<@Nop::@Nop<[]>>
-// CHECK-NEXT:          } else {
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_10]][@comp] : <[@count: index, @comp: !struct.type<@Nop::@Nop<[]>>, @params: !pod.type<[]>]>, !struct.type<@Nop::@Nop<[]>>
 // CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_19]][@o] : <@Nop::@Nop<[]>>, !felt.type<"bn128">

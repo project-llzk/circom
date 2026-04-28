@@ -51,7 +51,6 @@ component main = Foo(2);
 // CHECK-NEXT:              %[[VAL_21:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_13]][@inp] : <[@inp: !array.type<@N x !felt.type<"bn128">>]>, !array.type<@N x !felt.type<"bn128">>
 // CHECK-NEXT:              %[[VAL_22:[0-9a-zA-Z_\.]+]] = function.call @Sum::@Sum::@compute(%[[VAL_21]]) : (!array.type<@N x !felt.type<"bn128">>) -> !struct.type<@Sum::@Sum<[@N]>>
 // CHECK-NEXT:              pod.write %[[VAL_8]][@comp] = %[[VAL_22]] : <[@count: index, @comp: !struct.type<@Sum::@Sum<[@N]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, !struct.type<@Sum::@Sum<[@N]>>
-// CHECK-NEXT:            } else {
 // CHECK-NEXT:            }
 // CHECK-NEXT:            %[[VAL_23:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_24:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_14]], %[[VAL_23]] : !felt.type<"bn128">, !felt.type<"bn128">

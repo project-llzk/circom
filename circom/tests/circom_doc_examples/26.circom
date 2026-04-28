@@ -83,7 +83,6 @@ component main = B(3);
 // CHECK-NEXT:            %[[VAL_35:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_24]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_36:[0-9a-zA-Z_\.]+]] = function.call @A::@A::@compute(%[[VAL_35]]) : (!felt.type<"bn128">) -> !struct.type<@A::@A<[@n]>>
 // CHECK-NEXT:            pod.write %[[VAL_28]][@comp] = %[[VAL_36]] : <[@count: index, @comp: !struct.type<@A::@A<[@n]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, !struct.type<@A::@A<[@n]>>
-// CHECK-NEXT:          } else {
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_37:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_28]][@comp] : <[@count: index, @comp: !struct.type<@A::@A<[@n]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, !struct.type<@A::@A<[@n]>>
 // CHECK-NEXT:          %[[VAL_38:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_37]][@b] : <@A::@A<[@n]>>, !felt.type<"bn128">

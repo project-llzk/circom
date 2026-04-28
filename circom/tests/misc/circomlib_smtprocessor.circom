@@ -74,7 +74,6 @@ component main = SMTProcessor(2);
 // CHECK-NEXT:                pod.write %[[VAL_24]][@comp] = %[[VAL_33]] : <[@count: index, @comp: !struct.type<@SMTProcessorSM::@SMTProcessorSM<[]>>, @params: !pod.type<[]>]>, !struct.type<@SMTProcessorSM::@SMTProcessorSM<[]>>
 // CHECK-NEXT:                %[[VAL_34:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_10]] : !felt.type<"bn128">
 // CHECK-NEXT:                array.write %[[VAL_3]]{{\[}}%[[VAL_34]]] = %[[VAL_24]] : <@nLevels x !pod.type<[@count: index, @comp: !struct.type<@SMTProcessorSM::@SMTProcessorSM<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@SMTProcessorSM::@SMTProcessorSM<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:              } else {
 // CHECK-NEXT:              }
 // CHECK-NEXT:              %[[VAL_35:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:              %[[VAL_36:[0-9a-zA-Z_\.]+]] = felt.sub %[[VAL_35]], %[[VAL_0]] : !felt.type<"bn128">, !felt.type<"bn128">
@@ -99,7 +98,6 @@ component main = SMTProcessor(2);
 // CHECK-NEXT:                pod.write %[[VAL_41]][@comp] = %[[VAL_50]] : <[@count: index, @comp: !struct.type<@SMTProcessorSM::@SMTProcessorSM<[]>>, @params: !pod.type<[]>]>, !struct.type<@SMTProcessorSM::@SMTProcessorSM<[]>>
 // CHECK-NEXT:                %[[VAL_51:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_10]] : !felt.type<"bn128">
 // CHECK-NEXT:                array.write %[[VAL_3]]{{\[}}%[[VAL_51]]] = %[[VAL_41]] : <@nLevels x !pod.type<[@count: index, @comp: !struct.type<@SMTProcessorSM::@SMTProcessorSM<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@SMTProcessorSM::@SMTProcessorSM<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:              } else {
 // CHECK-NEXT:              }
 // CHECK-NEXT:              scf.yield %[[VAL_11]] : !array.type<@nLevels x !pod.type<[@prev_new1: !felt.type<"bn128">, @prev_na: !felt.type<"bn128">]>>
 // CHECK-NEXT:            } else {
@@ -125,7 +123,6 @@ component main = SMTProcessor(2);
 // CHECK-NEXT:                pod.write %[[VAL_57]][@comp] = %[[VAL_66]] : <[@count: index, @comp: !struct.type<@SMTProcessorSM::@SMTProcessorSM<[]>>, @params: !pod.type<[]>]>, !struct.type<@SMTProcessorSM::@SMTProcessorSM<[]>>
 // CHECK-NEXT:                %[[VAL_67:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_10]] : !felt.type<"bn128">
 // CHECK-NEXT:                array.write %[[VAL_3]]{{\[}}%[[VAL_67]]] = %[[VAL_57]] : <@nLevels x !pod.type<[@count: index, @comp: !struct.type<@SMTProcessorSM::@SMTProcessorSM<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@SMTProcessorSM::@SMTProcessorSM<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:              } else {
 // CHECK-NEXT:              }
 // CHECK-NEXT:              %[[VAL_68:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:              %[[VAL_69:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_10]] : !felt.type<"bn128">
@@ -149,7 +146,6 @@ component main = SMTProcessor(2);
 // CHECK-NEXT:                pod.write %[[VAL_73]][@comp] = %[[VAL_82]] : <[@count: index, @comp: !struct.type<@SMTProcessorSM::@SMTProcessorSM<[]>>, @params: !pod.type<[]>]>, !struct.type<@SMTProcessorSM::@SMTProcessorSM<[]>>
 // CHECK-NEXT:                %[[VAL_83:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_10]] : !felt.type<"bn128">
 // CHECK-NEXT:                array.write %[[VAL_3]]{{\[}}%[[VAL_83]]] = %[[VAL_73]] : <@nLevels x !pod.type<[@count: index, @comp: !struct.type<@SMTProcessorSM::@SMTProcessorSM<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@SMTProcessorSM::@SMTProcessorSM<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:              } else {
 // CHECK-NEXT:              }
 // CHECK-NEXT:              scf.yield %[[VAL_11]] : !array.type<@nLevels x !pod.type<[@prev_new1: !felt.type<"bn128">, @prev_na: !felt.type<"bn128">]>>
 // CHECK-NEXT:            }

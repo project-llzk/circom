@@ -104,7 +104,6 @@ component main = InvalidArgIndex(3, 2);
 // CHECK-NEXT:                  %[[VAL_62:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_61]], %[[VAL_26]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:                  %[[VAL_63:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_62]] : !felt.type<"bn128">
 // CHECK-NEXT:                  array.write %[[VAL_7]]{{\[}}%[[VAL_63]]] = %[[VAL_52]] : <@"k_Mul_n@338" x !pod.type<[@count: index, @comp: !struct.type<@OR::@OR<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@OR::@OR<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:                } else {
 // CHECK-NEXT:                }
 // CHECK-NEXT:                scf.yield %[[VAL_25]] : !array.type<@"k_Mul_n@338" x !pod.type<[@a: !felt.type<"bn128">]>>
 // CHECK-NEXT:              } else {
@@ -137,7 +136,6 @@ component main = InvalidArgIndex(3, 2);
 // CHECK-NEXT:                  %[[VAL_85:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_84]], %[[VAL_26]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:                  %[[VAL_86:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_85]] : !felt.type<"bn128">
 // CHECK-NEXT:                  array.write %[[VAL_7]]{{\[}}%[[VAL_86]]] = %[[VAL_75]] : <@"k_Mul_n@338" x !pod.type<[@count: index, @comp: !struct.type<@OR::@OR<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@OR::@OR<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:                } else {
 // CHECK-NEXT:                }
 // CHECK-NEXT:                scf.yield %[[VAL_25]] : !array.type<@"k_Mul_n@338" x !pod.type<[@a: !felt.type<"bn128">]>>
 // CHECK-NEXT:              }

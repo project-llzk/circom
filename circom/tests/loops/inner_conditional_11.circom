@@ -77,7 +77,6 @@ component main = Poseidon();
 // CHECK-NEXT:                %[[VAL_36:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:                %[[VAL_37:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_36]] : !felt.type<"bn128">
 // CHECK-NEXT:                array.write %[[VAL_2]]{{\[}}%[[VAL_37]]] = %[[VAL_27]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:              } else {
 // CHECK-NEXT:              }
 // CHECK-NEXT:              scf.yield %[[VAL_11]] : !array.type<2 x !pod.type<[@inp: !felt.type<"bn128">]>>
 // CHECK-NEXT:            } else {
@@ -114,7 +113,6 @@ component main = Poseidon();
 // CHECK-NEXT:                  %[[VAL_62:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:                  %[[VAL_63:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_62]] : !felt.type<"bn128">
 // CHECK-NEXT:                  array.write %[[VAL_2]]{{\[}}%[[VAL_63]]] = %[[VAL_53]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:                } else {
 // CHECK-NEXT:                }
 // CHECK-NEXT:                scf.yield %[[VAL_11]] : !array.type<2 x !pod.type<[@inp: !felt.type<"bn128">]>>
 // CHECK-NEXT:              } else {
