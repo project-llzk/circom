@@ -18,7 +18,7 @@ use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::comp_type;
 use crate::shared::dim_expr_name;
-use crate::shared::get_poly_expr_name;
+use crate::shared::insert_unique_symbol_op;
 use crate::shared::map_array_inner_type;
 use crate::shared::ArrayDimension;
 use crate::shared::ArrayDimensionResult;
@@ -57,13 +57,12 @@ use llzk::prelude::StringRef;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::StructType;
-use llzk::prelude::TemplateExprOp;
 use llzk::prelude::TemplateOpLike;
 use llzk::prelude::TemplateOpRefMut;
+use llzk::prelude::TemplateSymbolBindingOp;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
-use llzk::symbol_table;
 use melior::ir::Attribute;
 use melior::ir::Location;
 use num_bigint_dig::BigInt;
@@ -781,13 +780,8 @@ where
             .map(|binding| (binding.name().to_owned(), binding.type_opt()))
     }
 
-    fn callback_store_poly_expr(
-        &self,
-        _: String,
-        op: TemplateExprOp<'ctx>,
-    ) -> StringAttribute<'ctx> {
-        // Use `symbol_table::insert` instead of direct insertion to rename duplicates
-        get_poly_expr_name(&symbol_table::insert(&self.template_def, op.into()))
+    fn record_new_sym_binding(&self, op: TemplateSymbolBindingOp<'ctx>) -> StringAttribute<'ctx> {
+        insert_unique_symbol_op(&self.template_def, op)
     }
 
     fn get_dim_expr(

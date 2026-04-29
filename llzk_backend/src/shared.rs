@@ -62,15 +62,16 @@ use llzk::prelude::StringAttribute;
 use llzk::prelude::StringRef;
 use llzk::prelude::StructType;
 use llzk::prelude::SymbolRefAttribute;
-use llzk::prelude::TemplateExprOp;
 use llzk::prelude::TemplateExprOpLike;
 use llzk::prelude::TemplateOp;
 use llzk::prelude::TemplateOpRef;
 use llzk::prelude::TemplateOpRefMut;
+use llzk::prelude::TemplateSymbolBindingOp;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
+use llzk::symbol_table;
 use llzk::value_ext::replace_all_uses_in_block_with;
 use llzk::value_ext::OwningValueRange;
 use llzk::value_ext::ValueRange;
@@ -1767,11 +1768,7 @@ where
     }
 
     /// Callback to store a `poly.expr` operation generated on the fly for an array dimension.
-    fn callback_store_poly_expr(
-        &self,
-        name: String,
-        op: TemplateExprOp<'ctx>,
-    ) -> StringAttribute<'ctx>;
+    fn record_new_sym_binding(&self, op: TemplateSymbolBindingOp<'ctx>) -> StringAttribute<'ctx>;
 
     /// Get the mapping of `var` name to declared LLZK type.
     fn get_var_decl_types(&self) -> &HashMap<String, Type<'ctx>>;
@@ -1810,7 +1807,7 @@ where
                         // Use the pre-computed type from DeclarationInfo (seeded into the
                         // BlockContextStack root) to avoid triggering recursive
                         // gen_template_poly_expr calls for non-constant dimension expressions.
-                        if let Some(ty) = gen_ctx.var_decl_types.get(name) {
+                        if let Some(ty) = gen_ctx.get_var_decl_types().get(name) {
                             let op = codegen
                                 .new_nondet_at_location(codegen.location_from_meta(meta), *ty)?;
                             gen_ctx.block_ctx.declare_name_ensure_not_present(name, op)?;
@@ -2048,7 +2045,7 @@ where
             &expr_op,
         )?;
 
-        let uniqued_name = self.callback_store_poly_expr(name, expr_op);
+        let uniqued_name = self.record_new_sym_binding(expr_op.into());
         // Have to convert the StringAttribute to FlatSymbolRefAttribute before returning it.
         ArrayDimensionResult::new(codegen.flat_sym(uniqued_name.value()).into(), &[])
     }
@@ -2132,9 +2129,20 @@ pub fn dim_expr_name(expr: &Expression) -> String {
     format!("{}@{}", visit(expr), expr.get_meta().start)
 }
 
-/// Get the `sym_name` attribute from a `poly.expr` operation.
-pub fn get_poly_expr_name<'c: 'a, 'a>(op: &impl OperationLike<'c, 'a>) -> StringAttribute<'c> {
-    assert!(poly::is_expr_op(op), "expected a poly.expr operation");
-    let a = op.attribute("sym_name").expect("`poly.expr` op has `sym_name` attribute per ODS");
-    StringAttribute::try_from(a).expect("`sym_name` attribute is StringAttr per ODS")
+/// Get the `sym_name` attribute from the operation, if present.
+pub fn get_sym_name_attr<'c: 'a, 'a>(
+    op: &impl OperationLike<'c, 'a>,
+) -> Result<StringAttribute<'c>> {
+    op.attribute("sym_name").and_then(StringAttribute::try_from).map_err(Into::into)
+}
+
+/// Insert a new symbol operation into the symbol table owned by `sym_table_op`. The inserted symbol
+/// is renamed automatically if necessary to avoid collisions. Ownership of `new_symbol_op` is
+/// transferred to the symbol table. Return the (possibly renamed) symbol name.
+pub fn insert_unique_symbol_op<'c: 'a, 'a>(
+    sym_table_op: &impl OperationLike<'c, 'a>,
+    new_symbol_op: impl Into<Operation<'c>>,
+) -> StringAttribute<'c> {
+    get_sym_name_attr(&symbol_table::insert(sym_table_op, new_symbol_op.into()))
+        .expect("Symbol ops must have `sym_name` attribute per ODS")
 }

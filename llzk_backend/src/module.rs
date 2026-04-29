@@ -7,7 +7,6 @@ use crate::function::GenerateLLZKInFunction as _;
 use crate::function_ext::FunctionLike;
 use crate::program_ext::ProgramLike;
 use crate::shared;
-use crate::shared::get_poly_expr_name;
 use crate::shared::map_name_to_arg_value;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
@@ -47,9 +46,8 @@ use llzk::prelude::StringAttribute;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructType;
-use llzk::prelude::TemplateExprOp;
-use llzk::prelude::TemplateExprOpLike as _;
 use llzk::prelude::TemplateOpLike;
+use llzk::prelude::TemplateSymbolBindingOp;
 use llzk::prelude::Type;
 use melior::ir::Attribute;
 use melior::ir::AttributeLike as _;
@@ -120,7 +118,9 @@ pub struct DeclarationInfo<'ctx> {
     /// Note: this is set on construction and not modified.
     template_params: HashSet<String>,
     /// Dimension expressions mapped to generated `poly.expr` op to be inserted into the template.
-    poly_exprs: RefCell<HashMap<String, TemplateExprOp<'ctx>>>,
+    /// Could contain `poly.param` as well since it uses the `TemplateSymbolBindingOp` wrapper but
+    /// there hasn't been a use case for that yet.
+    new_sym_bindings: RefCell<HashMap<String, TemplateSymbolBindingOp<'ctx>>>,
     /// Pre-computed LLZK types for `var` declarations, keyed by var name. Used by
     /// `poly.expr` body generation to avoid recursive dimension-expression recomputation.
     var_decl_types: HashMap<String, Type<'ctx>>,
@@ -464,18 +464,14 @@ where
         self.template_params.iter().map(|name| (name.clone(), None))
     }
 
-    fn callback_store_poly_expr(
-        &self,
-        name: String,
-        op: TemplateExprOp<'ctx>,
-    ) -> StringAttribute<'ctx> {
-        let uniqued_name = get_poly_expr_name(&op);
-        let old = self.poly_exprs.borrow_mut().insert(name, op);
+    fn record_new_sym_binding(&self, op: TemplateSymbolBindingOp<'ctx>) -> StringAttribute<'ctx> {
+        let name = op.name_attr();
+        let old = self.new_sym_bindings.borrow_mut().insert(name.value().to_string(), op);
         // ASSERT: In general, `DimExprConverter` has to account for non-unique names but in this
         // `DeclarationInfo` implementation, names will always be unique (assuming the `Meta::start`
-        // from the circom AST that `dim_expr_name()` appends to the names is accurate).
+        // info from the circom AST, that `dim_expr_name()` appends to the names, is accurate).
         assert!(old.is_none(), "multiple poly.expr generated for the same dimension expression");
-        uniqued_name
+        name
     }
 
     fn get_dim_expr(
@@ -495,7 +491,7 @@ where
                 Expression::Variable { name, access, .. } if access.is_empty() => {
                     if self.template_params.contains(name) {
                         ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
-                    } else if self.poly_exprs.borrow().contains_key(name) {
+                    } else if self.new_sym_bindings.borrow().contains_key(name) {
                         // This is a `Statement::Declaration` with `VariableType::Var` that was
                         // previously encountered and converted into a `poly.expr`.
                         ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
@@ -602,15 +598,15 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
     let new_template = codegen.add_template(llzk_template_def)?;
 
     // Insert the declarations from `declarations.poly_exprs`.
-    let mut poly_exprs = declarations.poly_exprs.into_inner();
+    let mut poly_exprs = declarations.new_sym_bindings.into_inner();
     let mut poly_expr_names: Vec<_> =
-        poly_exprs.iter().map(|(name, op)| (name.clone(), op.expr_type())).collect();
+        poly_exprs.iter().map(|(name, op)| (name.clone(), op.type_opt())).collect();
     if codegen.config.stabilize {
         poly_expr_names.sort_by(|(a, _), (b, _)| a.cmp(b));
     }
     for (name, _) in &poly_expr_names {
         // Here the template is empty and the names are unique per storage in HashMap so they
-        // can be directly appended without using `symbol_table::insert` to unique names.
+        // can be directly appended without using `insert_unique_symbol_op()` to unique names.
         new_template.body().append_operation(poly_exprs.remove(name).unwrap().into());
     }
 
@@ -661,7 +657,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
             .get_name_of_params()
             .iter()
             .map(|name| (name.clone(), None))
-            .chain(poly_expr_names.iter().map(|(name, ty)| (name.clone(), Some(*ty)))),
+            .chain(poly_expr_names.iter().map(|(name, ty)| (name.clone(), *ty))),
     )?;
     let mut arg_names = arg_names;
     arg_names.insert(0, "**self**".to_string());
@@ -675,7 +671,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
             .get_name_of_params()
             .iter()
             .map(|name| (name.clone(), None))
-            .chain(poly_expr_names.iter().map(|(name, ty)| (name.clone(), Some(*ty)))),
+            .chain(poly_expr_names.iter().map(|(name, ty)| (name.clone(), *ty))),
     )?;
 
     // Insert read operations for struct fields into constrain functions.

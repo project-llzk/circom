@@ -57,7 +57,7 @@ use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::StringAttribute;
 use llzk::prelude::StructType;
-use llzk::prelude::TemplateExprOp;
+use llzk::prelude::TemplateSymbolBindingOp;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
@@ -78,6 +78,7 @@ use program_structure::ast::ExpressionInfixOpcode;
 use program_structure::ast::ExpressionPrefixOpcode;
 use program_structure::ast::Meta;
 use program_structure::error_code::ReportCode;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto;
@@ -615,11 +616,13 @@ where
     /// Pre-computed LLZK types for circom `var` declarations, keyed by var name. Populated from
     /// [crate::module::DeclarationInfo] when generating `poly.expr` bodies for templates so that
     /// dimension expressions referencing other vars do not trigger recursive code generation.
-    pub(crate) var_decl_types: &'decls HashMap<String, Type<'ctx>>,
+    var_decl_types: &'decls HashMap<String, Type<'ctx>>,
     /// Mapping of `poly.param` and `poly.expr` symbol names visible in the current context to
     /// their optional type restriction. The `poly.param` generally don't have a type restriction,
     /// but the `poly.expr` always produces a specific typed result.
-    poly_template_binding_names: HashMap<String, Option<Type<'ctx>>>,
+    ///
+    /// Uses [`RefCell`] to allow mutation from `&self` (e.g., in `record_new_sym_binding`).
+    poly_template_binding_names: RefCell<HashMap<String, Option<Type<'ctx>>>>,
 }
 
 impl<'decls, 'ctx, 'blk, 'val> BlockGenContext<'decls, 'ctx, 'blk, 'val>
@@ -637,7 +640,9 @@ where
         Self {
             block_ctx,
             var_decl_types,
-            poly_template_binding_names: poly_template_binding_names.into_iter().collect(),
+            poly_template_binding_names: RefCell::new(
+                poly_template_binding_names.into_iter().collect(),
+            ),
         }
     }
 
@@ -649,17 +654,24 @@ where
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Self> {
-        let mut sorted: Vec<_> = self.poly_template_binding_names.iter().collect();
-        if codegen.config.stabilize {
-            sorted.sort_by(|(a, _), (b, _)| a.cmp(b));
-        }
-        for (name, ty) in sorted {
-            // If there is no type restriction use `felt` since it's circom's basic type.
-            self.block_ctx.declare_name_ensure_not_present(
-                name,
-                poly::read_const(location, name, ty.unwrap_or_else(|| codegen.felt_type().into())),
-            )?;
-        }
+        {
+            let map = self.poly_template_binding_names.borrow();
+            let mut sorted: Vec<_> = map.iter().collect();
+            if codegen.config.stabilize {
+                sorted.sort_by(|(a, _), (b, _)| a.cmp(b));
+            }
+            for (name, ty) in sorted {
+                // If there is no type restriction use `felt` since it's circom's basic type.
+                self.block_ctx.declare_name_ensure_not_present(
+                    name,
+                    poly::read_const(
+                        location,
+                        name,
+                        ty.unwrap_or_else(|| codegen.felt_type().into()),
+                    ),
+                )?;
+            }
+        } // this block limits borrow of `self.poly_template_binding_names`
         Ok(self)
     }
 
@@ -1840,11 +1852,12 @@ where
         if let Ok(sym_ref) = FlatSymbolRefAttribute::try_from(dim) {
             // Check if this is a template binding reference
             let sym_name = sym_ref.value();
-            if let Some(type_restriction) = self.poly_template_binding_names.get(sym_name) {
-                if let Some(ty) = type_restriction {
+            let type_restriction = self.poly_template_binding_names.borrow().get(sym_name).copied();
+            if let Some(opt_ty) = type_restriction {
+                if let Some(ty) = opt_ty {
                     // Read as the restricted type and then cast to index.
                     let op =
-                        self.append_op_unnamed_result(poly::read_const(location, sym_name, *ty))?;
+                        self.append_op_unnamed_result(poly::read_const(location, sym_name, ty))?;
                     return self.cast_to_index_if_needed(codegen, location, op);
                 } else {
                     // If there is no type restriction just use `index`.
@@ -2191,15 +2204,15 @@ where
         self.var_decl_types
     }
 
-    fn callback_store_poly_expr(
-        &self,
-        name: String,
-        op: TemplateExprOp<'ctx>,
-    ) -> StringAttribute<'ctx> {
-        // TODO: How/where can it be store when using this general BlockGenContext?
-        // TODO: Also, add new name+type to `self.poly_template_binding_names` so future
-        //       calls to `get_dim_expr` can find it. The field will need RefCell.
-        todo!("BlockGenContext::callback_store_poly_expr: {name} -> {op:?}");
+    fn record_new_sym_binding(&self, op: TemplateSymbolBindingOp<'ctx>) -> StringAttribute<'ctx> {
+        let name = op.name_attr();
+        // Record the name+type so future calls to `get_dim_expr` can resolve it as a known
+        // poly binding (rather than trying to look it up as a runtime SSA value).
+        self.poly_template_binding_names
+            .borrow_mut()
+            .insert(name.value().to_string(), op.type_opt());
+        // TODO: insert op somehow...
+        name
     }
 
     fn get_dim_expr(
@@ -2221,11 +2234,11 @@ where
                     // Grab the template symbol binding name if it exists (first try `poly.param`
                     // name then try `poly.expr` name). Otherwise, use `affine_map` to convert Value
                     // to Attribute.
-                    if self.poly_template_binding_names.contains_key(name) {
+                    if self.poly_template_binding_names.borrow().contains_key(name) {
                         ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
                     } else {
                         let expr_name = dim_expr_name(expr);
-                        if self.poly_template_binding_names.contains_key(&expr_name) {
+                        if self.poly_template_binding_names.borrow().contains_key(&expr_name) {
                             ArrayDimensionResult::new(codegen.flat_sym(expr_name).into(), &[])
                         } else if let Ok(v) = self.block_ctx.get_named_value(name) {
                             ArrayDimensionResult::new(codegen.identity_affine_map_attr()?, &[*v])
@@ -2423,7 +2436,14 @@ where
                     // This `TVarType` references a symbol from the callee function, which is not
                     // valid within the caller. Must add a new `poly.param` in the caller for a new
                     // `TVarType` and use that as the return type.
-                    codegen.felt_type().into() // TODO: placeholder
+                    //
+                    // It would be nice to add the `tvar` type restriction on the `poly.param` op
+                    // but the problem is that it must use the same symbol as the param name itself
+                    // and that is not known until after it's inserted into the symbol table to
+                    // ensure it has a unique name.
+                    let unique_name =
+                        block_gen.record_new_sym_binding(poly::param(location, "$t", None)?.into());
+                    codegen.tvar_type(unique_name.value())
                 } else {
                     return_type
                 };
