@@ -651,7 +651,7 @@ where
     /// that template parameters are available as SSA Values in the block context.
     pub fn with_poly_template_binding_locals(
         mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Self> {
         {
@@ -708,7 +708,7 @@ where
     #[inline]
     fn unify_constrain_eq_types(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         lhs: Value<'ctx, 'val>,
         rhs: Value<'ctx, 'val>,
@@ -728,7 +728,7 @@ where
     /// if necessary.
     pub fn append_constrain_eq(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         lhs: Value<'ctx, 'val>,
         rhs: Value<'ctx, 'val>,
@@ -741,7 +741,7 @@ where
     /// and the [ArrayType] of the `arr_ref` value.
     pub fn append_array_write(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         arr_ref: Value<'ctx, 'val>,
         indices: &[Value<'ctx, 'val>],
         location: Location<'ctx>,
@@ -813,7 +813,7 @@ where
     /// Cast `val` to bool and emit a `bool.assert` op.
     pub fn append_assert(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<()> {
@@ -841,7 +841,7 @@ where
     #[inline]
     pub fn cast_to_felt(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -852,7 +852,7 @@ where
     #[inline]
     pub fn cast_to_felt_if_needed(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -879,7 +879,7 @@ where
     #[inline]
     pub fn cast_to_index_if_needed(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -896,7 +896,7 @@ where
     #[inline]
     pub fn cast_to_bool_if_needed(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -930,7 +930,7 @@ where
     #[inline]
     pub fn cast_to_expected_type_if_needed(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
         expected: Type<'ctx>,
@@ -961,7 +961,7 @@ where
     /// out-of-bounds, then the array is default-filled. Otherwise, copy elements into destination.
     fn copy_into_array(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         meta: &Meta,
         dst: Value<'ctx, 'val>,
         dst_ty: ArrayType<'ctx>,
@@ -1028,7 +1028,7 @@ where
     /// destination array (this requires 0-filling or truncation).
     pub fn handle_simple_assignment(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         meta: &Meta,
         var: &String,
         rvalue: Value<'ctx, 'val>,
@@ -1088,7 +1088,7 @@ where
     #[allow(clippy::too_many_arguments)]
     pub fn handle_substitution_stmt_nonsignal<'info>(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         info: InfoProviders<'info>,
         meta: &Meta,
         var: &String,
@@ -1129,7 +1129,7 @@ where
     pub fn gen_index_ops<'ast, 'info, E>(
         &mut self,
         indices: impl IntoIterator<Item = &'ast E>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         info: InfoProviders<'info>,
     ) -> Result<Vec<Value<'ctx, 'val>>>
@@ -1148,7 +1148,7 @@ where
     /// Generate LLZK code in the current function for a circom prefix operation.
     pub fn gen_prefix_op(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         meta: &Meta,
         op: &ExpressionPrefixOpcode,
         rhs: Value<'ctx, 'val>,
@@ -1237,7 +1237,7 @@ where
     /// Generate LLZK code in the current function for an infix operation.
     pub fn gen_infix_op(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         meta: &Meta,
         op: &ExpressionInfixOpcode,
         lhs: Value<'ctx, 'val>,
@@ -1408,7 +1408,7 @@ where
     /// variable names. Create an [Attribute] containing comma-separated list of `value_names`
     /// and attach it to the `scf.yield` op using the [OPERAND_VAL_NAMES] attribute key.
     fn append_multi_operand_yield_to_block(
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block: BlockRef<'ctx, 'val>,
         values: &[Value<'ctx, 'val>],
         value_names: &[String],
@@ -1425,7 +1425,7 @@ where
     /// result to `expected_result_type` when provided and legal. Otherwise, returns Err.
     pub fn gen_safe_scf_if(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         (then_region, then_value): (Region<'ctx>, Value<'ctx, 'val>),
@@ -1463,7 +1463,7 @@ where
     #[allow(clippy::too_many_arguments)]
     pub fn gen_safe_scf_if_multi(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         then_region: Region<'ctx>,
@@ -1537,7 +1537,7 @@ where
     /// block context with the results of the `scf.if` op mapped to the given names.
     pub fn gen_scf_if_with_var_overwrites(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         mut then_info: NestedBlockInfo<'ctx, 'blk, 'val>,
@@ -1645,7 +1645,7 @@ where
     /// assumes that the branches do not modify the current block context and only produce values.
     pub fn gen_scf_if_no_var_overwrites<F1, F2>(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         then_value_gen: F1,
@@ -1666,7 +1666,7 @@ where
     /// the for-loop induction variable and is used to fill in the `scf.for` op.
     pub fn gen_simple_scf_for(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         start: Value<'ctx, 'val>,
         step: Value<'ctx, 'val>,
@@ -1684,7 +1684,7 @@ where
     #[inline]
     pub fn gen_normalized_scf_for(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         end: Value<'ctx, 'val>,
         body_fn: impl FnOnce(BlockRef<'ctx, '_>) -> Result<()>,
@@ -1699,7 +1699,7 @@ where
     /// Returns a [`Value`] with the updated counter.
     pub fn gen_subcmp_decrease_counter(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         subcmp_memory: Value<'ctx, 'val>,
         amount: u32,
@@ -1724,7 +1724,7 @@ where
     pub fn gen_decompose_pod(
         &mut self,
         pod: Value<'ctx, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Vec<Value<'ctx, 'val>>> {
         PodType::try_from(pod.r#type())?
@@ -1757,7 +1757,7 @@ where
         &mut self,
         struct_type: StructType<'ctx>,
         params_value: Value<'ctx, '_>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Vec<OwningValueRange<'ctx, '_>>> {
         let params = PodType::try_from(params_value.r#type())?.get_records();
@@ -1788,7 +1788,7 @@ where
         inputs: Value<'ctx, 'val>,
         params: Value<'ctx, 'val>,
         location: Location<'ctx>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<Value<'ctx, 'val>> {
         let input_values = self.gen_decompose_pod(inputs, codegen, location)?;
         let func_name = append_tail(&struct_type.name(), FUNC_NAME_COMPUTE.as_ref());
@@ -1817,7 +1817,7 @@ where
         subcmp: Value<'ctx, 'val>,
         inputs: Value<'ctx, 'val>,
         location: Location<'ctx>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<()> {
         let mut call_args = vec![subcmp];
         call_args.extend(self.gen_decompose_pod(inputs, codegen, location)?);
@@ -1836,7 +1836,7 @@ where
     /// generating the necessary IR if the attribute is a symbol reference to a struct param.
     pub fn array_dim_attr_to_idx_val(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         dim: Attribute<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -1878,7 +1878,7 @@ where
     /// values representing the current value of each loop's induction variable.
     pub fn gen_loop_nest_from_attrs(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         dims: &[Attribute<'ctx>],
         body: impl FnOnce(&mut Self, &[Value<'ctx, 'val>]) -> Result<()>,
@@ -1901,7 +1901,7 @@ where
     /// values representing the current value of each loop's induction variable.
     pub fn gen_loop_nest(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         dim_values: &[Value<'ctx, 'val>],
         body: impl FnOnce(&mut Self, &[Value<'ctx, 'val>]) -> Result<()>,
@@ -1961,7 +1961,7 @@ where
     /// is otherwise the same.
     pub fn generate_uniform_array(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         value: Value<'ctx, 'val>,
         dimension: &ArrayDimension<'ctx, 'val>,
@@ -2048,7 +2048,7 @@ where
     /// block context with the results of the `scf.while` op mapped to the given names.
     pub fn gen_scf_while(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         loop_cond_info: NestedBlockInfo<'ctx, 'blk, 'val>,
@@ -2158,7 +2158,7 @@ where
     #[inline]
     fn transform_symbols_to_index(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         dimension: &ArrayDimension<'ctx, 'val>,
     ) -> Result<ArrayDimension<'ctx, 'val>> {
@@ -2169,7 +2169,7 @@ where
     /// with the given dimensions and declaring it in the current block context.
     pub fn gen_declaration(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         meta: &Meta,
         name: &str,
         dimensions: &[Expression],
@@ -2204,20 +2204,22 @@ where
         self.var_decl_types
     }
 
-    fn record_new_sym_binding(&self, op: TemplateSymbolBindingOp<'ctx>) -> StringAttribute<'ctx> {
-        let name = op.name_attr();
+    fn record_new_sym_binding(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        op: TemplateSymbolBindingOp<'ctx>,
+    ) -> StringAttribute<'ctx> {
+        let type_opt = op.type_opt();
+        let name = codegen.binding_insert_strategy().unwrap().store(codegen, op);
         // Record the name+type so future calls to `get_dim_expr` can resolve it as a known
         // poly binding (rather than trying to look it up as a runtime SSA value).
-        self.poly_template_binding_names
-            .borrow_mut()
-            .insert(name.value().to_string(), op.type_opt());
-        // TODO: insert op somehow...
+        self.poly_template_binding_names.borrow_mut().insert(name.value().to_string(), type_opt);
         name
     }
 
     fn get_dim_expr(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         expr: &Expression,
     ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
         // First try to compute statically, falling back to literal computation if all values are
@@ -2278,7 +2280,7 @@ where
     /// Generates LLZK IR in the given block context.
     fn gen_llzk_in_block<'info>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
         info: InfoProviders<'info>,
     ) -> Result<Value<'ctx, 'val>>;
@@ -2298,7 +2300,7 @@ where
 {
     fn gen_llzk_in_block<'info>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
         info: InfoProviders<'info>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -2441,8 +2443,8 @@ where
                     // but the problem is that it must use the same symbol as the param name itself
                     // and that is not known until after it's inserted into the symbol table to
                     // ensure it has a unique name.
-                    let unique_name =
-                        block_gen.record_new_sym_binding(poly::param(location, "$t", None)?.into());
+                    let unique_name = block_gen
+                        .record_new_sym_binding(codegen, poly::param(location, "$t", None)?.into());
                     codegen.tvar_type(unique_name.value())
                 } else {
                     return_type

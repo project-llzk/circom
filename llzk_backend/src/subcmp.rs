@@ -179,14 +179,14 @@ impl<'ctx> SubcmpType<'ctx> {
     }
 
     /// Type used to represent template parameters.
-    pub fn param_type(&self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Type<'ctx> {
+    pub fn param_type(&self, codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>) -> Type<'ctx> {
         codegen.felt_type().into()
     }
 
     /// Returns the pod type for the template parameters.
     pub fn params_pod_type(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> PodType<'ctx> {
         let param_type = self.param_type(codegen);
         // These need to be in declaration order.
@@ -207,7 +207,7 @@ impl<'ctx> SubcmpType<'ctx> {
     /// for the number of assigned inputs.
     pub fn comp_pod_records(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> [(&'static str, Type<'ctx>); 3] {
         [
             // Counts the number of inputs pending an assignment. When it reaches 0 it's safe
@@ -229,7 +229,7 @@ impl<'ctx> SubcmpType<'ctx> {
     /// been assigned, signaling that is safe to call the compute function if it reached 0. And the
     /// subcomponent itself, as a non-deterministic value before the call to compute and the result
     /// of said function after.
-    pub fn comp_pod(&self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Type<'ctx> {
+    pub fn comp_pod(&self, codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>) -> Type<'ctx> {
         let records = self.comp_pod_records(codegen);
         map_array_inner_type(self.inner, codegen.pod_type(&records).into())
     }
@@ -314,7 +314,7 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
         &self,
         compute_ctx: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
         op_builder: &OpBuilder<'ctx>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         subcmp_decls: &HashMap<String, SubcmpDeclInfo<'ctx>>,
     ) -> Result<()>
     where

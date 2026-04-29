@@ -11,6 +11,7 @@ use crate::shared::map_name_to_arg_value;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
+use crate::shared::PendingPolyBindings;
 use crate::shared::TmplParamsInstance;
 use crate::subcmp::unique_instance_types;
 use crate::subcmp::SubcmpDeclInfo;
@@ -42,12 +43,10 @@ use llzk::prelude::PodRecordAttribute;
 use llzk::prelude::PodType;
 use llzk::prelude::PublicAttribute;
 use llzk::prelude::RegionLike as _;
-use llzk::prelude::StringAttribute;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructType;
 use llzk::prelude::TemplateOpLike;
-use llzk::prelude::TemplateSymbolBindingOp;
 use llzk::prelude::Type;
 use melior::ir::Attribute;
 use melior::ir::AttributeLike as _;
@@ -57,7 +56,6 @@ use program_structure::ast::Meta;
 use program_structure::ast::SignalType;
 use program_structure::ast::Statement;
 use program_structure::ast::VariableType;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryFrom;
@@ -117,10 +115,12 @@ pub struct DeclarationInfo<'ctx> {
     /// The template params that may be used to instantiate array dimensions.
     /// Note: this is set on construction and not modified.
     template_params: HashSet<String>,
-    /// Dimension expressions mapped to generated `poly.expr` op to be inserted into the template.
-    /// Could contain `poly.param` as well since it uses the `TemplateSymbolBindingOp` wrapper but
-    /// there hasn't been a use case for that yet.
-    new_sym_bindings: RefCell<HashMap<String, TemplateSymbolBindingOp<'ctx>>>,
+    /// Pending `poly.expr` / `poly.param` symbol bindings generated while visiting declarations,
+    /// to be inserted into the template once it is created.
+    ///
+    /// While the `visit()` function is running, this is `None` and is only populated with the map
+    /// from `codegen` when the vistor is done.
+    new_sym_bindings: Option<PendingPolyBindings<'ctx>>,
     /// Pre-computed LLZK types for `var` declarations, keyed by var name. Used by
     /// `poly.expr` body generation to avoid recursive dimension-expression recomputation.
     var_decl_types: HashMap<String, Type<'ctx>>,
@@ -162,7 +162,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     /// type.
     fn complete<'ast>(
         &mut self,
-        codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'ast, 'ctx, '_, impl ProgramLike>,
     ) -> Result<Vec<SubcmpPrologueData<'ctx>>> {
         let mut ops = vec![];
         let mut subcmps: Vec<_> = self.subcmp_decls.keys().cloned().collect();
@@ -211,7 +211,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     /// Visit all statements in the body of the template and return a new [DeclarationInfo]
     /// with any declarations found.
     pub(crate) fn from_template(
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         template: &impl TemplateLike,
     ) -> Result<DeclarationInfo<'ctx>> {
         let mut declarations = DeclarationInfo {
@@ -219,9 +219,18 @@ impl<'ctx> DeclarationInfo<'ctx> {
             subcmp_decls: template.get_init_subcmp_decls(codegen)?,
             ..DeclarationInfo::default()
         };
+        codegen.binding_insert_strategy.replace(Some(Box::new(PendingPolyBindings::default())));
         for s in template.get_body() {
             declarations.visit(codegen, s)?;
         }
+        declarations.new_sym_bindings = Some(
+            codegen
+                .binding_insert_strategy
+                .take()
+                .expect("strategy should be set from above")
+                .into_pending()
+                .expect("strategy set above is PendingPolyBindings"),
+        );
         Ok(declarations)
     }
 
@@ -232,7 +241,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     /// statements. Those nested declarations are not currently processed here.
     fn visit(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         stmt: &Statement,
     ) -> Result<()> {
         let _guard = codegen.trace_statement(stmt);
@@ -314,7 +323,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     /// In this context, constructor refers to `Foo(n)` in Circom, not `@Foo::@compute` in LLZK.
     fn find_subcmp_ctor_call(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         expression: &Expression,
     ) -> Result<StructType<'ctx>> {
         match expression {
@@ -335,7 +344,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     /// [`visit`](Self::visit) helper for component declarations.
     fn visit_component_decl(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         meta: &Meta,
         name: &str,
         dimensions: &[Expression],
@@ -356,7 +365,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     #[inline]
     fn visit_signal_or_bus(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         signal_type: &SignalType,
         name: &String,
         meta: &Meta,
@@ -372,7 +381,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     /// `visit()` helper for Signal and Bus VariableType.
     pub(crate) fn visit_signal_or_bus_impl(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         signal_type: &SignalType,
         name: &String,
         location: Location<'ctx>,
@@ -411,7 +420,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     /// trace.
     fn search_component_instances(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         stmt: &Statement,
         push_trace: bool,
     ) -> Result<()> {
@@ -464,19 +473,9 @@ where
         self.template_params.iter().map(|name| (name.clone(), None))
     }
 
-    fn record_new_sym_binding(&self, op: TemplateSymbolBindingOp<'ctx>) -> StringAttribute<'ctx> {
-        let name = op.name_attr();
-        let old = self.new_sym_bindings.borrow_mut().insert(name.value().to_string(), op);
-        // ASSERT: In general, `DimExprConverter` has to account for non-unique names but in this
-        // `DeclarationInfo` implementation, names will always be unique (assuming the `Meta::start`
-        // info from the circom AST, that `dim_expr_name()` appends to the names, is accurate).
-        assert!(old.is_none(), "multiple poly.expr generated for the same dimension expression");
-        name
-    }
-
     fn get_dim_expr(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         expr: &Expression,
     ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
         // First try to compute statically, falling back to literal computation if all values are
@@ -491,7 +490,7 @@ where
                 Expression::Variable { name, access, .. } if access.is_empty() => {
                     if self.template_params.contains(name) {
                         ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
-                    } else if self.new_sym_bindings.borrow().contains_key(name) {
+                    } else if codegen.binding_insert_strategy().unwrap().contains_name(name) {
                         // This is a `Statement::Declaration` with `VariableType::Var` that was
                         // previously encountered and converted into a `poly.expr`.
                         ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
@@ -524,10 +523,14 @@ where
 }
 
 /// Generate LLZK for a function-like construct. Helper to avoid code duplication.
-fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
+fn gen_function_llzk<'ast, 'ctx, 'r, F: FunctionLike>(
     func_like: &'ast F,
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-) -> Result<()> {
+    codegen: &LlzkCodegen<'ast, 'ctx, 'r, impl ProgramLike>,
+) -> Result<()>
+where
+    'ast: 'r,
+    'ctx: 'r,
+{
     if codegen.config.verbose {
         println!("Generating LLZK for function {}", func_like.get_name());
     }
@@ -549,8 +552,11 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
         .iter()
         .map(|name| poly::param(location, name, Some(codegen.tvar_type(name))).map(Into::into))
         .collect::<Vec<_>>();
-    let llzk_template_def = poly::template(location, func_like.get_name(), template_region_ops)?;
-    let new_template = codegen.add_template(llzk_template_def)?;
+    let (new_template, _guard) = codegen.create_and_set_current_template(
+        location,
+        func_like.get_name(),
+        template_region_ops,
+    )?;
 
     // Store function inside the `poly.template` so its type variables can resolve to the params.
     let func = FuncDefOpRefMut::from(FuncDefOpRef::try_from(
@@ -574,10 +580,14 @@ fn gen_function_llzk<'ast, 'ctx, F: FunctionLike>(
 }
 
 /// Generate LLZK for a template-like construct. Helper to avoid code duplication.
-fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
+fn gen_template_llzk<'ast, 'ctx, 'r, T: TemplateLike>(
     template_like: &'ast T,
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-) -> Result<()> {
+    codegen: &LlzkCodegen<'ast, 'ctx, 'r, impl ProgramLike>,
+) -> Result<()>
+where
+    'ast: 'r,
+    'ctx: 'r,
+{
     if codegen.config.verbose {
         println!("Generating LLZK for template {}", template_like.get_name());
     }
@@ -593,21 +603,26 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
         .iter()
         .map(|name| poly::param(location, name, None).map(Into::into))
         .collect::<Vec<Result<Operation, LlzkError>>>();
-    let llzk_template_def =
-        poly::template(location, template_like.get_name(), template_region_ops)?;
-    let new_template = codegen.add_template(llzk_template_def)?;
+    let (new_template, _guard) = codegen.create_and_set_current_template(
+        location,
+        template_like.get_name(),
+        template_region_ops,
+    )?;
 
-    // Insert the declarations from `declarations.poly_exprs`.
-    let mut poly_exprs = declarations.new_sym_bindings.into_inner();
-    let mut poly_expr_names: Vec<_> =
-        poly_exprs.iter().map(|(name, op)| (name.clone(), op.type_opt())).collect();
+    // Insert the declarations from `declarations.new_sym_bindings`.
+    let mut poly_bindings = declarations
+        .new_sym_bindings
+        .expect("was set in `DeclarationInfo::from_template()`")
+        .take_bindings();
     if codegen.config.stabilize {
-        poly_expr_names.sort_by(|(a, _), (b, _)| a.cmp(b));
+        poly_bindings.sort_by(|a, b| a.name().cmp(b.name()));
     }
-    for (name, _) in &poly_expr_names {
-        // Here the template is empty and the names are unique per storage in HashMap so they
-        // can be directly appended without using `insert_unique_symbol_op()` to unique names.
-        new_template.body().append_operation(poly_exprs.remove(name).unwrap().into());
+    let poly_binding_names: Vec<_> =
+        poly_bindings.iter().map(|op| (op.name().to_owned(), op.type_opt())).collect();
+    for binding_op in poly_bindings {
+        // Here the template is empty and the names are already uniqued so they can be
+        // directly appended without using `insert_unique_symbol_op()` to unique names.
+        new_template.body().append_operation(binding_op.into());
     }
 
     // Add the struct definition, prepopulated with fields, to the template body.
@@ -657,7 +672,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
             .get_name_of_params()
             .iter()
             .map(|name| (name.clone(), None))
-            .chain(poly_expr_names.iter().map(|(name, ty)| (name.clone(), *ty))),
+            .chain(poly_binding_names.iter().map(|(name, ty)| (name.clone(), *ty))),
     )?;
     let mut arg_names = arg_names;
     arg_names.insert(0, "**self**".to_string());
@@ -671,7 +686,7 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
             .get_name_of_params()
             .iter()
             .map(|name| (name.clone(), None))
-            .chain(poly_expr_names.iter().map(|(name, ty)| (name.clone(), *ty))),
+            .chain(poly_binding_names.iter().map(|(name, ty)| (name.clone(), *ty))),
     )?;
 
     // Insert read operations for struct fields into constrain functions.
@@ -752,7 +767,7 @@ fn gen_subcmps_prologue_in_template<'ast, 'ctx, 'func, 'blk, 'val>(
     subcmps: impl IntoIterator<Item = SubcmpPrologueData<'ctx>>,
     compute_ctx: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
     constrain_ctx: &mut FunctionContext<'_, 'ctx, '_, '_, '_>,
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     subcmp_decls: &HashMap<String, SubcmpDeclInfo<'ctx>>,
 ) -> Result<()>
 where
@@ -781,11 +796,18 @@ pub trait GenerateLLZKInModule<'ctx, P: ProgramLike> {
     /// Generates LLZK IR from the circom AST element.
     ///
     /// 'ast: lifetime of the circom AST element
-    fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx, P>) -> Result<()>;
+    fn gen_llzk<'ast, 'r>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx, 'r, P>) -> Result<()>
+    where
+        'ast: 'r,
+        'ctx: 'r;
 }
 
 impl<'ctx, P: ProgramLike> GenerateLLZKInModule<'ctx, P> for P {
-    fn gen_llzk<'ast>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx, P>) -> Result<()> {
+    fn gen_llzk<'ast, 'r>(&'ast self, codegen: &LlzkCodegen<'ast, 'ctx, 'r, P>) -> Result<()>
+    where
+        'ast: 'r,
+        'ctx: 'r,
+    {
         for f in self.get_functions(codegen.config.stabilize) {
             codegen.set_current_body(f.get_body());
             gen_function_llzk(f, codegen)?;
@@ -808,7 +830,7 @@ impl<'ctx, P: ProgramLike> GenerateLLZKInModule<'ctx, P> for P {
 fn collect_inputs<'ctx>(
     template_name: &str,
     subcmp_type: StructType<'ctx>,
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
 ) -> Result<Type<'ctx>> {
     let template = codegen
         .program
@@ -836,7 +858,7 @@ fn record_subcmp_decl<'ctx, 'ast>(
     name: String,
     info: &mut SubcmpDeclInfo<'ctx>,
     subcmp_type: StructType<'ctx>,
-    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'ast, 'ctx, '_, impl ProgramLike>,
     ops: &mut Vec<SubcmpPrologueData<'ctx>>,
     struct_fields: &mut Vec<MemberInfo<'ctx>>,
 ) -> Result<()> {

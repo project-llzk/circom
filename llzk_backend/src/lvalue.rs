@@ -130,7 +130,7 @@ impl<'ast> Lvalue<'ast> {
         &self,
         indices: &[&Expression],
         prev: Value<'ctx, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
         location: Location<'ctx>,
         info: InfoProviders<'_>,
@@ -145,7 +145,7 @@ impl<'ast> Lvalue<'ast> {
         &self,
         signal_name: &str,
         subcmp_value: Value<'ctx, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -185,7 +185,7 @@ impl<'ast> Lvalue<'ast> {
         &self,
         signal_name: &str,
         subcmp_value: Value<'ctx, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -209,7 +209,7 @@ impl<'ast> Lvalue<'ast> {
     /// It could be a placeholder operation at this point (usually represented with `llzk.nondet`).
     pub fn get_value<'ctx, 'val>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
         subcmp_info: &dyn SubcmpInfo,
         location: Location<'ctx>,

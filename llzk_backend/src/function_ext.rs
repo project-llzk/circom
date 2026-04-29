@@ -28,7 +28,7 @@ pub trait FunctionLike: std::fmt::Debug {
     /// Generate the LLZK Location for the function definition.
     fn get_location<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Location<'ctx>;
 
     /// Get the name of the function.
@@ -40,13 +40,13 @@ pub trait FunctionLike: std::fmt::Debug {
     /// Get the types of parameters of the function.
     fn get_type_of_params<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Vec<Type<'ctx>>;
 
     /// Get the type of the function return value.
     fn get_type_of_return<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Type<'ctx>;
 
     /// Get the names of the polymorphic type parameters used for this function (if any)
@@ -59,7 +59,7 @@ pub trait FunctionLike: std::fmt::Debug {
 impl FunctionLike for FunctionData {
     fn get_location<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Location<'ctx> {
         codegen.location(self.get_file_id(), self.get_param_location())
     }
@@ -74,7 +74,7 @@ impl FunctionLike for FunctionData {
 
     fn get_type_of_params<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Vec<Type<'ctx>> {
         (0..self.get_num_of_params())
             .map(|idx| codegen.tvar_type(&function_input_type_param(idx)))
@@ -83,7 +83,7 @@ impl FunctionLike for FunctionData {
 
     fn get_type_of_return<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Type<'ctx> {
         codegen.tvar_type(function_return_type_param())
     }
@@ -103,7 +103,7 @@ impl FunctionLike for FunctionData {
 impl FunctionLike for VCF {
     fn get_location<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Location<'ctx> {
         codegen.location_unknown()
     }
@@ -118,7 +118,7 @@ impl FunctionLike for VCF {
 
     fn get_type_of_params<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Vec<Type<'ctx>> {
         let base_type = codegen.felt_type().into();
         self.params_types
@@ -130,7 +130,7 @@ impl FunctionLike for VCF {
 
     fn get_type_of_return<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Type<'ctx> {
         let base_type = codegen.felt_type().into();
         codegen

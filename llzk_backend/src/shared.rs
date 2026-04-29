@@ -63,7 +63,7 @@ use llzk::prelude::StringRef;
 use llzk::prelude::StructType;
 use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::TemplateExprOpLike;
-use llzk::prelude::TemplateOp;
+use llzk::prelude::TemplateOpLike;
 use llzk::prelude::TemplateOpRef;
 use llzk::prelude::TemplateOpRefMut;
 use llzk::prelude::TemplateSymbolBindingOp;
@@ -95,6 +95,7 @@ use program_structure::file_definition::FileID;
 use program_structure::file_definition::FileLocation;
 use program_structure::wire_data::WireType;
 use std::cell::Cell;
+use std::cell::Ref;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -213,7 +214,7 @@ macro_rules! type_switch {
 #[derive(Debug)]
 enum DeclInfo<'ctx> {
     /// Complete declaration info computed initially.
-    Full(DeclarationInfo<'ctx>),
+    Full(Box<DeclarationInfo<'ctx>>),
     /// Minimal information left behind after generating LLZK for a template.
     Remnant {
         /// Map of signal name to type for input signals.
@@ -260,8 +261,9 @@ pub struct LlzkConfig {
 ///
 /// 'ast: lifetime of the circom AST element
 /// 'ctx: lifetime of the `LlzkContext` and generated `Module`
+/// 'r: lifetime of the reference captured by the current `TemplateOpRefMut`
 #[derive(Debug)]
-pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
+pub struct LlzkCodegen<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> {
     /// The circom program AST.
     pub program: &'ast P,
     /// The LLZK (and MLIR) context.
@@ -272,7 +274,10 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     pub config: LlzkConfig,
     /// Declaration info pre-computed for all templates.
     template_decls: RefCell<HashMap<String, DeclInfo<'ctx>>>,
-    /// Body of the function or template currently being processed.
+    /// Strategy used to store `poly.expr` / `poly.param` symbol bindings as they are generated.
+    pub(crate) binding_insert_strategy:
+        RefCell<Option<Box<dyn PolyBindingStorageStrategy<'ctx, P> + 'r>>>,
+    /// Body of the circom function or template currently being processed.
     current_body: Cell<Option<&'ast [Statement]>>,
     /// Current [Statement] (or stack thereof when within an `IfThenElse` or `While`) being visited
     /// and/or translated. Used by [`DimExprConverter::gen_template_poly_expr`] to replicate the
@@ -297,6 +302,19 @@ pub struct StatementTraceGuard<'a> {
 impl Drop for StatementTraceGuard<'_> {
     fn drop(&mut self) {
         self.trace.borrow_mut().pop();
+    }
+}
+
+/// RAII guard that clears the current [PolyBindingStorageStrategy] on drop.
+#[derive(Debug)]
+pub struct CurrentTemplateAutoReset<'a, 'ctx, 'r, P: ProgramLike> {
+    /// Used to clear the cell within [`LlzkCodegen`] on drop.
+    cell_ref: &'a RefCell<Option<Box<dyn PolyBindingStorageStrategy<'ctx, P> + 'r>>>,
+}
+
+impl<P: ProgramLike> Drop for CurrentTemplateAutoReset<'_, '_, '_, P> {
+    fn drop(&mut self) {
+        self.cell_ref.take();
     }
 }
 
@@ -497,7 +515,7 @@ impl<'ctx> TypeSizeExpr<'ctx> {
     /// Generate code for the expression as an index value in LLZK IR.
     pub fn to_index_value<'ast, 'blk, 'val>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         fc: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
         location: Location<'ctx>,
         env: Option<&TmplParamsInstance<'ast, 'ctx>>,
@@ -560,7 +578,7 @@ impl<'ctx> TypeSizeExpr<'ctx> {
     }
 }
 
-impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
+impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     /// Construct.
     pub fn new(
         program: &'ast P,
@@ -574,6 +592,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
             module,
             config,
             template_decls: RefCell::new(Default::default()),
+            binding_insert_strategy: RefCell::new(None),
             current_body: Cell::new(None),
             statement_trace: RefCell::new(Vec::new()),
             builder: OpBuilder::new(context),
@@ -601,6 +620,34 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         self.current_body.get()
     }
 
+    /// Create a `poly.template` from the given parameters, add it to the module, set it as
+    /// the current template being generated, and return a mutable reference to it.
+    pub fn create_and_set_current_template<'s>(
+        &'s self,
+        location: Location<'ctx>,
+        name: &str,
+        template_region_ops: impl IntoIterator<Item = Result<Operation<'ctx>, LlzkError>>,
+    ) -> Result<(TemplateOpRefMut<'ctx, 'r>, CurrentTemplateAutoReset<'s, 'ctx, 'r, P>)> {
+        let template_op = poly::template(location, name, template_region_ops)?;
+        let block = self.module.body();
+        let op_ref = block.append_operation(template_op.into());
+        let template_ref = TemplateOpRefMut::from(TemplateOpRef::try_from(op_ref)?);
+        // SAFETY: The operation is appended to `self.module` which has lifetime `'ctx`.
+        // Since `'ctx: 'r` is a bound on `LlzkCodegen`, the operation is valid for `'r`.
+        // We extend the borrow lifetime from the anonymous `&self` lifetime to `'r`.
+        let template_ref: TemplateOpRefMut<'ctx, 'r> =
+            unsafe { TemplateOpRefMut::from_raw(template_ref.to_raw()) };
+        self.binding_insert_strategy.replace(Some(Box::new(template_ref)));
+        Ok((template_ref, CurrentTemplateAutoReset { cell_ref: &self.binding_insert_strategy }))
+    }
+
+    /// Get the LLZK template currently being generated.
+    pub fn binding_insert_strategy<'s>(
+        &'s self,
+    ) -> Option<Ref<'s, dyn PolyBindingStorageStrategy<'ctx, P> + 'r>> {
+        Ref::filter_map(self.binding_insert_strategy.borrow(), |strategy| strategy.as_deref()).ok()
+    }
+
     /// Push `stmt` onto the statement trace and return a guard that pops it on drop.
     ///
     /// Call this at the top of every `gen_llzk_in_template`, `gen_llzk_in_function`, etc.
@@ -622,7 +669,9 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
 
     /// Store the full [DeclarationInfo] for the template with the given name.
     pub fn put_template_decl(&self, name: &str, decl_info: DeclarationInfo<'ctx>) {
-        self.template_decls.borrow_mut().insert(name.to_string(), DeclInfo::Full(decl_info));
+        self.template_decls
+            .borrow_mut()
+            .insert(name.to_string(), DeclInfo::Full(Box::new(decl_info)));
     }
 
     /// Remove and return the full [DeclarationInfo] for the template with the given name and leave
@@ -633,7 +682,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
             let inputs = decl_info.build_input_name_to_type_map();
             let outputs = decl_info.build_output_name_to_type_map();
             borrow.insert(name, DeclInfo::Remnant { inputs, outputs });
-            return Ok(decl_info);
+            return Ok(*decl_info);
         }
         Err(anyhow!("No full declaration info for {name}"))
     }
@@ -711,12 +760,6 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         } else {
             self.location_unknown()
         }
-    }
-
-    /// Insert the LLZK template into the module and return a reference to it.
-    pub fn add_template(&self, t: TemplateOp<'ctx>) -> Result<TemplateOpRefMut<'ctx, '_>> {
-        let t: TemplateOpRef = self.module.body().append_operation(t.into()).try_into()?;
-        Ok(t.into())
     }
 
     /// Insert the LLZK free function into the module and return a reference to it.
@@ -1637,7 +1680,7 @@ impl<'ctx, 'val> ArrayDimensions<'ctx, 'val> {
     #[inline]
     pub fn new_nondet_felt_of_dimensions_at_location(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Operation<'ctx>> {
         codegen.new_nondet_at_location(
@@ -1651,7 +1694,7 @@ impl<'ctx, 'val> ArrayDimensions<'ctx, 'val> {
     #[inline]
     pub fn new_nondet_felt_of_dimensions(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         meta: &Meta,
     ) -> Result<Operation<'ctx>> {
         self.new_nondet_felt_of_dimensions_at_location(codegen, codegen.location_from_meta(meta))
@@ -1662,7 +1705,7 @@ impl<'ctx, 'val> ArrayDimensions<'ctx, 'val> {
     /// dimension circom Expressions to LLZK Attributes.
     pub fn struct_type_with_concrete_dimensions(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         name: &str,
     ) -> StructType<'ctx> {
         if self.is_empty() {
@@ -1697,19 +1740,116 @@ impl<'ctx, 'val> TryFrom<Vec<ArrayDimensionResult<'ctx, 'val>>> for ArrayDimensi
     }
 }
 
-impl<'ctx, 'val, P: ProgramLike> TryFrom<(&[usize], &LlzkCodegen<'_, 'ctx, P>)>
+impl<'ctx, 'val, P: ProgramLike> TryFrom<(&[usize], &LlzkCodegen<'_, 'ctx, '_, P>)>
     for ArrayDimensions<'ctx, 'val>
 {
     type Error = anyhow::Error;
 
     fn try_from(
-        (dim_sizes, codegen): (&[usize], &LlzkCodegen<'_, 'ctx, P>),
+        (dim_sizes, codegen): (&[usize], &LlzkCodegen<'_, 'ctx, '_, P>),
     ) -> Result<Self, Self::Error> {
         dim_sizes
             .iter()
             .map(|size| ArrayDimension::new(codegen.index_attr(i64::try_from(*size)?).into(), &[]))
             .collect::<Result<Vec<_>>>()
             .map(ArrayDimensions)
+    }
+}
+
+/// Determines where newly created [`TemplateSymbolBindingOp`]s are stored during code generation.
+pub trait PolyBindingStorageStrategy<'ctx, P: ProgramLike>: std::fmt::Debug {
+    /// Returns `true` if a binding with the given name has already been stored.
+    fn contains_name(&self, name: &str) -> bool;
+
+    /// Stores the given op and returns its (possibly uniqued) name attribute.
+    fn store(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, P>,
+        op: TemplateSymbolBindingOp<'ctx>,
+    ) -> StringAttribute<'ctx>;
+
+    /// Converts this boxed strategy into a [`PendingPolyBindings`], if that is the concrete type.
+    fn into_pending(self: Box<Self>) -> Option<PendingPolyBindings<'ctx>> {
+        None
+    }
+}
+
+/// Accumulates [`TemplateSymbolBindingOp`]s during declaration processing so they can be
+/// bulk-inserted into the template region after it is created.
+#[derive(Debug, Default)]
+pub struct PendingPolyBindings<'ctx> {
+    /// Maps base name to last suffix used for that name.
+    uniquer: RefCell<HashMap<String, usize>>,
+    /// List of all uniquely named symbol bindings generated so far, to be inserted
+    /// into the template once it's created.
+    new_sym_bindings: RefCell<Vec<TemplateSymbolBindingOp<'ctx>>>,
+}
+
+impl<'ctx> PendingPolyBindings<'ctx> {
+    /// Removes and returns all accumulated symbol binding ops.
+    pub fn take_bindings(&mut self) -> Vec<TemplateSymbolBindingOp<'ctx>> {
+        self.new_sym_bindings.take()
+    }
+}
+
+impl<'ctx, P: ProgramLike> PolyBindingStorageStrategy<'ctx, P> for PendingPolyBindings<'ctx> {
+    fn contains_name(&self, name: &str) -> bool {
+        self.uniquer.borrow().contains_key(name)
+    }
+
+    fn store(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, P>,
+        op: TemplateSymbolBindingOp<'ctx>,
+    ) -> StringAttribute<'ctx> {
+        // Ensure the operation "sym_name" attribute is unique by appending a suffix if necessary.
+        let base_name = op.name().to_string();
+        let mut uniq_map = self.uniquer.borrow_mut();
+        let op = if uniq_map.contains_key(&base_name) {
+            let counter = uniq_map[&base_name] + 1;
+            uniq_map.insert(base_name.clone(), counter);
+            let unique_name = StringAttribute::new(
+                codegen.context,
+                format!("{}_{}", base_name, counter).as_str(),
+            );
+            // `TemplateSymbolBindingOp` does not (currently) implement `OperationMutLike` directly,
+            // so match on the inner variant to call `set_attribute` through the concrete type.
+            match op {
+                TemplateSymbolBindingOp::Param(mut inner) => {
+                    inner.set_attribute("sym_name", unique_name.into());
+                    TemplateSymbolBindingOp::Param(inner)
+                }
+                TemplateSymbolBindingOp::Expr(mut inner) => {
+                    inner.set_attribute("sym_name", unique_name.into());
+                    TemplateSymbolBindingOp::Expr(inner)
+                }
+            }
+        } else {
+            uniq_map.insert(base_name.clone(), 0);
+            op
+        };
+        // Store the operation and return its unique name.
+        let final_name = op.name_attr();
+        self.new_sym_bindings.borrow_mut().push(op);
+        final_name
+    }
+
+    fn into_pending(self: Box<Self>) -> Option<PendingPolyBindings<'ctx>> {
+        Some(*self)
+    }
+}
+
+impl<'ctx, P: ProgramLike> PolyBindingStorageStrategy<'ctx, P> for TemplateOpRefMut<'ctx, '_> {
+    fn contains_name(&self, name: &str) -> bool {
+        self.has_const_param_named(name) || self.has_const_expr_named(name)
+    }
+
+    fn store(
+        &self,
+        _: &LlzkCodegen<'_, 'ctx, '_, P>,
+        op: TemplateSymbolBindingOp<'ctx>,
+    ) -> StringAttribute<'ctx> {
+        insert_unique_symbol_op(self, op)
     }
 }
 
@@ -1727,7 +1867,7 @@ where
     /// dimension.
     fn get_dim_expr(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         expr: &Expression,
     ) -> Result<ArrayDimensionResult<'ctx, 'val>>;
 
@@ -1737,7 +1877,7 @@ where
     /// - [Some] otherwise
     fn get_dim_exprs_if_able(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         dimension_exprs: &[Expression],
     ) -> Result<Option<ArrayDimensions<'ctx, 'val>>> {
         let dim_result_vec = dimension_exprs
@@ -1752,7 +1892,7 @@ where
     /// contexts to try.
     fn get_dim_exprs(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         dimension_exprs: &[Expression],
     ) -> Result<ArrayDimensions<'ctx, 'val>> {
         self.get_dim_exprs_if_able(codegen, dimension_exprs)?.ok_or_else(|| {
@@ -1767,8 +1907,14 @@ where
         std::iter::empty()
     }
 
-    /// Callback to store a `poly.expr` operation generated on the fly for an array dimension.
-    fn record_new_sym_binding(&self, op: TemplateSymbolBindingOp<'ctx>) -> StringAttribute<'ctx>;
+    /// Callback to store a `poly.expr` and `poly.param` operations generated on the fly.
+    fn record_new_sym_binding(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        op: TemplateSymbolBindingOp<'ctx>,
+    ) -> StringAttribute<'ctx> {
+        codegen.binding_insert_strategy().unwrap().store(codegen, op)
+    }
 
     /// Get the mapping of `var` name to declared LLZK type.
     fn get_var_decl_types(&self) -> &HashMap<String, Type<'ctx>>;
@@ -1776,14 +1922,14 @@ where
     /// Generate a new `poly.expr` operation for the given array dimension [Expression].
     fn gen_template_poly_expr(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         target_expr: &Expression, // the result that should yield from the `poly.expr`
     ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
         /// Fully generate LLZK for a single [Statement] in a `poly.expr` initializer without
         /// truncating at any target expression.
         fn gen_stmt_fully<'ctx, 'blk, 'val>(
             stmt: &Statement,
-            codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+            codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
             gen_ctx: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
         ) -> Result<()>
         where
@@ -1877,7 +2023,7 @@ where
         /// `gen_up_to_target`; the other branch yields a `nondet` placeholder of the same type.
         #[allow(clippy::too_many_arguments)]
         fn gen_if_then_else_up_to_target<'ctx, 'blk, 'val>(
-            codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+            codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
             gen_ctx: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
             target_expr: &Expression,
             trace: &[*const Statement],
@@ -1951,7 +2097,7 @@ where
         /// into its nested body following the same proceedure. When the trace is exhausted,
         /// generate LLZK for the `target_expr` and return its result [Value].
         fn gen_up_to_target<'ctx, 'blk, 'val>(
-            codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+            codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
             gen_ctx: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
             target_expr: &Expression,
             stmts: &[Statement],
@@ -2045,7 +2191,7 @@ where
             &expr_op,
         )?;
 
-        let uniqued_name = self.record_new_sym_binding(expr_op.into());
+        let uniqued_name = self.record_new_sym_binding(codegen, expr_op.into());
         // Have to convert the StringAttribute to FlatSymbolRefAttribute before returning it.
         ArrayDimensionResult::new(codegen.flat_sym(uniqued_name.value()).into(), &[])
     }

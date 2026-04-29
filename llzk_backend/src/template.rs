@@ -18,7 +18,6 @@ use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::comp_type;
 use crate::shared::dim_expr_name;
-use crate::shared::insert_unique_symbol_op;
 use crate::shared::map_array_inner_type;
 use crate::shared::ArrayDimension;
 use crate::shared::ArrayDimensionResult;
@@ -52,14 +51,12 @@ use llzk::prelude::LoopBoundsAttribute;
 use llzk::prelude::MemberDefOpLike as _;
 use llzk::prelude::PodType;
 use llzk::prelude::RecordValue;
-use llzk::prelude::StringAttribute;
 use llzk::prelude::StringRef;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::StructType;
 use llzk::prelude::TemplateOpLike;
 use llzk::prelude::TemplateOpRefMut;
-use llzk::prelude::TemplateSymbolBindingOp;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
@@ -241,7 +238,7 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
     /// functions of the subcomponents and the values of the inputs.
     ///
     /// For `@constrain` emits calls to `@constrain` for each subcomponent.
-    fn finalize_subcmps(self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Result<Self>
+    fn finalize_subcmps(self, codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>) -> Result<Self>
     where
         // Required by `loop_nest`
         'val: 'blk,
@@ -371,7 +368,7 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
 
     /// Finalizes the context by emitting the final write operations that write subcomponent
     /// declarations to the declaring component.
-    pub fn finalize(self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Result<()>
+    pub fn finalize(self, codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>) -> Result<()>
     where
         // Required by `finalize_subcmps`
         'val: 'blk,
@@ -648,7 +645,7 @@ where
     #[inline]
     fn gen_exprs<'ast, I>(
         template: &'r TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         exprs: I,
     ) -> Result<Self>
     where
@@ -780,13 +777,9 @@ where
             .map(|binding| (binding.name().to_owned(), binding.type_opt()))
     }
 
-    fn record_new_sym_binding(&self, op: TemplateSymbolBindingOp<'ctx>) -> StringAttribute<'ctx> {
-        insert_unique_symbol_op(&self.template_def, op)
-    }
-
     fn get_dim_expr(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         expr: &Expression,
     ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
         // First try to compute statically, falling back to literal computation if all values are
@@ -857,7 +850,7 @@ where
     /// Generates LLZK IR from [Statement] and [Expression] nodes in a circom template.
     fn gen_llzk_in_template<'r>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         template: &'r TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
@@ -882,7 +875,7 @@ where
 
     fn gen_llzk_in_template<'r>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         template: &'r TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
@@ -904,7 +897,7 @@ where
 
 /// Generate LLZK code for a circom [Statement::IfThenElse].
 fn gen_if_then_else<'ctx, 'str, 'func, 'blk, 'val, 'r>(
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     template: &'r TemplateContext<'_, 'ctx, 'str, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
@@ -970,7 +963,7 @@ where
 
 /// Generate LLZK code for a circom [Statement::While].
 fn gen_while<'ctx, 'str, 'func, 'blk, 'val, 'r>(
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     template: &'r TemplateContext<'_, 'ctx, 'str, 'func, 'blk, 'val>,
     meta: &Meta,
     cond: &Expression,
@@ -1040,7 +1033,7 @@ where
 /// This is needed to support the `try_for_loop_heuristic` macro.
 #[inline]
 fn gen_init_block<'ctx, 'str, 'func, 'blk, 'val, 'r>(
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     template: &'r TemplateContext<'_, 'ctx, 'str, 'func, 'blk, 'val>,
     initializations: &[Statement],
 ) -> Result<()>
@@ -1070,7 +1063,7 @@ where
 
     fn gen_llzk_in_template<'r>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         template: &'r TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
@@ -1319,7 +1312,7 @@ where
 fn count_input_size<'ctx>(
     subcmp_struct_type: StructType<'ctx>,
     template_name: &str,
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
 ) -> Result<TypeSizeExpr<'ctx>> {
     let template_data = codegen
         .program
@@ -1367,7 +1360,7 @@ where
 
     fn gen_llzk_in_template<'r>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         template: &'r TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>,
     ) -> Result<Self::Output<'r>>
     where
@@ -1477,7 +1470,7 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
         meta: &'ast Meta,
         id: &'ast str,
         args: &'ast [Expression],
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         template: &TemplateContext<'_, 'ctx, '_, '_, '_, 'val>,
     ) -> Result<Self> {
         let location = codegen.location_from_meta(meta);
@@ -1495,7 +1488,7 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
     /// Returns the list of formals associated to the template parameters.
     fn params_formals<'f>(
         &self,
-        codegen: &LlzkCodegen<'f, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'f, 'ctx, '_, impl ProgramLike>,
     ) -> &'f [String] {
         codegen.program.get_template_data(self.id).get_name_of_params()
     }
@@ -1503,7 +1496,7 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
     /// Returns an instance of a template parameters instance map.
     fn tmpl_params_instance<'f>(
         &self,
-        codegen: &LlzkCodegen<'f, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'f, 'ctx, '_, impl ProgramLike>,
     ) -> TmplParamsInstance<'f, 'ctx> {
         TmplParamsInstance::new(self.params_formals(codegen), &self.dimensions)
     }
@@ -1512,7 +1505,7 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
     fn emit_param_op(
         &self,
         attr: Attribute<'ctx>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
         let op = type_switch! { attr,
@@ -1526,7 +1519,7 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
     /// Emits IR representing a read of each template parameter.
     fn emit_params<'decls, 'func, 'blk>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         fc: &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
     ) -> Result<Vec<RecordValue<'ctx, 'val>>> {
         std::iter::zip(self.params_formals(codegen), self.dimensions.attrs())
@@ -1544,7 +1537,7 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
     /// pod.
     fn emit_ctor_call<'r, 'decls, 'str, 'func, 'blk>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         fc: &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
         mut cb: impl FnMut(
             &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
