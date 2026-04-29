@@ -52,6 +52,7 @@ use llzk::prelude::Module;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike;
 use llzk::prelude::OperationMutLike;
+use llzk::prelude::OperationRef;
 use llzk::prelude::PassManager;
 use llzk::prelude::PodRecordAttribute;
 use llzk::prelude::PodType;
@@ -1341,9 +1342,8 @@ pub fn replace_uses_with_new_block_argument<'ctx, 'val>(
     location: Location<'ctx>,
 ) -> Value<'ctx, 'val> {
     let replacement = block.add_argument(orig.r#type(), location);
-    // Collect raw `MlirOperation` handles to sidestep the per-callback borrow on
-    // `OperationRef`; the operations themselves outlive the walk because they
-    // are owned by `block`.
+    // `OperationRef` lifetimes are HRTB inside `WalkCallbacks::for_ops`, so collect
+    // raw handles and rebuild the `OperationRef` outside the walk.
     let mut ops_using_orig: Vec<mlir_sys::MlirOperation> = Vec::new();
     walk_from_block(
         block,
@@ -1354,7 +1354,7 @@ pub fn replace_uses_with_new_block_argument<'ctx, 'val>(
         }),
     );
     for raw in ops_using_orig {
-        let op = unsafe { melior::ir::operation::OperationRefMut::from_raw(raw) };
+        let op = unsafe { OperationRef::from_raw(raw) };
         replace_uses_of_with(&op, *orig, replacement);
     }
     replacement
