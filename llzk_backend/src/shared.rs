@@ -271,12 +271,14 @@ pub struct LlzkCodegen<'ast, 'ctx, P: ProgramLike> {
     template_decls: RefCell<HashMap<String, DeclInfo<'ctx>>>,
     /// Body of the function or template currently being processed.
     current_body: Cell<Option<&'ast [Statement]>>,
-    /// Current [Statement] (or stack thereof when within an `IfThenElse` or `While`) being visited
-    /// and/or translated. Used by [`DimExprConverter::gen_template_poly_expr`] to replicate the
-    /// body into the `poly.expr` initializer up to the current position so all variable
-    /// assignments that contribute to the target expression will be computed. Raw pointers are
-    /// used to avoid a lifetime issue from synthetic Statements created on-the-fly and translated.
-    /// They pointers must only be used for pointer equality comparisons to avoid unsafe behavior.
+    /// Current [`Statement`] (or stack thereof when within an `IfThenElse` or `While`) being
+    /// visited and/or translated. Used by [`DimExprConverter::gen_template_poly_expr`] to
+    /// replicate the body into the `poly.expr` initializer up to the current position so all
+    /// variable assignments that contribute to the target expression will be computed.
+    ///
+    /// Raw pointers are used to avoid a lifetime issue from synthetic Statements created
+    /// on-the-fly and translated. These pointers must only be used for pointer equality
+    /// comparisons to avoid unsafe behavior.
     statement_trace: RefCell<Vec<*const Statement>>,
     /// Operation builder
     builder: OpBuilder<'ctx>,
@@ -1789,7 +1791,8 @@ where
                         // Use the pre-computed type from DeclarationInfo (seeded into the
                         // BlockContextStack root) to avoid triggering recursive
                         // gen_template_poly_expr calls for non-constant dimension expressions.
-                        if let Some(ty) = gen_ctx.var_decl_types.get(name) {
+                        let qualified_key = format!("{}@{}", name, meta.start);
+                        if let Some(ty) = gen_ctx.var_decl_types.get(&qualified_key) {
                             let op = codegen
                                 .new_nondet_at_location(codegen.location_from_meta(meta), *ty)?;
                             gen_ctx.block_ctx.declare_name_ensure_not_present(name, op)?;
