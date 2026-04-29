@@ -210,7 +210,7 @@ macro_rules! type_switch {
 #[derive(Debug)]
 enum DeclInfo<'ctx> {
     /// Complete declaration info computed initially.
-    Full(DeclarationInfo<'ctx>),
+    Full(Box<DeclarationInfo<'ctx>>),
     /// Minimal information left behind after generating LLZK for a template.
     Remnant {
         /// Map of signal name to type for input signals.
@@ -621,7 +621,9 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
 
     /// Store the full [DeclarationInfo] for the template with the given name.
     pub fn put_template_decl(&self, name: &str, decl_info: DeclarationInfo<'ctx>) {
-        self.template_decls.borrow_mut().insert(name.to_string(), DeclInfo::Full(decl_info));
+        self.template_decls
+            .borrow_mut()
+            .insert(name.to_string(), DeclInfo::Full(Box::new(decl_info)));
     }
 
     /// Remove and return the full [DeclarationInfo] for the template with the given name and leave
@@ -629,6 +631,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
     pub fn take_template_decl(&self, name: &str) -> Result<DeclarationInfo<'ctx>> {
         let mut borrow = self.template_decls.borrow_mut();
         if let Some((name, DeclInfo::Full(decl_info))) = borrow.remove_entry(name) {
+            let decl_info = *decl_info;
             let inputs = decl_info.build_input_name_to_type_map();
             let outputs = decl_info.build_output_name_to_type_map();
             borrow.insert(name, DeclInfo::Remnant { inputs, outputs });
