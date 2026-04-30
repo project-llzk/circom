@@ -1510,11 +1510,7 @@ impl<'ctx, 'val> ArrayDimension<'ctx, 'val> {
     }
     /// Access the inner symbols, if present, as a [ValueRange].
     pub fn value_range(&self) -> Result<Option<ValueRange<'ctx, '_, 'val>>> {
-        let range = match &self.symbols {
-            None => None,
-            Some(s) => Some(ValueRange::try_from(s)?),
-        };
-        Ok(range)
+        self.symbols.as_ref().map(|s| ValueRange::try_from(s).map_err(Into::into)).transpose()
     }
     /// Create a new [ArrayType] with the given dimension.
     pub fn new_array_type(&self, element_type: &Type<'ctx>) -> ArrayType<'ctx> {
@@ -1781,6 +1777,10 @@ where
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         target_expr: &Expression, // the result that should yield from the `poly.expr`
     ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
+        if codegen.config.verbose {
+            println!("[gen_template_poly_expr] {target_expr:?}");
+        }
+
         /// Fully generate LLZK for a single [Statement] in a `poly.expr` initializer without
         /// truncating at any target expression.
         fn gen_stmt_fully<'ctx, 'blk, 'val>(
@@ -1854,7 +1854,9 @@ where
                     )?;
                 }
                 Statement::While { .. } => {
-                    anyhow::bail!("poly.expr depending on a while loop is not yet supported")
+                    todo!(
+                        "[gen_stmt_fully] poly.expr depending on a while loop is not yet supported"
+                    );
                 }
                 Statement::Assert { meta, arg } => {
                     let val = arg.gen_llzk_in_block(codegen, gen_ctx, Default::default())?;
@@ -2003,7 +2005,7 @@ where
                     )
                 }
                 Statement::While { .. } => {
-                    anyhow::bail!("poly.expr depending on a while loop is not yet supported")
+                    todo!("[gen_up_to_target] poly.expr depending on a while loop is not yet supported");
                 }
                 _ => {
                     assert!(inner_trace.is_empty(), "trace should end at a leaf statement");
