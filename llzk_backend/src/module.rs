@@ -179,9 +179,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 continue;
             }
 
-            let instances = info.instances();
-
-            let types = unique_instance_types(instances);
+            let types = unique_instance_types(info.instances());
             let subcmp_type = match &types[..] {
                 [] => todo!("Handle uninitialized component decl"),
                 [t] => *t,
@@ -432,7 +430,6 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 self.subcmp_decls.entry(var.clone()).and_modify(|info| {
                     info.instances_mut().push(ctor_call);
                 });
-
                 Ok(())
             }
             Statement::IfThenElse { if_case, else_case, .. } => {
