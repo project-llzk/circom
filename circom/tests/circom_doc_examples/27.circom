@@ -96,7 +96,7 @@ component main = A();
 // CHECK-NEXT:          ^bb0(%[[VAL_40:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_41:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_42:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
 // CHECK-NEXT:            %[[VAL_43:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_41]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_44:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_29]]{{\[}}%[[VAL_43]]] : <@n x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_45:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_44]], %[[VAL_33]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_45:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_44]], %[[VAL_40]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_46:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_42]], %[[VAL_45]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_47:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_40]], %[[VAL_40]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_48:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
@@ -119,7 +119,7 @@ component main = A();
 // CHECK-NEXT:          ^bb0(%[[VAL_62:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_63:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_64:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
 // CHECK-NEXT:            %[[VAL_65:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_63]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_66:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_51]]{{\[}}%[[VAL_65]]] : <@n x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_67:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_66]], %[[VAL_55]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_67:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_66]], %[[VAL_62]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_68:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_64]], %[[VAL_67]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_69:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_62]], %[[VAL_62]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_70:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">

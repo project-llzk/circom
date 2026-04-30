@@ -94,11 +94,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1777318773,
-        "narHash": "sha256-UOGRww4rbbN/jNkUxQC4SEbKBiFXhhvvEsiAFOFQEGE=",
+        "lastModified": 1777397986,
+        "narHash": "sha256-Y8b6rCt71dKElx2QaMHGvuvmKofRIDwFn4gzyW6HPyA=",
         "ref": "refs/heads/main",
-        "rev": "5c35089f7b0fefa909a1b6eda90e6d0c7c7f5815",
-        "revCount": 384,
+        "rev": "608f18173e54dafb1f8b9fc52299e538f67aa6cf",
+        "revCount": 388,
         "type": "git",
         "url": "https://github.com/project-llzk/llzk-rs"
       },

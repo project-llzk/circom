@@ -459,7 +459,7 @@ component main = AliasCheck();
 // CHECK-NEXT:            array.write %[[VAL_305]]{{\[}}%[[VAL_322]]] = %[[VAL_321]] : <135 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_323:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_317]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_324:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_305]]{{\[}}%[[VAL_323]]] : <135 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_325:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_324]], %[[VAL_308]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_325:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_324]], %[[VAL_316]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_326:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_318]], %[[VAL_325]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_327:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_316]], %[[VAL_316]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_328:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
@@ -492,7 +492,7 @@ component main = AliasCheck();
 // CHECK-NEXT:            constrain.eq %[[VAL_352]], %[[VAL_353]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_354:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_344]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_355:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_332]]{{\[}}%[[VAL_354]]] : <135 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_356:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_355]], %[[VAL_335]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_356:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_355]], %[[VAL_343]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_357:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_345]], %[[VAL_356]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_358:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_343]], %[[VAL_343]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_359:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
