@@ -136,10 +136,10 @@ impl<'ast> Lvalue<'ast> {
 
     /// Handle [Lvalue::Array] case of [`Lvalue::get_value`].
     ///
-    /// The value read from the array is returned via the continuation.
-    /// If the array is an actual LLZK array then the continuation is called only once.
-    /// However, if the array is actual an array of mixed subcomponents, the continuation is
-    /// called for each branch of the dispatch table.
+    /// The value read from the array is returned via the continuation. If the array is an
+    /// actual LLZK array then the continuation is called only once. However, if the array
+    /// is actually an array of mixed subcomponents, the continuation is called for each
+    /// branch of the dispatch table.
     #[allow(clippy::too_many_arguments)]
     fn get_array_value<'decls, 'ctx, 'blk, 'val, 'cont, R, C>(
         &self,
@@ -663,12 +663,8 @@ fn emit_condition<'ctx, 'val>(
     let entry_indices_values = entry_indices
         .iter()
         .map(|idx| {
-            let attr = IntegerAttribute::new(codegen.index_type(), *idx as i64);
-            block_gen.append_op_unnamed_result(arith::constant(
-                codegen.context,
-                attr.into(),
-                location,
-            ))
+            let idx = i64::try_from(*idx).expect("index too large");
+            block_gen.append_op_unnamed_result(codegen.new_index_const_op(idx, location))
         })
         .collect::<Result<Vec<_>>>()?;
     if entry_indices_values.len() != indices.len() {

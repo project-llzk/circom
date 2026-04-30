@@ -466,8 +466,8 @@ where
         NestedBlockInfo { region, block, var_overwrites: Default::default() }
     }
 
-    /// Creates a new instance using the common pattern of pushing the block into the stack, emitting some IR, and then
-    /// popping the block.
+    /// Creates a new instance using the common pattern of pushing the block into the stack,
+    /// emitting some IR, and then popping the block.
     pub fn with_scope<'decls, R, C>(
         block_gen: &mut C,
         cb: impl FnOnce(&mut C) -> Result<R>,
@@ -739,8 +739,8 @@ where
         single_result_as_value(self.append_op(op))
     }
 
-    /// Append an operation that must produce one or more results and is NOT associated with a variable
-    /// name in the circom code.
+    /// Append an operation that must produce one or more results and is NOT associated with a
+    /// variable name in the circom code.
     pub fn append_op_many_unnamed_results(
         &mut self,
         op: Operation<'ctx>,
@@ -1488,9 +1488,9 @@ where
         if_op_result
     }
 
-    /// Append an `scf.if` op using pre-generated branch regions that each yield the same number of values.
-    /// Ensures both yielded values have the same type, emits the `scf.if`, and casts the
-    /// result to `expected_result_type` when provided and unifiable.
+    /// Append an `scf.if` op using pre-generated branch regions that each yield the same number of
+    /// values. Ensures both yielded values have the same type, emits the `scf.if`, and casts
+    /// the result to `expected_result_type` when provided and unifiable.
     pub fn gen_safe_scf_multivalued_if(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -1513,7 +1513,8 @@ where
             );
         }
         for (then_value, else_value) in std::iter::zip(then_values, else_values) {
-            // Ensure values yielded from both blocks have the same type. Strict equality per `scf.if`.
+            // Ensure values yielded from both blocks have the same type. Strict equality per
+            // `scf.if`.
             assert_eq!(
                 then_value.r#type(),
                 else_value.r#type(),
@@ -2323,7 +2324,7 @@ where
                     info.subcmp_info,
                     codegen.location_from_meta(meta),
                     None,
-                    &|value, _: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>| Ok(value),
+                    &|value, _: &mut BlockGenContext<'_, '_, '_, '_>| Ok(value),
                 )
             }
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {

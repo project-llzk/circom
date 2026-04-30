@@ -145,7 +145,6 @@ impl<'ast> WriteChain<'ast> {
             location,
             Some(&prev.ov(subcmp_info)),
             &|arr_ref: Value<'ctx, 'val>, fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>| {
-                // TEMP
                 let indices_ast = indices.clone();
                 let indices = fc.gen_index_ops(
                     indices.clone(),
@@ -169,14 +168,14 @@ impl<'ast> WriteChain<'ast> {
                 };
 
                 // The problem here is that concrete_indices expects that the indices are always
-                // literal, which is not always the case.
-                // We need to take each expression, convert it to values (that is done below with
-                // `fc.gen_index_ops`), and then check with a massive if then else for each possible
-                // index. The optimizer should be able to remove the dead branches on literal cases...
+                // literal, which is not always the case. We need to take each expression, convert
+                // it to values (that is done below with `fc.gen_index_ops`), and then check with a
+                // massive if then else for each possible index. The optimizer should be able to
+                // remove the dead branches on literal cases...
                 if let Some(indices) = concrete_indices(&indices_ast) {
-                    // Using `root_var` here is somewhat safe since this representation can only be done on
-                    // subcomponents (unless we can do it on buses as well but I'm not sure) and
-                    // subcomponents are always top level variables.
+                    // Using `root_var` here is somewhat safe since this representation can only be
+                    // done on subcomponents (unless we can do it on buses as well but I'm not sure)
+                    // and subcomponents are always top level variables.
                     if let Some(record_name) = subcmp_info
                         .mixed_subcmp_record_for_indices(prev.lvalue.root_var(), &indices)
                     {

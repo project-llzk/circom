@@ -1348,11 +1348,11 @@ where
                                     let location = codegen.location_from_meta(meta);
                                     Lvalue::new(var, Root::Signal, access)
                                         .get_value(
-                                            codegen, 
-                                            fc, 
-                                            template, 
-                                            location, 
-                                            None, 
+                                            codegen,
+                                            fc,
+                                            template,
+                                            location,
+                                            None,
                                             &|lhv: Value<'ctx,'val>, fc: &mut FunctionContext<'_, 'ctx,'_,'_,'val>| {
                                             fc.append_op_no_result(constrain::eq(location, lhv, rhv).into())
                                         })
