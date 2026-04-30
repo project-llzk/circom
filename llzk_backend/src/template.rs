@@ -800,7 +800,6 @@ where
         if let Some(integer) = shared::try_compute_as_i64(expr, codegen.prime())? {
             ArrayDimensionResult::new(codegen.index_attr(integer).into(), &[])
         } else {
-            #[allow(unused_variables)] // TODO: TEMP
             match expr {
                 Expression::Number(_, _) => {
                     unreachable!("handled by try_compute_as_i64")
@@ -1498,7 +1497,7 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
         Ok(Self { id, location, dimensions, subcmp_type, count, pod_type })
     }
 
-    /// Returns the list of formals associated to the template parameters.
+    /// Returns the list of names associated to the template parameters.
     fn params_formals<'f>(
         &self,
         codegen: &LlzkCodegen<'f, 'ctx, impl ProgramLike>,
@@ -1530,10 +1529,10 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
     }
 
     /// Emits IR representing a read of each template parameter.
-    fn emit_params<'decls, 'func, 'blk>(
+    fn emit_params(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-        fc: &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
     ) -> Result<Vec<RecordValue<'ctx, 'val>>> {
         std::iter::zip(self.params_formals(codegen), self.dimensions.attrs())
             .map(|(formal, attr)| {
@@ -1548,15 +1547,18 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
     ///
     /// Accepts a callback that returns the list of initialized records in the subcomponent memory
     /// pod.
-    fn emit_ctor_call<'r, 'decls, 'str, 'func, 'blk>(
+    fn emit_ctor_call<'decls, 'str, 'func, 'blk, F>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         fc: &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
-        mut cb: impl FnMut(
+        mut cb: F,
+    ) -> Result<Value<'ctx, 'val>>
+    where
+        F: FnMut(
             &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
             Value<'ctx, 'val>,
         ) -> Result<Vec<(&'static str, Value<'ctx, 'val>)>>,
-    ) -> Result<Value<'ctx, 'val>> {
+    {
         let params = self.emit_params(codegen, fc)?;
         let params_pod = fc.append_op_unnamed_result(pod::new(
             codegen.op_builder(),
