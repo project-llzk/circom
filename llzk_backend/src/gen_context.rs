@@ -2100,7 +2100,6 @@ where
         if let Some(integer) = shared::try_compute_as_i64(expr, codegen.prime())? {
             ArrayDimensionResult::new(codegen.index_attr(integer).into(), &[])
         } else {
-            #[allow(unused_variables)] // TODO: TEMP
             match expr {
                 Expression::Number(_, _) => {
                     unreachable!("handled by try_compute_as_i64")
