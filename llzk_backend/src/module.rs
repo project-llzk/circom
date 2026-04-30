@@ -752,17 +752,8 @@ where
     'val: 'blk,
 {
     subcmps.into_iter().try_for_each(|subcmp| {
-        subcmp.generate_constraint_func_prologue(
-            constrain_ctx,
-            codegen.op_builder(),
-            subcmp_decls,
-        )?;
-        subcmp.generate_compute_func_prologue(
-            compute_ctx,
-            codegen.op_builder(),
-            codegen,
-            subcmp_decls,
-        )
+        subcmp.generate_constraint_func_prologue(constrain_ctx, codegen, subcmp_decls)?;
+        subcmp.generate_compute_func_prologue(compute_ctx, codegen, subcmp_decls)
     })
 }
 

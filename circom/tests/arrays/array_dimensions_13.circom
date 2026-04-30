@@ -21,7 +21,7 @@ template EvilArrayDims(N, M) {
 
 component main = EvilArrayDims(7, 2);
 
-// CHECK: #[[$ATTR_0:[0-9a-zA-Z_\.]+]] = affine_map<()[s0] -> (s0)>
+// CHECK: #[[$ATTR_0:[0-9a-zA-Z_\.]+]] = affine_map<(d0) -> (d0)>
 //
 // CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@EvilArrayDims::@EvilArrayDims<[7, 2]>>} {
 // CHECK-NEXT:    poly.template @EvilArrayDims {
@@ -39,7 +39,7 @@ component main = EvilArrayDims(7, 2);
 // CHECK-NEXT:            %[[VAL_7:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_2]], %[[VAL_1]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:            %[[VAL_9:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_7]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_10:[0-9a-zA-Z_\.]+]] = array.new{(){{\[}}%[[VAL_9]]]} : <#[[$ATTR_0]] x !felt.type<"bn128">>
+// CHECK-NEXT:            %[[VAL_10:[0-9a-zA-Z_\.]+]] = array.new{(%[[VAL_9]])} : <#[[$ATTR_0]] x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_11:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:            %[[VAL_12:[0-9a-zA-Z_\.]+]] = array.len %[[VAL_10]], %[[VAL_11]] : <#[[$ATTR_0]] x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_13:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
@@ -63,7 +63,7 @@ component main = EvilArrayDims(7, 2);
 // CHECK-NEXT:            %[[VAL_26:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_24]], %[[VAL_25]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_27:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:            %[[VAL_28:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_26]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_29:[0-9a-zA-Z_\.]+]] = array.new{(){{\[}}%[[VAL_28]]]} : <#[[$ATTR_0]] x !felt.type<"bn128">>
+// CHECK-NEXT:            %[[VAL_29:[0-9a-zA-Z_\.]+]] = array.new{(%[[VAL_28]])} : <#[[$ATTR_0]] x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_30:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:            %[[VAL_31:[0-9a-zA-Z_\.]+]] = array.len %[[VAL_29]], %[[VAL_30]] : <#[[$ATTR_0]] x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_32:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
@@ -94,7 +94,7 @@ component main = EvilArrayDims(7, 2);
 // CHECK-NEXT:            %[[VAL_50:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_45]], %[[VAL_44]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_51:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:            %[[VAL_52:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_50]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_53:[0-9a-zA-Z_\.]+]] = array.new{(){{\[}}%[[VAL_52]]]} : <#[[$ATTR_0]] x !felt.type<"bn128">>
+// CHECK-NEXT:            %[[VAL_53:[0-9a-zA-Z_\.]+]] = array.new{(%[[VAL_52]])} : <#[[$ATTR_0]] x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_54:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:            %[[VAL_55:[0-9a-zA-Z_\.]+]] = array.len %[[VAL_53]], %[[VAL_54]] : <#[[$ATTR_0]] x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_56:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
@@ -118,7 +118,7 @@ component main = EvilArrayDims(7, 2);
 // CHECK-NEXT:            %[[VAL_69:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_67]], %[[VAL_68]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_70:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:            %[[VAL_71:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_69]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_72:[0-9a-zA-Z_\.]+]] = array.new{(){{\[}}%[[VAL_71]]]} : <#[[$ATTR_0]] x !felt.type<"bn128">>
+// CHECK-NEXT:            %[[VAL_72:[0-9a-zA-Z_\.]+]] = array.new{(%[[VAL_71]])} : <#[[$ATTR_0]] x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_73:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:            %[[VAL_74:[0-9a-zA-Z_\.]+]] = array.len %[[VAL_72]], %[[VAL_73]] : <#[[$ATTR_0]] x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_75:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
