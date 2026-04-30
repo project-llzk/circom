@@ -1851,7 +1851,7 @@ where
             // so we instead create the array empty and use array.insert to insert values.
             let ctor = if let Some(dim_operands) = dimension.value_range()? {
                 dim_operands_sto.push(dim_operands);
-                ArrayCtor::MapDimSlice(&dim_operands_sto, &[1])
+                ArrayCtor::MapDimSlice(&dim_operands_sto, &[i32::try_from(dim_operands.len())?])
             } else {
                 ArrayCtor::Empty
             };
@@ -1894,7 +1894,8 @@ where
                 let mut v_sto = vec![];
                 let ctor = if let Ok(Some(v)) = dimension.value_range() {
                     v_sto.push(v);
-                    ArrayCtor::MapDimSlice(&v_sto, &[1])
+
+                    ArrayCtor::MapDimSlice(&v_sto, &[i32::try_from(v.len())?])
                 } else {
                     ArrayCtor::Empty
                 };
