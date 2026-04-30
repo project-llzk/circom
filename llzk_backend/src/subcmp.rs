@@ -8,8 +8,6 @@ use crate::shared::LlzkCodegen;
 use crate::template_ext::SignalDeclarations;
 use crate::template_ext::TemplateLike as _;
 use anyhow::Result;
-use llzk::builder::OpBuilder;
-use llzk::dialect::array;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::llzk::nondet;
 use llzk::dialect::pod;
@@ -278,14 +276,14 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
     pub fn generate_constraint_func_prologue(
         &self,
         constrain_ctx: &mut FunctionContext<'_, 'ctx, '_, '_, '_>,
-        op_builder: &OpBuilder<'ctx>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         subcmp_decls: &HashMap<String, SubcmpDeclInfo<'ctx>>,
     ) -> Result<()> {
         let decl = &subcmp_decls[self.name()];
         let self_ref = constrain_ctx.func.self_value_of_constrain()?;
         constrain_ctx.block_ctx.declare_name_if_not_present(self.name(), || {
             Ok(r#struct::readm(
-                op_builder,
+                codegen.op_builder(),
                 decl.location(),
                 self.subcmp.r#type(),
                 self_ref,
@@ -294,7 +292,7 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
         })?;
         constrain_ctx.block_ctx.declare_name_if_not_present(self.name_inputs(), || {
             Ok(r#struct::readm(
-                op_builder,
+                codegen.op_builder(),
                 decl.location(),
                 self.inputs,
                 self_ref,
@@ -313,7 +311,6 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
     pub fn generate_compute_func_prologue<'func, 'blk, 'val>(
         &self,
         compute_ctx: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
-        op_builder: &OpBuilder<'ctx>,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         subcmp_decls: &HashMap<String, SubcmpDeclInfo<'ctx>>,
     ) -> Result<()>
@@ -325,15 +322,17 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
         compute_ctx.block_ctx.declare_name_ensure_not_present(
             self.name(),
             match ArrayType::try_from(comp_pod) {
-                Ok(comp_pod) => array::new(op_builder, decl.location(), comp_pod, ArrayCtor::Empty),
+                Ok(ty) => codegen.new_array_new_op(decl.location(), ty, ArrayCtor::Empty),
                 Err(_) => nondet(decl.location(), comp_pod),
             },
         )?;
         compute_ctx.block_ctx.declare_name_ensure_not_present(
             self.name_inputs(),
             match self.inputs_as::<ArrayType>() {
-                Ok(inputs) => array::new(op_builder, decl.location(), inputs, ArrayCtor::Empty),
-                Err(_) => pod::new(op_builder, decl.location(), &[], Some(self.inputs_as()?)),
+                Ok(ty) => codegen.new_array_new_op(decl.location(), ty, ArrayCtor::Empty),
+                Err(_) => {
+                    pod::new(codegen.op_builder(), decl.location(), &[], Some(self.inputs_as()?))
+                }
             },
         )
     }
