@@ -15,6 +15,7 @@ use llzk::prelude::PodType;
 use llzk::prelude::StructType;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
+use num_traits::ToPrimitive;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
@@ -96,7 +97,7 @@ impl<'ast> Lvalue<'ast> {
     }
 
     /// Returns the root var name of the lvalue.
-    fn root_var(&self) -> &str {
+    pub(crate) fn root_var(&self) -> &str {
         match self {
             Lvalue::Root { var, .. } => var,
             Lvalue::Array { prev, .. } | Lvalue::Subcmp { prev, .. } => prev.root_var(),
@@ -135,6 +136,26 @@ impl<'ast> Lvalue<'ast> {
         location: Location<'ctx>,
         info: InfoProviders<'_>,
     ) -> Result<Value<'ctx, 'val>> {
+        if let Ok(prev_pod_type) = PodType::try_from(prev.r#type()) {
+            if let Some(indices) = concrete_indices(indices) {
+                if let Some(record_name) =
+                    info.subcmp_info.mixed_subcmp_record_for_indices(self.root_var(), &indices)
+                {
+                    let record_type =
+                        prev_pod_type.get_type_of_record(record_name).ok_or_else(|| {
+                            anyhow::anyhow!(
+                                "record {record_name} not found in mixed subcomponent pod: {prev}"
+                            )
+                        })?;
+                    return block_gen.append_op_unnamed_result(pod::read(
+                        location,
+                        prev,
+                        codegen.flat_sym(record_name),
+                        record_type,
+                    ));
+                }
+            }
+        }
         let indices = block_gen.gen_index_ops(indices.iter().copied(), codegen, location, info)?;
         block_gen.append_array_read(prev, &indices, location, None)
     }
@@ -275,6 +296,17 @@ impl<'ast> Lvalue<'ast> {
             }
         }
     }
+}
+
+/// Converts an array access to concrete indices when every index is numeric.
+pub(crate) fn concrete_indices(indices: &[&Expression]) -> Option<Vec<usize>> {
+    indices
+        .iter()
+        .map(|index| match index {
+            Expression::Number(_, n) => n.to_usize(),
+            _ => None,
+        })
+        .collect()
 }
 
 impl fmt::Display for Lvalue<'_> {

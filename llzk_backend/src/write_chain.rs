@@ -2,6 +2,7 @@
 
 use crate::function::FunctionContext;
 use crate::function::InfoProviders;
+use crate::lvalue::concrete_indices;
 use crate::lvalue::Lvalue;
 use crate::lvalue::OverrideVar;
 use crate::lvalue::Root;
@@ -16,10 +17,12 @@ use anyhow::Result;
 use llzk::dialect::r#struct;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
+use llzk::prelude::PodType;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use program_structure::ast::Access;
 use program_structure::ast::Expression;
+use std::convert::TryFrom as _;
 use std::convert::TryInto as _;
 use std::fmt;
 
@@ -142,6 +145,37 @@ impl<'ast> WriteChain<'ast> {
             location,
             Some(&prev.ov(subcmp_info)),
         )?;
+        if let Ok(pod_type) = PodType::try_from(arr_ref.r#type()) {
+            if let Some(indices) = concrete_indices(&indices) {
+                if let Some(record_name) =
+                    subcmp_info.mixed_subcmp_record_for_indices(prev.lvalue.root_var(), &indices)
+                {
+                    let record_type =
+                        pod_type.get_type_of_record(record_name).ok_or_else(|| {
+                            anyhow::anyhow!(
+                            "record {record_name} not found in mixed subcomponent pod: {arr_ref}"
+                        )
+                        })?;
+                    let val =
+                        fc.cast_to_expected_type_if_needed(codegen, location, val, record_type)?;
+                    fc.append_op_no_result(codegen.new_pod_write_op(
+                        location,
+                        arr_ref,
+                        record_name,
+                        val,
+                    ))?;
+                    return prev.write(
+                        arr_ref,
+                        target,
+                        codegen,
+                        fc,
+                        location,
+                        signal_write_info,
+                        subcmp_info,
+                    );
+                }
+            }
+        }
         let indices = fc.gen_index_ops(
             indices,
             codegen,
