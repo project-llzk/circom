@@ -145,17 +145,14 @@ impl<'ast> WriteChain<'ast> {
             location,
             Some(&prev.ov(subcmp_info)),
             &|arr_ref: Value<'ctx, 'val>, fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>| {
-                let indices_ast = indices.clone();
-                let indices = fc.gen_index_ops(
-                    indices.clone(),
-                    codegen,
-                    location,
-                    InfoProviders { subcmp_info, signal_write_info },
-                )?;
-
                 let Ok(pod_type) = PodType::try_from(arr_ref.r#type()) else {
-                    fc.append_array_write(codegen, arr_ref, &indices, location, val, None)?;
-
+                    let index_vals = fc.gen_index_ops(
+                        indices.clone(),
+                        codegen,
+                        location,
+                        InfoProviders { subcmp_info, signal_write_info },
+                    )?;
+                    fc.append_array_write(codegen, arr_ref, &index_vals, location, val, None)?;
                     return prev.clone().write(
                         arr_ref,
                         target,
@@ -172,7 +169,7 @@ impl<'ast> WriteChain<'ast> {
                 // it to values (that is done below with `fc.gen_index_ops`), and then check with a
                 // massive if then else for each possible index. The optimizer should be able to
                 // remove the dead branches on literal cases...
-                if let Some(indices) = concrete_indices(&indices_ast) {
+                if let Some(indices) = concrete_indices(&indices) {
                     // Using `root_var` here is somewhat safe since this representation can only be
                     // done on subcomponents (unless we can do it on buses as well but I'm not sure)
                     // and subcomponents are always top level variables.

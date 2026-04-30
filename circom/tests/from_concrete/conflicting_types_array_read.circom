@@ -216,13 +216,11 @@ component main = Outer();
 // CHECK-NEXT:                    %[[VAL_130:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_128]] -> (!pod.type<[@idx_0: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>]>) {
 // CHECK-NEXT:                      %[[VAL_131:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_101]][@idx_1] : <[@idx_0: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>]>, !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>
 // CHECK-NEXT:                      pod.write %[[VAL_131]][@in] = %[[VAL_119]] : <[@in: !array.type<4 x !felt.type<"bn128">>]>, !array.type<4 x !felt.type<"bn128">>
-// CHECK-NEXT:                      %[[VAL_132:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_93]] : !felt.type<"bn128">
 // CHECK-NEXT:                      scf.yield %[[VAL_101]] : !pod.type<[@idx_0: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>]>
 // CHECK-NEXT:                    } else {
 // CHECK-NEXT:                      %[[VAL_133:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_125]] -> (!pod.type<[@idx_0: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>]>) {
 // CHECK-NEXT:                        %[[VAL_134:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_101]][@idx_0] : <[@idx_0: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>]>, !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>
 // CHECK-NEXT:                        pod.write %[[VAL_134]][@in] = %[[VAL_119]] : <[@in: !array.type<4 x !felt.type<"bn128">>]>, !array.type<4 x !felt.type<"bn128">>
-// CHECK-NEXT:                        %[[VAL_135:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_93]] : !felt.type<"bn128">
 // CHECK-NEXT:                        scf.yield %[[VAL_101]] : !pod.type<[@idx_0: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>]>
 // CHECK-NEXT:                      } else {
 // CHECK-NEXT:                        %[[VAL_136:[0-9a-zA-Z_\.]+]] = llzk.nondet : !pod.type<[@idx_0: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>]>
@@ -278,7 +276,6 @@ component main = Outer();
 // CHECK-NEXT:                        %[[VAL_166:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_154]][@in] : <[@in: !array.type<4 x !felt.type<"bn128">>]>, !array.type<4 x !felt.type<"bn128">>
 // CHECK-NEXT:                        %[[VAL_167:[0-9a-zA-Z_\.]+]] = function.call @Inner_1::@Inner_1::@compute(%[[VAL_166]]) : (!array.type<4 x !felt.type<"bn128">>) -> !struct.type<@Inner_1::@Inner_1<[]>>
 // CHECK-NEXT:                        pod.write %[[VAL_145]][@comp] = %[[VAL_167]] : <[@count: index, @comp: !struct.type<@Inner_1::@Inner_1<[]>>, @params: !pod.type<[]>]>, !struct.type<@Inner_1::@Inner_1<[]>>
-// CHECK-NEXT:                        %[[VAL_168:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_93]] : !felt.type<"bn128">
 // CHECK-NEXT:                      }
 // CHECK-NEXT:                    } else {
 // CHECK-NEXT:                      scf.if %[[VAL_141]] {
@@ -318,7 +315,6 @@ component main = Outer();
 // CHECK-NEXT:                          %[[VAL_190:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_178]][@in] : <[@in: !array.type<4 x !felt.type<"bn128">>]>, !array.type<4 x !felt.type<"bn128">>
 // CHECK-NEXT:                          %[[VAL_191:[0-9a-zA-Z_\.]+]] = function.call @Inner_0::@Inner_0::@compute(%[[VAL_190]]) : (!array.type<4 x !felt.type<"bn128">>) -> !struct.type<@Inner_0::@Inner_0<[]>>
 // CHECK-NEXT:                          pod.write %[[VAL_169]][@comp] = %[[VAL_191]] : <[@count: index, @comp: !struct.type<@Inner_0::@Inner_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@Inner_0::@Inner_0<[]>>
-// CHECK-NEXT:                          %[[VAL_192:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_93]] : !felt.type<"bn128">
 // CHECK-NEXT:                        }
 // CHECK-NEXT:                      } else {
 // CHECK-NEXT:                      }
@@ -344,13 +340,11 @@ component main = Outer();
 // CHECK-NEXT:                      %[[VAL_206:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_204]] -> (!pod.type<[@idx_0: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>]>) {
 // CHECK-NEXT:                        %[[VAL_207:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_101]][@idx_1] : <[@idx_0: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>]>, !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>
 // CHECK-NEXT:                        pod.write %[[VAL_207]][@in] = %[[VAL_195]] : <[@in: !array.type<4 x !felt.type<"bn128">>]>, !array.type<4 x !felt.type<"bn128">>
-// CHECK-NEXT:                        %[[VAL_208:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_93]] : !felt.type<"bn128">
 // CHECK-NEXT:                        scf.yield %[[VAL_101]] : !pod.type<[@idx_0: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>]>
 // CHECK-NEXT:                      } else {
 // CHECK-NEXT:                        %[[VAL_209:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_201]] -> (!pod.type<[@idx_0: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>]>) {
 // CHECK-NEXT:                          %[[VAL_210:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_101]][@idx_0] : <[@idx_0: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>]>, !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>
 // CHECK-NEXT:                          pod.write %[[VAL_210]][@in] = %[[VAL_195]] : <[@in: !array.type<4 x !felt.type<"bn128">>]>, !array.type<4 x !felt.type<"bn128">>
-// CHECK-NEXT:                          %[[VAL_211:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_93]] : !felt.type<"bn128">
 // CHECK-NEXT:                          scf.yield %[[VAL_101]] : !pod.type<[@idx_0: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>]>
 // CHECK-NEXT:                        } else {
 // CHECK-NEXT:                          %[[VAL_212:[0-9a-zA-Z_\.]+]] = llzk.nondet : !pod.type<[@idx_0: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>]>
@@ -406,7 +400,6 @@ component main = Outer();
 // CHECK-NEXT:                          %[[VAL_242:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_230]][@in] : <[@in: !array.type<4 x !felt.type<"bn128">>]>, !array.type<4 x !felt.type<"bn128">>
 // CHECK-NEXT:                          %[[VAL_243:[0-9a-zA-Z_\.]+]] = function.call @Inner_1::@Inner_1::@compute(%[[VAL_242]]) : (!array.type<4 x !felt.type<"bn128">>) -> !struct.type<@Inner_1::@Inner_1<[]>>
 // CHECK-NEXT:                          pod.write %[[VAL_221]][@comp] = %[[VAL_243]] : <[@count: index, @comp: !struct.type<@Inner_1::@Inner_1<[]>>, @params: !pod.type<[]>]>, !struct.type<@Inner_1::@Inner_1<[]>>
-// CHECK-NEXT:                          %[[VAL_244:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_93]] : !felt.type<"bn128">
 // CHECK-NEXT:                        }
 // CHECK-NEXT:                      } else {
 // CHECK-NEXT:                        scf.if %[[VAL_217]] {
@@ -446,7 +439,6 @@ component main = Outer();
 // CHECK-NEXT:                            %[[VAL_266:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_254]][@in] : <[@in: !array.type<4 x !felt.type<"bn128">>]>, !array.type<4 x !felt.type<"bn128">>
 // CHECK-NEXT:                            %[[VAL_267:[0-9a-zA-Z_\.]+]] = function.call @Inner_0::@Inner_0::@compute(%[[VAL_266]]) : (!array.type<4 x !felt.type<"bn128">>) -> !struct.type<@Inner_0::@Inner_0<[]>>
 // CHECK-NEXT:                            pod.write %[[VAL_245]][@comp] = %[[VAL_267]] : <[@count: index, @comp: !struct.type<@Inner_0::@Inner_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@Inner_0::@Inner_0<[]>>
-// CHECK-NEXT:                            %[[VAL_268:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_93]] : !felt.type<"bn128">
 // CHECK-NEXT:                          }
 // CHECK-NEXT:                        } else {
 // CHECK-NEXT:                        }
