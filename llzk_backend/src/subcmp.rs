@@ -276,7 +276,7 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
     pub fn generate_constraint_func_prologue(
         &self,
         constrain_ctx: &mut FunctionContext<'_, 'ctx, '_, '_, '_>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         subcmp_decls: &HashMap<String, SubcmpDeclInfo<'ctx>>,
     ) -> Result<()> {
         let decl = &subcmp_decls[self.name()];
