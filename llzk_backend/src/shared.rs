@@ -1772,6 +1772,10 @@ where
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         target_expr: &Expression, // the result that should yield from the `poly.expr`
     ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
+        if codegen.config.verbose {
+            println!("[gen_template_poly_expr] {target_expr:?}");
+        }
+
         /// Fully generate LLZK for a single [Statement] in a `poly.expr` initializer without
         /// truncating at any target expression.
         fn gen_stmt_fully<'ctx, 'blk, 'val>(
