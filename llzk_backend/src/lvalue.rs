@@ -905,7 +905,9 @@ fn combine_overwrites<'ctx, 'val>(
     then_map: OverwriteMap<'ctx, 'val>,
     else_map: OverwriteMap<'ctx, 'val>,
 ) -> Vec<Overwrite<'ctx, 'val>> {
-    std::iter::chain(then_map.keys(), else_map.keys())
+    then_map
+        .keys()
+        .chain(else_map.keys())
         .collect::<HashSet<_>>()
         .into_iter()
         .map(|var| {
