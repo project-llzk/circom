@@ -28,6 +28,7 @@ use llzk::dialect::pod;
 use llzk::dialect::poly;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
+use llzk::prelude::replace_uses_of_with;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
@@ -52,6 +53,7 @@ use llzk::prelude::Module;
 use llzk::prelude::Operation;
 use llzk::prelude::OperationLike;
 use llzk::prelude::OperationMutLike;
+use llzk::prelude::OperationRef;
 use llzk::prelude::PassManager;
 use llzk::prelude::PodRecordAttribute;
 use llzk::prelude::PodType;
@@ -69,7 +71,6 @@ use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
-use llzk::value_ext::replace_all_uses_in_block_with;
 use llzk::value_ext::OwningValueRange;
 use llzk::value_ext::ValueRange;
 use melior::utility;
@@ -825,12 +826,6 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
             .ok_or_else(|| anyhow!("could not parse affine_map definition"))
     }
 
-    /// Create an identity affine_map attribute.
-    #[inline]
-    pub fn identity_affine_map_attr(&self) -> Result<Attribute<'ctx>> {
-        self.affine_map_attr("affine_map<()[i] -> (i)>")
-    }
-
     /// Creates a [`FlatSymbolRefAttribute`] from the given string.
     #[inline]
     pub fn flat_sym(&self, sym: impl AsRef<str>) -> FlatSymbolRefAttribute<'ctx> {
@@ -893,7 +888,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         arith::constant(self.context, self.index_attr(val).into(), location)
     }
 
-    /// Create an LLZK `array.new` operation with the given element type and dimensions.
+    /// Create an LLZK `array.new` operation with the given type and constructor info.
     #[inline]
     pub fn new_array_new_op(
         &self,
@@ -1331,16 +1326,36 @@ pub fn is_bool(t: Type) -> bool {
 
 /// Add a new argument to the given [BlockRef] with the same type as `orig` and replace all uses of
 /// `orig` within the given [BlockRef] (and within any nested blocks) with the new block argument.
+///
+/// Collects the operations that reference `orig` first, then mutates them in a second pass. This
+/// avoids a use-list iterator-invalidation hazard in `mlirOperationReplaceUsesOfWith`: when an op
+/// has multiple operands pointing at the same `orig` SSA value (e.g. `felt.add %x, %x` produced by
+/// `var e2 = e2 + e2;`), replacing all of those operands at once detaches more than one operand
+/// cell from `orig`'s use chain. The next pointer that an iterator saved before the mutation is
+/// then no longer in `orig`'s use list, so subsequent uses of `orig` in the same block are silently
+/// skipped — manifesting as e.g. `Bits2Num`'s `lc1 += in[i] * e2` lowering to `felt.mul %bit,
+/// %felt_const_1` (the unreplaced initial value) instead of `felt.mul %bit, %arg_e2`.
 pub fn replace_uses_with_new_block_argument<'ctx, 'val>(
     block: BlockRef<'ctx, 'val>,
     orig: &Value<'ctx, 'val>,
     location: Location<'ctx>,
 ) -> Value<'ctx, 'val> {
     let replacement = block.add_argument(orig.r#type(), location);
+    // `OperationRef` lifetimes are HRTB inside `WalkCallbacks::for_ops`, so collect
+    // raw handles and rebuild the `OperationRef` outside the walk.
+    let mut ops_using_orig: Vec<mlir_sys::MlirOperation> = Vec::new();
     walk_from_block(
         block,
-        WalkCallbacks::for_blocks(|b| replace_all_uses_in_block_with(b, *orig, replacement)),
+        WalkCallbacks::for_ops(|op| {
+            if op.operands().any(|operand| operand == *orig) {
+                ops_using_orig.push(op.to_raw());
+            }
+        }),
     );
+    for raw in ops_using_orig {
+        let op = unsafe { OperationRef::from_raw(raw) };
+        replace_uses_of_with(&op, *orig, replacement);
+    }
     replacement
 }
 
