@@ -1,5 +1,6 @@
 //! Handles circom var scoping and LLZK blocks stack management.
 
+use crate::affine_map::AffineMapAttribute;
 use crate::function::InfoProviders;
 use crate::function_ext::FunctionLike as _;
 use crate::lvalue::Lvalue;
@@ -1845,12 +1846,12 @@ where
         let const_dim = IntegerAttribute::try_from(dimension);
         if let Ok(subarr_ty) = ArrayType::try_from(value.r#type()) {
             let arr_ty = dimension.new_array_type(&subarr_ty.into());
-            let mut symbols_sto = vec![];
+            let mut dim_operands_sto = vec![];
             // The array.new constructor doesn't accept arrays as initializer values,
             // so we instead create the array empty and use array.insert to insert values.
-            let ctor = if let Some(symbols) = dimension.value_range()? {
-                symbols_sto.push(symbols);
-                ArrayCtor::MapDimSlice(&symbols_sto, &[0])
+            let ctor = if let Some(dim_operands) = dimension.value_range()? {
+                dim_operands_sto.push(dim_operands);
+                ArrayCtor::MapDimSlice(&dim_operands_sto, &[i32::try_from(dim_operands.len())?])
             } else {
                 ArrayCtor::Empty
             };
@@ -1893,7 +1894,8 @@ where
                 let mut v_sto = vec![];
                 let ctor = if let Ok(Some(v)) = dimension.value_range() {
                     v_sto.push(v);
-                    ArrayCtor::MapDimSlice(&v_sto, &[0])
+
+                    ArrayCtor::MapDimSlice(&v_sto, &[i32::try_from(v.len())?])
                 } else {
                     ArrayCtor::Empty
                 };
@@ -2114,7 +2116,10 @@ where
                         if self.poly_template_binding_names.contains_key(&expr_name) {
                             ArrayDimensionResult::new(codegen.flat_sym(expr_name).into(), &[])
                         } else if let Ok(v) = self.block_ctx.get_named_value(name) {
-                            ArrayDimensionResult::new(codegen.identity_affine_map_attr()?, &[*v])
+                            ArrayDimensionResult::new(
+                                AffineMapAttribute::identity(codegen.context, 1).into(),
+                                &[*v],
+                            )
                         } else {
                             todo!("Handle dimension Variable expression in BlockGenContext")
                         }

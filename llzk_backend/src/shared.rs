@@ -28,6 +28,7 @@ use llzk::dialect::pod;
 use llzk::dialect::poly;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
+use llzk::prelude::replace_uses_of_with;
 use llzk::prelude::verify_operation_with_diags;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
@@ -70,7 +71,6 @@ use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
-use llzk::prelude::replace_uses_of_with;
 use llzk::value_ext::OwningValueRange;
 use llzk::value_ext::ValueRange;
 use melior::utility;
@@ -821,12 +821,6 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
             .ok_or_else(|| anyhow!("could not parse affine_map definition"))
     }
 
-    /// Create an identity affine_map attribute.
-    #[inline]
-    pub fn identity_affine_map_attr(&self) -> Result<Attribute<'ctx>> {
-        self.affine_map_attr("affine_map<()[i] -> (i)>")
-    }
-
     /// Creates a [`FlatSymbolRefAttribute`] from the given string.
     #[inline]
     pub fn flat_sym(&self, sym: impl AsRef<str>) -> FlatSymbolRefAttribute<'ctx> {
@@ -889,7 +883,7 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         arith::constant(self.context, self.index_attr(val).into(), location)
     }
 
-    /// Create an LLZK `array.new` operation with the given element type and dimensions.
+    /// Create an LLZK `array.new` operation with the given type and constructor info.
     #[inline]
     pub fn new_array_new_op(
         &self,
