@@ -238,10 +238,9 @@ impl TemplateLike for TemplateInstance {
         // Get the types for the declarations
         for cluster in &self.clusters {
             if let Some(subcmp_decl) = subcmp_decls.get_mut(&cluster.cmp_name) {
-                match dbg!(&cluster.xtype) {
+                match &cluster.xtype {
                     ClusterType::Mixed { .. } => {
-                        for trigger in &self.triggers[dbg!(cluster.slice.clone())] {
-                            dbg!(trigger);
+                        for trigger in &self.triggers[cluster.slice.clone()] {
                             subcmp_decl.mixed_instances_mut().push(MixedSubcmpInstance::new(
                                 mixed_record_name(&trigger.indexed_with),
                                 trigger.indexed_with.clone(),
