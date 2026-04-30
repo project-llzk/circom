@@ -1505,11 +1505,7 @@ impl<'ctx, 'val> ArrayDimension<'ctx, 'val> {
     }
     /// Access the inner symbols, if present, as a [ValueRange].
     pub fn value_range(&self) -> Result<Option<ValueRange<'ctx, '_, 'val>>> {
-        let range = match &self.symbols {
-            None => None,
-            Some(s) => Some(ValueRange::try_from(s)?),
-        };
-        Ok(range)
+        self.symbols.as_ref().map(|s| ValueRange::try_from(s).map_err(Into::into)).transpose()
     }
     /// Create a new [ArrayType] with the given dimension.
     pub fn new_array_type(&self, element_type: &Type<'ctx>) -> ArrayType<'ctx> {
