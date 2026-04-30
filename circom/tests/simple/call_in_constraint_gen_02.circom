@@ -40,13 +40,15 @@ component main = T();
 // CHECK-NEXT:        function.def @compute(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@T::@T<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = struct.new : <@T::@T<[]>>
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = function.call @f::@f(%[[VAL_8]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          struct.writem %[[VAL_9]][@outp] = %[[VAL_10]] : <@T::@T<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_10]] : (!felt.type<"bn128">) -> !felt.type<"bn128">
+// CHECK-NEXT:          struct.writem %[[VAL_9]][@outp] = %[[VAL_11]] : <@T::@T<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_9]] : !struct.type<@T::@T<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_11:[0-9a-zA-Z_\.]+]]: !struct.type<@T::@T<[]>>, %[[VAL_12:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_11]][@outp] : <@T::@T<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = function.call @f::@f(%[[VAL_12]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          constrain.eq %[[VAL_13]], %[[VAL_14]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:        function.def @constrain(%[[VAL_12:[0-9a-zA-Z_\.]+]]: !struct.type<@T::@T<[]>>, %[[VAL_13:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_12]][@outp] : <@T::@T<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = function.call @f::@f(%[[VAL_13]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_15]] : (!felt.type<"bn128">) -> !felt.type<"bn128">
+// CHECK-NEXT:          constrain.eq %[[VAL_14]], %[[VAL_16]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

@@ -43,8 +43,8 @@ component main = Example(3);
 // CHECK-NEXT:            scf.condition(%[[VAL_10]]) %[[VAL_9]] : !felt.type<"bn128">
 // CHECK-NEXT:          } do {
 // CHECK-NEXT:          ^bb0(%[[VAL_11:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CHECK-NEXT:            %[[VAL_12:[0-9a-zA-Z_\.]+]] = function.call @identity::@identity(%[[VAL_3]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_13:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_12]] : !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_12:[0-9a-zA-Z_\.]+]] = function.call @identity::@identity(%[[VAL_3]]) : (!felt.type<"bn128">) -> index
+// CHECK-NEXT:            %[[VAL_13:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_12]] : (index) -> index
 // CHECK-NEXT:            %[[VAL_14:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_2]]{{\[}}%[[VAL_13]]] : <@n x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_15:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_11]] : !felt.type<"bn128">
 // CHECK-NEXT:            array.write %[[VAL_6]]{{\[}}%[[VAL_15]]] = %[[VAL_14]] : <@n x !felt.type<"bn128">>, !felt.type<"bn128">

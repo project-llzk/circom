@@ -39,14 +39,15 @@ component main = T();
 // CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          struct.writem %[[VAL_4]][@o1] = %[[VAL_5]] : <@T::@T<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = function.call @f::@f(%[[VAL_2]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          struct.writem %[[VAL_4]][@temp] = %[[VAL_6]] : <@T::@T<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_6]] : (!felt.type<"bn128">) -> !felt.type<"bn128">
+// CHECK-NEXT:          struct.writem %[[VAL_4]][@temp] = %[[VAL_7]] : <@T::@T<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_4]] : !struct.type<@T::@T<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_7:[0-9a-zA-Z_\.]+]]: !struct.type<@T::@T<[]>>, %[[VAL_8:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_7]][@o1] : <@T::@T<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_7]][@temp] : <@T::@T<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_10]], %[[VAL_9]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          constrain.eq %[[VAL_12]], %[[VAL_11]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:        function.def @constrain(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !struct.type<@T::@T<[]>>, %[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_10:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_8]][@o1] : <@T::@T<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_8]][@temp] : <@T::@T<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_11]], %[[VAL_10]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:          constrain.eq %[[VAL_13]], %[[VAL_12]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

@@ -49,32 +49,30 @@ component main = A(555);
 // CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = struct.new : <@A::@A<[@x]>>
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = poly.read_const @x : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = function.call @binop_bool::@binop_bool(%[[VAL_6]], %[[VAL_8]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = bool.cmp ne(%[[VAL_10]], %[[VAL_11]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_12]] -> (!felt.type<"bn128">) {
-// CHECK-NEXT:            %[[VAL_14:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:            scf.yield %[[VAL_14]] : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = function.call @binop_bool::@binop_bool(%[[VAL_6]], %[[VAL_8]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> i1
+// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_10]] : (i1) -> i1
+// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_11]] -> (!felt.type<"bn128">) {
+// CHECK-NEXT:            %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:            scf.yield %[[VAL_13]] : !felt.type<"bn128">
 // CHECK-NEXT:          } else {
-// CHECK-NEXT:            %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:            scf.yield %[[VAL_15]] : !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_14:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:            scf.yield %[[VAL_14]] : !felt.type<"bn128">
 // CHECK-NEXT:          }
-// CHECK-NEXT:          struct.writem %[[VAL_7]][@out] = %[[VAL_13]] : <@A::@A<[@x]>>, !felt.type<"bn128">
+// CHECK-NEXT:          struct.writem %[[VAL_7]][@out] = %[[VAL_12]] : <@A::@A<[@x]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_7]] : !struct.type<@A::@A<[@x]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@A::@A<[@x]>>, %[[VAL_17:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = poly.read_const @x : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_16]][@out] : <@A::@A<[@x]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = function.call @binop_bool::@binop_bool(%[[VAL_17]], %[[VAL_18]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = bool.cmp ne(%[[VAL_21]], %[[VAL_22]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_23]] -> (!felt.type<"bn128">) {
-// CHECK-NEXT:            %[[VAL_25:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:            scf.yield %[[VAL_25]] : !felt.type<"bn128">
+// CHECK-NEXT:        function.def @constrain(%[[VAL_15:[0-9a-zA-Z_\.]+]]: !struct.type<@A::@A<[@x]>>, %[[VAL_16:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = poly.read_const @x : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_15]][@out] : <@A::@A<[@x]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = function.call @binop_bool::@binop_bool(%[[VAL_16]], %[[VAL_17]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> i1
+// CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_20]] : (i1) -> i1
+// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_21]] -> (!felt.type<"bn128">) {
+// CHECK-NEXT:            %[[VAL_23:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:            scf.yield %[[VAL_23]] : !felt.type<"bn128">
 // CHECK-NEXT:          } else {
-// CHECK-NEXT:            %[[VAL_26:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:            scf.yield %[[VAL_26]] : !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_24:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:            scf.yield %[[VAL_24]] : !felt.type<"bn128">
 // CHECK-NEXT:          }
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }

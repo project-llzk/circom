@@ -55,11 +55,12 @@ component main = C();
 // CHECK-NEXT:        function.def @compute(%[[VAL_13:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@C::@C<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.new : <@C::@C<[]>>
 // CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = function.call @f::@f(%[[VAL_13]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          struct.writem %[[VAL_14]][@out] = %[[VAL_15]] : <@C::@C<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_15]] : (!felt.type<"bn128">) -> !felt.type<"bn128">
+// CHECK-NEXT:          struct.writem %[[VAL_14]][@out] = %[[VAL_16]] : <@C::@C<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_14]] : !struct.type<@C::@C<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@C::@C<[]>>, %[[VAL_17:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_16]][@out] : <@C::@C<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:        function.def @constrain(%[[VAL_17:[0-9a-zA-Z_\.]+]]: !struct.type<@C::@C<[]>>, %[[VAL_18:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_17]][@out] : <@C::@C<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
