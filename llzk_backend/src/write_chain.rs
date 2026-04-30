@@ -101,7 +101,7 @@ impl OverrideVar for Override<'_, '_> {
 }
 
 /// Helper type that defines a chain of write operations.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WriteChain<'ast> {
     /// Location value this write action takes place on.
     lvalue: Lvalue<'ast>,
@@ -138,62 +138,78 @@ impl<'ast> WriteChain<'ast> {
         signal_write_info: &dyn SignalWriteInfo,
         subcmp_info: &dyn SubcmpInfo<'ctx>,
     ) -> Result<()> {
-        let arr_ref = prev.lvalue.get_value(
+        prev.lvalue.get_value(
             codegen,
             fc,
             subcmp_info,
             location,
             Some(&prev.ov(subcmp_info)),
-        )?;
-        // TEMP
-        let indices_ast = indices.clone();
-        let indices = fc.gen_index_ops(
-            indices,
-            codegen,
-            location,
-            InfoProviders { subcmp_info, signal_write_info },
-        )?;
+            &|arr_ref: Value<'ctx, 'val>, fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>| {
+                // TEMP
+                let indices_ast = indices.clone();
+                let indices = fc.gen_index_ops(
+                    indices.clone(),
+                    codegen,
+                    location,
+                    InfoProviders { subcmp_info, signal_write_info },
+                )?;
 
-        let Ok(pod_type) = PodType::try_from(arr_ref.r#type()) else {
-            fc.append_array_write(codegen, arr_ref, &indices, location, val, None)?;
+                let Ok(pod_type) = PodType::try_from(arr_ref.r#type()) else {
+                    fc.append_array_write(codegen, arr_ref, &indices, location, val, None)?;
 
-            return prev.write(
-                arr_ref,
-                target,
-                codegen,
-                fc,
-                location,
-                signal_write_info,
-                subcmp_info,
-            );
-        };
+                    return prev.clone().write(
+                        arr_ref,
+                        target,
+                        codegen,
+                        fc,
+                        location,
+                        signal_write_info,
+                        subcmp_info,
+                    );
+                };
 
-        // The problem here is that concrete_indices expects that the indices are always
-        // literal, which is not always the case.
-        // We need to take each expression, convert it to values (that is done below with
-        // `fc.gen_index_ops`), and then check with a massive if then else for each possible
-        // index. The optimizer should be able to remove the dead branches on literal cases...
-        if let Some(indices) = concrete_indices(&indices_ast) {
-            // Using `root_var` here is somewhat safe since this representation can only be done on
-            // subcomponents (unless we can do it on buses as well but I'm not sure) and
-            // subcomponents are always top level variables.
-            if let Some(record_name) =
-                subcmp_info.mixed_subcmp_record_for_indices(prev.lvalue.root_var(), &indices)
-            {
-                let record_type = pod_type.get_type_of_record(record_name).ok_or_else(|| {
-                    anyhow::anyhow!(
+                // The problem here is that concrete_indices expects that the indices are always
+                // literal, which is not always the case.
+                // We need to take each expression, convert it to values (that is done below with
+                // `fc.gen_index_ops`), and then check with a massive if then else for each possible
+                // index. The optimizer should be able to remove the dead branches on literal cases...
+                if let Some(indices) = concrete_indices(&indices_ast) {
+                    // Using `root_var` here is somewhat safe since this representation can only be done on
+                    // subcomponents (unless we can do it on buses as well but I'm not sure) and
+                    // subcomponents are always top level variables.
+                    if let Some(record_name) = subcmp_info
+                        .mixed_subcmp_record_for_indices(prev.lvalue.root_var(), &indices)
+                    {
+                        let record_type =
+                            pod_type.get_type_of_record(record_name).ok_or_else(|| {
+                                anyhow::anyhow!(
                         "record {record_name} not found in mixed subcomponent pod: {arr_ref}"
                     )
-                })?;
-                let val =
-                    fc.cast_to_expected_type_if_needed(codegen, location, val, record_type)?;
-                fc.append_op_no_result(codegen.new_pod_write_op(
-                    location,
-                    arr_ref,
-                    record_name,
-                    val,
-                ))?;
-                return prev.write(
+                            })?;
+                        let val = fc.cast_to_expected_type_if_needed(
+                            codegen,
+                            location,
+                            val,
+                            record_type,
+                        )?;
+                        fc.append_op_no_result(codegen.new_pod_write_op(
+                            location,
+                            arr_ref,
+                            record_name,
+                            val,
+                        ))?;
+                        return prev.clone().write(
+                            arr_ref,
+                            target,
+                            codegen,
+                            fc,
+                            location,
+                            signal_write_info,
+                            subcmp_info,
+                        );
+                    }
+                }
+                prev.clone().write(
                     arr_ref,
                     target,
                     codegen,
@@ -201,10 +217,9 @@ impl<'ast> WriteChain<'ast> {
                     location,
                     signal_write_info,
                     subcmp_info,
-                );
-            }
-        }
-        prev.write(arr_ref, target, codegen, fc, location, signal_write_info, subcmp_info)
+                )
+            },
+        )
     }
 
     /// Handle [Lvalue::Subcmp] case of [`WriteChain::write`].
@@ -220,60 +235,93 @@ impl<'ast> WriteChain<'ast> {
         signal_write_info: &dyn SignalWriteInfo,
         subcmp_info: &dyn SubcmpInfo<'ctx>,
     ) -> Result<()> {
-        let subcmp_value_inputs = prev.lvalue.get_value(
-            codegen,
-            fc,
-            subcmp_info,
-            location,
-            Some(&prev.ov(subcmp_info)),
-        )?;
-        fc.append_op_no_result(codegen.new_pod_write_op(location, subcmp_value_inputs, name, val))?;
         let prev_for_compute = prev.clone_for_compute_result();
-        prev.write(
-            subcmp_value_inputs,
-            target,
+        let ov = prev.ov(subcmp_info);
+        prev.lvalue.get_value::<(), _>(
             codegen,
             fc,
-            location,
-            signal_write_info,
             subcmp_info,
+            location,
+            Some(&ov),
+            &|subcmp_value_inputs: Value<'ctx, 'val>,
+              fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>|
+             -> Result<()> {
+                fc.append_op_no_result(codegen.new_pod_write_op(
+                    location,
+                    subcmp_value_inputs,
+                    name,
+                    val,
+                ))?;
+                prev.clone().write(
+                    subcmp_value_inputs,
+                    target,
+                    codegen,
+                    fc,
+                    location,
+                    signal_write_info,
+                    subcmp_info,
+                )
+            },
         )?;
         // Read the subcomponent's memory, which should be the memory pod.
-        let subcmp_value = prev_for_compute.lvalue.get_value(
+        prev_for_compute.lvalue.get_value(
             codegen,
             fc,
             subcmp_info,
             location,
             Some(&prev_for_compute.ov(subcmp_info)),
-        )?;
+            &|subcmp_value: Value<'ctx, 'val>, fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>| {
+                let subcmp_value_inputs = prev_for_compute.lvalue.get_value(
+                    codegen,
+                    fc,
+                    subcmp_info,
+                    location,
+                    Some(&ov),
+                    &|subcmp_value_inputs: Value<'ctx, 'val>,
+                      _: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>| {
+                        Ok(subcmp_value_inputs)
+                    },
+                )?;
+                let counter = fc.gen_subcmp_decrease_counter(codegen, location, subcmp_value, 1)?;
+                fc.gen_scf_if_is_zero(
+                    counter,
+                    location,
+                    codegen,
+                    |fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>| {
+                        let params = fc.append_op_unnamed_result(codegen.new_pod_read_op(
+                            subcmp_value,
+                            PARAMS,
+                            location,
+                        )?)?;
+                        let struct_type =
+                            comp_type(subcmp_value.r#type().try_into()?)?.try_into()?;
 
-        let counter = fc.gen_subcmp_decrease_counter(codegen, location, subcmp_value, 1)?;
-        fc.gen_scf_if_is_zero(counter, location, codegen, |fc| {
-            let params = fc.append_op_unnamed_result(codegen.new_pod_read_op(
-                subcmp_value,
-                PARAMS,
-                location,
-            )?)?;
-            let struct_type = comp_type(subcmp_value.r#type().try_into()?)?.try_into()?;
-
-            let subcmp_instance =
-                fc.gen_compute_call(struct_type, subcmp_value_inputs, params, location, codegen)?;
-            fc.append_op_no_result(codegen.new_pod_write_op(
-                location,
-                subcmp_value,
-                COMP,
-                subcmp_instance,
-            ))?;
-            prev_for_compute.write(
-                subcmp_value,
-                target,
-                codegen,
-                fc,
-                location,
-                signal_write_info,
-                subcmp_info,
-            )
-        })
+                        let subcmp_instance = fc.gen_compute_call(
+                            struct_type,
+                            subcmp_value_inputs,
+                            params,
+                            location,
+                            codegen,
+                        )?;
+                        fc.append_op_no_result(codegen.new_pod_write_op(
+                            location,
+                            subcmp_value,
+                            COMP,
+                            subcmp_instance,
+                        ))?;
+                        prev_for_compute.clone().write(
+                            subcmp_value,
+                            target,
+                            codegen,
+                            fc,
+                            location,
+                            signal_write_info,
+                            subcmp_info,
+                        )
+                    },
+                )
+            },
+        )
     }
 
     #[allow(clippy::too_many_arguments)]

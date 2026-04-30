@@ -451,8 +451,7 @@ where
 impl Default for NestedBlockInfo<'_, '_, '_> {
     #[inline]
     fn default() -> Self {
-        let (region, block) = new_region_and_block(&[]);
-        NestedBlockInfo { region, block, var_overwrites: Default::default() }
+        Self::new()
     }
 }
 
@@ -461,6 +460,47 @@ where
     'ctx: 'blk,
     'blk: 'val,
 {
+    /// Creates an empty block info instance.
+    pub fn new() -> Self {
+        let (region, block) = new_region_and_block(&[]);
+        NestedBlockInfo { region, block, var_overwrites: Default::default() }
+    }
+
+    /// Creates a new instance using the common pattern of pushing the block into the stack, emitting some IR, and then
+    /// popping the block.
+    pub fn with_scope<'decls, R, C>(
+        block_gen: &mut C,
+        cb: impl FnOnce(&mut C) -> Result<R>,
+    ) -> Result<(Self, R)>
+    where
+        C: AsMut<BlockGenContext<'decls, 'ctx, 'blk, 'val>>,
+        'ctx: 'decls,
+    {
+        let mut info = Self::new();
+        let r = info.enter_scope(block_gen, cb)?;
+        Ok((info, r))
+    }
+
+    /// Pushes the block into the stack, runs the callback and then pops the block out of the
+    /// stack, filling the overwrites.
+    ///
+    /// Handling the overwrites follows the rules of [`add_overwrites`].
+    pub fn enter_scope<'decls, R, C>(
+        &mut self,
+        block_gen: &mut C,
+        cb: impl FnOnce(&mut C) -> Result<R>,
+    ) -> Result<R>
+    where
+        C: AsMut<BlockGenContext<'decls, 'ctx, 'blk, 'val>>,
+        'ctx: 'decls,
+    {
+        block_gen.as_mut().block_ctx.push(self.block);
+        let r = cb(block_gen)?;
+        let overwrites = block_gen.as_mut().block_ctx.pop();
+        self.add_overwrites(&overwrites, block_gen.as_mut())?;
+        Ok(r)
+    }
+
     /// Update `self.var_overwrites` to ensure it has all keys from `other.var_overwrites`, using
     /// values from the current scope in the [BlockGenContext] for missing keys.
     pub fn add_missing_values(
@@ -468,7 +508,21 @@ where
         other: &NestedBlockInfo<'ctx, 'blk, 'val>,
         fc: &BlockGenContext<'_, 'ctx, 'blk, 'val>,
     ) -> Result<()> {
-        for name in other.var_overwrites.keys() {
+        self.add_overwrites(&other.var_overwrites, fc)
+    }
+
+    /// Update `self.var_overwrites` to ensure it has all keys from the given overwrites, using
+    /// values from the current scope in the [BlockGenContext] for missing keys.
+    ///
+    /// Use this method instead of [`add_missing_values`] in situations where you cannot have a
+    /// reference to the other [`NestedBlockInfo`]. For example, if you partially moved it to give
+    /// the region to an op factory.
+    pub fn add_overwrites(
+        &mut self,
+        overwrites: &HashMap<String, Value<'ctx, 'val>>,
+        fc: &BlockGenContext<'_, 'ctx, 'blk, 'val>,
+    ) -> Result<()> {
+        for name in overwrites.keys() {
             if !self.var_overwrites.contains_key(name) {
                 self.var_overwrites.insert(name.clone(), *fc.block_ctx.get_named_value(name)?);
             }
@@ -622,6 +676,12 @@ where
     poly_template_binding_names: HashMap<String, Option<Type<'ctx>>>,
 }
 
+impl AsMut<Self> for BlockGenContext<'_, '_, '_, '_> {
+    fn as_mut(&mut self) -> &mut Self {
+        self
+    }
+}
+
 impl<'decls, 'ctx, 'blk, 'val> BlockGenContext<'decls, 'ctx, 'blk, 'val>
 where
     'ctx: 'blk,
@@ -677,6 +737,22 @@ where
     /// name in the circom code.
     pub fn append_op_unnamed_result(&mut self, op: Operation<'ctx>) -> Result<Value<'ctx, 'val>> {
         single_result_as_value(self.append_op(op))
+    }
+
+    /// Append an operation that must produce one or more results and is NOT associated with a variable
+    /// name in the circom code.
+    pub fn append_op_many_unnamed_results(
+        &mut self,
+        op: Operation<'ctx>,
+    ) -> Result<Vec<Value<'ctx, 'val>>> {
+        let op = self.append_op(op);
+        if op.result_count() < 1 {
+            anyhow::bail!(
+                "Expected operation to have one or more results, found {}",
+                op.result_count()
+            );
+        }
+        Ok(op.results().map(Value::from).collect())
     }
 
     /// Append an operation that must produce a single result and store the mapping of the circom
@@ -1410,6 +1486,54 @@ where
             return self.cast_to_expected_type_if_needed(codegen, location, if_op_result?, expect);
         }
         if_op_result
+    }
+
+    /// Append an `scf.if` op using pre-generated branch regions that each yield the same number of values.
+    /// Ensures both yielded values have the same type, emits the `scf.if`, and casts the
+    /// result to `expected_result_type` when provided and unifiable.
+    pub fn gen_safe_scf_multivalued_if(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        condition: Value<'ctx, 'val>,
+        (then_region, then_values): (Region<'ctx>, &[Value<'ctx, 'val>]),
+        (else_region, else_values): (Region<'ctx>, &[Value<'ctx, 'val>]),
+        expected_result_types: Option<&[Type<'ctx>]>,
+    ) -> Result<Vec<Value<'ctx, 'val>>> {
+        assert_eq!(
+            then_values.len(),
+            else_values.len(),
+            "branches of scf.if must have identical length"
+        );
+        if let Some(expected_result_types) = expected_result_types {
+            assert_eq!(
+                then_values.len(),
+                expected_result_types.len(),
+                "branches of scf.id and expected result types must have identical length"
+            );
+        }
+        for (then_value, else_value) in std::iter::zip(then_values, else_values) {
+            // Ensure values yielded from both blocks have the same type. Strict equality per `scf.if`.
+            assert_eq!(
+                then_value.r#type(),
+                else_value.r#type(),
+                "branches of scf.if must yield identical value types"
+            );
+        }
+        let yield_types = then_values.iter().map(|v| v.r#type()).collect::<Vec<_>>();
+        let if_op_result =
+            self.append_op(scf::r#if(condition, &yield_types, then_region, else_region, location));
+
+        let values = if_op_result.results().map(|r| unsafe { Value::from_raw(r.to_raw()) });
+
+        match expected_result_types {
+            Some(expected) => std::iter::zip(values, expected)
+                .map(|(value, expected)| {
+                    self.cast_to_expected_type_if_needed(codegen, location, value, *expected)
+                })
+                .collect(),
+            None => Ok(values.collect()),
+        }
     }
 
     /// Generate an `scf.if` op based on the given [NestedBlockInfo] for each branch and update the
@@ -2199,6 +2323,7 @@ where
                     info.subcmp_info,
                     codegen.location_from_meta(meta),
                     None,
+                    &|value, _: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>| Ok(value),
                 )
             }
             Expression::InfixOp { meta, lhe, infix_op, rhe } => {

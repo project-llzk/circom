@@ -20,7 +20,6 @@ use llzk::prelude::PodType;
 use llzk::prelude::StructType;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
-use std::cell::OnceCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryFrom;

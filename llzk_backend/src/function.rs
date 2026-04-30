@@ -151,6 +151,28 @@ where
     }
 }
 
+impl<'decls, 'ctx, 'blk, 'val> AsMut<BlockGenContext<'decls, 'ctx, 'blk, 'val>>
+    for FunctionContext<'decls, 'ctx, '_, 'blk, 'val>
+where
+    'ctx: 'blk,
+    'blk: 'val,
+{
+    fn as_mut(&mut self) -> &mut BlockGenContext<'decls, 'ctx, 'blk, 'val> {
+        self.deref_mut()
+    }
+}
+
+impl<'decls, 'ctx, 'blk, 'val> AsRef<BlockGenContext<'decls, 'ctx, 'blk, 'val>>
+    for FunctionContext<'decls, 'ctx, '_, 'blk, 'val>
+where
+    'ctx: 'blk,
+    'blk: 'val,
+{
+    fn as_ref(&self) -> &BlockGenContext<'decls, 'ctx, 'blk, 'val> {
+        self.deref()
+    }
+}
+
 /// Cache block yield/return result value while performing early-return refactoring.
 enum RefactoringBlockResultType<'ctx> {
     /// Single result value from the block.
