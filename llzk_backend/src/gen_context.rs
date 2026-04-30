@@ -1846,12 +1846,12 @@ where
         let const_dim = IntegerAttribute::try_from(dimension);
         if let Ok(subarr_ty) = ArrayType::try_from(value.r#type()) {
             let arr_ty = dimension.new_array_type(&subarr_ty.into());
-            let mut symbols_sto = vec![];
+            let mut dim_operands_sto = vec![];
             // The array.new constructor doesn't accept arrays as initializer values,
             // so we instead create the array empty and use array.insert to insert values.
-            let ctor = if let Some(symbols) = dimension.value_range()? {
-                symbols_sto.push(symbols);
-                ArrayCtor::MapDimSlice(&symbols_sto, &[1])
+            let ctor = if let Some(dim_operands) = dimension.value_range()? {
+                dim_operands_sto.push(dim_operands);
+                ArrayCtor::MapDimSlice(&dim_operands_sto, &[1])
             } else {
                 ArrayCtor::Empty
             };
