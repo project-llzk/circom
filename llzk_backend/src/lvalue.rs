@@ -20,11 +20,6 @@ use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use melior::dialect::arith;
 use melior::dialect::scf;
-use melior::ir::Block;
-use melior::ir::BlockLike;
-use melior::ir::Region;
-use melior::ir::RegionLike;
-use melior::ir::Type;
 use num_traits::ToPrimitive;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
@@ -145,6 +140,7 @@ impl<'ast> Lvalue<'ast> {
     /// If the array is an actual LLZK array then the continuation is called only once.
     /// However, if the array is actual an array of mixed subcomponents, the continuation is
     /// called for each branch of the dispatch table.
+    #[allow(clippy::too_many_arguments)]
     fn get_array_value<'decls, 'ctx, 'blk, 'val, 'cont, R, C>(
         &self,
         indices: &[&Expression],
@@ -223,6 +219,7 @@ impl<'ast> Lvalue<'ast> {
     }
 
     /// Emits the IR for a conditional check for array indices in a mixed subcomponent.
+    #[allow(clippy::too_many_arguments)]
     fn emit_mixed_subcmp_if_body<'decls, 'ctx, 'blk, 'val, 'cont, R, C>(
         &self,
         prev: Value<'ctx, 'val>,
@@ -698,7 +695,10 @@ fn emit_condition<'ctx, 'val>(
     })
 }
 
+/// Private module for holding `CombineSealed`.
 mod sealed {
+    /// Sealed trait to avoid more implementations of `Combine` other than the two
+    /// provided in this file.
     pub trait CombineSealed {}
 }
 
@@ -713,6 +713,7 @@ pub struct CombineEntry<'ctx, 'blk, 'val, C> {
 }
 
 impl<'ctx, 'blk, 'val, C> CombineEntry<'ctx, 'blk, 'val, C> {
+    /// Creates a new entry.
     fn new(condition: Value<'ctx, 'val>, data: C, info: NestedBlockInfo<'ctx, 'blk, 'val>) -> Self {
         Self { condition, data, info }
     }
@@ -725,6 +726,10 @@ impl<'ctx, 'blk, 'val, C> CombineEntry<'ctx, 'blk, 'val, C> {
 /// Both create the if-then-else chain with the difference that the former returns the value and
 /// the latter doesn't.
 pub trait Combine<'ctx, 'val>: sealed::CombineSealed + Sized + Copy {
+    /// Creates the tail which is the final branch of the if-then-else chain.
+    ///
+    /// This branch should be unreachable but is generated for keeping the type system consistent.
+    /// May generate undef ops for the yield values the if-then-else chain may generate.
     fn make_tail<'blk>(
         entries: &[CombineEntry<'ctx, 'blk, 'val, Self>],
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
@@ -732,10 +737,17 @@ pub trait Combine<'ctx, 'val>: sealed::CombineSealed + Sized + Copy {
         location: Location<'ctx>,
     ) -> Result<(NestedBlockInfo<'ctx, 'blk, 'val>, Self)>;
 
+    /// Converts `Self` to a vaule.
     fn data_as_value(self) -> Option<Value<'ctx, 'val>>;
 
+    /// Creates an instance of `Self` from a value.
     fn from_value(value: Option<Value<'ctx, 'val>>) -> Self;
 
+    /// Combines the entries into a single if-then-else chain.
+    ///
+    /// Overwritten variables and possible yield values are aggregated and returned by the chain.
+    ///
+    /// The overwritten variables are then set to the final yield of the chain.
     fn combine<'blk>(
         entries: Vec<CombineEntry<'ctx, 'blk, 'val, Self>>,
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
@@ -814,7 +826,7 @@ pub trait Combine<'ctx, 'val>: sealed::CombineSealed + Sized + Copy {
 
                 Ok((
                     new_info,
-                    Self::from_value(values.get(0).copied()),
+                    Self::from_value(values.first().copied()),
                     (values, overwrites_offset, vars),
                 ))
             },
@@ -840,26 +852,45 @@ pub trait Combine<'ctx, 'val>: sealed::CombineSealed + Sized + Copy {
             .into_iter()
             .try_for_each(|(var, value)| block_gen.block_ctx.set_named_value(var, *value))?;
 
-        Ok(Self::from_value(results.get(0).copied()))
+        Ok(Self::from_value(results.first().copied()))
     }
 }
 
 impl sealed::CombineSealed for () {}
 impl sealed::CombineSealed for Value<'_, '_> {}
 
+/// Convenience alias.
 type OverwriteMap<'ctx, 'val> = HashMap<String, Value<'ctx, 'val>>;
 
 /// Cases for combining overwrites between two if-then-else branches.
 enum Overwrite<'ctx, 'val> {
     /// Both cases have the variable
-    Both { var: String, then: Value<'ctx, 'val>, r#else: Value<'ctx, 'val> },
+    Both {
+        /// Var name.
+        var: String,
+        /// Value for the then branch.
+        then: Value<'ctx, 'val>,
+        /// Value for the else branch.
+        r#else: Value<'ctx, 'val>,
+    },
     /// Only the then branch has this variable
-    Then { var: String, value: Value<'ctx, 'val> },
+    Then {
+        /// Var name.
+        var: String,
+        /// Value for the then branch.
+        value: Value<'ctx, 'val>,
+    },
     /// Only the else branch has this variable
-    Else { var: String, value: Value<'ctx, 'val> },
+    Else {
+        /// Var name.
+        var: String,
+        /// Value for the else branch.
+        value: Value<'ctx, 'val>,
+    },
 }
 
 impl Overwrite<'_, '_> {
+    /// Returns the var name.
     fn var(&self) -> &str {
         match self {
             Overwrite::Both { var, .. }
@@ -947,9 +978,7 @@ impl<'ctx, 'val> Combine<'ctx, 'val> for () {
         None
     }
 
-    fn from_value(_: Option<Value<'ctx, 'val>>) -> Self {
-        ()
-    }
+    fn from_value(_: Option<Value<'ctx, 'val>>) -> Self {}
 }
 
 impl<'ctx, 'val> Combine<'ctx, 'val> for Value<'ctx, 'val> {
@@ -978,6 +1007,7 @@ impl<'ctx, 'val> Combine<'ctx, 'val> for Value<'ctx, 'val> {
 /// `impl Fn(...)` causes the rust compiler to enter an infinite loop of instantiations.
 /// Using this trait as a `dyn` trait fixes the problem.
 pub trait Continuation<'ctx, 'val, R, C> {
+    /// Runs the continuation.
     fn cont<'decls, 'blk>(&self, value: Value<'ctx, 'val>, block_gen: &mut C) -> Result<R>
     where
         C: AsMut<BlockGenContext<'decls, 'ctx, 'blk, 'val>>,

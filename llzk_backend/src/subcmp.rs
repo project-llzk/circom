@@ -293,7 +293,8 @@ impl<'ctx> MixedSubcmpLayout<'ctx> {
         Self { component_type, memory_type, inputs_type, entries }
     }
 
-    pub fn indices<'a>(&'a self) -> impl IntoIterator<Item = &'a [usize]> {
+    /// Returns the indices the entries are indexed with.
+    pub fn indices(&self) -> impl IntoIterator<Item = &[usize]> {
         self.entries.iter().map(MixedSubcmpEntry::indexed_with)
     }
 
