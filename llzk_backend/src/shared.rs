@@ -1848,7 +1848,9 @@ where
                     )?;
                 }
                 Statement::While { .. } => {
-                    anyhow::bail!("poly.expr depending on a while loop is not yet supported")
+                    todo!(
+                        "[gen_stmt_fully] poly.expr depending on a while loop is not yet supported"
+                    );
                 }
                 Statement::Assert { meta, arg } => {
                     let val = arg.gen_llzk_in_block(codegen, gen_ctx, Default::default())?;
@@ -1997,7 +1999,7 @@ where
                     )
                 }
                 Statement::While { .. } => {
-                    anyhow::bail!("poly.expr depending on a while loop is not yet supported")
+                    todo!("[gen_up_to_target] poly.expr depending on a while loop is not yet supported");
                 }
                 _ => {
                     assert!(inner_trace.is_empty(), "trace should end at a leaf statement");
