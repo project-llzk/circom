@@ -846,7 +846,11 @@ where
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
-        self.append_op_unnamed_result(cast::tofelt(location, val, Some(codegen.felt_type())))
+        if is_type_variable(val.r#type()) {
+            self.unifiable_cast(location, val, codegen.felt_type().into())
+        } else {
+            self.append_op_unnamed_result(cast::tofelt(location, val, Some(codegen.felt_type())))
+        }
     }
 
     /// Append a cast to felt (field element) type if the given value is not already a felt.
@@ -859,8 +863,6 @@ where
     ) -> Result<Value<'ctx, 'val>> {
         if is_felt_type(val.r#type()) {
             Ok(val)
-        } else if is_type_variable(val.r#type()) {
-            self.unifiable_cast(location, val, codegen.felt_type().into())
         } else {
             self.cast_to_felt(codegen, location, val)
         }
@@ -870,10 +872,15 @@ where
     #[inline]
     pub fn cast_to_index(
         &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
-        self.append_op_unnamed_result(cast::toindex(location, val).into())
+        if is_type_variable(val.r#type()) {
+            self.unifiable_cast(location, val, codegen.index_type())
+        } else {
+            self.append_op_unnamed_result(cast::toindex(location, val).into())
+        }
     }
 
     /// Append a cast to index type if the given value is not already an index.
@@ -886,10 +893,8 @@ where
     ) -> Result<Value<'ctx, 'val>> {
         if is_index(val.r#type()) {
             Ok(val)
-        } else if is_type_variable(val.r#type()) {
-            self.unifiable_cast(location, val, codegen.index_type())
         } else {
-            self.cast_to_index(location, val)
+            self.cast_to_index(codegen, location, val)
         }
     }
 
@@ -1141,7 +1146,7 @@ where
             .into_iter()
             .map(|e| {
                 let val = e.gen_llzk_in_block(codegen, self, info)?;
-                self.cast_to_index(location, val)
+                self.cast_to_index(codegen, location, val)
             })
             .collect()
     }

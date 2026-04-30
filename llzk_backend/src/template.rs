@@ -38,7 +38,6 @@ use crate::write_chain::WriteTarget;
 use anyhow::anyhow;
 use anyhow::Result;
 use llzk::dialect::array::ArrayCtor;
-use llzk::dialect::constrain;
 use llzk::dialect::pod;
 use llzk::dialect::poly;
 use llzk::dialect::r#struct;
@@ -1247,7 +1246,7 @@ where
                                     let location = codegen.location_from_meta(meta);
                                     let lhv = Lvalue::new(var, Root::Signal, access)
                                         .get_value(codegen, fc, template, location, None)?;
-                                    fc.append_op_no_result(constrain::eq(location, lhv, rhv).into())
+                                    fc.append_constrain_eq(codegen, location, lhv, rhv)
                                 },
                             ),
                         }

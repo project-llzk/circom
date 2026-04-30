@@ -2,6 +2,7 @@
 //! to the [crate::function] and [crate::template] modules to generate the code for each.
 
 use crate::affine_map::AffineMapAttribute;
+use crate::cleanup_return_tvar::specialize_tvar_function_calls;
 use crate::function::FunctionContext;
 use crate::function::GenerateLLZKInFunction as _;
 use crate::function_ext::FunctionLike;
@@ -809,6 +810,7 @@ impl<'ctx, P: ProgramLike> GenerateLLZKInModule<'ctx, P> for P {
             codegen.set_current_body(t.get_body());
             gen_template_llzk(t, codegen)?;
         }
+        specialize_tvar_function_calls(codegen)?;
         Ok(())
     }
 }
