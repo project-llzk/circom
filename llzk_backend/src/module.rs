@@ -114,8 +114,17 @@ pub struct DeclarationInfo<'ctx> {
     inputs: Vec<InputSignalInfo<'ctx>>,
     /// Output and Intermediate declarations to use as LLZK struct fields.
     struct_fields: Vec<MemberInfo<'ctx>>,
-    /// Map var/signal name to its LLZK declaration Operation (usually `llzk.nondet`).
+    /// Map source-position-qualified key (`name@meta_start`) to its LLZK declaration Operation
+    /// (usually `llzk.nondet` initially). Using a source-position-qualified key allows the same
+    /// circom variable name to appear in multiple scopes without collision (e.g., an outer scope
+    /// followed by an inner scope or both branches of an if/else).
     decl_inits: HashMap<String, Operation<'ctx>>,
+    /// Maps each qualified key in `decl_inits` back to the plain circom variable name, so that
+    /// function contexts can declare the value under its original name.
+    decl_key_to_name: HashMap<String, String>,
+    /// Set of plain circom variable names that have at least one entry in `decl_inits`. Used for
+    /// O(1) plain-name containment checks without iterating `decl_inits`.
+    declared_var_names: HashSet<String>,
     /// Map `component` name to its declaration information.
     subcmp_decls: HashMap<String, SubcmpDeclInfo<'ctx>>,
     /// The template params that may be used to instantiate array dimensions.
@@ -123,8 +132,9 @@ pub struct DeclarationInfo<'ctx> {
     template_params: HashSet<String>,
     /// Dimension expressions mapped to generated `poly.expr` op to be inserted into the template.
     poly_exprs: RefCell<HashMap<String, TemplateExprOp<'ctx>>>,
-    /// Pre-computed LLZK types for `var` declarations, keyed by var name. Used by
-    /// `poly.expr` body generation to avoid recursive dimension-expression recomputation.
+    /// Pre-computed LLZK types for `var` declarations, keyed by the same source-position-qualified
+    /// key (`name@meta_start`) used in `decl_inits` so that the same circom variable name in
+    /// different scopes will map to each distinct type. Used by `poly.expr` body generation.
     var_decl_types: HashMap<String, Type<'ctx>>,
 }
 
@@ -232,9 +242,11 @@ impl<'ctx> DeclarationInfo<'ctx> {
 
     /// Visit a statement and populate this `DeclarationInfo` with any declarations found.
     ///
-    /// TODO: This currently visits only top-level statements within the template body. However,
-    /// since circom 2.1.5, signal declarations are allowed inside of blocks and known-condition if
-    /// statements. Those nested declarations are not currently processed here.
+    /// Recursively descends into all nested statements so that declarations inside `if/else`
+    /// branches and loops are discovered. The [`LlzkCodegen::statement_trace`] (pushed via
+    /// [`LlzkCodegen::trace_statement`] at the top of each call) records the nesting context so
+    /// that [`DimExprConverter::gen_template_poly_expr`] can correctly scope the dimension
+    /// expressions for those declarations.
     fn visit(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
@@ -260,6 +272,15 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 }
                 Ok(())
             }
+            Statement::IfThenElse { if_case, else_case, .. } => {
+                // Collect `var` (and `signal` since circom 2.1.5) declarations from both branches.
+                self.visit(codegen, if_case.as_ref())?;
+                if let Some(else_case) = else_case.as_deref() {
+                    self.visit(codegen, else_case)?;
+                }
+                Ok(())
+            }
+            Statement::While { stmt, .. } => self.visit(codegen, stmt.as_ref()),
             Statement::Declaration { meta, name, xtype, dimensions, .. } => {
                 // The Signal and Bus types use SignalType to indicate if they are input, output, or
                 // intermediate. The others are all intermediate. Intermediates become SSA values
@@ -288,14 +309,24 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         let dimensions = self.get_dim_exprs(codegen, dimensions)?;
                         let var_type =
                             dimensions.type_from_dimension_exprs(codegen.felt_type().into());
-                        self.var_decl_types.insert(name.clone(), var_type);
-                        self.decl_inits.insert(
-                            name.clone(),
+                        // Key by source position so the same name in different scopes
+                        // (e.g., both branches of an if/else) gets a distinct entry.
+                        let qualified_key = format!("{}@{}", name, meta.start);
+                        self.var_decl_types.insert(qualified_key.clone(), var_type);
+                        self.declared_var_names.insert(name.clone());
+                        let old = self.decl_inits.insert(
+                            qualified_key.clone(),
                             codegen.new_nondet_at_location(
                                 codegen.location_from_meta(meta),
                                 var_type,
                             )?,
                         );
+                        assert!(
+                            old.is_none(),
+                            "multiple declarations for qualified key {}",
+                            qualified_key
+                        );
+                        self.decl_key_to_name.insert(qualified_key, name.clone());
                         Ok(())
                     }
                     VariableType::Component => {
@@ -403,8 +434,13 @@ impl<'ctx> DeclarationInfo<'ctx> {
         }
         // Create `llzk.nondet` of the appropriate type. When the actual assignment
         // is processed later, this is replaced with the appropriate value.
+        // Signals are uniquely named within a template (the circom type checker enforces this),
+        // so use the plain name as the qualified key.
         codegen.new_nondet_at_location(location, decl_type).map(|op| {
-            self.decl_inits.insert(name.clone(), op);
+            self.declared_var_names.insert(name.clone());
+            let old = self.decl_inits.insert(name.clone(), op);
+            assert!(old.is_none(), "multiple declarations for {}", name);
+            self.decl_key_to_name.insert(name.clone(), name.clone());
         })
     }
 
@@ -503,14 +539,12 @@ where
                         // This is a `Statement::Declaration` with `VariableType::Var` that was
                         // previously encountered and converted into a `poly.expr`.
                         ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
-                    } else if self.decl_inits.contains_key(name) {
+                    } else if self.declared_var_names.contains(name) {
                         // This is a `Statement::Declaration` with `VariableType::Var` that is
                         // encountered for the first time and must have a `poly.expr` generated.
                         self.gen_template_poly_expr(codegen, expr)
                     } else {
-                        // TODO: this happens in `circom/tests/circom_doc_examples/04.circom`
-                        // and I think it's related to the "TODO" on `DeclarationInfo::visit`.
-                        todo!("not a known circom template parameter or var declaration: {}", name)
+                        unreachable!("[DeclarationInfo::visit] traversed all statements")
                     }
                 }
                 // Variable case with non-empty `access`
@@ -700,11 +734,13 @@ fn gen_template_llzk<'ast, 'ctx, T: TemplateLike>(
 
     // Insert the Operations created from variable Declaration statements and map the circom
     // variable name to LLZK op result Value (do this in each function).
-    for (name, op) in decl_inits(declarations.decl_inits, codegen.config.stabilize) {
+    let decl_key_to_name = declarations.decl_key_to_name;
+    for (key, op) in decl_inits(declarations.decl_inits, codegen.config.stabilize) {
+        let name = decl_key_to_name.get(&key).expect("every decl_inits key has a name entry");
         // Insert (a clone of) the declaration into the compute function.
-        compute_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op.clone()))?;
+        compute_ctx.block_ctx.declare_name_if_not_present(name, || Ok(op.clone()))?;
         // Insert the declaration into the constrain function.
-        constrain_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op))?;
+        constrain_ctx.block_ctx.declare_name_if_not_present(name, || Ok(op))?;
     }
     let subcmp_decls = declarations.subcmp_decls;
     let subcmp_names = subcmps
