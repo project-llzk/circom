@@ -62,6 +62,7 @@ use llzk::prelude::StructType;
 use llzk::prelude::TemplateExprOp;
 use llzk::prelude::TemplateOpLike;
 use llzk::prelude::TemplateOpRefMut;
+use llzk::prelude::TemplateSymbolBindingOpLike;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
@@ -853,7 +854,7 @@ where
         self.template_def
             .const_binding_ops()
             .into_iter()
-            .map(|binding| (binding.name().to_owned(), binding.type_opt()))
+            .map(|binding| (binding.sym_name().to_owned(), binding.type_opt()))
     }
 
     fn callback_store_poly_expr(
