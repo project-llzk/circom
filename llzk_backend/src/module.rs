@@ -115,7 +115,7 @@ pub struct DeclarationInfo<'ctx> {
     /// Map source-position-qualified key (`name@meta_start`) to its LLZK declaration Operation
     /// (usually `llzk.nondet` initially). Using a source-position-qualified key allows the same
     /// circom variable name to appear in multiple scopes without collision (e.g., an outer scope
-    /// followed by an inner scopeor both branches of an if/else).
+    /// followed by an inner scope or both branches of an if/else).
     decl_inits: HashMap<String, Operation<'ctx>>,
     /// Maps each qualified key in `decl_inits` back to the plain circom variable name, so that
     /// function contexts can declare the value under its original name.
@@ -132,7 +132,7 @@ pub struct DeclarationInfo<'ctx> {
     poly_exprs: RefCell<HashMap<String, TemplateExprOp<'ctx>>>,
     /// Pre-computed LLZK types for `var` declarations, keyed by the same source-position-qualified
     /// key (`name@meta_start`) used in `decl_inits` so that the same circom variable name in
-    /// different scopes maps to each distinct types. Used by `poly.expr` body generation.
+    /// different scopes will map to each distinct type. Used by `poly.expr` body generation.
     var_decl_types: HashMap<String, Type<'ctx>>,
 }
 
