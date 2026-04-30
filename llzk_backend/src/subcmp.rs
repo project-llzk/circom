@@ -43,7 +43,7 @@ pub mod names {
 }
 
 /// Gives information about subcomponents.
-pub trait SubcmpInfo: std::fmt::Debug {
+pub trait SubcmpInfo<'ctx>: std::fmt::Debug {
     /// Returns true if the given variable name is a subcomponent.
     fn is_subcmp(&self, var: &str) -> bool;
 
@@ -55,6 +55,9 @@ pub trait SubcmpInfo: std::fmt::Debug {
     ) -> Option<&'a str> {
         None
     }
+
+    /// Returns information about a mixed subcomponent pod.
+    fn mixed_subcmp_info(&self, var: &str) -> Result<&MixedSubcmpLayout<'ctx>>;
 
     /// Returns the template information for the given subcomponent.
     fn subcmp_info<'i>(
@@ -68,7 +71,7 @@ pub trait SubcmpInfo: std::fmt::Debug {
 #[derive(Debug)]
 pub struct NoSubcmps;
 
-impl SubcmpInfo for NoSubcmps {
+impl<'ctx> SubcmpInfo<'ctx> for NoSubcmps {
     fn is_subcmp(&self, _var: &str) -> bool {
         false
     }
@@ -78,6 +81,10 @@ impl SubcmpInfo for NoSubcmps {
         _var: &str,
         _info: &'i dyn ProgramInfo,
     ) -> Result<&'i dyn SignalDeclarations> {
+        unreachable!()
+    }
+
+    fn mixed_subcmp_info(&self, _: &str) -> Result<&MixedSubcmpLayout<'ctx>> {
         unreachable!()
     }
 }
@@ -284,6 +291,11 @@ impl<'ctx> MixedSubcmpLayout<'ctx> {
         entries: Vec<MixedSubcmpEntry<'ctx>>,
     ) -> Self {
         Self { component_type, memory_type, inputs_type, entries }
+    }
+
+    /// Returns the indices the entries are indexed with.
+    pub fn indices(&self) -> impl IntoIterator<Item = &[usize]> {
+        self.entries.iter().map(MixedSubcmpEntry::indexed_with)
     }
 
     /// Returns the owner struct member type containing computed component instances.

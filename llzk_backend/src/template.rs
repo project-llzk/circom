@@ -30,6 +30,7 @@ use crate::shared::TypeSizeExpr;
 use crate::subcmp::names::COMP;
 use crate::subcmp::names::COUNT;
 use crate::subcmp::names::PARAMS;
+use crate::subcmp::MixedSubcmpLayout;
 use crate::subcmp::SubcmpBinding;
 use crate::subcmp::SubcmpInfo;
 use crate::subcmp::SubcmpLayout;
@@ -450,7 +451,7 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
     }
 }
 
-impl SubcmpInfo for TemplateContext<'_, '_, '_, '_, '_, '_> {
+impl<'ctx> SubcmpInfo<'ctx> for TemplateContext<'_, 'ctx, '_, '_, '_, '_> {
     fn is_subcmp(&self, var: &str) -> bool {
         self.subcmps.contains_key(var)
     }
@@ -478,6 +479,17 @@ impl SubcmpInfo for TemplateContext<'_, '_, '_, '_, '_, '_> {
         let binding =
             self.subcmps.get(var).ok_or_else(|| anyhow!("subcomponent '{var}' not found"))?;
         info.find_template(binding.template_name())
+    }
+
+    fn mixed_subcmp_info(&self, var: &str) -> Result<&MixedSubcmpLayout<'ctx>> {
+        let binding = self
+            .subcmps
+            .get(var)
+            .ok_or_else(|| anyhow::anyhow!("subcomponent '{var}' not found"))?;
+        let SubcmpLayout::Mixed(layout) = binding.layout() else {
+            anyhow::bail!("subcomponent '{var}' is not a mixed subcomponent");
+        };
+        Ok(layout)
     }
 }
 
@@ -1334,9 +1346,16 @@ where
                                 },
                                 |fc, rhv| {
                                     let location = codegen.location_from_meta(meta);
-                                    let lhv = Lvalue::new(var, Root::Signal, access)
-                                        .get_value(codegen, fc, template, location, None)?;
-                                    fc.append_op_no_result(constrain::eq(location, lhv, rhv).into())
+                                    Lvalue::new(var, Root::Signal, access)
+                                        .get_value(
+                                            codegen,
+                                            fc,
+                                            template,
+                                            location,
+                                            None,
+                                            &|lhv: Value<'ctx,'val>, fc: &mut FunctionContext<'_, 'ctx,'_,'_,'val>| {
+                                            fc.append_op_no_result(constrain::eq(location, lhv, rhv).into())
+                                        })
                                 },
                             ),
                         }
