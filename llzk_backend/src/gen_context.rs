@@ -85,6 +85,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto;
+use std::fmt::Debug;
 use std::iter::zip;
 
 /// Special variable name used to reference the return Value throughout the
@@ -1031,7 +1032,7 @@ where
             self.cast_to_bool_if_needed(codegen, location, val)
         } else {
             anyhow::bail!(
-                "Unsupported 'expected' type '{expected}' with value type {}",
+                "Unsupported cast to 'expected' type '{expected}' from value type {}",
                 val.r#type()
             )
         }
@@ -1510,6 +1511,7 @@ where
     /// when both are tvars), and a `poly.unifiable_cast` is inserted before the `scf.yield`
     /// terminator in whichever region produces the wrong type.
     fn unify_scf_branch_types(
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         then_region: &Region<'ctx>,
         then_value: Value<'ctx, 'val>,
@@ -1521,13 +1523,24 @@ where
         if then_ty == else_ty {
             return Ok(then_ty);
         }
+
         if is_type_variable(else_ty) {
-            Self::insert_cast_before_yield(else_region, location, else_value, then_ty)?;
-            Ok(then_ty)
+            Self::insert_cast_before_yield(else_region, location, else_value, then_ty)
+                .map(|_| then_ty)
         } else {
-            Self::insert_cast_before_yield(then_region, location, then_value, else_ty)?;
-            Ok(else_ty)
+            Self::insert_cast_before_yield(then_region, location, then_value, else_ty)
+                .map(|_| else_ty)
         }
+        .inspect_err(|_| {
+            if codegen.config.verbose {
+                println!("Current module state:");
+                codegen.dump_module();
+                println!("\nPending 'then' region:");
+                shared::print_region(then_region);
+                println!("\nPending 'else' region:");
+                shared::print_region(else_region);
+            }
+        })
     }
 
     /// Insert a `poly.unifiable_cast` of `value` to `target_ty` immediately before the single
@@ -1539,8 +1552,14 @@ where
         value: Value<'ctx, 'val>,
         target_ty: Type<'ctx>,
     ) -> Result<()> {
-        assert!(types_unify(value.r#type(), target_ty));
+        ensure!(
+            types_unify(value.r#type(), target_ty),
+            "scf.if branch value type '{}' does not unify with expected type '{}'",
+            value.r#type(),
+            target_ty
+        );
         let block = region.first_block().expect("region has a block");
+        ensure!(block.next_in_region().is_none(), "region has more than one block");
         let terminator = block.terminator().expect("block has a terminator");
         let new_cast = block
             .insert_operation_before(terminator, poly::unifiable_cast(location, value, target_ty));
@@ -1561,6 +1580,7 @@ where
         expected_result_type: Option<Type<'ctx>>,
     ) -> Result<Value<'ctx, 'val>> {
         let yield_type = Self::unify_scf_branch_types(
+            codegen,
             location,
             &then_region,
             then_value,
@@ -1639,6 +1659,7 @@ where
         let yield_types = zip(then_values, else_values)
             .map(|(then_value, else_value)| {
                 Self::unify_scf_branch_types(
+                    codegen,
                     location,
                     &then_region,
                     then_value,

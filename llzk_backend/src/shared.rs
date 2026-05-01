@@ -35,7 +35,7 @@ use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::AttributeLike as _;
 use llzk::prelude::Block;
-use llzk::prelude::BlockLike as _;
+use llzk::prelude::BlockLike;
 use llzk::prelude::BlockRef;
 use llzk::prelude::BoolAttribute;
 use llzk::prelude::FeltConstAttribute;
@@ -59,7 +59,7 @@ use llzk::prelude::PassManager;
 use llzk::prelude::PodRecordAttribute;
 use llzk::prelude::PodType;
 use llzk::prelude::Region;
-use llzk::prelude::RegionLike as _;
+use llzk::prelude::RegionLike;
 use llzk::prelude::StringAttribute;
 use llzk::prelude::StringRef;
 use llzk::prelude::StructType;
@@ -2313,4 +2313,46 @@ pub fn insert_unique_symbol_op<'c: 'a, 'a>(
 ) -> StringAttribute<'c> {
     get_sym_name_attr(&symbol_table::insert(sym_table_op, new_symbol_op.into()))
         .expect("Symbol ops must have `sym_name` attribute per ODS")
+}
+
+/// Print a single operation using "assume verified" flag to avoid verification errors on
+/// in-progress IR.
+pub fn print_operation<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) {
+    // Melior does not currently have a wrapper for `mlirOpPrintingFlagsAssumeVerified()`
+    unsafe extern "C" fn collect(s: mlir_sys::MlirStringRef, user_data: *mut c_void) {
+        let out = &mut *(user_data as *mut String);
+        let slice = std::slice::from_raw_parts(s.data as *const u8, s.length);
+        out.push_str(std::str::from_utf8_unchecked(slice));
+    }
+    let mut buf = String::new();
+    unsafe {
+        let flags = mlir_sys::mlirOpPrintingFlagsCreate();
+        mlir_sys::mlirOpPrintingFlagsAssumeVerified(flags);
+        mlir_sys::mlirOperationPrintWithFlags(
+            op.to_raw(),
+            flags,
+            Some(collect),
+            &mut buf as *mut String as *mut c_void,
+        );
+        mlir_sys::mlirOpPrintingFlagsDestroy(flags);
+    }
+    println!("{buf}");
+}
+
+/// Print all operations in a block using [`print_operation`].
+pub fn print_block<'c: 'a, 'a>(block: impl BlockLike<'c, 'a>) {
+    let mut op = block.first_operation();
+    while let Some(o) = op {
+        print_operation(o);
+        op = o.next_in_block();
+    }
+}
+
+/// Print all blocks (and their operations) in a region using [`print_block`].
+pub fn print_region<'c: 'a, 'a>(region: &impl RegionLike<'c, 'a>) {
+    let mut block = region.first_block();
+    while let Some(b) = block {
+        print_block(b);
+        block = b.next_in_region();
+    }
 }
