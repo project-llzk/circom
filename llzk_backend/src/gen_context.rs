@@ -1579,89 +1579,40 @@ where
             None => yielded_values_from_region(&else_region, "else")?,
         };
 
-        assert_eq!(
-            then_values.len(),
-            else_values.len(),
+        ensure!(
+            then_values.len() == else_values.len(),
             "branches of scf.if must yield the same number of values"
         );
+
+        if let Some(expected) = expected_result_types {
+            ensure!(
+                then_values.len() == expected.len(),
+                "scf.if expected result types must match the number of yielded values"
+            );
+        }
 
         let yield_types = zip(&then_values, &else_values)
             .map(|(then_value, else_value)| {
                 let yield_type = then_value.r#type();
-                assert_eq!(
-                    yield_type,
-                    else_value.r#type(),
+                ensure!(
+                    yield_type == else_value.r#type(),
                     "branches of scf.if must yield identical value types"
                 );
-                yield_type
+                Ok(yield_type)
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>>>()?;
 
         let scf_if_op =
             self.append_op(scf::r#if(condition, &yield_types, then_region, else_region, location));
         let results = scf_if_op.results().map(Value::from).collect::<Vec<_>>();
 
-        if let Some(expected) = expected_result_types {
-            assert_eq!(
-                then_values.len(),
-                expected.len(),
-                "scf.if expected result types must match the number of yielded values"
-            );
-            return zip(results, expected)
+        match expected_result_types {
+            Some(expected) => zip(results, expected)
                 .map(|(result, expected)| {
                     self.cast_to_expected_type_if_needed(codegen, location, result, *expected)
                 })
-                .collect();
-        }
-        Ok(results)
-    }
-
-    /// Append an `scf.if` op using pre-generated branch regions that each yield the same number of
-    /// values. Ensures both yielded values have the same type, emits the `scf.if`, and casts
-    /// the result to `expected_result_type` when provided and unifiable.
-    pub fn gen_safe_scf_multivalued_if(
-        &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
-        location: Location<'ctx>,
-        condition: Value<'ctx, 'val>,
-        (then_region, then_values): (Region<'ctx>, &[Value<'ctx, 'val>]),
-        (else_region, else_values): (Region<'ctx>, &[Value<'ctx, 'val>]),
-        expected_result_types: Option<&[Type<'ctx>]>,
-    ) -> Result<Vec<Value<'ctx, 'val>>> {
-        assert_eq!(
-            then_values.len(),
-            else_values.len(),
-            "branches of scf.if must have identical length"
-        );
-        if let Some(expected_result_types) = expected_result_types {
-            assert_eq!(
-                then_values.len(),
-                expected_result_types.len(),
-                "branches of scf.id and expected result types must have identical length"
-            );
-        }
-        for (then_value, else_value) in std::iter::zip(then_values, else_values) {
-            // Ensure values yielded from both blocks have the same type. Strict equality per
-            // `scf.if`.
-            assert_eq!(
-                then_value.r#type(),
-                else_value.r#type(),
-                "branches of scf.if must yield identical value types"
-            );
-        }
-        let yield_types = then_values.iter().map(|v| v.r#type()).collect::<Vec<_>>();
-        let if_op_result =
-            self.append_op(scf::r#if(condition, &yield_types, then_region, else_region, location));
-
-        let values = if_op_result.results().map(|r| unsafe { Value::from_raw(r.to_raw()) });
-
-        match expected_result_types {
-            Some(expected) => std::iter::zip(values, expected)
-                .map(|(value, expected)| {
-                    self.cast_to_expected_type_if_needed(codegen, location, value, *expected)
-                })
                 .collect(),
-            None => Ok(values.collect()),
+            None => Ok(results),
         }
     }
 

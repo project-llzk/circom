@@ -805,12 +805,14 @@ pub trait Combine<'ctx, 'val>: sealed::CombineSealed + Sized + Copy {
                 let then_region = info.region;
                 let else_region = tail.region;
                 let (mut new_info, values) = NestedBlockInfo::with_scope(block_gen, |block_gen| {
-                    block_gen.gen_safe_scf_multivalued_if(
+                    block_gen.gen_safe_scf_if_multi(
                         codegen,
                         location,
                         condition,
-                        (then_region, &then_values),
-                        (else_region, &else_values),
+                        then_region,
+                        Some(&then_values),
+                        else_region,
+                        Some(&else_values),
                         None,
                     )
                 })?;
