@@ -318,6 +318,7 @@ where
         self.append_op_no_result(scf::r#yield(&[], location))?;
         self.block_ctx.pop();
 
+        // No need to use `gen_safe_scf_if()` here since there's no result value.
         self.append_op_no_result(scf::r#if(cmp, &[], then_region, new_region_empty(), location))
     }
 
@@ -466,19 +467,27 @@ where
             no_results(new_then_block.append_operation(new_yield))?;
         }
 
-        // Create new `scf.if` op using the new "then" and "else" blocks. Replace `parent_if_op`
-        // with this new `scf.if` and then append a return/yield with the new `scf.if` results.
+        // Create new `scf.if` op using the new "then" and "else" blocks.
         let blk = parent_if_op.block().context("expected parent block for original `if`")?;
-        let new_if_ref = blk.append_operation(scf::r#if(
-            parent_if_op.operand(0)?,
-            new_else_result_info.result_types(),
-            new_then_region,
-            new_else_region,
+        let empty_var_decl_types = Default::default();
+        let mut gen_ctx_in_parent_if_op_block = BlockGenContext::new(
+            BlockContextStack::new(blk),
+            &empty_var_decl_types,
+            std::iter::empty(),
+        );
+        let result_values = gen_ctx_in_parent_if_op_block.gen_safe_scf_if_multi(
+            codegen,
             parent_if_op.location(),
-        ));
+            parent_if_op.operand(0)?,
+            new_then_region,
+            None,
+            new_else_region,
+            None,
+            Some(new_else_result_info.result_types()),
+        )?;
 
-        // Add return if the destination block is the function def body, else yield.
-        let result_values: Vec<_> = new_if_ref.results().map(Value::from).collect();
+        // Replace `parent_if_op` with the new `scf.if` and then append a return/yield with the new
+        // `scf.if` results. If the destination block is the function body use return, else yield.
         let op = if blk.parent_operation().is_some_and(|r| function::is_func_def(&r)) {
             function::r#return(parent_if_op.location(), &result_values)
         } else {
