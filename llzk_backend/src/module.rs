@@ -50,6 +50,7 @@ use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructType;
 use llzk::prelude::TemplateOpLike;
+use llzk::prelude::TemplateSymbolBindingOpLike;
 use llzk::prelude::Type;
 use melior::ir::Attribute;
 use melior::ir::AttributeLike as _;
@@ -654,10 +655,10 @@ where
         .expect("was set in `DeclarationInfo::from_template()`")
         .take_bindings();
     if codegen.config.stabilize {
-        poly_bindings.sort_by(|a, b| a.name().cmp(b.name()));
+        poly_bindings.sort_by(|a, b| a.sym_name().cmp(b.sym_name()));
     }
     let poly_binding_names: Vec<_> =
-        poly_bindings.iter().map(|op| (op.name().to_owned(), op.type_opt())).collect();
+        poly_bindings.iter().map(|op| (op.sym_name().to_owned(), op.type_opt())).collect();
     for binding_op in poly_bindings {
         // Here the template is empty and the names are already uniqued so they can be
         // directly appended without using `insert_unique_symbol_op()` to unique names.
@@ -917,7 +918,7 @@ fn record_subcmp_decl<'ctx, 'ast>(
 fn record_mixed_subcmp_decl<'ctx, 'ast>(
     name: String,
     info: &mut SubcmpDeclInfo<'ctx>,
-    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'ast, 'ctx, '_, impl ProgramLike>,
     ops: &mut Vec<SubcmpPrologueData<'ctx>>,
     struct_fields: &mut Vec<MemberInfo<'ctx>>,
 ) -> Result<()> {

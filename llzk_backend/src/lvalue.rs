@@ -224,7 +224,7 @@ impl<'ast> Lvalue<'ast> {
         &self,
         prev: Value<'ctx, 'val>,
         entry_indices: &[usize],
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut C,
         location: Location<'ctx>,
         prev_pod_type: PodType<'ctx>,
@@ -654,7 +654,7 @@ impl fmt::Display for Lvalue<'_> {
 /// Emits the IR for a conditional check for array indices in a mixed subcomponent.
 fn emit_condition<'ctx, 'val>(
     entry_indices: &[usize],
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
     location: Location<'ctx>,
     true_value: Value<'ctx, 'val>,
@@ -729,7 +729,7 @@ pub trait Combine<'ctx, 'val>: sealed::CombineSealed + Sized + Copy {
     fn make_tail<'blk>(
         entries: &[CombineEntry<'ctx, 'blk, 'val, Self>],
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<(NestedBlockInfo<'ctx, 'blk, 'val>, Self)>;
 
@@ -747,7 +747,7 @@ pub trait Combine<'ctx, 'val>: sealed::CombineSealed + Sized + Copy {
     fn combine<'blk>(
         entries: Vec<CombineEntry<'ctx, 'blk, 'val, Self>>,
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Self> {
         let (tail, tail_data) = Self::make_tail(&entries, block_gen, codegen, location)?;
@@ -966,7 +966,7 @@ impl<'ctx, 'val> Combine<'ctx, 'val> for () {
     fn make_tail<'blk>(
         _: &[CombineEntry<'ctx, 'blk, 'val, Self>],
         _: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
-        _: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        _: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         _: Location<'ctx>,
     ) -> Result<(NestedBlockInfo<'ctx, 'blk, 'val>, Self)> {
         Ok((NestedBlockInfo::new(), ()))
@@ -983,7 +983,7 @@ impl<'ctx, 'val> Combine<'ctx, 'val> for Value<'ctx, 'val> {
     fn make_tail<'blk>(
         entries: &[CombineEntry<'ctx, 'blk, 'val, Self>],
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
-        _: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        _: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<(NestedBlockInfo<'ctx, 'blk, 'val>, Self)> {
         NestedBlockInfo::with_scope(block_gen, |block_gen| {

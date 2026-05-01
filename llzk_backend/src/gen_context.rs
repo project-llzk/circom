@@ -59,6 +59,7 @@ use llzk::prelude::RegionLike as _;
 use llzk::prelude::StringAttribute;
 use llzk::prelude::StructType;
 use llzk::prelude::TemplateSymbolBindingOp;
+use llzk::prelude::TemplateSymbolBindingOpLike;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
@@ -1620,7 +1621,7 @@ where
     /// the result to `expected_result_type` when provided and unifiable.
     pub fn gen_safe_scf_multivalued_if(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         (then_region, then_values): (Region<'ctx>, &[Value<'ctx, 'val>]),

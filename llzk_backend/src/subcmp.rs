@@ -539,7 +539,7 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
     /// Returns binding metadata for template lowering.
     pub fn binding(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> SubcmpBinding<'ctx> {
         match &self.layout {
             SubcmpPrologueLayout::Uniform(subcmp) => {
@@ -620,7 +620,7 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
     }
 
     /// Returns the compute-time memory type for this binding.
-    fn memory_type(&self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Type<'ctx> {
+    fn memory_type(&self, codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>) -> Type<'ctx> {
         match &self.layout {
             SubcmpPrologueLayout::Uniform(subcmp) => subcmp.comp_pod(codegen),
             SubcmpPrologueLayout::Mixed(layout) => layout.memory_type().into(),

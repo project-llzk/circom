@@ -861,7 +861,7 @@ where
         self.template_def
             .const_binding_ops()
             .into_iter()
-            .map(|binding| (binding.name().to_owned(), binding.type_opt()))
+            .map(|binding| (binding.sym_name().to_owned(), binding.type_opt()))
     }
 
     fn get_dim_expr(

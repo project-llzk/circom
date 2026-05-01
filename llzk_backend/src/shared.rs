@@ -69,6 +69,7 @@ use llzk::prelude::TemplateOpLike;
 use llzk::prelude::TemplateOpRef;
 use llzk::prelude::TemplateOpRefMut;
 use llzk::prelude::TemplateSymbolBindingOp;
+use llzk::prelude::TemplateSymbolBindingOpLike;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
@@ -686,7 +687,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
             let inputs = decl_info.build_input_name_to_type_map();
             let outputs = decl_info.build_output_name_to_type_map();
             borrow.insert(name, DeclInfo::Remnant { inputs, outputs });
-            return Ok(*decl_info);
+            return Ok(decl_info);
         }
         Err(anyhow!("No full declaration info for {name}"))
     }
@@ -1817,7 +1818,7 @@ impl<'ctx, P: ProgramLike> PolyBindingStorageStrategy<'ctx, P> for PendingPolyBi
         op: TemplateSymbolBindingOp<'ctx>,
     ) -> StringAttribute<'ctx> {
         // Ensure the operation "sym_name" attribute is unique by appending a suffix if necessary.
-        let base_name = op.name().to_string();
+        let base_name = op.sym_name().to_string();
         let mut uniq_map = self.uniquer.borrow_mut();
         let op = if uniq_map.contains_key(&base_name) {
             let counter = uniq_map[&base_name] + 1;
@@ -1843,7 +1844,7 @@ impl<'ctx, P: ProgramLike> PolyBindingStorageStrategy<'ctx, P> for PendingPolyBi
             op
         };
         // Store the operation and return its unique name.
-        let final_name = op.name_attr();
+        let final_name = op.sym_name_attr();
         self.new_sym_bindings.borrow_mut().push(op);
         final_name
     }
