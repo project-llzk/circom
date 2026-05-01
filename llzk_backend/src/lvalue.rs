@@ -159,14 +159,46 @@ impl<'ast> Lvalue<'ast> {
         'ctx: 'blk,
         'blk: 'val,
     {
-        let indices =
-            block_gen.as_mut().gen_index_ops(indices.iter().copied(), codegen, location, info)?;
+        let concrete_indices = concrete_indices(indices);
         // Whatever I do on `WriteChain::write_array` I need to do a similar thing here for reading
         // the "arrays".
         let Ok(prev_pod_type) = PodType::try_from(prev.r#type()) else {
+            let indices = block_gen.as_mut().gen_index_ops(
+                indices.iter().copied(),
+                codegen,
+                location,
+                info,
+            )?;
             let value = block_gen.as_mut().append_array_read(prev, &indices, location, None)?;
             return cont.cont(value, block_gen);
         };
+
+        // I need the dimensions of the array. I need to know the number of dimensions and the size
+        // of each dimension. Since this stuff happens in `--concrete` I don't need to worry about
+        // arrays having a size that is unknown at compile time.
+        let mixed_subcmp_layout = info.subcmp_info.mixed_subcmp_info(self.root_var())?;
+        if let Some(concrete_indices) = concrete_indices {
+            if let Some(record_name) =
+                info.subcmp_info.mixed_subcmp_record_for_indices(self.root_var(), &concrete_indices)
+            {
+                let record_type =
+                    prev_pod_type.get_type_of_record(record_name).ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "record {record_name} not found in mixed subcomponent pod: {prev}"
+                        )
+                    })?;
+                let read_value = block_gen.as_mut().append_op_unnamed_result(pod::read(
+                    location,
+                    prev,
+                    codegen.flat_sym(record_name),
+                    record_type,
+                ))?;
+                return cont.cont(read_value, block_gen);
+            }
+        }
+
+        let indices =
+            block_gen.as_mut().gen_index_ops(indices.iter().copied(), codegen, location, info)?;
         // Constant true used as starting point for concatenating the conditions for a particular
         // index set together with a fold.
         let true_value = {
@@ -177,11 +209,6 @@ impl<'ast> Lvalue<'ast> {
                 location,
             ))
         }?;
-
-        // I need the dimensions of the array. I need to know the number of dimensions and the size
-        // of each dimension. Since this stuff happens in `--concrete` I don't need to worry about
-        // arrays having a size that is unknown at compile time.
-        let mixed_subcmp_layout = info.subcmp_info.mixed_subcmp_info(self.root_var())?;
 
         let entries = mixed_subcmp_layout
             .indices()
@@ -652,7 +679,7 @@ impl fmt::Display for Lvalue<'_> {
 }
 
 /// Emits the IR for a conditional check for array indices in a mixed subcomponent.
-fn emit_condition<'ctx, 'val>(
+pub(crate) fn emit_condition<'ctx, 'val>(
     entry_indices: &[usize],
     codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
     block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
@@ -710,7 +737,11 @@ pub struct CombineEntry<'ctx, 'blk, 'val, C> {
 
 impl<'ctx, 'blk, 'val, C> CombineEntry<'ctx, 'blk, 'val, C> {
     /// Creates a new entry.
-    fn new(condition: Value<'ctx, 'val>, data: C, info: NestedBlockInfo<'ctx, 'blk, 'val>) -> Self {
+    pub(crate) fn new(
+        condition: Value<'ctx, 'val>,
+        data: C,
+        info: NestedBlockInfo<'ctx, 'blk, 'val>,
+    ) -> Self {
         Self { condition, data, info }
     }
 }
