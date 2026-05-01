@@ -281,6 +281,10 @@ impl<'ast> WriteChain<'ast> {
             _ => return Ok(false),
         };
 
+        if layout.entries().is_empty() {
+            anyhow::bail!("No entries for mixed subcomponent array '{}'", root_var);
+        }
+
         let mut entries = Vec::with_capacity(layout.entries().len());
         for entry in layout.entries() {
             let condition = emit_condition(
