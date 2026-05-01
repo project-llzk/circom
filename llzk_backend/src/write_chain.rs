@@ -168,7 +168,7 @@ impl<'ast> WriteChain<'ast> {
         input_record: Value<'ctx, 'val>,
         input_record_type: PodType<'ctx>,
         val: Value<'ctx, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
         signal_write_info: &dyn SignalWriteInfo,
@@ -221,7 +221,7 @@ impl<'ast> WriteChain<'ast> {
         &self,
         val: Value<'ctx, 'val>,
         target: WriteTarget,
-        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
         location: Location<'ctx>,
         signal_write_info: &dyn SignalWriteInfo,
@@ -280,6 +280,10 @@ impl<'ast> WriteChain<'ast> {
             }
             _ => return Ok(false),
         };
+
+        if layout.entries().is_empty() {
+            anyhow::bail!("No entries for mixed subcomponent array '{}'", root_var);
+        }
 
         let mut entries = Vec::with_capacity(layout.entries().len());
         for entry in layout.entries() {
