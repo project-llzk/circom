@@ -40,6 +40,7 @@ use llzk::prelude::is_type_variable;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::melior_dialects::index;
 use llzk::prelude::melior_dialects::scf;
+use llzk::prelude::replace_uses_of_with;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::BlockLike as _;
@@ -1503,6 +1504,50 @@ where
         no_results(block.append_operation(op))
     }
 
+    /// For a pair of values yielded from the `then` and `else` regions of an `scf.if`,
+    /// determine the canonical yield type. If the types already agree, that type is returned
+    /// unchanged. Otherwise the non-tvar type is selected (falling back to `then_value`'s type
+    /// when both are tvars), and a `poly.unifiable_cast` is inserted before the `scf.yield`
+    /// terminator in whichever region produces the wrong type.
+    fn unify_scf_branch_types(
+        location: Location<'ctx>,
+        then_region: &Region<'ctx>,
+        then_value: Value<'ctx, 'val>,
+        else_region: &Region<'ctx>,
+        else_value: Value<'ctx, 'val>,
+    ) -> Result<Type<'ctx>> {
+        let then_ty = then_value.r#type();
+        let else_ty = else_value.r#type();
+        if then_ty == else_ty {
+            return Ok(then_ty);
+        }
+        if is_type_variable(else_ty) {
+            Self::insert_cast_before_yield(else_region, location, else_value, then_ty)?;
+            Ok(then_ty)
+        } else {
+            Self::insert_cast_before_yield(then_region, location, then_value, else_ty)?;
+            Ok(else_ty)
+        }
+    }
+
+    /// Insert a `poly.unifiable_cast` of `value` to `target_ty` immediately before the single
+    /// `scf.yield` terminator of `region`'s first block, and replace the yield's use of `value`
+    /// with the cast result.
+    fn insert_cast_before_yield(
+        region: &Region<'ctx>,
+        location: Location<'ctx>,
+        value: Value<'ctx, 'val>,
+        target_ty: Type<'ctx>,
+    ) -> Result<()> {
+        assert!(types_unify(value.r#type(), target_ty));
+        let block = region.first_block().expect("region has a block");
+        let terminator = block.terminator().expect("block has a terminator");
+        let new_cast = block
+            .insert_operation_before(terminator, poly::unifiable_cast(location, value, target_ty));
+        replace_uses_of_with(&terminator, value, Value::from(new_cast.result(0)?));
+        Ok(())
+    }
+
     /// Append an `scf.if` op using pre-generated branch regions that each yield one value.
     /// Asserts both yielded values have the same type, emits the `scf.if`, and casts the
     /// result to `expected_result_type` when provided and legal. Otherwise, returns Err.
@@ -1515,13 +1560,13 @@ where
         (else_region, else_value): (Region<'ctx>, Value<'ctx, 'val>),
         expected_result_type: Option<Type<'ctx>>,
     ) -> Result<Value<'ctx, 'val>> {
-        // Ensure values yielded from both blocks have the same type. Strict equality per `scf.if`.
-        let yield_type = then_value.r#type();
-        assert_eq!(
-            yield_type,
-            else_value.r#type(),
-            "branches of scf.if must yield identical value types"
-        );
+        let yield_type = Self::unify_scf_branch_types(
+            location,
+            &then_region,
+            then_value,
+            &else_region,
+            else_value,
+        )?;
         let if_op_result = self.append_op_unnamed_result(scf::r#if(
             condition,
             &[yield_type],
@@ -1591,14 +1636,15 @@ where
             );
         }
 
-        let yield_types = zip(&then_values, &else_values)
+        let yield_types = zip(then_values, else_values)
             .map(|(then_value, else_value)| {
-                let yield_type = then_value.r#type();
-                ensure!(
-                    yield_type == else_value.r#type(),
-                    "branches of scf.if must yield identical value types"
-                );
-                Ok(yield_type)
+                Self::unify_scf_branch_types(
+                    location,
+                    &then_region,
+                    then_value,
+                    &else_region,
+                    else_value,
+                )
             })
             .collect::<Result<Vec<_>>>()?;
 
