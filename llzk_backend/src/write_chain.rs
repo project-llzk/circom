@@ -2,7 +2,11 @@
 
 use crate::function::FunctionContext;
 use crate::function::InfoProviders;
+use crate::gen_context::NestedBlockInfo;
 use crate::lvalue::concrete_indices;
+use crate::lvalue::emit_condition;
+use crate::lvalue::Combine;
+use crate::lvalue::CombineEntry;
 use crate::lvalue::Lvalue;
 use crate::lvalue::OverrideVar;
 use crate::lvalue::Root;
@@ -16,10 +20,12 @@ use crate::template::TemplateContext;
 use anyhow::Result;
 use llzk::dialect::r#struct;
 use llzk::prelude::FuncDefOpLike as _;
+use llzk::prelude::IntegerAttribute;
 use llzk::prelude::Location;
 use llzk::prelude::PodType;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
+use melior::dialect::arith;
 use program_structure::ast::Access;
 use program_structure::ast::Expression;
 use std::convert::TryFrom as _;
@@ -109,6 +115,15 @@ pub struct WriteChain<'ast> {
     compute_result: bool,
 }
 
+/// Borrowed access in source order from a [`Lvalue`].
+#[derive(Clone, Copy)]
+enum AccessRef<'a, 'ast> {
+    /// Array access.
+    Array(&'a [&'ast Expression]),
+    /// Component/signal access.
+    Subcmp(&'ast str),
+}
+
 impl<'ast> WriteChain<'ast> {
     /// Creates a new write chain.
     pub fn new(var: &'ast str, op: Root, access: &'ast [Access]) -> Self {
@@ -123,6 +138,255 @@ impl<'ast> WriteChain<'ast> {
     /// Creates a copy of the chain with the `compute_result` flag set to true.
     pub fn clone_for_compute_result(&self) -> Self {
         Self { lvalue: self.lvalue.clone(), compute_result: true }
+    }
+
+    /// Collects the root and source-order accesses for the given [`Lvalue`].
+    fn collect_accesses<'a>(
+        lvalue: &'a Lvalue<'ast>,
+        accesses: &mut Vec<AccessRef<'a, 'ast>>,
+    ) -> (&'ast str, Root) {
+        match lvalue {
+            Lvalue::Root { var, op } => (var, *op),
+            Lvalue::Array { indices, prev } => {
+                let root = Self::collect_accesses(prev, accesses);
+                accesses.push(AccessRef::Array(indices));
+                root
+            }
+            Lvalue::Subcmp { name, prev } => {
+                let root = Self::collect_accesses(prev, accesses);
+                accesses.push(AccessRef::Subcmp(name));
+                root
+            }
+        }
+    }
+
+    /// Writes a value into a field of a mixed subcomponent input pod.
+    #[allow(clippy::too_many_arguments)]
+    fn write_mixed_input_tail<'ctx, 'val>(
+        signal_name: &str,
+        tail: &[AccessRef<'_, 'ast>],
+        input_record: Value<'ctx, 'val>,
+        input_record_type: PodType<'ctx>,
+        val: Value<'ctx, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
+        location: Location<'ctx>,
+        signal_write_info: &dyn SignalWriteInfo,
+        subcmp_info: &dyn SubcmpInfo<'ctx>,
+    ) -> Result<()> {
+        let field_type = input_record_type.get_type_of_record(signal_name).ok_or_else(|| {
+            anyhow::anyhow!("subcomponent input signal {signal_name} not found: {input_record}")
+        })?;
+
+        let field_value = match tail.split_first() {
+            Some((AccessRef::Array(indices), rest)) => {
+                if !rest.is_empty() {
+                    anyhow::bail!("unsupported nested access after subcomponent input array");
+                }
+                let field_value = fc.append_op_unnamed_result(codegen.new_pod_read_op(
+                    input_record,
+                    signal_name,
+                    location,
+                )?)?;
+                let index_vals = fc.gen_index_ops(
+                    indices.iter().copied(),
+                    codegen,
+                    location,
+                    InfoProviders { subcmp_info, signal_write_info },
+                )?;
+                fc.append_array_write(codegen, field_value, &index_vals, location, val, None)?;
+                field_value
+            }
+            Some((AccessRef::Subcmp(_), _)) => {
+                anyhow::bail!("unsupported nested component access after subcomponent input")
+            }
+            None => fc.cast_to_expected_type_if_needed(codegen, location, val, field_type)?,
+        };
+
+        fc.append_op_no_result(codegen.new_pod_write_op(
+            location,
+            input_record,
+            signal_name,
+            field_value,
+        ))
+    }
+
+    /// Special-case writes through a dynamically indexed mixed subcomponent array.
+    ///
+    /// The selected record has a concrete component type, but different records may have
+    /// different input pod shapes. Keep those record-specific values inside the dispatch branch
+    /// and only merge the uniform parent pods back into the surrounding block.
+    #[allow(clippy::too_many_arguments)]
+    fn try_write_mixed_subcmp<'ctx, 'val>(
+        &self,
+        val: Value<'ctx, 'val>,
+        target: WriteTarget,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
+        location: Location<'ctx>,
+        signal_write_info: &dyn SignalWriteInfo,
+        subcmp_info: &dyn SubcmpInfo<'ctx>,
+    ) -> Result<bool> {
+        if target.is_constrain() {
+            return Ok(false);
+        }
+
+        let mut accesses = Vec::new();
+        let (root_var, root_op) = Self::collect_accesses(&self.lvalue, &mut accesses);
+        if !subcmp_info.is_subcmp(root_var) {
+            return Ok(false);
+        }
+        let Ok(layout) = subcmp_info.mixed_subcmp_info(root_var) else {
+            return Ok(false);
+        };
+
+        let Some((AccessRef::Array(component_indices), tail)) = accesses.split_first() else {
+            return Ok(false);
+        };
+        if concrete_indices(component_indices).is_some() {
+            return Ok(false);
+        }
+
+        let index_vals = fc.gen_index_ops(
+            component_indices.iter().copied(),
+            codegen,
+            location,
+            InfoProviders { subcmp_info, signal_write_info },
+        )?;
+        let true_value = {
+            let attr = IntegerAttribute::new(codegen.bool_type().into(), 1);
+            fc.append_op_unnamed_result(arith::constant(codegen.context, attr.into(), location))
+        }?;
+
+        let memory_value = *fc.block_ctx.get_named_value(root_var)?;
+        let memory_type = PodType::try_from(memory_value.r#type())?;
+        let inputs_name = crate::subcmp::names::inputs(root_var);
+        let inputs_value = if root_op == Root::Signal {
+            Some(*fc.block_ctx.get_named_value(&inputs_name)?)
+        } else {
+            None
+        };
+
+        let signal_name = match root_op {
+            Root::Var if tail.is_empty() => None,
+            Root::Signal => {
+                let Some((AccessRef::Subcmp(signal_name), _)) = tail.split_first() else {
+                    return Ok(false);
+                };
+                if !subcmp_info.subcmp_info(root_var, codegen)?.signal_is_input(signal_name) {
+                    return Ok(false);
+                }
+                Some(*signal_name)
+            }
+            _ => return Ok(false),
+        };
+
+        if layout.entries().is_empty() {
+            anyhow::bail!("No entries for mixed subcomponent array '{}'", root_var);
+        }
+
+        let mut entries = Vec::with_capacity(layout.entries().len());
+        for entry in layout.entries() {
+            let condition = emit_condition(
+                entry.indexed_with(),
+                codegen,
+                fc,
+                location,
+                true_value,
+                &index_vals,
+            )?;
+
+            let (info, ()) = NestedBlockInfo::with_scope(fc, |fc| {
+                if let Some(signal_name) = signal_name {
+                    let inputs_value = inputs_value.expect("input value exists for signal writes");
+                    let memory_record = fc.append_op_unnamed_result(codegen.new_pod_read_op(
+                        memory_value,
+                        entry.record_name(),
+                        location,
+                    )?)?;
+                    let input_record = fc.append_op_unnamed_result(codegen.new_pod_read_op(
+                        inputs_value,
+                        entry.record_name(),
+                        location,
+                    )?)?;
+                    Self::write_mixed_input_tail(
+                        signal_name,
+                        &tail[1..],
+                        input_record,
+                        entry.inputs_type(),
+                        val,
+                        codegen,
+                        fc,
+                        location,
+                        signal_write_info,
+                        subcmp_info,
+                    )?;
+                    fc.append_op_no_result(codegen.new_pod_write_op(
+                        location,
+                        inputs_value,
+                        entry.record_name(),
+                        input_record,
+                    ))?;
+                    fc.block_ctx.set_named_value(inputs_name.clone(), inputs_value)?;
+
+                    let counter =
+                        fc.gen_subcmp_decrease_counter(codegen, location, memory_record, 1)?;
+                    fc.gen_scf_if_is_zero(
+                        counter,
+                        location,
+                        codegen,
+                        |fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>| {
+                            let params = fc.append_op_unnamed_result(codegen.new_pod_read_op(
+                                memory_record,
+                                PARAMS,
+                                location,
+                            )?)?;
+                            let subcmp_instance = fc.gen_compute_call(
+                                entry.struct_type(),
+                                input_record,
+                                params,
+                                location,
+                                codegen,
+                            )?;
+                            fc.append_op_no_result(codegen.new_pod_write_op(
+                                location,
+                                memory_record,
+                                COMP,
+                                subcmp_instance,
+                            ))
+                        },
+                    )?;
+                    fc.append_op_no_result(codegen.new_pod_write_op(
+                        location,
+                        memory_value,
+                        entry.record_name(),
+                        memory_record,
+                    ))?;
+                } else {
+                    let record_type =
+                        memory_type.get_type_of_record(entry.record_name()).ok_or_else(|| {
+                            anyhow::anyhow!(
+                                "record {} not found in mixed subcomponent pod: {}",
+                                entry.record_name(),
+                                memory_value
+                            )
+                        })?;
+                    let val =
+                        fc.cast_to_expected_type_if_needed(codegen, location, val, record_type)?;
+                    fc.append_op_no_result(codegen.new_pod_write_op(
+                        location,
+                        memory_value,
+                        entry.record_name(),
+                        val,
+                    ))?;
+                }
+                fc.block_ctx.set_named_value(root_var.to_owned(), memory_value)
+            })?;
+            entries.push(CombineEntry::new(condition, (), info));
+        }
+
+        <() as Combine>::combine(entries, fc.as_mut(), codegen, location)?;
+        Ok(true)
     }
 
     /// Handle [Lvalue::Array] case of [`WriteChain::write`].
@@ -362,6 +626,18 @@ impl<'ast> WriteChain<'ast> {
             if target.is_constrain() && subcmp_info.is_subcmp(var) {
                 return Ok(());
             }
+        }
+
+        if self.try_write_mixed_subcmp(
+            val,
+            target,
+            codegen,
+            fc,
+            location,
+            signal_write_info,
+            subcmp_info,
+        )? {
+            return Ok(());
         }
 
         match self.lvalue {
