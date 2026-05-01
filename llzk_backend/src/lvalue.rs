@@ -2,19 +2,25 @@
 
 use crate::function::InfoProviders;
 use crate::gen_context::BlockGenContext;
+use crate::gen_context::NestedBlockInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COMP;
 use crate::subcmp::SubcmpInfo;
 use anyhow::Result;
+use llzk::dialect::llzk::nondet;
 use llzk::dialect::pod;
 use llzk::dialect::r#struct;
+use llzk::prelude::IntegerAttribute;
 use llzk::prelude::Location;
 use llzk::prelude::PodType;
 use llzk::prelude::StructType;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
+use melior::dialect::arith;
+use melior::dialect::scf;
+use num_traits::ToPrimitive;
 use program_structure::ast::Access;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
@@ -22,8 +28,11 @@ use program_structure::ast::ExpressionInfixOpcode;
 use program_structure::ast::ExpressionPrefixOpcode;
 use std::borrow::Cow;
 use std::cmp;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::convert::TryFrom as _;
 use std::fmt;
+use std::iter::FromIterator as _;
 
 /// Decorator trait that can modify the name of the root variable.
 pub trait OverrideVar {
@@ -96,7 +105,7 @@ impl<'ast> Lvalue<'ast> {
     }
 
     /// Returns the root var name of the lvalue.
-    fn root_var(&self) -> &str {
+    pub(crate) fn root_var(&self) -> &str {
         match self {
             Lvalue::Root { var, .. } => var,
             Lvalue::Array { prev, .. } | Lvalue::Subcmp { prev, .. } => prev.root_var(),
@@ -126,17 +135,130 @@ impl<'ast> Lvalue<'ast> {
     }
 
     /// Handle [Lvalue::Array] case of [`Lvalue::get_value`].
-    fn get_array_value<'ctx, 'val>(
+    ///
+    /// The value read from the array is returned via the continuation. If the array is an
+    /// actual LLZK array then the continuation is called only once. However, if the array
+    /// is actually an array of mixed subcomponents, the continuation is called for each
+    /// branch of the dispatch table.
+    #[allow(clippy::too_many_arguments)]
+    fn get_array_value<'decls, 'ctx, 'blk, 'val, 'cont, R, C>(
         &self,
         indices: &[&Expression],
         prev: Value<'ctx, 'val>,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
-        block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
+        block_gen: &mut C,
         location: Location<'ctx>,
-        info: InfoProviders<'_>,
-    ) -> Result<Value<'ctx, 'val>> {
-        let indices = block_gen.gen_index_ops(indices.iter().copied(), codegen, location, info)?;
-        block_gen.append_array_read(prev, &indices, location, None)
+        info: InfoProviders<'_, 'ctx>,
+        cont: &'cont dyn Continuation<'ctx, 'val, R, C>,
+    ) -> Result<R>
+    where
+        R: Combine<'ctx, 'val>,
+        C: AsMut<BlockGenContext<'decls, 'ctx, 'blk, 'val>>,
+        'ctx: 'cont + 'decls,
+        'val: 'cont,
+        'ctx: 'blk,
+        'blk: 'val,
+    {
+        let indices =
+            block_gen.as_mut().gen_index_ops(indices.iter().copied(), codegen, location, info)?;
+        // Whatever I do on `WriteChain::write_array` I need to do a similar thing here for reading
+        // the "arrays".
+        let Ok(prev_pod_type) = PodType::try_from(prev.r#type()) else {
+            let value = block_gen.as_mut().append_array_read(prev, &indices, location, None)?;
+            return cont.cont(value, block_gen);
+        };
+        // Constant true used as starting point for concatenating the conditions for a particular
+        // index set together with a fold.
+        let true_value = {
+            let attr = IntegerAttribute::new(codegen.bool_type().into(), 1);
+            block_gen.as_mut().append_op_unnamed_result(arith::constant(
+                codegen.context,
+                attr.into(),
+                location,
+            ))
+        }?;
+
+        // I need the dimensions of the array. I need to know the number of dimensions and the size
+        // of each dimension. Since this stuff happens in `--concrete` I don't need to worry about
+        // arrays having a size that is unknown at compile time.
+        let mixed_subcmp_layout = info.subcmp_info.mixed_subcmp_info(self.root_var())?;
+
+        let entries = mixed_subcmp_layout
+            .indices()
+            .into_iter()
+            .map(|entry_indices| {
+                let cond = emit_condition(
+                    entry_indices,
+                    codegen,
+                    block_gen.as_mut(),
+                    location,
+                    true_value,
+                    &indices,
+                )?;
+
+                let (info, yield_value) = self.emit_mixed_subcmp_if_body(
+                    prev,
+                    entry_indices,
+                    codegen,
+                    block_gen,
+                    location,
+                    prev_pod_type,
+                    info,
+                    cont,
+                )?;
+
+                Ok(CombineEntry::new(cond, yield_value, info))
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        if entries.is_empty() {
+            anyhow::bail!("No indices for mixed subcomponent array '{}'", self.root_var());
+        }
+
+        R::combine(entries, block_gen.as_mut(), codegen, location)
+    }
+
+    /// Emits the IR for a conditional check for array indices in a mixed subcomponent.
+    #[allow(clippy::too_many_arguments)]
+    fn emit_mixed_subcmp_if_body<'decls, 'ctx, 'blk, 'val, 'cont, R, C>(
+        &self,
+        prev: Value<'ctx, 'val>,
+        entry_indices: &[usize],
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        block_gen: &mut C,
+        location: Location<'ctx>,
+        prev_pod_type: PodType<'ctx>,
+        info: InfoProviders<'_, 'ctx>,
+        cont: &'cont dyn Continuation<'ctx, 'val, R, C>,
+    ) -> Result<(NestedBlockInfo<'ctx, 'blk, 'val>, R)>
+    where
+        C: AsMut<BlockGenContext<'decls, 'ctx, 'blk, 'val>>,
+        'ctx: 'cont + 'blk + 'decls,
+        'val: 'cont,
+        'blk: 'val,
+    {
+        NestedBlockInfo::with_scope(block_gen, |block_gen| {
+            let record_name = info
+                .subcmp_info
+                .mixed_subcmp_record_for_indices(self.root_var(), entry_indices)
+                .ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "Mixed subcomponent entry for '{}'{entry_indices:?} not found",
+                        self.root_var()
+                    )
+                })?;
+            let record_type = prev_pod_type.get_type_of_record(record_name).ok_or_else(|| {
+                anyhow::anyhow!("record {record_name} not found in mixed subcomponent pod: {prev}")
+            })?;
+            let read_value = block_gen.as_mut().append_op_unnamed_result(pod::read(
+                location,
+                prev,
+                codegen.flat_sym(record_name),
+                record_type,
+            ))?;
+
+            cont.cont(read_value, block_gen)
+        })
     }
 
     /// Handle [Lvalue::Subcmp]  in [`Lvalue::get_value`] when the signal is an output of the
@@ -206,15 +328,27 @@ impl<'ast> Lvalue<'ast> {
 
     /// Returns the SSA [`Value`] representing the op.
     ///
-    /// It could be a placeholder operation at this point (usually represented with `llzk.nondet`).
-    pub fn get_value<'ctx, 'val>(
+    /// Uses continuation passing style for handling the returned value.
+    ///
+    /// CPS is necessary for handling mixed subcomponents since the actual MLIR types of the values
+    /// returned could diverge. The continuation is represented by the [`Continuation`] trait, that
+    /// is implemented by all function types that match the continuation's signature.
+    pub fn get_value<'decls, 'ctx, 'blk, 'val, 'cont, R, C>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
-        block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
-        subcmp_info: &dyn SubcmpInfo,
+        block_gen: &mut C,
+        subcmp_info: &dyn SubcmpInfo<'ctx>,
         location: Location<'ctx>,
         ov: Option<&dyn OverrideVar>,
-    ) -> Result<Value<'ctx, 'val>> {
+        cont: &'cont dyn Continuation<'ctx, 'val, R, C>,
+    ) -> Result<R>
+    where
+        R: Combine<'ctx, 'val>,
+        C: AsMut<BlockGenContext<'decls, 'ctx, 'blk, 'val>>,
+        'ctx: 'cont + 'blk + 'decls,
+        'val: 'cont,
+        'blk: 'val,
+    {
         macro_rules! var_name {
             ($ov:ident, $var:ident, $op:expr) => {
                 $ov.override_var(*$var, $op)
@@ -226,18 +360,32 @@ impl<'ast> Lvalue<'ast> {
 
         match self {
             Lvalue::Root { var, op: Root::Signal } => {
-                self.get_root_signal(var_name!(ov, var, Root::Signal), block_gen)
+                let root_signal =
+                    self.get_root_signal(var_name!(ov, var, Root::Signal), block_gen.as_mut())?;
+                cont.cont(root_signal, block_gen)
             }
             Lvalue::Root { var, op: Root::Var } => {
-                self.get_root_value(var_name!(ov, var, Root::Var), block_gen)
+                let root_value =
+                    self.get_root_value(var_name!(ov, var, Root::Var), block_gen.as_mut())?;
+                cont.cont(root_value, block_gen)
             }
-            Lvalue::Array { indices, prev } => self.get_array_value(
-                indices,
-                prev.get_value(codegen, block_gen, subcmp_info, location, ov)?,
+            Lvalue::Array { indices, prev } => prev.get_value(
                 codegen,
                 block_gen,
+                subcmp_info,
                 location,
-                InfoProviders { subcmp_info, ..Default::default() },
+                ov,
+                &|prev: Value<'ctx, 'val>, block_gen: &mut C| {
+                    self.get_array_value(
+                        indices,
+                        prev,
+                        codegen,
+                        block_gen,
+                        location,
+                        InfoProviders { subcmp_info, ..Default::default() },
+                        cont,
+                    )
+                },
             ),
             Lvalue::Subcmp { name: signal_name, prev } => {
                 let root = prev.root_var();
@@ -264,17 +412,47 @@ impl<'ast> Lvalue<'ast> {
                 let is_input = info.signal_is_input(signal_name);
                 let ovii = OverrideIfInput { do_override: is_input };
 
-                let subcmp_value =
-                    prev.get_value(codegen, block_gen, subcmp_info, location, ov.or(Some(&ovii)))?;
-
-                if is_input {
-                    self.get_subcmp_input(signal_name, subcmp_value, codegen, block_gen, location)
-                } else {
-                    self.get_subcmp_output(signal_name, subcmp_value, codegen, block_gen, location)
-                }
+                prev.get_value(
+                    codegen,
+                    block_gen,
+                    subcmp_info,
+                    location,
+                    ov.or(Some(&ovii)),
+                    &|subcmp_value: Value<'ctx, 'val>, block_gen: &mut C| {
+                        let subcmp_member_value = if is_input {
+                            self.get_subcmp_input(
+                                signal_name,
+                                subcmp_value,
+                                codegen,
+                                block_gen.as_mut(),
+                                location,
+                            )
+                        } else {
+                            self.get_subcmp_output(
+                                signal_name,
+                                subcmp_value,
+                                codegen,
+                                block_gen.as_mut(),
+                                location,
+                            )
+                        }?;
+                        cont.cont(subcmp_member_value, block_gen)
+                    },
+                )
             }
         }
     }
+}
+
+/// Converts an array access to concrete indices when every index is numeric.
+pub(crate) fn concrete_indices(indices: &[&Expression]) -> Option<Vec<usize>> {
+    indices
+        .iter()
+        .map(|index| match index {
+            Expression::Number(_, n) => n.to_usize(),
+            _ => None,
+        })
+        .collect()
 }
 
 impl fmt::Display for Lvalue<'_> {
@@ -470,5 +648,381 @@ impl fmt::Display for Lvalue<'_> {
                 write!(f, ".{name}")
             }
         }
+    }
+}
+
+/// Emits the IR for a conditional check for array indices in a mixed subcomponent.
+fn emit_condition<'ctx, 'val>(
+    entry_indices: &[usize],
+    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
+    location: Location<'ctx>,
+    true_value: Value<'ctx, 'val>,
+    indices: &[Value<'ctx, 'val>],
+) -> Result<Value<'ctx, 'val>> {
+    let entry_indices_values = entry_indices
+        .iter()
+        .map(|idx| {
+            let idx = i64::try_from(*idx).expect("index too large");
+            block_gen.append_op_unnamed_result(codegen.new_index_const_op(idx, location))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    if entry_indices_values.len() != indices.len() {
+        anyhow::bail!(
+            "Array indices and mixed subcomponent indices len do not match: {} != {}",
+            entry_indices_values.len(),
+            indices.len()
+        );
+    }
+
+    let eqs = std::iter::zip(indices, entry_indices_values)
+        .map(|(lhs, rhs)| {
+            block_gen.append_op_unnamed_result(arith::cmpi(
+                codegen.context,
+                arith::CmpiPredicate::Eq,
+                *lhs,
+                rhs,
+                location,
+            ))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    eqs.into_iter().try_fold(true_value, |acc, cmp| {
+        block_gen.append_op_unnamed_result(llzk::dialect::bool::and(location, acc, cmp)?)
+    })
+}
+
+/// Private module for holding `CombineSealed`.
+mod sealed {
+    /// Sealed trait to avoid more implementations of `Combine` other than the two
+    /// provided in this file.
+    pub trait CombineSealed {}
+}
+
+/// Helper struct aggregating the data required by the `Combine` trait.
+pub struct CombineEntry<'ctx, 'blk, 'val, C> {
+    /// Boolean condition for the if-then-else blocks.
+    condition: Value<'ctx, 'val>,
+    /// Payload that needs to be combined.
+    data: C,
+    /// Information about the region containing the emitted IR for the entry.
+    info: NestedBlockInfo<'ctx, 'blk, 'val>,
+}
+
+impl<'ctx, 'blk, 'val, C> CombineEntry<'ctx, 'blk, 'val, C> {
+    /// Creates a new entry.
+    fn new(condition: Value<'ctx, 'val>, data: C, info: NestedBlockInfo<'ctx, 'blk, 'val>) -> Self {
+        Self { condition, data, info }
+    }
+}
+
+/// This trait is used for combining the output of multiple continuation results
+/// when dealing with mixed subcomponents.
+///
+/// Only two implementations are included, one for `Value` and another for `()`.
+/// Both create the if-then-else chain with the difference that the former returns the value and
+/// the latter doesn't.
+pub trait Combine<'ctx, 'val>: sealed::CombineSealed + Sized + Copy {
+    /// Creates the tail which is the final branch of the if-then-else chain.
+    ///
+    /// This branch should be unreachable but is generated for keeping the type system consistent.
+    /// May generate undef ops for the yield values the if-then-else chain may generate.
+    fn make_tail<'blk>(
+        entries: &[CombineEntry<'ctx, 'blk, 'val, Self>],
+        block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+    ) -> Result<(NestedBlockInfo<'ctx, 'blk, 'val>, Self)>;
+
+    /// Converts `Self` to a vaule.
+    fn data_as_value(self) -> Option<Value<'ctx, 'val>>;
+
+    /// Creates an instance of `Self` from a value.
+    fn from_value(value: Option<Value<'ctx, 'val>>) -> Self;
+
+    /// Combines the entries into a single if-then-else chain.
+    ///
+    /// Overwritten variables and possible yield values are aggregated and returned by the chain.
+    ///
+    /// The overwritten variables are then set to the final yield of the chain.
+    fn combine<'blk>(
+        entries: Vec<CombineEntry<'ctx, 'blk, 'val, Self>>,
+        block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+    ) -> Result<Self> {
+        let (tail, tail_data) = Self::make_tail(&entries, block_gen, codegen, location)?;
+
+        let (mut info, _, (values, overwrites_offset, vars)) = entries.into_iter().try_fold(
+            (tail, tail_data, Default::default()),
+            |(mut tail, tail_data, _), CombineEntry { condition, data, mut info }| -> Result<_> {
+                let mut overwrites = combine_overwrites(info.var_overwrites, tail.var_overwrites);
+                if codegen.config.stabilize {
+                    // Sort by circom variable names to ensure a stable order.
+                    overwrites.sort_by(|lhs, rhs| lhs.var().cmp(rhs.var()));
+                }
+                // Reset the overwrites
+                info.var_overwrites = OverwriteMap::new();
+                tail.var_overwrites = OverwriteMap::new();
+                fill_missing_overwrites(
+                    &mut info,
+                    &mut tail,
+                    &mut overwrites,
+                    block_gen,
+                    location,
+                )?;
+
+                let mut vars = Vec::with_capacity(overwrites.len());
+                let mut then_values = Vec::with_capacity(overwrites.len() + 1);
+                let mut else_values = Vec::with_capacity(overwrites.len() + 1);
+
+                let overwrites_offset: usize =
+                    match (tail_data.data_as_value(), data.data_as_value()) {
+                        (None, None) => 0,
+                        (Some(tail), Some(data)) => {
+                            else_values.push(tail);
+                            then_values.push(data);
+                            1
+                        }
+                        _ => unreachable!(),
+                    };
+                for overwrite in overwrites {
+                    let Overwrite::Both { var, then, r#else } = overwrite else {
+                        unreachable!();
+                    };
+                    vars.push(var);
+                    then_values.push(then);
+                    else_values.push(r#else);
+                }
+
+                // Create the yield ops for the branches
+                info.enter_scope(block_gen, |block_gen| {
+                    block_gen.append_op_no_result(scf::r#yield(&then_values, location))
+                })?;
+                tail.enter_scope(block_gen, |block_gen| {
+                    block_gen.append_op_no_result(scf::r#yield(&else_values, location))
+                })?;
+
+                let then_region = info.region;
+                let else_region = tail.region;
+                let (mut new_info, values) = NestedBlockInfo::with_scope(block_gen, |block_gen| {
+                    block_gen.gen_safe_scf_multivalued_if(
+                        codegen,
+                        location,
+                        condition,
+                        (then_region, &then_values),
+                        (else_region, &else_values),
+                        None,
+                    )
+                })?;
+                let overwrites = &values[overwrites_offset..];
+                assert_eq!(vars.len(), overwrites.len());
+                new_info.var_overwrites = OverwriteMap::from_iter(
+                    std::iter::zip(&vars, overwrites).map(|(var, value)| (var.clone(), *value)),
+                );
+
+                Ok((
+                    new_info,
+                    Self::from_value(values.first().copied()),
+                    (values, overwrites_offset, vars),
+                ))
+            },
+        )?;
+
+        // Wrap the region in a `scf.execute_region`. It's easier to add ops than to steal the ops
+        // inside the region and the canonicalizer will get rid of it.
+        // Create an empty scf.yield op to satisfy scf.execute_region's requirements.
+        info.enter_scope(block_gen, |block_gen| {
+            block_gen.append_op_no_result(scf::r#yield(&values, location))
+        })?;
+        let types = values.iter().map(|v| v.r#type()).collect::<Vec<_>>();
+        let op = scf::execute_region(&types, info.region, location);
+
+        let results = if !values.is_empty() {
+            block_gen.append_op_many_unnamed_results(op)?
+        } else {
+            block_gen.append_op_no_result(op)?;
+            vec![]
+        };
+        // Update the overwriten variables with the values emitted by the `scf.execute_region` op.
+        std::iter::zip(vars, &results[overwrites_offset..])
+            .into_iter()
+            .try_for_each(|(var, value)| block_gen.block_ctx.set_named_value(var, *value))?;
+
+        Ok(Self::from_value(results.first().copied()))
+    }
+}
+
+impl sealed::CombineSealed for () {}
+impl sealed::CombineSealed for Value<'_, '_> {}
+
+/// Convenience alias.
+type OverwriteMap<'ctx, 'val> = HashMap<String, Value<'ctx, 'val>>;
+
+/// Cases for combining overwrites between two if-then-else branches.
+enum Overwrite<'ctx, 'val> {
+    /// Both cases have the variable
+    Both {
+        /// Var name.
+        var: String,
+        /// Value for the then branch.
+        then: Value<'ctx, 'val>,
+        /// Value for the else branch.
+        r#else: Value<'ctx, 'val>,
+    },
+    /// Only the then branch has this variable
+    Then {
+        /// Var name.
+        var: String,
+        /// Value for the then branch.
+        value: Value<'ctx, 'val>,
+    },
+    /// Only the else branch has this variable
+    Else {
+        /// Var name.
+        var: String,
+        /// Value for the else branch.
+        value: Value<'ctx, 'val>,
+    },
+}
+
+impl Overwrite<'_, '_> {
+    /// Returns the var name.
+    fn var(&self) -> &str {
+        match self {
+            Overwrite::Both { var, .. }
+            | Overwrite::Then { var, .. }
+            | Overwrite::Else { var, .. } => var,
+        }
+    }
+}
+
+/// Combines the overwrite maps into a list of [`Overwrite`].
+fn combine_overwrites<'ctx, 'val>(
+    then_map: OverwriteMap<'ctx, 'val>,
+    else_map: OverwriteMap<'ctx, 'val>,
+) -> Vec<Overwrite<'ctx, 'val>> {
+    then_map
+        .keys()
+        .chain(else_map.keys())
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .map(|var| {
+            let then = then_map.get(var).copied();
+            let r#else = else_map.get(var).copied();
+
+            match (then, r#else) {
+                (Some(then), Some(r#else)) => Overwrite::Both { var: var.clone(), then, r#else },
+                (Some(value), None) => Overwrite::Then { var: var.clone(), value },
+                (None, Some(value)) => Overwrite::Else { var: var.clone(), value },
+                (None, None) => unreachable!(),
+            }
+        })
+        .collect()
+}
+
+/// Creates `nondet` ops for the overwrites that are missing.
+fn fill_missing_overwrites<'ctx, 'blk, 'val>(
+    then_info: &mut NestedBlockInfo<'ctx, 'blk, 'val>,
+    else_info: &mut NestedBlockInfo<'ctx, 'blk, 'val>,
+    overwrites: &mut [Overwrite<'ctx, 'val>],
+    block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
+    location: Location<'ctx>,
+) -> Result<()> {
+    let (mut missing_in_then, mut missing_in_else): (Vec<_>, Vec<_>) = overwrites
+        .iter_mut()
+        .filter(|o| !matches!(o, Overwrite::Both { .. }))
+        .partition(|o| matches!(o, Overwrite::Else { .. }));
+
+    then_info.enter_scope(block_gen, |block_gen| {
+        for overwrite in &mut missing_in_then {
+            match overwrite {
+                Overwrite::Else { var, value } => {
+                    let other =
+                        block_gen.append_op_unnamed_result(nondet(location, value.r#type()))?;
+                    **overwrite = Overwrite::Both { var: var.clone(), then: other, r#else: *value };
+                }
+                _ => unreachable!(),
+            }
+        }
+        Ok(())
+    })?;
+
+    else_info.enter_scope(block_gen, |block_gen| {
+        for overwrite in &mut missing_in_else {
+            match overwrite {
+                Overwrite::Then { var, value } => {
+                    let other =
+                        block_gen.append_op_unnamed_result(nondet(location, value.r#type()))?;
+                    **overwrite = Overwrite::Both { var: var.clone(), r#else: other, then: *value };
+                }
+                _ => unreachable!(),
+            }
+        }
+        Ok(())
+    })
+}
+
+impl<'ctx, 'val> Combine<'ctx, 'val> for () {
+    fn make_tail<'blk>(
+        _: &[CombineEntry<'ctx, 'blk, 'val, Self>],
+        _: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
+        _: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        _: Location<'ctx>,
+    ) -> Result<(NestedBlockInfo<'ctx, 'blk, 'val>, Self)> {
+        Ok((NestedBlockInfo::new(), ()))
+    }
+
+    fn data_as_value(self) -> Option<Value<'ctx, 'val>> {
+        None
+    }
+
+    fn from_value(_: Option<Value<'ctx, 'val>>) -> Self {}
+}
+
+impl<'ctx, 'val> Combine<'ctx, 'val> for Value<'ctx, 'val> {
+    fn make_tail<'blk>(
+        entries: &[CombineEntry<'ctx, 'blk, 'val, Self>],
+        block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
+        _: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+    ) -> Result<(NestedBlockInfo<'ctx, 'blk, 'val>, Self)> {
+        NestedBlockInfo::with_scope(block_gen, |block_gen| {
+            block_gen.append_op_unnamed_result(nondet(location, entries[0].data.r#type()))
+        })
+    }
+
+    fn data_as_value(self) -> Option<Value<'ctx, 'val>> {
+        Some(self)
+    }
+
+    fn from_value(value: Option<Value<'ctx, 'val>>) -> Self {
+        value.unwrap()
+    }
+}
+
+/// Trait used for the continuation. Is implemented for all matching function types.
+///
+/// `impl Fn(...)` causes the rust compiler to enter an infinite loop of instantiations.
+/// Using this trait as a `dyn` trait fixes the problem.
+pub trait Continuation<'ctx, 'val, R, C> {
+    /// Runs the continuation.
+    fn cont<'decls, 'blk>(&self, value: Value<'ctx, 'val>, block_gen: &mut C) -> Result<R>
+    where
+        C: AsMut<BlockGenContext<'decls, 'ctx, 'blk, 'val>>,
+        'ctx: 'blk + 'decls,
+        'blk: 'val;
+}
+
+impl<'ctx, 'val, F, R, C> Continuation<'ctx, 'val, R, C> for F
+where
+    F: Fn(Value<'ctx, 'val>, &mut C) -> Result<R>,
+{
+    fn cont<'decls, 'blk>(&self, value: Value<'ctx, 'val>, block_gen: &mut C) -> Result<R>
+    where
+        C: AsMut<BlockGenContext<'decls, 'ctx, 'blk, 'val>>,
+        'ctx: 'blk + 'decls,
+        'blk: 'val,
+    {
+        self(value, block_gen)
     }
 }

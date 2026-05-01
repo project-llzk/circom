@@ -3,6 +3,7 @@
 use crate::module::DeclarationInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared::LlzkCodegen;
+use crate::subcmp::MixedSubcmpInstance;
 use crate::subcmp::SubcmpDeclInfo;
 use crate::template::GenerateLLZKInTemplate;
 use crate::template::TemplateContext;
@@ -238,9 +239,14 @@ impl TemplateLike for TemplateInstance {
         for cluster in &self.clusters {
             if let Some(subcmp_decl) = subcmp_decls.get_mut(&cluster.cmp_name) {
                 match &cluster.xtype {
-                    // Mixed instantiation is also not supported in [DeclarationInfo::complete]
                     ClusterType::Mixed { .. } => {
-                        todo!("Support mixed type subcomponent instantiations")
+                        for trigger in &self.triggers[cluster.slice.clone()] {
+                            subcmp_decl.mixed_instances_mut().push(MixedSubcmpInstance::new(
+                                mixed_record_name(&trigger.indexed_with),
+                                trigger.indexed_with.clone(),
+                                codegen.struct_type(&trigger.runs),
+                            ));
+                        }
                     }
                     ClusterType::Uniform { header, .. } => {
                         subcmp_decl.instances_mut().push(codegen.struct_type(header));
@@ -377,6 +383,16 @@ impl TemplateLike for TemplateInstance {
         }
         Ok(())
     }
+}
+
+/// Returns a stable pod record name for a mixed concrete subcomponent index tuple.
+fn mixed_record_name(indices: &[usize]) -> String {
+    let mut name = String::from("idx");
+    for index in indices {
+        name.push('_');
+        name.push_str(&index.to_string());
+    }
+    name
 }
 
 /// Filters the wires that match the given type and builds a map with them.

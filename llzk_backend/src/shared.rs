@@ -280,12 +280,14 @@ pub struct LlzkCodegen<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> {
         RefCell<Option<Box<dyn PolyBindingStorageStrategy<'ctx, P> + 'r>>>,
     /// Body of the circom function or template currently being processed.
     current_body: Cell<Option<&'ast [Statement]>>,
-    /// Current [Statement] (or stack thereof when within an `IfThenElse` or `While`) being visited
-    /// and/or translated. Used by [`DimExprConverter::gen_template_poly_expr`] to replicate the
-    /// body into the `poly.expr` initializer up to the current position so all variable
-    /// assignments that contribute to the target expression will be computed. Raw pointers are
-    /// used to avoid a lifetime issue from synthetic Statements created on-the-fly and translated.
-    /// They pointers must only be used for pointer equality comparisons to avoid unsafe behavior.
+    /// Current [`Statement`] (or stack thereof when within an `IfThenElse` or `While`) being
+    /// visited and/or translated. Used by [`DimExprConverter::gen_template_poly_expr`] to
+    /// replicate the body into the `poly.expr` initializer up to the current position so all
+    /// variable assignments that contribute to the target expression will be computed.
+    ///
+    /// Raw pointers are used to avoid a lifetime issue from synthetic Statements created
+    /// on-the-fly and translated. These pointers must only be used for pointer equality
+    /// comparisons to avoid unsafe behavior.
     statement_trace: RefCell<Vec<*const Statement>>,
     /// Operation builder
     builder: OpBuilder<'ctx>,
@@ -680,6 +682,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     pub fn take_template_decl(&self, name: &str) -> Result<DeclarationInfo<'ctx>> {
         let mut borrow = self.template_decls.borrow_mut();
         if let Some((name, DeclInfo::Full(decl_info))) = borrow.remove_entry(name) {
+            let decl_info = *decl_info;
             let inputs = decl_info.build_input_name_to_type_map();
             let outputs = decl_info.build_output_name_to_type_map();
             borrow.insert(name, DeclInfo::Remnant { inputs, outputs });
@@ -1968,7 +1971,8 @@ where
                         // Use the pre-computed type from DeclarationInfo (seeded into the
                         // BlockContextStack root) to avoid triggering recursive
                         // gen_template_poly_expr calls for non-constant dimension expressions.
-                        if let Some(ty) = gen_ctx.get_var_decl_types().get(name) {
+                        let qualified_key = format!("{}@{}", name, meta.start);
+                        if let Some(ty) = gen_ctx.get_var_decl_types().get(&qualified_key) {
                             let op = codegen
                                 .new_nondet_at_location(codegen.location_from_meta(meta), *ty)?;
                             gen_ctx.block_ctx.declare_name_ensure_not_present(name, op)?;

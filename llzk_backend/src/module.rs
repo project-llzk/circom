@@ -15,6 +15,8 @@ use crate::shared::LlzkCodegen;
 use crate::shared::PendingPolyBindings;
 use crate::shared::TmplParamsInstance;
 use crate::subcmp::unique_instance_types;
+use crate::subcmp::MixedSubcmpEntry;
+use crate::subcmp::MixedSubcmpLayout;
 use crate::subcmp::SubcmpDeclInfo;
 use crate::subcmp::SubcmpPrologueData;
 use crate::template::GenerateLLZKInTemplate as _;
@@ -109,8 +111,17 @@ pub struct DeclarationInfo<'ctx> {
     inputs: Vec<InputSignalInfo<'ctx>>,
     /// Output and Intermediate declarations to use as LLZK struct fields.
     struct_fields: Vec<MemberInfo<'ctx>>,
-    /// Map var/signal name to its LLZK declaration Operation (usually `llzk.nondet`).
+    /// Map source-position-qualified key (`name@meta_start`) to its LLZK declaration Operation
+    /// (usually `llzk.nondet` initially). Using a source-position-qualified key allows the same
+    /// circom variable name to appear in multiple scopes without collision (e.g., an outer scope
+    /// followed by an inner scope or both branches of an if/else).
     decl_inits: HashMap<String, Operation<'ctx>>,
+    /// Maps each qualified key in `decl_inits` back to the plain circom variable name, so that
+    /// function contexts can declare the value under its original name.
+    decl_key_to_name: HashMap<String, String>,
+    /// Set of plain circom variable names that have at least one entry in `decl_inits`. Used for
+    /// O(1) plain-name containment checks without iterating `decl_inits`.
+    declared_var_names: HashSet<String>,
     /// Map `component` name to its declaration information.
     subcmp_decls: HashMap<String, SubcmpDeclInfo<'ctx>>,
     /// The template params that may be used to instantiate array dimensions.
@@ -122,8 +133,9 @@ pub struct DeclarationInfo<'ctx> {
     /// While the `visit()` function is running, this is `None` and is only populated with the map
     /// from `codegen` when the vistor is done.
     new_sym_bindings: Option<PendingPolyBindings<'ctx>>,
-    /// Pre-computed LLZK types for `var` declarations, keyed by var name. Used by
-    /// `poly.expr` body generation to avoid recursive dimension-expression recomputation.
+    /// Pre-computed LLZK types for `var` declarations, keyed by the same source-position-qualified
+    /// key (`name@meta_start`) used in `decl_inits` so that the same circom variable name in
+    /// different scopes will map to each distinct type. Used by `poly.expr` body generation.
     var_decl_types: HashMap<String, Type<'ctx>>,
 }
 
@@ -173,6 +185,11 @@ impl<'ctx> DeclarationInfo<'ctx> {
         }
         for name in subcmps {
             let info = self.subcmp_decls.get_mut(&name).unwrap();
+            if info.is_mixed() {
+                record_mixed_subcmp_decl(name, info, codegen, &mut ops, &mut self.struct_fields)?;
+                continue;
+            }
+
             let types = unique_instance_types(info.instances());
             let subcmp_type = match &types[..] {
                 [] => todo!("Handle uninitialized component decl"),
@@ -235,9 +252,11 @@ impl<'ctx> DeclarationInfo<'ctx> {
 
     /// Visit a statement and populate this `DeclarationInfo` with any declarations found.
     ///
-    /// TODO: This currently visits only top-level statements within the template body. However,
-    /// since circom 2.1.5, signal declarations are allowed inside of blocks and known-condition if
-    /// statements. Those nested declarations are not currently processed here.
+    /// Recursively descends into all nested statements so that declarations inside `if/else`
+    /// branches and loops are discovered. The [`LlzkCodegen::statement_trace`] (pushed via
+    /// [`LlzkCodegen::trace_statement`] at the top of each call) records the nesting context so
+    /// that [`DimExprConverter::gen_template_poly_expr`] can correctly scope the dimension
+    /// expressions for those declarations.
     fn visit(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
@@ -263,6 +282,15 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 }
                 Ok(())
             }
+            Statement::IfThenElse { if_case, else_case, .. } => {
+                // Collect `var` (and `signal` since circom 2.1.5) declarations from both branches.
+                self.visit(codegen, if_case.as_ref())?;
+                if let Some(else_case) = else_case.as_deref() {
+                    self.visit(codegen, else_case)?;
+                }
+                Ok(())
+            }
+            Statement::While { stmt, .. } => self.visit(codegen, stmt.as_ref()),
             Statement::Declaration { meta, name, xtype, dimensions, .. } => {
                 // The Signal and Bus types use SignalType to indicate if they are input, output, or
                 // intermediate. The others are all intermediate. Intermediates become SSA values
@@ -291,14 +319,24 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         let dimensions = self.get_dim_exprs(codegen, dimensions)?;
                         let var_type =
                             dimensions.type_from_dimension_exprs(codegen.felt_type().into());
-                        self.var_decl_types.insert(name.clone(), var_type);
-                        self.decl_inits.insert(
-                            name.clone(),
+                        // Key by source position so the same name in different scopes
+                        // (e.g., both branches of an if/else) gets a distinct entry.
+                        let qualified_key = format!("{}@{}", name, meta.start);
+                        self.var_decl_types.insert(qualified_key.clone(), var_type);
+                        self.declared_var_names.insert(name.clone());
+                        let old = self.decl_inits.insert(
+                            qualified_key.clone(),
                             codegen.new_nondet_at_location(
                                 codegen.location_from_meta(meta),
                                 var_type,
                             )?,
                         );
+                        assert!(
+                            old.is_none(),
+                            "multiple declarations for qualified key {}",
+                            qualified_key
+                        );
+                        self.decl_key_to_name.insert(qualified_key, name.clone());
                         Ok(())
                     }
                     VariableType::Component => {
@@ -406,8 +444,13 @@ impl<'ctx> DeclarationInfo<'ctx> {
         }
         // Create `llzk.nondet` of the appropriate type. When the actual assignment
         // is processed later, this is replaced with the appropriate value.
+        // Signals are uniquely named within a template (the circom type checker enforces this),
+        // so use the plain name as the qualified key.
         codegen.new_nondet_at_location(location, decl_type).map(|op| {
-            self.decl_inits.insert(name.clone(), op);
+            self.declared_var_names.insert(name.clone());
+            let old = self.decl_inits.insert(name.clone(), op);
+            assert!(old.is_none(), "multiple declarations for {}", name);
+            self.decl_key_to_name.insert(name.clone(), name.clone());
         })
     }
 
@@ -492,14 +535,12 @@ where
                         // This is a `Statement::Declaration` with `VariableType::Var` that was
                         // previously encountered and converted into a `poly.expr`.
                         ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
-                    } else if self.decl_inits.contains_key(name) {
+                    } else if self.declared_var_names.contains(name) {
                         // This is a `Statement::Declaration` with `VariableType::Var` that is
                         // encountered for the first time and must have a `poly.expr` generated.
                         self.gen_template_poly_expr(codegen, expr)
                     } else {
-                        // TODO: this happens in `circom/tests/circom_doc_examples/04.circom`
-                        // and I think it's related to the "TODO" on `DeclarationInfo::visit`.
-                        todo!("not a known circom template parameter or var declaration: {}", name)
+                        unreachable!("[DeclarationInfo::visit] traversed all statements")
                     }
                 }
                 // Variable case with non-empty `access`
@@ -716,24 +757,23 @@ where
 
     // Insert the Operations created from variable Declaration statements and map the circom
     // variable name to LLZK op result Value (do this in each function).
-    for (name, op) in decl_inits(declarations.decl_inits, codegen.config.stabilize) {
+    let decl_key_to_name = declarations.decl_key_to_name;
+    for (key, op) in decl_inits(declarations.decl_inits, codegen.config.stabilize) {
+        let name = decl_key_to_name.get(&key).expect("every decl_inits key has a name entry");
         // Insert (a clone of) the declaration into the compute function.
-        compute_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op.clone()))?;
+        compute_ctx.block_ctx.declare_name_if_not_present(name, || Ok(op.clone()))?;
         // Insert the declaration into the constrain function.
-        constrain_ctx.block_ctx.declare_name_if_not_present(&name, || Ok(op))?;
+        constrain_ctx.block_ctx.declare_name_if_not_present(name, || Ok(op))?;
     }
     let subcmp_decls = declarations.subcmp_decls;
     let subcmp_names = subcmps
         .iter()
         .map(|subcmp| {
-            let template_name = subcmp_decls
-                .get(subcmp.name())
-                .and_then(|decl| decl.template())
-                .ok_or_else(|| {
-                    anyhow::anyhow!("could not deduce the type of subcomponent '{}'", subcmp.name())
-                })?;
+            let _ = subcmp_decls.get(subcmp.name()).and_then(|decl| decl.template()).ok_or_else(
+                || anyhow::anyhow!("could not deduce the type of subcomponent '{}'", subcmp.name()),
+            )?;
 
-            Ok((subcmp.name().to_owned(), (template_name.to_owned(), subcmp.comp_pod(codegen))))
+            Ok((subcmp.name().to_owned(), subcmp.binding(codegen)))
         })
         .collect::<Result<_>>()?;
     // Insert the Operations created from subcomponent Declaration statements and map the
@@ -870,6 +910,62 @@ fn record_subcmp_decl<'ctx, 'ast>(
         public: false,
     });
     ops.push(SubcmpPrologueData::new(name, template_name.to_owned(), member_type, inputs));
+    Ok(())
+}
+
+/// Fills out declaration information for a mixed concrete subcomponent binding.
+fn record_mixed_subcmp_decl<'ctx, 'ast>(
+    name: String,
+    info: &mut SubcmpDeclInfo<'ctx>,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
+    ops: &mut Vec<SubcmpPrologueData<'ctx>>,
+    struct_fields: &mut Vec<MemberInfo<'ctx>>,
+) -> Result<()> {
+    let first_instance = info
+        .mixed_instances()
+        .first()
+        .ok_or_else(|| anyhow::anyhow!("mixed subcomponent '{name}' has no concrete instances"))?;
+    let template_name = shared::get_name_tail(&first_instance.struct_type())?.to_owned();
+    info.set_template(template_name.clone());
+
+    let mut entries = Vec::with_capacity(info.mixed_instances().len());
+    let mut component_records = Vec::with_capacity(info.mixed_instances().len());
+    let mut memory_records = Vec::with_capacity(info.mixed_instances().len());
+    let mut inputs_records = Vec::with_capacity(info.mixed_instances().len());
+    for instance in info.mixed_instances() {
+        let instance_template_name = shared::get_name_tail(&instance.struct_type())?;
+        let subcmp_type = crate::subcmp::SubcmpType::new(
+            instance.struct_type().into(),
+            instance_template_name.to_owned(),
+        );
+        let memory_type = subcmp_type.comp_pod(codegen).try_into()?;
+        let inputs_type =
+            collect_inputs(instance_template_name, instance.struct_type(), codegen)?.try_into()?;
+        entries.push(MixedSubcmpEntry::new(instance, memory_type, inputs_type));
+        component_records
+            .push(PodRecordAttribute::new(instance.record_name(), instance.struct_type().into()));
+        memory_records.push(PodRecordAttribute::new(instance.record_name(), memory_type.into()));
+        inputs_records.push(PodRecordAttribute::new(instance.record_name(), inputs_type.into()));
+    }
+
+    let component_type = PodType::new(codegen.context, &component_records);
+    let memory_type = PodType::new(codegen.context, &memory_records);
+    let inputs_type = PodType::new(codegen.context, &inputs_records);
+    let layout = MixedSubcmpLayout::new(component_type, memory_type, inputs_type, entries);
+
+    struct_fields.push(MemberInfo {
+        name: name.clone(),
+        decl_type: component_type.into(),
+        location: info.location(),
+        public: false,
+    });
+    struct_fields.push(MemberInfo {
+        name: crate::subcmp::names::inputs(&name),
+        decl_type: inputs_type.into(),
+        location: info.location(),
+        public: false,
+    });
+    ops.push(SubcmpPrologueData::new_mixed(name, template_name, layout));
     Ok(())
 }
 

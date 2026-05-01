@@ -83,9 +83,9 @@ use std::ops::DerefMut;
 /// [Null objects](https://en.wikipedia.org/wiki/Null_object_pattern). The former is used while
 /// lowering expressions inside a template and the latter used while lowering inside a function.
 #[derive(Copy, Clone, Debug)]
-pub struct InfoProviders<'info> {
+pub struct InfoProviders<'info, 'ctx> {
     /// Subcomponent information.
-    pub subcmp_info: &'info dyn SubcmpInfo,
+    pub subcmp_info: &'info dyn SubcmpInfo<'ctx>,
     /// Signals write information.
     ///
     /// TODO: We may be able to remove this field if the lowering in this file does not need to use
@@ -95,14 +95,14 @@ pub struct InfoProviders<'info> {
     pub signal_write_info: &'info dyn SignalWriteInfo,
 }
 
-impl Default for InfoProviders<'_> {
+impl Default for InfoProviders<'_, '_> {
     fn default() -> Self {
         Self { subcmp_info: &NoSubcmps, signal_write_info: &NoSignalsInfo }
     }
 }
 
 impl<'tmpl, 'ctx, 'str, 'func, 'blk, 'val>
-    From<&'tmpl TemplateContext<'_, 'ctx, 'str, 'func, 'blk, 'val>> for InfoProviders<'tmpl>
+    From<&'tmpl TemplateContext<'_, 'ctx, 'str, 'func, 'blk, 'val>> for InfoProviders<'tmpl, 'ctx>
 {
     fn from(template: &'tmpl TemplateContext<'_, 'ctx, 'str, 'func, 'blk, 'val>) -> Self {
         Self { subcmp_info: template, signal_write_info: template }
@@ -148,6 +148,28 @@ where
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.base
+    }
+}
+
+impl<'decls, 'ctx, 'blk, 'val> AsMut<BlockGenContext<'decls, 'ctx, 'blk, 'val>>
+    for FunctionContext<'decls, 'ctx, '_, 'blk, 'val>
+where
+    'ctx: 'blk,
+    'blk: 'val,
+{
+    fn as_mut(&mut self) -> &mut BlockGenContext<'decls, 'ctx, 'blk, 'val> {
+        self.deref_mut()
+    }
+}
+
+impl<'decls, 'ctx, 'blk, 'val> AsRef<BlockGenContext<'decls, 'ctx, 'blk, 'val>>
+    for FunctionContext<'decls, 'ctx, '_, 'blk, 'val>
+where
+    'ctx: 'blk,
+    'blk: 'val,
+{
+    fn as_ref(&self) -> &BlockGenContext<'decls, 'ctx, 'blk, 'val> {
+        self.deref()
     }
 }
 
@@ -527,7 +549,7 @@ where
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
-        info: InfoProviders<'info>,
+        info: InfoProviders<'info, 'ctx>,
     ) -> Result<Self::Output>;
 }
 
@@ -654,7 +676,7 @@ where
 fn gen_if_then_else<'ctx, 'func, 'blk, 'val, 'info>(
     codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
-    info: InfoProviders<'info>,
+    info: InfoProviders<'info, 'ctx>,
     meta: &Meta,
     cond: &Expression,
     if_case: &Statement,
@@ -745,7 +767,7 @@ where
 fn gen_while<'ctx, 'func, 'blk, 'val, 'info>(
     codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
-    info: InfoProviders<'info>,
+    info: InfoProviders<'info, 'ctx>,
     meta: &Meta,
     cond: &Expression,
     body_stmt: &Statement,
@@ -829,7 +851,7 @@ where
 fn gen_init_block<'ctx, 'func, 'blk, 'val>(
     codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
-    info: InfoProviders<'_>,
+    info: InfoProviders<'_, 'ctx>,
     initializations: &[Statement],
 ) -> Result<()>
 where
@@ -854,7 +876,7 @@ where
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
-        info: InfoProviders<'info>,
+        info: InfoProviders<'info, 'ctx>,
     ) -> Result<Self::Output> {
         let _guard = codegen.trace_statement(self);
         match self {
@@ -957,7 +979,7 @@ where
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
-        info: InfoProviders<'info>,
+        info: InfoProviders<'info, 'ctx>,
     ) -> Result<Self::Output> {
         for s in self {
             let skip_rest_of_block = s.gen_llzk_in_function(codegen, function, info)?;
