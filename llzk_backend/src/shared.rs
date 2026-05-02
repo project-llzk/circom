@@ -2356,3 +2356,45 @@ pub fn print_region<'c: 'a, 'a>(region: &impl RegionLike<'c, 'a>) {
         block = b.next_in_region();
     }
 }
+
+/// Build a `function.call` operation using [`OperationBuilder`], supporting the optional
+/// `templateParams` attribute for calling functions inside `poly.template` regions when
+/// template parameters are not bound by the call's argument or result types.
+///
+/// TODO: llzk-rs should provide this function (or even more general with map operands too).
+pub(crate) fn build_func_call_with_template_params<'c>(
+    context: &'c LlzkContext,
+    location: Location<'c>,
+    callee: SymbolRefAttribute<'c>,
+    args: &[Value<'c, '_>],
+    result_types: &[Type<'c>],
+    template_params: Option<&[Attribute<'c>]>,
+) -> Result<Operation<'c>> {
+    use melior::ir::attribute::ArrayAttribute;
+    use melior::ir::attribute::DenseI32ArrayAttribute;
+    use melior::ir::operation::OperationBuilder;
+    use melior::ir::Identifier;
+
+    let ctx = &**context;
+    let arg_count = i32::try_from(args.len()).expect("arg count too large");
+    let mut attrs = vec![
+        (Identifier::new(ctx, "callee"), callee.into()),
+        (Identifier::new(ctx, "mapOpGroupSizes"), DenseI32ArrayAttribute::new(ctx, &[]).into()),
+        (
+            Identifier::new(ctx, "operandSegmentSizes"),
+            DenseI32ArrayAttribute::new(ctx, &[arg_count, 0]).into(),
+        ),
+    ];
+    if let Some(params) = template_params {
+        attrs.push((
+            Identifier::new(ctx, "templateParams"),
+            ArrayAttribute::new(ctx, params).into(),
+        ));
+    }
+    OperationBuilder::new("function.call", location)
+        .add_attributes(&attrs)
+        .add_operands(args)
+        .add_results(result_types)
+        .build()
+        .map_err(Into::into)
+}
