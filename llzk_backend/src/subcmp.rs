@@ -873,7 +873,6 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
             unreachable!("Mixed subcomponents cannot be represented with uniform array types")
         };
         let subcmp_type = subcmp_type.scoped_to_inner();
-        dbg!(&subcmp_type);
         let empty_params = compute_ctx.append_op_unnamed_result(pod::new(
             codegen.op_builder(),
             location,
