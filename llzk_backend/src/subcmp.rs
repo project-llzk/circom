@@ -562,7 +562,7 @@ impl<'ctx> SubcmpType<'ctx> {
 
     /// Returns a list of records that will be used to initialize s subcomponent's memory pod.
     ///
-    /// If the subcomponent has no inputs it will call `@compute`. Do not call use this function
+    /// If the subcomponent has no inputs it will call `@compute`. Do not use this function
     /// to emit IR inside the `@constrain` function!
     pub fn initialize_records<'val>(
         &self,
