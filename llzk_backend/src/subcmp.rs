@@ -1,10 +1,13 @@
 //! Helper types for handling subcomponents.
 
 use crate::function::FunctionContext;
+use crate::gen_context::BlockGenContext;
 use crate::program_ext::ProgramInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared::map_array_inner_type;
 use crate::shared::LlzkCodegen;
+use crate::shared::TmplParamsInstance;
+use crate::shared::TypeSizeExpr;
 use crate::template_ext::SignalDeclarations;
 use crate::template_ext::TemplateLike as _;
 use anyhow::Result;
@@ -22,6 +25,7 @@ use llzk::prelude::StructType;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
 use melior::ir::AttributeLike;
+use melior::ir::Value;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryFrom;
@@ -478,6 +482,81 @@ impl<'ctx> SubcmpType<'ctx> {
     /// Returns the actual MLIR type of the subcomponent.
     pub fn r#type(&self) -> Type<'ctx> {
         self.inner
+    }
+
+    /// Returns the size of the inputs.
+    pub fn input_size(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Result<TypeSizeExpr<'ctx>> {
+        let template_name = self.template_name();
+        let subcmp_struct_type = self.struct_type();
+        let template_data = codegen
+            .program
+            .get_templates(false)
+            .into_iter()
+            .find(|t| t.get_name() == template_name)
+            .ok_or_else(|| anyhow::anyhow!("template '{template_name}' not found"))?;
+        let template_params = TmplParamsInstance::new(
+            template_data.get_name_of_params(),
+            subcmp_struct_type.params_vec(),
+        );
+
+        fn acc_add<'ctx>(
+            acc: TypeSizeExpr<'ctx>,
+            signal_size: Result<TypeSizeExpr<'ctx>>,
+        ) -> Result<TypeSizeExpr<'ctx>> {
+            Ok(acc.add(signal_size?))
+        }
+        template_data
+            .get_declaration_inputs()
+            .iter()
+            .map(|(signal_name, _)| -> Result<TypeSizeExpr<'ctx>> {
+                let signal_type = template_params
+                    .map_type(codegen.get_input_signal_type(template_name, signal_name)?)?;
+                codegen.count_input_signals(signal_type)
+            })
+            .try_fold(TypeSizeExpr::zero(), acc_add)
+    }
+
+    /// Returns a list of records that will be used to initialize s subcomponent's memory pod.
+    ///
+    /// If the subcomponent has no inputs it will call `@compute`. Do not call use this function
+    /// to emit IR inside the `@constrain` function!
+    pub fn initialize_records<'val>(
+        &self,
+        params_pod: Value<'ctx, 'val>,
+        block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        tmpl_params_instance: &TmplParamsInstance<'_, 'ctx>,
+    ) -> Result<Vec<(&'static str, Value<'ctx, 'val>)>> {
+        let count = self.input_size(codegen)?;
+        // If the count == 0 means that the subcomponent has no inputs. In that
+        // case we call `@compute` here directly and store it into COMP.
+        if count.is_const_zero() {
+            let empty_inputs = block_gen.append_op_unnamed_result(pod::new(
+                codegen.op_builder(),
+                location,
+                &[],
+                Some(codegen.pod_type(&[])),
+            ))?;
+            let instance = block_gen.gen_compute_call(
+                self.r#type().try_into()?,
+                empty_inputs,
+                params_pod,
+                location,
+                codegen,
+            )?;
+            return Ok(vec![(names::COMP, instance)]);
+        }
+        Ok(vec![
+            (
+                names::COUNT,
+                count.to_index_value(codegen, block_gen, location, Some(tmpl_params_instance))?,
+            ),
+            (names::PARAMS, params_pod),
+        ])
     }
 }
 

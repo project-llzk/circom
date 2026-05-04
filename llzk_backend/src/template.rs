@@ -1415,40 +1415,6 @@ where
     }
 }
 
-/// Counts the size of the inputs.
-fn count_input_size<'ctx>(
-    subcmp_struct_type: StructType<'ctx>,
-    template_name: &str,
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
-) -> Result<TypeSizeExpr<'ctx>> {
-    let template_data = codegen
-        .program
-        .get_templates(false)
-        .into_iter()
-        .find(|t| t.get_name() == template_name)
-        .ok_or_else(|| anyhow::anyhow!("template '{template_name}' not found"))?;
-    let template_params = TmplParamsInstance::new(
-        template_data.get_name_of_params(),
-        subcmp_struct_type.params_vec(),
-    );
-
-    fn acc_add<'ctx>(
-        acc: TypeSizeExpr<'ctx>,
-        signal_size: Result<TypeSizeExpr<'ctx>>,
-    ) -> Result<TypeSizeExpr<'ctx>> {
-        Ok(acc.add(signal_size?))
-    }
-    template_data
-        .get_declaration_inputs()
-        .iter()
-        .map(|(signal_name, _)| -> Result<TypeSizeExpr<'ctx>> {
-            let signal_type = template_params
-                .map_type(codegen.get_input_signal_type(template_name, signal_name)?)?;
-            codegen.count_input_signals(signal_type)
-        })
-        .try_fold(TypeSizeExpr::zero(), acc_add)
-}
-
 impl<'decls, 'ctx, 'str, 'func, 'blk, 'val>
     GenerateLLZKInTemplate<'decls, 'ctx, 'str, 'func, 'blk, 'val> for Expression
 where
@@ -1492,38 +1458,13 @@ where
                 template.and_then(
                     |fc, _| {
                         scope.emit_ctor_call(codegen, fc, |fc, params_pod| {
-                            // If the count == 0 means that the subcomponent has no inputs. In that
-                            // case we call `@compute` here directly and store it into COMP.
-                            Ok(if scope.count.is_const_zero() {
-                                let empty_inputs = fc.append_op_unnamed_result(pod::new(
-                                    codegen.op_builder(),
-                                    scope.location,
-                                    &[],
-                                    Some(codegen.pod_type(&[])),
-                                ))?;
-                                // We can't have this call inside the constraint function.
-                                let instance = fc.gen_compute_call(
-                                    scope.subcmp_type.r#type().try_into()?,
-                                    empty_inputs,
-                                    params_pod,
-                                    scope.location,
-                                    codegen,
-                                )?;
-                                vec![(COMP, instance)]
-                            } else {
-                                vec![
-                                    (
-                                        COUNT,
-                                        scope.count.to_index_value(
-                                            codegen,
-                                            fc,
-                                            scope.location,
-                                            Some(&scope.tmpl_params_instance(codegen)),
-                                        )?,
-                                    ),
-                                    (PARAMS, params_pod),
-                                ]
-                            })
+                            scope.subcmp_type.initialize_records(
+                                params_pod,
+                                fc,
+                                codegen,
+                                scope.location,
+                                &scope.tmpl_params_instance(codegen),
+                            )
                         })
                     },
                     |fc, _| scope.emit_ctor_call(codegen, fc, |_, _| Ok(vec![])),
@@ -1565,8 +1506,6 @@ struct CtorCallScope<'ast, 'ctx, 'val> {
     dimensions: ArrayDimensions<'ctx, 'val>,
     /// Type of the subcomponent.
     subcmp_type: SubcmpType<'ctx>,
-    /// The input size count of the subcomponent.
-    count: TypeSizeExpr<'ctx>,
     /// Subcomponent memory pod type.
     pod_type: PodType<'ctx>,
 }
@@ -1585,11 +1524,9 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
         let subcmp_struct_type = dimensions.struct_type_with_concrete_dimensions(codegen, id);
         let subcmp_type = SubcmpType::new(subcmp_struct_type.into(), id.to_owned());
 
-        let count = count_input_size(subcmp_struct_type, id, codegen)?;
-
         let records = subcmp_type.comp_pod_records(codegen);
         let pod_type = codegen.pod_type(&records);
-        Ok(Self { id, location, dimensions, subcmp_type, count, pod_type })
+        Ok(Self { id, location, dimensions, subcmp_type, pod_type })
     }
 
     /// Returns the list of names associated to the template parameters.
