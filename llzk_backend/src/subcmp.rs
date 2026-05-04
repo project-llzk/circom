@@ -584,6 +584,14 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
         Ok(())
     }
 
+    /// Returns true if the subcomponent type has a very concrete instance.
+    ///
+    /// In this context 'very concrete' means that the struct does not have
+    /// parameters represented with affine maps.
+    fn is_very_concrete(&self) -> bool {
+        todo!()
+    }
+
     /// Generates the subcomponents prologue in the compute function.
     ///
     /// For each subcomponent creates an initializer operation and binds it
@@ -604,8 +612,25 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
         compute_ctx.block_ctx.declare_name_ensure_not_present(
             self.name(),
             match ArrayType::try_from(memory_type) {
-                Ok(ty) => codegen.new_array_new_op(decl.location(), ty, ArrayCtor::Empty),
-                Err(_) => nondet(decl.location(), memory_type),
+                Ok(comp_pod) => {
+                    let array = array::new(op_builder, decl.location(), comp_pod, ArrayCtor::Empty);
+                    if self.is_very_concrete() {
+                        todo!("Initialize with a for-loop.");
+                    }
+                    array
+                }
+                Err(_) => {
+                    if self.is_very_concrete() {
+                        // Initialize the subcomponent here. In templated mode the subcomponent may get
+                        // initialized twice, once here and another in the constructor callsite.
+                        // In concrete mode the initialization should happen only here.
+                        todo!()
+                    } else {
+                        // If the subcomponent has affine map parameters we defer initialization to
+                        // the constructor call.
+                        nondet(decl.location(), memory_type)
+                    }
+                }
             },
         )?;
         compute_ctx.block_ctx.declare_name_ensure_not_present(
