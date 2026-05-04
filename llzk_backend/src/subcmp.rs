@@ -12,6 +12,7 @@ use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::llzk::nondet;
 use llzk::dialect::pod;
 use llzk::dialect::r#struct;
+use llzk::prelude::dialect::array;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::FuncDefOpLike as _;
@@ -20,9 +21,11 @@ use llzk::prelude::PodType;
 use llzk::prelude::StructType;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
+use melior::ir::AttributeLike;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryFrom;
+use std::convert::TryInto;
 
 /// Names used for `pod` records.
 pub mod names {
@@ -406,8 +409,9 @@ impl<'ctx> SubcmpType<'ctx> {
     }
 
     /// Returns the element type if the type is an [`ArrayType`]. Returns the type itself otherwise.
-    fn scalar_or_inner(&self) -> Type<'ctx> {
-        ArrayType::try_from(self.inner).map(|t| t.element_type()).unwrap_or(self.inner)
+    pub fn struct_type(&self) -> StructType<'ctx> {
+        let t = ArrayType::try_from(self.inner).map(|t| t.element_type()).unwrap_or(self.inner);
+        t.try_into().unwrap() // Must be a StructType.
     }
 
     /// Type used to represent template parameters.
@@ -447,7 +451,7 @@ impl<'ctx> SubcmpType<'ctx> {
             (names::COUNT, codegen.index_type()),
             // Holds the output of calling `@compute`. Before the call, this value is undefined
             // and should not be read from.
-            (names::COMP, self.scalar_or_inner()),
+            (names::COMP, self.struct_type().into()),
             // Holds the affine map operands of the subcomponents, if any.
             (names::PARAMS, self.params_pod_type(codegen).into()),
         ]
@@ -589,7 +593,12 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
     /// In this context 'very concrete' means that the struct does not have
     /// parameters represented with affine maps.
     fn is_very_concrete(&self) -> bool {
-        todo!()
+        match &self.layout {
+            SubcmpPrologueLayout::Uniform(subcmp_type) => {
+                subcmp_type.struct_type().params().into_iter().all(|attr| !attr.is_affine_map())
+            }
+            _ => true,
+        }
     }
 
     /// Generates the subcomponents prologue in the compute function.
@@ -613,7 +622,8 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
             self.name(),
             match ArrayType::try_from(memory_type) {
                 Ok(comp_pod) => {
-                    let array = array::new(op_builder, decl.location(), comp_pod, ArrayCtor::Empty);
+                    let array =
+                        codegen.new_array_new_op(decl.location(), comp_pod, ArrayCtor::Empty);
                     if self.is_very_concrete() {
                         todo!("Initialize with a for-loop.");
                     }
