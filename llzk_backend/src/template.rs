@@ -286,6 +286,7 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
 
                                 fc.gen_loop_nest_from_attrs(codegen, codegen.location_unknown(), &ty.dims(), |fc, indices| {
                                     let comp_memory = fc.append_array_read(
+                                        codegen,
                                         mem,
                                         indices,
                                         location,
@@ -374,19 +375,21 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
 
                                 fc.gen_loop_nest_from_attrs(codegen, location, &dims, |fc, indices| {
                                     let subcmp_instance = fc.append_array_read(
-                                            subcmp,
-                                            indices,
-                                            location,
-                                            None
-                                        )?;
+                                        codegen,
+                                        subcmp,
+                                        indices,
+                                        location,
+                                        None
+                                    )?;
                                     let subcmp_inputs = fc.append_array_read(
-                                            inputs,
-                                            indices,
-                                            location,
-                                            None
-                                        )?;
+                                        codegen,
+                                        inputs,
+                                        indices,
+                                        location,
+                                        None
+                                    )?;
                                     fc.gen_constrain_call(
-                                       subcmp_instance,
+                                        subcmp_instance,
                                         subcmp_inputs,
                                         location,
                                         codegen

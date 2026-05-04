@@ -169,7 +169,8 @@ impl<'ast> Lvalue<'ast> {
                 location,
                 info,
             )?;
-            let value = block_gen.as_mut().append_array_read(prev, &indices, location, None)?;
+            let value =
+                block_gen.as_mut().append_array_read(codegen, prev, &indices, location, None)?;
             return cont.cont(value, block_gen);
         };
 

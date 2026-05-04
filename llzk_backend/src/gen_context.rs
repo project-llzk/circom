@@ -58,7 +58,9 @@ use llzk::prelude::PodType;
 use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::StringAttribute;
+use llzk::prelude::StringRef;
 use llzk::prelude::StructType;
+use llzk::prelude::TVarType;
 use llzk::prelude::TemplateSymbolBindingOp;
 use llzk::prelude::TemplateSymbolBindingOpLike;
 use llzk::prelude::Type;
@@ -859,11 +861,32 @@ where
     /// and the [ArrayType] of the `arr_ref` value.
     pub fn append_array_read(
         &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         arr_ref: Value<'ctx, 'val>,
         indices: &[Value<'ctx, 'val>],
         location: Location<'ctx>,
         var_name: Option<&str>,
     ) -> Result<Value<'ctx, 'val>> {
+        // Special case for array read from `tvar` base. Must generate new `poly.param` for each
+        // dimension and for the element type, then create an `array.type` using those. Generate
+        // a unifiable cast to that new type and then `array.read` from that value with all indices.
+        if TVarType::try_from(arr_ref.r#type()).is_ok() {
+            let dims = indices
+                .iter()
+                .map(|_| self.add_new_poly_param(codegen, location, "$d", None).map(Into::into))
+                .collect::<Result<Vec<Attribute>>>()?;
+            let elem_ty_pname = self.add_new_poly_param(codegen, location, "$e", None)?;
+            let arr_elem_ty = TVarType::new(codegen.context, StringRef::new(elem_ty_pname.value()));
+            let arr_ty = ArrayType::new(arr_elem_ty.into(), &dims);
+            let arr_ref = self.unifiable_cast(location, arr_ref, arr_ty.into())?;
+            return self.append_op_unnamed_result(array::read(
+                location,
+                arr_elem_ty.into(),
+                arr_ref,
+                indices,
+            ));
+        }
+        // Normal case
         let arr_ty = ArrayType::try_from(arr_ref.r#type()).with_context(|| {
             let v = var_name.map_or(String::from("array"), |s| format!("'{s}'"));
             format!("Conflicting types to read {v} at {location}")
@@ -2349,6 +2372,20 @@ where
         let op = dims.new_nondet_felt_of_dimensions(codegen, meta)?;
         self.block_ctx.declare_name_ensure_not_present(name, op)
     }
+
+    /// Add a new polynomial parameter via [`DimExprConverter::record_new_sym_binding`] and return
+    /// the uniqued name as a [`StringAttribute`].
+    pub fn add_new_poly_param(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        location: Location<'ctx>,
+        name: &str,
+        type_opt: Option<Type<'ctx>>,
+    ) -> Result<StringAttribute<'ctx>> {
+        poly::param(location, name, type_opt)
+            .map(|op| self.record_new_sym_binding(codegen, op.into()))
+            .map_err(Into::into)
+    }
 }
 
 impl<'ctx, 'blk, 'val> DimExprConverter<'ctx, 'val> for BlockGenContext<'_, 'ctx, 'blk, 'val>
@@ -2602,8 +2639,8 @@ where
                     // but the problem is that it must use the same symbol as the param name itself
                     // and that is not known until after it's inserted into the symbol table to
                     // ensure it has a unique name.
-                    let unique_name = block_gen
-                        .record_new_sym_binding(codegen, poly::param(location, "$t", None)?.into());
+                    let unique_name =
+                        block_gen.add_new_poly_param(codegen, location, "$t", None)?;
                     codegen.tvar_type(unique_name.value())
                 } else {
                     return_type
