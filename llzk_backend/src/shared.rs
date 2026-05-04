@@ -813,13 +813,6 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
         PodType::new(self.context, &records)
     }
 
-    /// Get a pod struct type with the given record values.
-    #[inline]
-    pub fn pod_type_from_values(&self, records: &[(&str, Value<'ctx, '_>)]) -> PodType<'ctx> {
-        let types = records.iter().map(|(name, value)| (*name, value.r#type())).collect::<Vec<_>>();
-        self.pod_type(&types)
-    }
-
     /// Create an index attribute.
     #[inline]
     pub fn index_attr<T>(&self, integer: T) -> IntegerAttribute<'ctx>
