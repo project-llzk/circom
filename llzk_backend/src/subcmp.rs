@@ -5,6 +5,7 @@ use crate::gen_context::BlockGenContext;
 use crate::program_ext::ProgramInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared::map_array_inner_type;
+use crate::shared::wrap_pod_records;
 use crate::shared::LlzkCodegen;
 use crate::shared::TmplParamsInstance;
 use crate::shared::TypeSizeExpr;
@@ -25,6 +26,7 @@ use llzk::prelude::StructType;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
 use melior::ir::AttributeLike;
+use melior::ir::Operation;
 use melior::ir::Value;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -324,6 +326,47 @@ impl<'ctx> MixedSubcmpLayout<'ctx> {
     pub fn entries(&self) -> &[MixedSubcmpEntry<'ctx>] {
         &self.entries
     }
+
+    /// Generates the initialization operation for this mixed subcomponent.
+    fn generate_initialization_op<'val>(
+        &self,
+        empty_params: Value<'ctx, 'val>,
+        block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+    ) -> Result<Operation<'ctx>> {
+        // Generate initialization ops for each entry as normal.
+        // Then combine all of them into one `pod.new` operation passing all the entries.
+        let entries = self
+            .entries
+            .iter()
+            .map(|entry| {
+                let name = entry.record_name();
+                let subcmp_type: SubcmpType = entry.struct_type().try_into()?;
+                let records = subcmp_type.initialize_records(
+                    empty_params,
+                    block_gen,
+                    codegen,
+                    location,
+                    None,
+                )?;
+                let entry_init = block_gen.append_op_unnamed_result(pod::new(
+                    codegen.op_builder(),
+                    location,
+                    &wrap_pod_records(records),
+                    Some(entry.memory_type),
+                ))?;
+
+                Ok((name, entry_init))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        Ok(pod::new(
+            codegen.op_builder(),
+            location,
+            &wrap_pod_records(entries),
+            Some(self.memory_type),
+        ))
+    }
 }
 
 /// Runtime layout for a subcomponent binding.
@@ -529,7 +572,7 @@ impl<'ctx> SubcmpType<'ctx> {
         block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
         codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
         location: Location<'ctx>,
-        tmpl_params_instance: &TmplParamsInstance<'_, 'ctx>,
+        tmpl_params_instance: Option<&TmplParamsInstance<'_, 'ctx>>,
     ) -> Result<Vec<(&'static str, Value<'ctx, 'val>)>> {
         let count = self.input_size(codegen)?;
         // If the count == 0 means that the subcomponent has no inputs. In that
@@ -553,10 +596,19 @@ impl<'ctx> SubcmpType<'ctx> {
         Ok(vec![
             (
                 names::COUNT,
-                count.to_index_value(codegen, block_gen, location, Some(tmpl_params_instance))?,
+                count.to_index_value(codegen, block_gen, location, tmpl_params_instance)?,
             ),
             (names::PARAMS, params_pod),
         ])
+    }
+}
+
+impl<'ctx> TryFrom<StructType<'ctx>> for SubcmpType<'ctx> {
+    type Error = anyhow::Error;
+
+    fn try_from(value: StructType<'ctx>) -> std::result::Result<Self, Self::Error> {
+        let template_name = value.name().leaf().as_str()?.to_owned();
+        Ok(Self { inner: value.into(), template_name })
     }
 }
 
@@ -585,6 +637,24 @@ enum SubcmpPrologueLayout<'ctx> {
     Uniform(SubcmpType<'ctx>),
     /// Mixed concrete binding.
     Mixed(MixedSubcmpLayout<'ctx>),
+}
+
+impl SubcmpPrologueLayout<'_> {
+    /// Returns true if the subcomponent type has a very concrete instance.
+    ///
+    /// In this context 'very concrete' means that the struct does not have
+    /// any parameters.
+    ///
+    /// In `templated` mode this will apply only to subcomponents with template types that do not have any
+    /// parameters. In `concrete` mode this will apply to all subcomponents.
+    fn is_very_concrete(&self) -> bool {
+        match &self {
+            SubcmpPrologueLayout::Uniform(subcmp_type) => {
+                subcmp_type.struct_type().params().is_empty()
+            }
+            _ => true,
+        }
+    }
 }
 
 impl<'ctx> SubcmpPrologueData<'ctx> {
@@ -667,16 +737,59 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
         Ok(())
     }
 
-    /// Returns true if the subcomponent type has a very concrete instance.
-    ///
-    /// In this context 'very concrete' means that the struct does not have
-    /// parameters represented with affine maps.
-    fn is_very_concrete(&self) -> bool {
+    /// Generates the operation that initializes a subcomponent.
+    fn generate_initialization_op<'func, 'blk, 'val>(
+        &self,
+        compute_ctx: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        decl: &SubcmpDeclInfo<'ctx>,
+    ) -> Result<Operation<'ctx>> {
+        let memory_type = self.memory_type(codegen);
+        if let Ok(comp_pod) = ArrayType::try_from(memory_type) {
+            dbg!(comp_pod);
+            let array = codegen.new_array_new_op(decl.location(), comp_pod, ArrayCtor::Empty);
+            if dbg!(self.layout.is_very_concrete()) {
+                todo!("Initialize with a for-loop.");
+            }
+            return Ok(array);
+        }
+        dbg!(memory_type);
+
+        if !dbg!(self.layout.is_very_concrete()) {
+            // If the subcomponent has parameters we defer initialization to
+            // the constructor call.
+            return Ok(nondet(decl.location(), memory_type));
+        }
+
+        let empty_params = compute_ctx.append_op_unnamed_result(pod::new(
+            codegen.op_builder(),
+            decl.location(),
+            &[],
+            Some(codegen.pod_type(&[])),
+        ))?;
+        // Initialize the subcomponent here. In templated mode the subcomponent may get
+        // initialized twice, once here and another in the constructor callsite.
+        // In concrete mode the initialization should happen only here.
         match &self.layout {
             SubcmpPrologueLayout::Uniform(subcmp_type) => {
-                subcmp_type.struct_type().params().into_iter().all(|attr| !attr.is_affine_map())
+                let records = subcmp_type.initialize_records(
+                    empty_params,
+                    compute_ctx,
+                    codegen,
+                    decl.location(),
+                    // We don't need template parameters in this case
+                    None,
+                )?;
+                let pod_type = codegen.pod_type_from_values(&records);
+                Ok(pod::new(
+                    codegen.op_builder(),
+                    decl.location(),
+                    &wrap_pod_records(records),
+                    Some(pod_type),
+                ))
             }
-            _ => true,
+            SubcmpPrologueLayout::Mixed(mixed_subcmp_layout) => mixed_subcmp_layout
+                .generate_initialization_op(empty_params, compute_ctx, codegen, decl.location()),
         }
     }
 
@@ -696,32 +809,8 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
         'val: 'blk,
     {
         let decl = &subcmp_decls[self.name()];
-        let memory_type = self.memory_type(codegen);
-        compute_ctx.block_ctx.declare_name_ensure_not_present(
-            self.name(),
-            match ArrayType::try_from(memory_type) {
-                Ok(comp_pod) => {
-                    let array =
-                        codegen.new_array_new_op(decl.location(), comp_pod, ArrayCtor::Empty);
-                    if self.is_very_concrete() {
-                        todo!("Initialize with a for-loop.");
-                    }
-                    array
-                }
-                Err(_) => {
-                    if self.is_very_concrete() {
-                        // Initialize the subcomponent here. In templated mode the subcomponent may get
-                        // initialized twice, once here and another in the constructor callsite.
-                        // In concrete mode the initialization should happen only here.
-                        todo!()
-                    } else {
-                        // If the subcomponent has affine map parameters we defer initialization to
-                        // the constructor call.
-                        nondet(decl.location(), memory_type)
-                    }
-                }
-            },
-        )?;
+        let initialization_op = self.generate_initialization_op(compute_ctx, codegen, decl)?;
+        compute_ctx.block_ctx.declare_name_ensure_not_present(self.name(), initialization_op)?;
         compute_ctx.block_ctx.declare_name_ensure_not_present(
             self.name_inputs(),
             match self.inputs_as::<ArrayType>() {

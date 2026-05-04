@@ -57,6 +57,7 @@ use llzk::prelude::OperationRef;
 use llzk::prelude::PassManager;
 use llzk::prelude::PodRecordAttribute;
 use llzk::prelude::PodType;
+use llzk::prelude::RecordValue;
 use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::StringAttribute;
@@ -74,6 +75,7 @@ use llzk::prelude::ValueLike;
 use llzk::value_ext::OwningValueRange;
 use llzk::value_ext::ValueRange;
 use melior::utility;
+use melior::StringRef;
 use num_bigint_dig::BigInt;
 use num_bigint_dig::BigUint;
 use num_bigint_dig::ModInverse;
@@ -809,6 +811,13 @@ impl<'ast, 'ctx, P: ProgramLike> LlzkCodegen<'ast, 'ctx, P> {
             .map(|(name, r#type)| PodRecordAttribute::new(name, *r#type))
             .collect::<Vec<_>>();
         PodType::new(self.context, &records)
+    }
+
+    /// Get a pod struct type with the given record values.
+    #[inline]
+    pub fn pod_type_from_values(&self, records: &[(&str, Value<'ctx, '_>)]) -> PodType<'ctx> {
+        let types = records.iter().map(|(name, value)| (*name, value.r#type())).collect::<Vec<_>>();
+        self.pod_type(&types)
     }
 
     /// Create an index attribute.
@@ -2139,4 +2148,11 @@ pub fn get_poly_expr_name<'c: 'a, 'a>(op: &impl OperationLike<'c, 'a>) -> String
     assert!(poly::is_expr_op(op), "expected a poly.expr operation");
     let a = op.attribute("sym_name").expect("`poly.expr` op has `sym_name` attribute per ODS");
     StringAttribute::try_from(a).expect("`sym_name` attribute is StringAttr per ODS")
+}
+
+/// Wraps the given pod record tuples into instances of [`RecordValue`].
+pub fn wrap_pod_records<'str, 'ctx, 'val>(
+    records: impl IntoIterator<Item = (&'str str, Value<'ctx, 'val>)>,
+) -> Vec<RecordValue<'ctx, 'val>> {
+    records.into_iter().map(|(name, value)| RecordValue::new(StringRef::new(name), value)).collect()
 }

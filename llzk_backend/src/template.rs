@@ -20,6 +20,7 @@ use crate::shared::comp_type;
 use crate::shared::dim_expr_name;
 use crate::shared::get_poly_expr_name;
 use crate::shared::map_array_inner_type;
+use crate::shared::wrap_pod_records;
 use crate::shared::ArrayDimension;
 use crate::shared::ArrayDimensionResult;
 use crate::shared::ArrayDimensions;
@@ -1463,7 +1464,7 @@ where
                                 fc,
                                 codegen,
                                 scope.location,
-                                &scope.tmpl_params_instance(codegen),
+                                Some(&scope.tmpl_params_instance(codegen)),
                             )
                         })
                     },
@@ -1599,10 +1600,7 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
             Some(self.subcmp_type.params_pod_type(codegen)),
         ))?;
 
-        let records = cb(fc, params_pod)?
-            .into_iter()
-            .map(|(name, value)| RecordValue::new(StringRef::new(name), value))
-            .collect::<Vec<_>>();
+        let records = wrap_pod_records(cb(fc, params_pod)?);
 
         fc.append_op_unnamed_result(pod::new(
             codegen.op_builder(),
