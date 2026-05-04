@@ -80,7 +80,6 @@ use program_structure::ast::Expression;
 use program_structure::ast::ExpressionInfixOpcode;
 use program_structure::ast::ExpressionPrefixOpcode;
 use program_structure::ast::Meta;
-use program_structure::error_code::ReportCode;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -1248,32 +1247,22 @@ where
         };
         match op {
             ExpressionPrefixOpcode::Sub => {
-                if is_felt_type(rhs.r#type()) {
-                    return self.append_op_unnamed_result(felt::neg(
-                        codegen.location_from_meta(meta),
-                        rhs,
-                    )?);
-                }
                 // For index negation, we need to subtract from zero.
                 if shared::is_index(rhs.r#type()) {
                     return get_negative_idx();
                 }
+                // Otherwise, cast to felt and use felt negation.
+                let loc = codegen.location_from_meta(meta);
+                let rhs_felt = self.cast_to_felt_if_needed(codegen, loc, rhs)?;
+                return self.append_op_unnamed_result(felt::neg(loc, rhs_felt)?);
             }
             ExpressionPrefixOpcode::BoolNot => {
-                if shared::is_bool(rhs.r#type()) {
-                    return self.append_op_unnamed_result(bool::not(
-                        codegen.location_from_meta(meta),
-                        rhs,
-                    )?);
-                }
+                let loc = codegen.location_from_meta(meta);
+                let rhs_bool = self.cast_to_bool_if_needed(codegen, loc, rhs)?;
+                return self.append_op_unnamed_result(bool::not(loc, rhs_bool)?);
             }
             ExpressionPrefixOpcode::Complement => {
-                if is_felt_type(rhs.r#type()) {
-                    return self.append_op_unnamed_result(felt::bit_not(
-                        codegen.location_from_meta(meta),
-                        rhs,
-                    )?);
-                }
+                let loc = codegen.location_from_meta(meta);
                 // For index negation, we need to subtract one from the negative
                 // value (for the identity that `~x == -x - 1`).
                 if shared::is_index(rhs.r#type()) {
@@ -1281,23 +1270,15 @@ where
                     let one = self.append_op_unnamed_result(index::constant(
                         codegen.context,
                         IntegerAttribute::new(rhs.r#type(), 1),
-                        codegen.location_from_meta(meta),
+                        loc,
                     ))?;
-                    return self.append_op_unnamed_result(index::sub(
-                        negative_idx,
-                        one,
-                        codegen.location_from_meta(meta),
-                    ));
+                    return self.append_op_unnamed_result(index::sub(negative_idx, one, loc));
                 }
+                // Otherwise, cast to felt and use felt bitwise NOT.
+                let rhs_felt = self.cast_to_felt_if_needed(codegen, loc, rhs)?;
+                return self.append_op_unnamed_result(felt::bit_not(loc, rhs_felt)?);
             }
         }
-        let err_msg = format!(
-            "Cannot generate LLZK for prefix {:?} with operand type '{}'",
-            self,
-            rhs.r#type()
-        );
-        codegen.emit_circom_error(meta, err_msg.as_str(), ReportCode::PrefixOperatorWithWrongTypes);
-        Err(anyhow!(err_msg))
     }
 
     /// If both operands have types that match the respective filter predicates, generate the
@@ -2220,6 +2201,14 @@ where
         let (loop_carried_var_names, body_yield_values): (Vec<_>, Vec<_>) =
             overwrites_sorted.into_iter().unzip();
 
+        // Pre-compute loop_carried_types from the current block context. This must be done
+        // before appending the yield so we can detect and fix type mismatches (e.g., a body
+        // yield value has type `T_arg0` but the loop-carried type is `T_return`).
+        let loop_carried_types: Vec<_> = loop_carried_var_names
+            .iter()
+            .map(|name| Ok(self.block_ctx.get_named_value(name)?.r#type()))
+            .collect::<Result<_>>()?;
+
         // Append the loop body block with an `scf.yield`
         Self::append_multi_operand_yield_to_block(
             codegen,
@@ -2229,18 +2218,34 @@ where
             location,
         )?;
 
-        // Use `loop_carried_var_names` and the current block context to build a list of types of
-        // the loop-carried variables, add BlockArguments of those types in both blocks, and
-        // replace uses of the overwritten variables in both blocks with references to the new
-        // BlockArguments Values.
-        let mut loop_carried_types = Vec::new();
+        // Fix any type mismatches in the loop body yield: if a yield value's type differs from
+        // the expected loop-carried type but the types are unifiable (e.g., two distinct
+        // `poly.tvar` types), insert a `poly.unifiable_cast` before the yield terminator to
+        // bridge them. This can arise when an early return inside a loop yields the function
+        // parameter value (type `T_arg0`) into a slot whose loop-carried type is `T_return`.
+        {
+            let terminator = loop_body_info.block.terminator().expect("yield was just appended");
+            for (val, expected_ty) in
+                body_yield_values.iter().copied().zip(loop_carried_types.iter().copied())
+            {
+                if val.r#type() != expected_ty && types_unify(val.r#type(), expected_ty) {
+                    let cast_op = loop_body_info.block.insert_operation_before(
+                        terminator,
+                        poly::unifiable_cast(location, val, expected_ty),
+                    );
+                    replace_uses_of_with(&terminator, val, Value::from(cast_op.result(0)?));
+                }
+            }
+        }
+
+        // Add BlockArguments of the loop-carried types in both blocks, and replace uses of the
+        // overwritten variables in both blocks with references to the new BlockArguments Values.
         // Additionally, track if `VAR_NAME_HAD_RETURN` is among the loop-carried variables
         // (indicating there was a return somewhere within the loop body) to later update the
         // loop condition to ensure iteration stops when a return occurs.
         let mut return_flag: Option<Value> = None;
         for name in loop_carried_var_names.iter() {
             let orig_val = self.block_ctx.get_named_value(name).unwrap();
-            loop_carried_types.push(orig_val.r#type());
             replace_uses_with_new_block_argument(loop_body_info.block, orig_val, location);
             let f = replace_uses_with_new_block_argument(loop_cond_info.block, orig_val, location);
             if name == VAR_NAME_HAD_RETURN {
