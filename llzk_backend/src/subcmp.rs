@@ -330,7 +330,7 @@ impl<'ctx> MixedSubcmpLayout<'ctx> {
         &self,
         empty_params: Value<'ctx, 'val>,
         block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Operation<'ctx>> {
         // Generate initialization ops for each entry as normal.
@@ -460,14 +460,14 @@ impl<'ctx> SubcmpType<'ctx> {
     }
 
     /// Type used to represent template parameters.
-    pub fn param_type(&self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Type<'ctx> {
+    pub fn param_type(&self, codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>) -> Type<'ctx> {
         codegen.felt_type().into()
     }
 
     /// Returns the pod type for the template parameters.
     pub fn params_pod_type(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> PodType<'ctx> {
         let param_type = self.param_type(codegen);
         // These need to be in declaration order.
@@ -488,7 +488,7 @@ impl<'ctx> SubcmpType<'ctx> {
     /// for the number of assigned inputs.
     pub fn comp_pod_records(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> [(&'static str, Type<'ctx>); 3] {
         [
             // Counts the number of inputs pending an assignment. When it reaches 0 it's safe
@@ -510,7 +510,7 @@ impl<'ctx> SubcmpType<'ctx> {
     /// been assigned, signaling that is safe to call the compute function if it reached 0. And the
     /// subcomponent itself, as a non-deterministic value before the call to compute and the result
     /// of said function after.
-    pub fn comp_pod(&self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Type<'ctx> {
+    pub fn comp_pod(&self, codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>) -> Type<'ctx> {
         let records = self.comp_pod_records(codegen);
         map_array_inner_type(self.inner, codegen.pod_type(&records).into())
     }
@@ -528,7 +528,7 @@ impl<'ctx> SubcmpType<'ctx> {
     /// Returns the size of the inputs.
     pub fn input_size(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<TypeSizeExpr<'ctx>> {
         let template_name = self.template_name();
         let subcmp_struct_type = self.struct_type();
@@ -568,7 +568,7 @@ impl<'ctx> SubcmpType<'ctx> {
         &self,
         params_pod: Value<'ctx, 'val>,
         block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         tmpl_params_instance: Option<&TmplParamsInstance<'_, 'ctx>>,
     ) -> Result<Vec<(&'static str, Value<'ctx, 'val>)>> {
@@ -650,8 +650,8 @@ impl SubcmpPrologueLayout<'_> {
     /// In this context 'very concrete' means that the struct does not have
     /// any parameters.
     ///
-    /// In `templated` mode this will apply only to subcomponents with template types that do not have any
-    /// parameters. In `concrete` mode this will apply to all subcomponents.
+    /// In `templated` mode this will apply only to subcomponents with template types that do not
+    /// have any parameters. In `concrete` mode this will apply to all subcomponents.
     fn is_very_concrete(&self) -> bool {
         match &self {
             SubcmpPrologueLayout::Uniform(subcmp_type) => {
@@ -697,7 +697,7 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
     /// Returns binding metadata for template lowering.
     pub fn binding(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> SubcmpBinding<'ctx> {
         match &self.layout {
             SubcmpPrologueLayout::Uniform(subcmp) => {
@@ -716,7 +716,7 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
     pub fn generate_constraint_func_prologue(
         &self,
         constrain_ctx: &mut FunctionContext<'_, 'ctx, '_, '_, '_>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         subcmp_decls: &HashMap<String, SubcmpDeclInfo<'ctx>>,
     ) -> Result<()> {
         let decl = &subcmp_decls[self.name()];
@@ -746,7 +746,7 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
     fn generate_initialization_op<'func, 'blk, 'val>(
         &self,
         compute_ctx: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         decl: &SubcmpDeclInfo<'ctx>,
     ) -> Result<Operation<'ctx>>
     where
@@ -797,7 +797,7 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
         subcmp_type: &SubcmpType<'ctx>,
         empty_params: Value<'ctx, 'val>,
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Operation<'ctx>>
     where
@@ -828,7 +828,7 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
     pub fn generate_compute_func_prologue<'func, 'blk, 'val>(
         &self,
         compute_ctx: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         subcmp_decls: &HashMap<String, SubcmpDeclInfo<'ctx>>,
     ) -> Result<()>
     where
@@ -854,12 +854,13 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
         )
     }
 
-    /// Generates a loop nest that initializes a subcomponent if it's an array and the layout is very concrete.
+    /// Generates a loop nest that initializes a subcomponent if it's an array and the layout is
+    /// very concrete.
     fn initialize_subcmp_array<'func, 'blk, 'val>(
         &self,
         comp_memory: Value<'ctx, 'val>,
         compute_ctx: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<()>
     where
@@ -906,7 +907,7 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
     }
 
     /// Returns the compute-time memory type for this binding.
-    fn memory_type(&self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Type<'ctx> {
+    fn memory_type(&self, codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>) -> Type<'ctx> {
         match &self.layout {
             SubcmpPrologueLayout::Uniform(subcmp) => subcmp.comp_pod(codegen),
             SubcmpPrologueLayout::Mixed(layout) => layout.memory_type().into(),

@@ -17,7 +17,7 @@ pub trait ProgramInfo {
     fn find_template(&self, name: &str) -> anyhow::Result<&dyn SignalDeclarations>;
 }
 
-impl<P: ProgramLike> ProgramInfo for LlzkCodegen<'_, '_, P> {
+impl<P: ProgramLike> ProgramInfo for LlzkCodegen<'_, '_, '_, P> {
     fn find_template(&self, name: &str) -> anyhow::Result<&dyn SignalDeclarations> {
         self.program
             .get_templates(false)

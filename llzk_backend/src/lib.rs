@@ -9,6 +9,7 @@
 #![warn(clippy::cast_lossless)]
 #![allow(clippy::useless_conversion)]
 
+mod cleanup_return_tvar;
 mod codegen;
 mod function;
 mod function_ext;

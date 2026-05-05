@@ -17,26 +17,44 @@ template A() {
 component main = A();
 
 // CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A::@A<[]>>} {
-// CHECK-NEXT:    function.def @f() -> !felt.type<"bn128"> attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:      %[[VAL_0:[0-9a-zA-Z_\.]+]] = felt.const  6
-// CHECK-NEXT:      %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0
-// CHECK-NEXT:      %[[VAL_2:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_1]], %[[VAL_1]], %[[VAL_1]], %[[VAL_1]], %[[VAL_1]], %[[VAL_1]] : <6 x !felt.type<"bn128">>
-// CHECK-NEXT:      %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  1
-// CHECK-NEXT:      %[[VAL_4:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_3]] : !felt.type<"bn128">
-// CHECK-NEXT:      %[[VAL_5:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_2]]{{\[}}%[[VAL_4]]] : <6 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:      function.return %[[VAL_5]] : !felt.type<"bn128">
+// CHECK-NEXT:    poly.template @f {
+// CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
+// CHECK-NEXT:      function.def @f() -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = felt.const  6 : <"bn128">
+// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_1]], %[[VAL_1]], %[[VAL_1]], %[[VAL_1]], %[[VAL_1]], %[[VAL_1]] : <6 x !felt.type<"bn128">>
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_3]] : !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_2]]{{\[}}%[[VAL_4]]] : <6 x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_5]] : (!felt.type<"bn128">) -> !poly.tvar<@T_return>
+// CHECK-NEXT:        function.return %[[VAL_6]] : !poly.tvar<@T_return>
+// CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @A {
 // CHECK-NEXT:      struct.def @A {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@A::@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.new : <@A::@A<[]>>
-// CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = function.call @f() : () -> !felt.type<"bn128">
-// CHECK-NEXT:          function.return %[[VAL_6]] : !struct.type<@A::@A<[]>>
+// CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = struct.new : <@A::@A<[]>>
+// CHECK-NEXT:          function.call @synthetic::@synthetic<[none]>() : () -> ()
+// CHECK-NEXT:          function.return %[[VAL_7]] : !struct.type<@A::@A<[]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !struct.type<@A::@A<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = function.call @f() : () -> !felt.type<"bn128">
+// CHECK-NEXT:          function.call @synthetic_0::@synthetic<[none]>() : () -> ()
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
+// CHECK-NEXT:      }
+// CHECK-NEXT:    }
+// CHECK-NEXT:    poly.template @synthetic {
+// CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
+// CHECK-NEXT:      function.def @synthetic() attributes {function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = function.call @f::@f() : () -> !poly.tvar<@T_return>
+// CHECK-NEXT:        function.return
+// CHECK-NEXT:      }
+// CHECK-NEXT:    }
+// CHECK-NEXT:    poly.template @synthetic_0 {
+// CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
+// CHECK-NEXT:      function.def @synthetic() attributes {function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = function.call @f::@f() : () -> !poly.tvar<@T_return>
+// CHECK-NEXT:        function.return
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }
