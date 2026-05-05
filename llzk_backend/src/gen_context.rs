@@ -924,7 +924,8 @@ where
         self.append_op_no_result(bool::assert(location, cond, msg)?.into())
     }
 
-    /// Append a `unifiable_cast` operation to cast `val` to the `expected` type.
+    /// Append a `unifiable_cast` operation to cast `val` to the `expected` type, unless it already
+    /// has that type in which case `val` is just returned.
     #[inline]
     pub fn unifiable_cast(
         &mut self,
@@ -932,10 +933,13 @@ where
         val: Value<'ctx, 'val>,
         expected: Type<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
-        if types_unify(val.r#type(), expected) {
+        let current_type = val.r#type();
+        if current_type == expected {
+            Ok(val)
+        } else if types_unify(current_type, expected) {
             self.append_op_unnamed_result(poly::unifiable_cast(location, val, expected))
         } else {
-            anyhow::bail!("Unsupported cast to '{expected}' from value type '{}'", val.r#type())
+            anyhow::bail!("Unsupported cast to '{expected}' from value type '{}'", current_type)
         }
     }
 
@@ -1547,27 +1551,32 @@ where
         })
     }
 
-    /// Insert a `poly.unifiable_cast` of `value` to `target_ty` immediately before the single
-    /// `scf.yield` terminator of `region`'s first block, and replace the yield's use of `value`
-    /// with the cast result.
+    /// If the type of `value` is not equal to `target_ty`, insert a `poly.unifiable_cast` of
+    /// `value` to `target_ty` immediately before the single `scf.yield` terminator of
+    /// `region`'s first block, and replace the yield's use of `value` with the cast result.
     fn insert_cast_before_yield(
         region: &Region<'ctx>,
         location: Location<'ctx>,
         value: Value<'ctx, 'val>,
         target_ty: Type<'ctx>,
     ) -> Result<()> {
+        let current_type = value.r#type();
         ensure!(
-            types_unify(value.r#type(), target_ty),
+            types_unify(current_type, target_ty),
             "scf.if branch value type '{}' does not unify with expected type '{}'",
-            value.r#type(),
+            current_type,
             target_ty
         );
-        let block = region.first_block().expect("region has a block");
-        ensure!(block.next_in_region().is_none(), "region has more than one block");
-        let terminator = block.terminator().expect("block has a terminator");
-        let new_cast = block
-            .insert_operation_before(terminator, poly::unifiable_cast(location, value, target_ty));
-        replace_uses_of_with(&terminator, value, Value::from(new_cast.result(0)?));
+        if current_type != target_ty {
+            let block = region.first_block().expect("region has a block");
+            ensure!(block.next_in_region().is_none(), "region has more than one block");
+            let terminator = block.terminator().expect("block has a terminator");
+            let new_cast = block.insert_operation_before(
+                terminator,
+                poly::unifiable_cast(location, value, target_ty),
+            );
+            replace_uses_of_with(&terminator, value, Value::from(new_cast.result(0)?));
+        }
         Ok(())
     }
 
