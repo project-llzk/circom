@@ -34,3 +34,5 @@ template Poseidon(nInputs) {
 }
 
 component main = Poseidon(1);
+
+// CHECK-LABEL: module attributes {
