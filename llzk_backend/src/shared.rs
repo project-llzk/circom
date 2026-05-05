@@ -2339,24 +2339,22 @@ pub fn insert_unique_symbol_op<'c: 'a, 'a>(
 #[allow(unused)]
 pub fn print_operation<'c: 'a, 'a>(op: &impl OperationLike<'c, 'a>) {
     // Melior does not currently have a wrapper for `mlirOpPrintingFlagsAssumeVerified()`
-    unsafe extern "C" fn collect(s: mlir_sys::MlirStringRef, user_data: *mut c_void) {
-        let out = &mut *(user_data as *mut String);
+    unsafe extern "C" fn print_chunk(s: mlir_sys::MlirStringRef, _user_data: *mut c_void) {
         let slice = std::slice::from_raw_parts(s.data as *const u8, s.length);
-        out.push_str(std::str::from_utf8_unchecked(slice));
+        print!("{}", std::str::from_utf8_unchecked(slice));
     }
-    let mut buf = String::new();
     unsafe {
         let flags = mlir_sys::mlirOpPrintingFlagsCreate();
         mlir_sys::mlirOpPrintingFlagsAssumeVerified(flags);
         mlir_sys::mlirOperationPrintWithFlags(
             op.to_raw(),
             flags,
-            Some(collect),
-            &mut buf as *mut String as *mut c_void,
+            Some(print_chunk),
+            std::ptr::null_mut(),
         );
         mlir_sys::mlirOpPrintingFlagsDestroy(flags);
     }
-    println!("{buf}");
+    println!();
 }
 
 /// Print all operations in a block using [`print_operation`].
