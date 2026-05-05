@@ -2317,7 +2317,8 @@ pub fn insert_unique_symbol_op<'c: 'a, 'a>(
 
 /// Print a single operation using "assume verified" flag to avoid verification errors on
 /// in-progress IR.
-pub fn print_operation<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) {
+#[allow(unused)]
+pub fn print_operation<'c: 'a, 'a>(op: &impl OperationLike<'c, 'a>) {
     // Melior does not currently have a wrapper for `mlirOpPrintingFlagsAssumeVerified()`
     unsafe extern "C" fn collect(s: mlir_sys::MlirStringRef, user_data: *mut c_void) {
         let out = &mut *(user_data as *mut String);
@@ -2340,19 +2341,21 @@ pub fn print_operation<'c: 'a, 'a>(op: impl OperationLike<'c, 'a>) {
 }
 
 /// Print all operations in a block using [`print_operation`].
-pub fn print_block<'c: 'a, 'a>(block: impl BlockLike<'c, 'a>) {
+#[allow(unused)]
+pub fn print_block<'c: 'a, 'a>(block: &impl BlockLike<'c, 'a>) {
     let mut op = block.first_operation();
     while let Some(o) = op {
-        print_operation(o);
+        print_operation(&o);
         op = o.next_in_block();
     }
 }
 
 /// Print all blocks (and their operations) in a region using [`print_block`].
+#[allow(unused)]
 pub fn print_region<'c: 'a, 'a>(region: &impl RegionLike<'c, 'a>) {
     let mut block = region.first_block();
     while let Some(b) = block {
-        print_block(b);
+        print_block(&b);
         block = b.next_in_region();
     }
 }
