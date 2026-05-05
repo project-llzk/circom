@@ -588,7 +588,7 @@ where
     func_def.set_allow_non_native_field_ops_attr(true);
 
     let template_region_ops = func_like
-        .get_type_param_names()
+        .initial_poly_param_names()
         .iter()
         .map(|name| poly::param(location, name, Some(codegen.tvar_type(name))).map(Into::into))
         .collect::<Vec<_>>();

@@ -49,8 +49,11 @@ pub trait FunctionLike: std::fmt::Debug {
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Type<'ctx>;
 
-    /// Get the names of the polymorphic type parameters used for this function (if any)
-    fn get_type_param_names(&self) -> Vec<String>;
+    /// Get the names of the `poly.param` ops to initially create for this function. In concrete
+    /// mode, this will be empty but in templated mode, there will be one for each parameter and one
+    /// for the return type. More `poly.param` ops may be added during codegen as needed, but these
+    /// are the initial ones that will be created before codegen starts on the function body.
+    fn initial_poly_param_names(&self) -> Vec<String>;
 
     /// Get the body statements of the function.
     fn get_body(&self) -> &[Statement];
@@ -88,7 +91,7 @@ impl FunctionLike for FunctionData {
         codegen.tvar_type(function_return_type_param())
     }
 
-    fn get_type_param_names(&self) -> Vec<String> {
+    fn initial_poly_param_names(&self) -> Vec<String> {
         (0..self.get_num_of_params())
             .map(function_input_type_param)
             .chain(std::iter::once(function_return_type_param().to_string()))
@@ -138,7 +141,7 @@ impl FunctionLike for VCF {
             .expect("In function return type")
     }
 
-    fn get_type_param_names(&self) -> Vec<String> {
+    fn initial_poly_param_names(&self) -> Vec<String> {
         Vec::new()
     }
 
