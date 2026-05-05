@@ -884,7 +884,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         FlatSymbolRefAttribute::new(self.context, sym.as_ref())
     }
 
-    /// Creates a [`SymbolRefAttribute`] from the given string as "@str::str"
+    /// Creates a [`SymbolRefAttribute`] from the given string as "@str::@str"
     #[inline]
     pub fn double_ref_sym(&self, sym: impl AsRef<str>) -> SymbolRefAttribute<'ctx> {
         double_ref_sym(self.context, sym)
@@ -1172,7 +1172,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     }
 }
 
-/// Creates a [`SymbolRefAttribute`] from the given string as "@str::str"
+/// Creates a [`SymbolRefAttribute`] from the given string as "@str::@str"
 #[inline]
 pub fn double_ref_sym<'c>(ctx: &'c LlzkContext, sym: impl AsRef<str>) -> SymbolRefAttribute<'c> {
     let sym = sym.as_ref();
@@ -2401,7 +2401,7 @@ pub(crate) fn build_func_call_with_template_params<'c>(
     use melior::ir::operation::OperationBuilder;
     use melior::ir::Identifier;
 
-    let ctx = &**context;
+    let ctx = context.deref();
     let arg_count = i32::try_from(args.len()).expect("arg count too large");
     let mut attrs = vec![
         (Identifier::new(ctx, "callee"), callee.into()),

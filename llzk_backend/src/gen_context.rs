@@ -69,6 +69,7 @@ use llzk::prelude::ValueLike as _;
 use llzk::prelude::FUNC_NAME_COMPUTE;
 use llzk::prelude::FUNC_NAME_CONSTRAIN;
 use llzk::typing::types_unify;
+use llzk::utils::IsA as _;
 use llzk::value_ext::OwningValueRange;
 use llzk::value_ext::ValueRange;
 use melior::dialect::ods::math;
@@ -719,24 +720,19 @@ where
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Self> {
-        {
-            let map = self.poly_template_binding_names.borrow();
-            let mut sorted: Vec<_> = map.iter().collect();
-            if codegen.config.stabilize {
-                sorted.sort_by(|(a, _), (b, _)| a.cmp(b));
-            }
-            for (name, ty) in sorted {
-                // If there is no type restriction use `felt` since it's circom's basic type.
-                self.block_ctx.declare_name_ensure_not_present(
-                    name,
-                    poly::read_const(
-                        location,
-                        name,
-                        ty.unwrap_or_else(|| codegen.felt_type().into()),
-                    ),
-                )?;
-            }
-        } // this block limits borrow of `self.poly_template_binding_names`
+        let map = self.poly_template_binding_names.borrow();
+        let mut sorted: Vec<_> = map.iter().collect();
+        if codegen.config.stabilize {
+            sorted.sort_by(|(a, _), (b, _)| a.cmp(b));
+        }
+        for (name, ty) in sorted {
+            // If there is no type restriction use `felt` since it's circom's basic type.
+            self.block_ctx.declare_name_ensure_not_present(
+                name,
+                poly::read_const(location, name, ty.unwrap_or_else(|| codegen.felt_type().into())),
+            )?;
+        }
+        drop(map); // drop the borrow before moving out of `self` for the return
         Ok(self)
     }
 
@@ -870,7 +866,7 @@ where
         // Special case for array read from `tvar` base. Must generate new `poly.param` for each
         // dimension and for the element type, then create an `array.type` using those. Generate
         // a unifiable cast to that new type and then `array.read` from that value with all indices.
-        if TVarType::try_from(arr_ref.r#type()).is_ok() {
+        if arr_ref.r#type().isa::<TVarType>() {
             let dims = indices
                 .iter()
                 .map(|_| {
@@ -1276,6 +1272,7 @@ where
             ))?;
             self.append_op_unnamed_result(index::sub(zero, rhs, codegen.location_from_meta(meta)))
         };
+        let loc = codegen.location_from_meta(meta);
         match op {
             ExpressionPrefixOpcode::Sub => {
                 // For index negation, we need to subtract from zero.
@@ -1283,17 +1280,14 @@ where
                     return get_negative_idx();
                 }
                 // Otherwise, cast to felt and use felt negation.
-                let loc = codegen.location_from_meta(meta);
                 let rhs_felt = self.cast_to_felt_if_needed(codegen, loc, rhs)?;
                 return self.append_op_unnamed_result(felt::neg(loc, rhs_felt)?);
             }
             ExpressionPrefixOpcode::BoolNot => {
-                let loc = codegen.location_from_meta(meta);
                 let rhs_bool = self.cast_to_bool_if_needed(codegen, loc, rhs)?;
                 return self.append_op_unnamed_result(bool::not(loc, rhs_bool)?);
             }
             ExpressionPrefixOpcode::Complement => {
-                let loc = codegen.location_from_meta(meta);
                 // For index negation, we need to subtract one from the negative
                 // value (for the identity that `~x == -x - 1`).
                 if shared::is_index(rhs.r#type()) {
@@ -2386,8 +2380,8 @@ where
         self.block_ctx.declare_name_ensure_not_present(name, op)
     }
 
-    /// Add a new polynomial parameter via [`DimExprConverter::record_new_sym_binding`] and return
-    /// the uniqued name as a [`StringAttribute`].
+    /// Add a new polymorphic parameter via [`DimExprConverter::record_new_sym_binding`] and
+    /// return the uniqued name as a [`StringAttribute`].
     pub fn add_new_poly_param(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
