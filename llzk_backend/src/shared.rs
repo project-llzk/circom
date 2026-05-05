@@ -79,7 +79,6 @@ use llzk::symbol_table;
 use llzk::value_ext::OwningValueRange;
 use llzk::value_ext::ValueRange;
 use melior::utility;
-use melior::StringRef;
 use num_bigint_dig::BigInt;
 use num_bigint_dig::BigUint;
 use num_bigint_dig::ModInverse;

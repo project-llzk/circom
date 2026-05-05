@@ -330,7 +330,7 @@ impl<'ctx> MixedSubcmpLayout<'ctx> {
         &self,
         empty_params: Value<'ctx, 'val>,
         block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Operation<'ctx>> {
         // Generate initialization ops for each entry as normal.
@@ -528,7 +528,7 @@ impl<'ctx> SubcmpType<'ctx> {
     /// Returns the size of the inputs.
     pub fn input_size(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<TypeSizeExpr<'ctx>> {
         let template_name = self.template_name();
         let subcmp_struct_type = self.struct_type();
@@ -568,7 +568,7 @@ impl<'ctx> SubcmpType<'ctx> {
         &self,
         params_pod: Value<'ctx, 'val>,
         block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         tmpl_params_instance: Option<&TmplParamsInstance<'_, 'ctx>>,
     ) -> Result<Vec<(&'static str, Value<'ctx, 'val>)>> {
@@ -650,8 +650,8 @@ impl SubcmpPrologueLayout<'_> {
     /// In this context 'very concrete' means that the struct does not have
     /// any parameters.
     ///
-    /// In `templated` mode this will apply only to subcomponents with template types that do not have any
-    /// parameters. In `concrete` mode this will apply to all subcomponents.
+    /// In `templated` mode this will apply only to subcomponents with template types that do not
+    /// have any parameters. In `concrete` mode this will apply to all subcomponents.
     fn is_very_concrete(&self) -> bool {
         match &self {
             SubcmpPrologueLayout::Uniform(subcmp_type) => {
@@ -746,7 +746,7 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
     fn generate_initialization_op<'func, 'blk, 'val>(
         &self,
         compute_ctx: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         decl: &SubcmpDeclInfo<'ctx>,
     ) -> Result<Operation<'ctx>>
     where
@@ -797,7 +797,7 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
         subcmp_type: &SubcmpType<'ctx>,
         empty_params: Value<'ctx, 'val>,
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Operation<'ctx>>
     where
@@ -854,12 +854,13 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
         )
     }
 
-    /// Generates a loop nest that initializes a subcomponent if it's an array and the layout is very concrete.
+    /// Generates a loop nest that initializes a subcomponent if it's an array and the layout is
+    /// very concrete.
     fn initialize_subcmp_array<'func, 'blk, 'val>(
         &self,
         comp_memory: Value<'ctx, 'val>,
         compute_ctx: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<()>
     where
