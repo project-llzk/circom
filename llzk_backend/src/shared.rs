@@ -1494,6 +1494,20 @@ pub fn parent_operation_mut<'c: 'a, 'a>(
     }
 }
 
+/// Returns a reference to a parent operation.
+///
+/// This function provides an API fix that is added in a newer release of melior via
+/// [mlir-sys/melior#790](https://github.com/mlir-rs/melior/pull/790).
+pub fn parent_operation<'c: 'a, 'a>(
+    op: &impl OperationLike<'c, 'a>,
+) -> Option<melior::ir::operation::OperationRef<'c, 'a>> {
+    unsafe {
+        melior::ir::operation::OperationRef::from_option_raw(
+            mlir_sys::mlirOperationGetParentOperation(op.to_raw()),
+        )
+    }
+}
+
 /// Returns a mutable reference to the next operation in the same block.
 ///
 /// This function provides an API fix that is added in a newer release of melior via

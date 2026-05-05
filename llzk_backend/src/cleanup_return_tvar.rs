@@ -68,12 +68,12 @@ fn infer_type_from_unifiable_cast_uses<'ctx: 'a, 'a>(
 fn parent_template<'ctx: 'a, 'a>(
     op: &'a OperationRef<'ctx, 'a>,
 ) -> Result<TemplateOpRef<'ctx, 'a>> {
-    let mut parent_opt = op.parent_operation();
+    let mut parent_opt = shared::parent_operation(op);
     while let Some(parent) = parent_opt {
         if let Ok(r) = TemplateOpRef::try_from(parent) {
             return Ok(r);
         }
-        parent_opt = unsafe { parent.to_ref() }.parent_operation();
+        parent_opt = shared::parent_operation(&parent);
     }
     bail!("function.call with type-variable result is not inside a poly.template")
 }
