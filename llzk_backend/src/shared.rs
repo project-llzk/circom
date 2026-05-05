@@ -1170,6 +1170,12 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     ) -> Result<impl Iterator<Item = &'ctx str>> {
         Ok(StringAttribute::try_from(attr)?.value().split(','))
     }
+
+    /// Get the attribute used to represent a wildcard type in the template parameter
+    /// list of a `function.call` op.
+    pub fn type_wildcard_attr(&self) -> Attribute<'ctx> {
+        self.index_attr(unsafe { mlir_sys::mlirShapedTypeGetDynamicStrideOrOffset() }).into()
+    }
 }
 
 /// Creates a [`SymbolRefAttribute`] from the given string as "@str::@str"
