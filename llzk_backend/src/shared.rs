@@ -1,5 +1,6 @@
 //! Shared code generation utilities.
 
+use crate::affine_map::AffineMapAttribute;
 use crate::function::InfoProviders;
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::BlockGenContext;
@@ -1796,14 +1797,36 @@ where
             'val: 'blk,
         {
             match stmt {
-                Statement::Block { stmts, .. } => {
+                Statement::Block { meta, stmts, .. } => {
+                    if codegen.config.verbose {
+                        println!("[Block] Pushing scope @ {}", codegen.location_from_meta(meta));
+                    }
+                    let top = *gen_ctx.block_ctx.top_block();
+                    gen_ctx.block_ctx.push(top);
                     for s in stmts {
                         gen_stmt_fully(s, codegen, gen_ctx)?;
                     }
+                    let overwrites = gen_ctx.block_ctx.pop();
+                    gen_ctx.block_ctx.set_named_values(overwrites)?;
+                    if codegen.config.verbose {
+                        println!("[Block] Popping scope @ {}", codegen.location_from_meta(meta));
+                    }
                 }
-                Statement::InitializationBlock { initializations, .. } => {
+                Statement::InitializationBlock { meta, initializations, .. } => {
+                    if codegen.config.verbose {
+                        println!(
+                            "[InitializationBlock] Pushing block @ {}",
+                            codegen.location_from_meta(meta)
+                        );
+                    }
                     for s in initializations {
                         gen_stmt_fully(s, codegen, gen_ctx)?;
+                    }
+                    if codegen.config.verbose {
+                        println!(
+                            "[InitializationBlock] Popping block @ {}",
+                            codegen.location_from_meta(meta)
+                        );
                     }
                 }
                 Statement::Declaration { meta, xtype, name, dimensions, .. } => {
@@ -1815,6 +1838,12 @@ where
                         if let Some(ty) = gen_ctx.var_decl_types.get(&qualified_key) {
                             let op = codegen
                                 .new_nondet_at_location(codegen.location_from_meta(meta), *ty)?;
+                            if codegen.config.verbose {
+                                println!(
+                                    "Declaring '{name}' @ {}",
+                                    codegen.location_from_meta(meta)
+                                );
+                            }
                             gen_ctx.block_ctx.declare_name_ensure_not_present(name, op)?;
                         } else {
                             gen_ctx.gen_declaration(codegen, meta, name, dimensions)?;
@@ -1855,10 +1884,41 @@ where
                         codegen, location, cond_bool, then_info, else_info,
                     )?;
                 }
-                Statement::While { .. } => {
-                    todo!(
-                        "[gen_stmt_fully] poly.expr depending on a while loop is not yet supported"
-                    );
+
+                Statement::While { meta, cond, stmt } => {
+                    if codegen.config.verbose {
+                        println!(
+                            "[While] Pushing cond scope @ {}",
+                            codegen.location_from_meta(meta)
+                        );
+                    }
+                    let location = codegen.location_from_meta(meta);
+                    let (cond_info, cond_bool) = NestedBlockInfo::with_scope(gen_ctx, |gen_ctx| {
+                        let cond_val =
+                            cond.gen_llzk_in_block(codegen, gen_ctx, Default::default())?;
+                        gen_ctx.cast_to_bool_if_needed(codegen, location, cond_val)
+                    })?;
+                    if codegen.config.verbose {
+                        println!(
+                            "[While] Popping cond scope @ {}",
+                            codegen.location_from_meta(meta)
+                        );
+                        println!(
+                            "[While] Pushing body scope @ {}",
+                            codegen.location_from_meta(meta)
+                        );
+                    }
+                    let (body_info, _) = NestedBlockInfo::with_scope(gen_ctx, |gen_ctx| {
+                        gen_stmt_fully(stmt, codegen, gen_ctx)
+                    })?;
+                    if codegen.config.verbose {
+                        println!(
+                            "[While] Popping body scope @ {}",
+                            codegen.location_from_meta(meta)
+                        );
+                    }
+                    gen_ctx
+                        .gen_scf_while(codegen, location, cond_bool, cond_info, body_info, None)?;
                 }
                 Statement::Assert { meta, arg } => {
                     let val = arg.gen_llzk_in_block(codegen, gen_ctx, Default::default())?;
@@ -1892,7 +1952,7 @@ where
             cond: &Expression,
             if_case: &Statement,
             else_case: &Option<Box<Statement>>,
-        ) -> Result<Value<'ctx, 'val>>
+        ) -> Result<Option<Value<'ctx, 'val>>>
         where
             'ctx: 'blk,
             'blk: 'val,
@@ -1932,6 +1992,10 @@ where
                     trace,
                 )
             })?;
+            if containing_arm_info.1.is_none() {
+                return Ok(None);
+            }
+            let containing_arm_info = (containing_arm_info.0, containing_arm_info.1.unwrap());
             let result_type = containing_arm_info.1.r#type();
             let other_arm_info = gen_ctx.gen_scf_if_arm_no_var_overwrites(location, |gc| {
                 gc.append_op_unnamed_result(codegen.new_nondet_at_location(location, result_type)?)
@@ -1943,14 +2007,16 @@ where
             } else {
                 (other_arm_info, containing_arm_info)
             };
-            gen_ctx.gen_safe_scf_if(
-                codegen,
-                location,
-                cond_bool,
-                then_arm_info,
-                else_arm_info,
-                Some(result_type),
-            )
+            gen_ctx
+                .gen_safe_scf_if(
+                    codegen,
+                    location,
+                    cond_bool,
+                    then_arm_info,
+                    else_arm_info,
+                    Some(result_type),
+                )
+                .map(Some)
         }
 
         /// Generate LLZK for all of `stmts` up to the first [Statement] in the `trace` (i.e. the
@@ -1963,7 +2029,7 @@ where
             target_expr: &Expression,
             stmts: &[Statement],
             trace: &[*const Statement],
-        ) -> Result<Value<'ctx, 'val>>
+        ) -> Result<Option<Value<'ctx, 'val>>>
         where
             'ctx: 'blk,
             'blk: 'val,
@@ -2006,14 +2072,15 @@ where
                         else_case,
                     )
                 }
-                Statement::While { .. } => {
-                    todo!("[gen_up_to_target] poly.expr depending on a while loop is not yet supported");
-                }
+                // Return `Ok(None)` for now to indicate that we cannot obtain enough information.
+                // In the future we can add analyses that try to be more smart about the situation
+                // inside the loop.
+                Statement::While { .. } => Ok(None),
                 _ => {
                     assert!(inner_trace.is_empty(), "trace should end at a leaf statement");
                     // Leaf: this boundary statement directly contains `target_expr` in its
                     // dimensions. Generate the target expression in the current block context.
-                    target_expr.gen_llzk_in_block(codegen, gen_ctx, Default::default())
+                    target_expr.gen_llzk_in_block(codegen, gen_ctx, Default::default()).map(Some)
                 }
             }
         }
@@ -2034,8 +2101,17 @@ where
         let body_opt = codegen.current_body();
         assert!(body_opt.is_some(), "should have been set at top level");
         let trace = codegen.snapshot_statement_trace();
-        let val =
-            gen_up_to_target(codegen, &mut expr_gen_ctx, target_expr, body_opt.unwrap(), &trace)?;
+        let Some(val) =
+            gen_up_to_target(codegen, &mut expr_gen_ctx, target_expr, body_opt.unwrap(), &trace)?
+        else {
+            // If `gen_up_to_target` return `None` that means that we don't have enough
+            // information for creating the poly expression, so we give up here by returning an
+            // identity affine map.
+            return ArrayDimensionResult::new(
+                AffineMapAttribute::identity(codegen.context, 1).into(),
+                &[],
+            );
+        };
         expr_gen_ctx.append_op_no_result(poly::r#yield(location, val)?.into())?;
 
         // Run cleanup passes to simplify and normalize the generated code a bit:

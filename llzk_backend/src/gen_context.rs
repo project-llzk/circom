@@ -82,6 +82,7 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::iter::zip;
+use std::iter::FromIterator as _;
 
 /// Special variable name used to reference the return Value throughout the
 /// conversion of circom return locations to LLZK return locations.
@@ -121,6 +122,25 @@ impl<'ctx, 'val> ScfYieldable<'ctx, 'val> for () {
     type YieldValues = [Value<'ctx, 'val>; 0];
     fn to_yield_values(self) -> [Value<'ctx, 'val>; 0] {
         []
+    }
+}
+
+/// An option-like type that can be used as the `YieldValues` type of [`ScfYieldable`].
+#[derive(Default, Debug)]
+pub struct MaybeYield<'ctx, 'val>(Vec<Value<'ctx, 'val>>);
+
+impl<'ctx, 'val> AsRef<[Value<'ctx, 'val>]> for MaybeYield<'ctx, 'val> {
+    fn as_ref(&self) -> &[Value<'ctx, 'val>] {
+        self.0.as_ref()
+    }
+}
+
+impl<'ctx, 'val, T: ScfYieldable<'ctx, 'val>> ScfYieldable<'ctx, 'val> for Option<T> {
+    type YieldValues = MaybeYield<'ctx, 'val>;
+
+    fn to_yield_values(self) -> Self::YieldValues {
+        self.map(|t| MaybeYield(Vec::from_iter(t.to_yield_values().as_ref().iter().copied())))
+            .unwrap_or_default()
     }
 }
 
