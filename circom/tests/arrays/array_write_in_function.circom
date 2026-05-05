@@ -63,15 +63,13 @@ component main = Caller();
 // CHECK-NEXT:        function.def @compute(%[[VAL_28:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@Caller::@Caller<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = struct.new : <@Caller::@Caller<[]>>
 // CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = function.call @compute::@compute(%[[VAL_28]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_30]] : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          struct.writem %[[VAL_29]][@out] = %[[VAL_31]] : <@Caller::@Caller<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          struct.writem %[[VAL_29]][@out] = %[[VAL_30]] : <@Caller::@Caller<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_29]] : !struct.type<@Caller::@Caller<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_32:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller::@Caller<[]>>, %[[VAL_33:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_32]][@out] : <@Caller::@Caller<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_35:[0-9a-zA-Z_\.]+]] = function.call @compute::@compute(%[[VAL_33]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_35]] : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          constrain.eq %[[VAL_34]], %[[VAL_36]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:        function.def @constrain(%[[VAL_31:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller::@Caller<[]>>, %[[VAL_32:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_31]][@out] : <@Caller::@Caller<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = function.call @compute::@compute(%[[VAL_32]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
+// CHECK-NEXT:          constrain.eq %[[VAL_33]], %[[VAL_34]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

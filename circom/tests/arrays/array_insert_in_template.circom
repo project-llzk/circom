@@ -46,21 +46,19 @@ component main = Main();
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
 // CHECK-NEXT:          array.insert %[[VAL_10]]{{\[}}%[[VAL_13]]] = %[[VAL_9]] : <3,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = function.call @default_init::@default_init() : () -> !array.type<3,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_14]] : (!array.type<3,2 x !felt.type<"bn128">>) -> !array.type<3,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_7]] : !struct.type<@Main::@Main<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@Main::@Main<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_17]], %[[VAL_17]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = array.new  : <3,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:          array.insert %[[VAL_19]]{{\[}}%[[VAL_20]]] = %[[VAL_18]] : <3,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:          array.insert %[[VAL_19]]{{\[}}%[[VAL_21]]] = %[[VAL_18]] : <3,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CHECK-NEXT:          array.insert %[[VAL_19]]{{\[}}%[[VAL_22]]] = %[[VAL_18]] : <3,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = function.call @default_init::@default_init() : () -> !array.type<3,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_23]] : (!array.type<3,2 x !felt.type<"bn128">>) -> !array.type<3,2 x !felt.type<"bn128">>
+// CHECK-NEXT:        function.def @constrain(%[[VAL_15:[0-9a-zA-Z_\.]+]]: !struct.type<@Main::@Main<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_16]], %[[VAL_16]] : <2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = array.new  : <3,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
+// CHECK-NEXT:          array.insert %[[VAL_18]]{{\[}}%[[VAL_19]]] = %[[VAL_17]] : <3,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
+// CHECK-NEXT:          array.insert %[[VAL_18]]{{\[}}%[[VAL_20]]] = %[[VAL_17]] : <3,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
+// CHECK-NEXT:          array.insert %[[VAL_18]]{{\[}}%[[VAL_21]]] = %[[VAL_17]] : <3,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = function.call @default_init::@default_init() : () -> !array.type<3,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

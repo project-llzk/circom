@@ -65,12 +65,11 @@ component main = CallArgTest();
 // CHECK-NEXT:        function.def @compute(%[[VAL_18:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_19:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type<"bn128">>, %[[VAL_20:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type<"bn128">>, %[[VAL_21:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type<"bn128">>) -> !struct.type<@CallArgTest::@CallArgTest<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = struct.new : <@CallArgTest::@CallArgTest<[]>>
 // CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = function.call @sum::@sum(%[[VAL_18]], %[[VAL_19]], %[[VAL_20]], %[[VAL_21]]) : (!felt.type<"bn128">, !array.type<2,3 x !felt.type<"bn128">>, !array.type<2,3 x !felt.type<"bn128">>, !array.type<2,3 x !felt.type<"bn128">>) -> !array.type<2,3 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_23]] : (!array.type<2,3 x !felt.type<"bn128">>) -> !array.type<2,3 x !felt.type<"bn128">>
-// CHECK-NEXT:          struct.writem %[[VAL_22]][@z] = %[[VAL_24]] : <@CallArgTest::@CallArgTest<[]>>, !array.type<2,3 x !felt.type<"bn128">>
+// CHECK-NEXT:          struct.writem %[[VAL_22]][@z] = %[[VAL_23]] : <@CallArgTest::@CallArgTest<[]>>, !array.type<2,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_22]] : !struct.type<@CallArgTest::@CallArgTest<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_25:[0-9a-zA-Z_\.]+]]: !struct.type<@CallArgTest::@CallArgTest<[]>>, %[[VAL_26:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_27:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type<"bn128">>, %[[VAL_28:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type<"bn128">>, %[[VAL_29:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_25]][@z] : <@CallArgTest::@CallArgTest<[]>>, !array.type<2,3 x !felt.type<"bn128">>
+// CHECK-NEXT:        function.def @constrain(%[[VAL_24:[0-9a-zA-Z_\.]+]]: !struct.type<@CallArgTest::@CallArgTest<[]>>, %[[VAL_25:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_26:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type<"bn128">>, %[[VAL_27:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type<"bn128">>, %[[VAL_28:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_24]][@z] : <@CallArgTest::@CallArgTest<[]>>, !array.type<2,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

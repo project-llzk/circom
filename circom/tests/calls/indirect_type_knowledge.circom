@@ -76,24 +76,22 @@ component main = T();
 // CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_23]][@comp] : <[@count: index, @comp: !struct.type<@Producer::@Producer<[]>>, @params: !pod.type<[]>]>, !struct.type<@Producer::@Producer<[]>>
 // CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_24]][@out] : <@Producer::@Producer<[]>>, !array.type<4,4 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = function.call @ignore::@ignore(%[[VAL_25]]) : (!array.type<4,4 x !felt.type<"bn128">>) -> !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_26]] : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          struct.writem %[[VAL_18]][@y] = %[[VAL_27]] : <@T::@T<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          struct.writem %[[VAL_18]][@y] = %[[VAL_26]] : <@T::@T<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          struct.writem %[[VAL_18]][@p$inputs] = %[[VAL_19]] : <@T::@T<[]>>, !pod.type<[]>
-// CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_23]][@comp] : <[@count: index, @comp: !struct.type<@Producer::@Producer<[]>>, @params: !pod.type<[]>]>, !struct.type<@Producer::@Producer<[]>>
-// CHECK-NEXT:          struct.writem %[[VAL_18]][@p] = %[[VAL_28]] : <@T::@T<[]>>, !struct.type<@Producer::@Producer<[]>>
+// CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_23]][@comp] : <[@count: index, @comp: !struct.type<@Producer::@Producer<[]>>, @params: !pod.type<[]>]>, !struct.type<@Producer::@Producer<[]>>
+// CHECK-NEXT:          struct.writem %[[VAL_18]][@p] = %[[VAL_27]] : <@T::@T<[]>>, !struct.type<@Producer::@Producer<[]>>
 // CHECK-NEXT:          function.return %[[VAL_18]] : !struct.type<@T::@T<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_29:[0-9a-zA-Z_\.]+]]: !struct.type<@T::@T<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_29]][@y] : <@T::@T<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_29]][@p] : <@T::@T<[]>>, !struct.type<@Producer::@Producer<[]>>
-// CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_29]][@p$inputs] : <@T::@T<[]>>, !pod.type<[]>
-// CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Producer::@Producer<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:          %[[VAL_35:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_31]][@out] : <@Producer::@Producer<[]>>, !array.type<4,4 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = function.call @ignore::@ignore(%[[VAL_35]]) : (!array.type<4,4 x !felt.type<"bn128">>) -> !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_37:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_36]] : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          constrain.eq %[[VAL_30]], %[[VAL_37]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          function.call @Producer::@Producer::@constrain(%[[VAL_31]]) : (!struct.type<@Producer::@Producer<[]>>) -> ()
+// CHECK-NEXT:        function.def @constrain(%[[VAL_28:[0-9a-zA-Z_\.]+]]: !struct.type<@T::@T<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_28]][@y] : <@T::@T<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_28]][@p] : <@T::@T<[]>>, !struct.type<@Producer::@Producer<[]>>
+// CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_28]][@p$inputs] : <@T::@T<[]>>, !pod.type<[]>
+// CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
+// CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Producer::@Producer<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_30]][@out] : <@Producer::@Producer<[]>>, !array.type<4,4 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_35:[0-9a-zA-Z_\.]+]] = function.call @ignore::@ignore(%[[VAL_34]]) : (!array.type<4,4 x !felt.type<"bn128">>) -> !felt.type<"bn128">
+// CHECK-NEXT:          constrain.eq %[[VAL_29]], %[[VAL_35]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:          function.call @Producer::@Producer::@constrain(%[[VAL_30]]) : (!struct.type<@Producer::@Producer<[]>>) -> ()
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

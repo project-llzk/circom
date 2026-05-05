@@ -37,16 +37,14 @@ component main = ArrayCopyTemplate();
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_8]], %[[VAL_8]], %[[VAL_8]] : <3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = function.call @copy::@copy(%[[VAL_7]]) : (!array.type<3 x !felt.type<"bn128">>) -> !array.type<3 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_10]] : (!array.type<3 x !felt.type<"bn128">>) -> !array.type<3 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_5]] : !struct.type<@ArrayCopyTemplate::@ArrayCopyTemplate<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_12:[0-9a-zA-Z_\.]+]]: !struct.type<@ArrayCopyTemplate::@ArrayCopyTemplate<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_13]], %[[VAL_13]], %[[VAL_13]] : <3 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_15]], %[[VAL_15]], %[[VAL_15]] : <3 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = function.call @copy::@copy(%[[VAL_14]]) : (!array.type<3 x !felt.type<"bn128">>) -> !array.type<3 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_17]] : (!array.type<3 x !felt.type<"bn128">>) -> !array.type<3 x !felt.type<"bn128">>
+// CHECK-NEXT:        function.def @constrain(%[[VAL_11:[0-9a-zA-Z_\.]+]]: !struct.type<@ArrayCopyTemplate::@ArrayCopyTemplate<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_12]], %[[VAL_12]], %[[VAL_12]] : <3 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_14]], %[[VAL_14]], %[[VAL_14]] : <3 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = function.call @copy::@copy(%[[VAL_13]]) : (!array.type<3 x !felt.type<"bn128">>) -> !array.type<3 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

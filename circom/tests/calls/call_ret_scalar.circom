@@ -34,12 +34,11 @@ component main = CallRetTest();
 // CHECK-NEXT:        function.def @compute(%[[VAL_3:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@CallRetTest::@CallRetTest<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = struct.new : <@CallRetTest::@CallRetTest<[]>>
 // CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = function.call @sum::@sum(%[[VAL_3]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_5]] : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          struct.writem %[[VAL_4]][@y] = %[[VAL_6]] : <@CallRetTest::@CallRetTest<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          struct.writem %[[VAL_4]][@y] = %[[VAL_5]] : <@CallRetTest::@CallRetTest<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_4]] : !struct.type<@CallRetTest::@CallRetTest<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_7:[0-9a-zA-Z_\.]+]]: !struct.type<@CallRetTest::@CallRetTest<[]>>, %[[VAL_8:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_7]][@y] : <@CallRetTest::@CallRetTest<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:        function.def @constrain(%[[VAL_6:[0-9a-zA-Z_\.]+]]: !struct.type<@CallRetTest::@CallRetTest<[]>>, %[[VAL_7:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_6]][@y] : <@CallRetTest::@CallRetTest<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

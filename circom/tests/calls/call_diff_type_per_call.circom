@@ -46,24 +46,20 @@ component main = CallDiffTypeTest();
 // CHECK-NEXT:        function.def @compute(%[[VAL_6:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_7:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.new : <@CallDiffTypeTest::@CallDiffTypeTest<[]>>
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = function.call @f::@f(%[[VAL_6]], %[[VAL_7]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_9]] : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          struct.writem %[[VAL_8]][@out1] = %[[VAL_10]] : <@CallDiffTypeTest::@CallDiffTypeTest<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = function.call @f::@f(%[[VAL_11]], %[[VAL_7]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_12]] : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          struct.writem %[[VAL_8]][@out2] = %[[VAL_13]] : <@CallDiffTypeTest::@CallDiffTypeTest<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          struct.writem %[[VAL_8]][@out1] = %[[VAL_9]] : <@CallDiffTypeTest::@CallDiffTypeTest<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = function.call @f::@f(%[[VAL_10]], %[[VAL_7]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> !felt.type<"bn128">
+// CHECK-NEXT:          struct.writem %[[VAL_8]][@out2] = %[[VAL_11]] : <@CallDiffTypeTest::@CallDiffTypeTest<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_8]] : !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_14:[0-9a-zA-Z_\.]+]]: !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[]>>, %[[VAL_15:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_16:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_14]][@out1] : <@CallDiffTypeTest::@CallDiffTypeTest<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_14]][@out2] : <@CallDiffTypeTest::@CallDiffTypeTest<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = function.call @f::@f(%[[VAL_15]], %[[VAL_16]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_19]] : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          constrain.eq %[[VAL_17]], %[[VAL_20]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = function.call @f::@f(%[[VAL_21]], %[[VAL_16]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_22]] : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          constrain.eq %[[VAL_18]], %[[VAL_23]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:        function.def @constrain(%[[VAL_12:[0-9a-zA-Z_\.]+]]: !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[]>>, %[[VAL_13:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_14:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_12]][@out1] : <@CallDiffTypeTest::@CallDiffTypeTest<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_12]][@out2] : <@CallDiffTypeTest::@CallDiffTypeTest<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = function.call @f::@f(%[[VAL_13]], %[[VAL_14]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> !felt.type<"bn128">
+// CHECK-NEXT:          constrain.eq %[[VAL_15]], %[[VAL_17]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = function.call @f::@f(%[[VAL_18]], %[[VAL_14]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> !felt.type<"bn128">
+// CHECK-NEXT:          constrain.eq %[[VAL_16]], %[[VAL_19]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

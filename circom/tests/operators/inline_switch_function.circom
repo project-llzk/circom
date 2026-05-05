@@ -44,12 +44,11 @@ component main = CallInlineSwitch();
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.div %[[VAL_11]], %[[VAL_7]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = function.call @InlineSwitch::@InlineSwitch(%[[VAL_10]], %[[VAL_12]], %[[VAL_13]]) : (i1, !felt.type<"bn128">, !felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_14]] : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          struct.writem %[[VAL_8]][@out] = %[[VAL_15]] : <@CallInlineSwitch::@CallInlineSwitch<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          struct.writem %[[VAL_8]][@out] = %[[VAL_14]] : <@CallInlineSwitch::@CallInlineSwitch<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_8]] : !struct.type<@CallInlineSwitch::@CallInlineSwitch<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@CallInlineSwitch::@CallInlineSwitch<[]>>, %[[VAL_17:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_16]][@out] : <@CallInlineSwitch::@CallInlineSwitch<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:        function.def @constrain(%[[VAL_15:[0-9a-zA-Z_\.]+]]: !struct.type<@CallInlineSwitch::@CallInlineSwitch<[]>>, %[[VAL_16:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_15]][@out] : <@CallInlineSwitch::@CallInlineSwitch<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

@@ -50,12 +50,11 @@ component main = CallRetTest();
 // CHECK-NEXT:        function.def @compute(%[[VAL_13:[0-9a-zA-Z_\.]+]]: !array.type<2,4,3 x !felt.type<"bn128">>) -> !struct.type<@CallRetTest::@CallRetTest<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.new : <@CallRetTest::@CallRetTest<[]>>
 // CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = function.call @sum::@sum(%[[VAL_13]]) : (!array.type<2,4,3 x !felt.type<"bn128">>) -> !array.type<2,4,3 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_15]] : (!array.type<2,4,3 x !felt.type<"bn128">>) -> !array.type<2,4,3 x !felt.type<"bn128">>
-// CHECK-NEXT:          struct.writem %[[VAL_14]][@y] = %[[VAL_16]] : <@CallRetTest::@CallRetTest<[]>>, !array.type<2,4,3 x !felt.type<"bn128">>
+// CHECK-NEXT:          struct.writem %[[VAL_14]][@y] = %[[VAL_15]] : <@CallRetTest::@CallRetTest<[]>>, !array.type<2,4,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_14]] : !struct.type<@CallRetTest::@CallRetTest<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_17:[0-9a-zA-Z_\.]+]]: !struct.type<@CallRetTest::@CallRetTest<[]>>, %[[VAL_18:[0-9a-zA-Z_\.]+]]: !array.type<2,4,3 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_17]][@y] : <@CallRetTest::@CallRetTest<[]>>, !array.type<2,4,3 x !felt.type<"bn128">>
+// CHECK-NEXT:        function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@CallRetTest::@CallRetTest<[]>>, %[[VAL_17:[0-9a-zA-Z_\.]+]]: !array.type<2,4,3 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_16]][@y] : <@CallRetTest::@CallRetTest<[]>>, !array.type<2,4,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
