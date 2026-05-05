@@ -47,42 +47,41 @@ component main = EarlyReturn();
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = llzk.nondet : !poly.tvar<@T_return>
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_1]] : (!poly.tvar<@T_arg1>) -> !felt.type<"bn128">
-// CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_6]] : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_7]], %[[VAL_8]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]]:2 = scf.if %[[VAL_9]] -> (i1, !poly.tvar<@T_arg0>) {
-// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = arith.constant true
-// CHECK-NEXT:          scf.yield %[[VAL_11]], %[[VAL_0]] : i1, !poly.tvar<@T_arg0>
+// CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_7]], %[[VAL_6]]) : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]]:2 = scf.if %[[VAL_8]] -> (i1, !poly.tvar<@T_arg0>) {
+// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = arith.constant true
+// CHECK-NEXT:          scf.yield %[[VAL_10]], %[[VAL_0]] : i1, !poly.tvar<@T_arg0>
 // CHECK-NEXT:        } else {
-// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = arith.constant false
-// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_5]] : (!poly.tvar<@T_return>) -> !poly.tvar<@T_arg0>
-// CHECK-NEXT:          scf.yield %[[VAL_12]], %[[VAL_13]] : i1, !poly.tvar<@T_arg0>
+// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = arith.constant false
+// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_5]] : (!poly.tvar<@T_return>) -> !poly.tvar<@T_arg0>
+// CHECK-NEXT:          scf.yield %[[VAL_11]], %[[VAL_12]] : i1, !poly.tvar<@T_arg0>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_10]]#1 : (!poly.tvar<@T_arg0>) -> !poly.tvar<@T_return>
-// CHECK-NEXT:        %[[VAL_15:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_10]]#0 -> (!poly.tvar<@T_return>) {
-// CHECK-NEXT:          scf.yield %[[VAL_14]] : !poly.tvar<@T_return>
+// CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_9]]#1 : (!poly.tvar<@T_arg0>) -> !poly.tvar<@T_return>
+// CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_9]]#0 -> (!poly.tvar<@T_return>) {
+// CHECK-NEXT:          scf.yield %[[VAL_13]] : !poly.tvar<@T_return>
 // CHECK-NEXT:        } else {
-// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_16]] : (!felt.type<"bn128">) -> !poly.tvar<@T_return>
-// CHECK-NEXT:          scf.yield %[[VAL_17]] : !poly.tvar<@T_return>
+// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_15]] : (!felt.type<"bn128">) -> !poly.tvar<@T_return>
+// CHECK-NEXT:          scf.yield %[[VAL_16]] : !poly.tvar<@T_return>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.return %[[VAL_15]] : !poly.tvar<@T_return>
+// CHECK-NEXT:        function.return %[[VAL_14]] : !poly.tvar<@T_return>
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @EarlyReturn {
 // CHECK-NEXT:      struct.def @EarlyReturn {
 // CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_18:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_19:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">>) -> !struct.type<@EarlyReturn::@EarlyReturn<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = struct.new : <@EarlyReturn::@EarlyReturn<[]>>
-// CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = function.call @earlyReturnFn::@earlyReturnFn(%[[VAL_18]], %[[VAL_21]], %[[VAL_18]], %[[VAL_18]], %[[VAL_19]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !array.type<10 x !felt.type<"bn128">>) -> !felt.type<"bn128">
-// CHECK-NEXT:          struct.writem %[[VAL_20]][@outp] = %[[VAL_22]] : <@EarlyReturn::@EarlyReturn<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          function.return %[[VAL_20]] : !struct.type<@EarlyReturn::@EarlyReturn<[]>>
+// CHECK-NEXT:        function.def @compute(%[[VAL_17:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_18:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">>) -> !struct.type<@EarlyReturn::@EarlyReturn<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = struct.new : <@EarlyReturn::@EarlyReturn<[]>>
+// CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = function.call @earlyReturnFn::@earlyReturnFn(%[[VAL_17]], %[[VAL_20]], %[[VAL_17]], %[[VAL_17]], %[[VAL_18]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !array.type<10 x !felt.type<"bn128">>) -> !felt.type<"bn128">
+// CHECK-NEXT:          struct.writem %[[VAL_19]][@outp] = %[[VAL_21]] : <@EarlyReturn::@EarlyReturn<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          function.return %[[VAL_19]] : !struct.type<@EarlyReturn::@EarlyReturn<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_23:[0-9a-zA-Z_\.]+]]: !struct.type<@EarlyReturn::@EarlyReturn<[]>>, %[[VAL_24:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_25:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_23]][@outp] : <@EarlyReturn::@EarlyReturn<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = function.call @earlyReturnFn::@earlyReturnFn(%[[VAL_24]], %[[VAL_27]], %[[VAL_24]], %[[VAL_24]], %[[VAL_25]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !array.type<10 x !felt.type<"bn128">>) -> !felt.type<"bn128">
-// CHECK-NEXT:          constrain.eq %[[VAL_26]], %[[VAL_28]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:        function.def @constrain(%[[VAL_22:[0-9a-zA-Z_\.]+]]: !struct.type<@EarlyReturn::@EarlyReturn<[]>>, %[[VAL_23:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_24:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_22]][@outp] : <@EarlyReturn::@EarlyReturn<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = function.call @earlyReturnFn::@earlyReturnFn(%[[VAL_23]], %[[VAL_26]], %[[VAL_23]], %[[VAL_23]], %[[VAL_24]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !array.type<10 x !felt.type<"bn128">>) -> !felt.type<"bn128">
+// CHECK-NEXT:          constrain.eq %[[VAL_25]], %[[VAL_27]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

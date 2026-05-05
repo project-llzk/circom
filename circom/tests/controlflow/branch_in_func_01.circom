@@ -27,30 +27,29 @@ component main = C();
 // CHECK-NEXT:      function.def @negative(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0>) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_0]] : (!poly.tvar<@T_arg0>) -> !felt.type<"bn128">
-// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_1]] : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_2]], %[[VAL_3]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_4]] -> (!felt.type<"bn128">) {
-// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          scf.yield %[[VAL_6]] : !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_2]], %[[VAL_1]]) : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_3]] -> (!felt.type<"bn128">) {
+// CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:          scf.yield %[[VAL_5]] : !felt.type<"bn128">
 // CHECK-NEXT:        } else {
-// CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          scf.yield %[[VAL_7]] : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          scf.yield %[[VAL_6]] : !felt.type<"bn128">
 // CHECK-NEXT:        }
-// CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_5]] : (!felt.type<"bn128">) -> !poly.tvar<@T_return>
-// CHECK-NEXT:        function.return %[[VAL_8]] : !poly.tvar<@T_return>
+// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_4]] : (!felt.type<"bn128">) -> !poly.tvar<@T_return>
+// CHECK-NEXT:        function.return %[[VAL_7]] : !poly.tvar<@T_return>
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @C {
 // CHECK-NEXT:      struct.def @C {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@C::@C<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = struct.new : <@C::@C<[]>>
-// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = function.call @negative::@negative(%[[VAL_9]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
-// CHECK-NEXT:          struct.writem %[[VAL_10]][@out] = %[[VAL_11]] : <@C::@C<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          function.return %[[VAL_10]] : !struct.type<@C::@C<[]>>
+// CHECK-NEXT:        function.def @compute(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@C::@C<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = struct.new : <@C::@C<[]>>
+// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = function.call @negative::@negative(%[[VAL_8]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
+// CHECK-NEXT:          struct.writem %[[VAL_9]][@out] = %[[VAL_10]] : <@C::@C<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          function.return %[[VAL_9]] : !struct.type<@C::@C<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_12:[0-9a-zA-Z_\.]+]]: !struct.type<@C::@C<[]>>, %[[VAL_13:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_12]][@out] : <@C::@C<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:        function.def @constrain(%[[VAL_11:[0-9a-zA-Z_\.]+]]: !struct.type<@C::@C<[]>>, %[[VAL_12:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_11]][@out] : <@C::@C<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
