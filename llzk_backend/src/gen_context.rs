@@ -873,7 +873,11 @@ where
         if TVarType::try_from(arr_ref.r#type()).is_ok() {
             let dims = indices
                 .iter()
-                .map(|_| self.add_new_poly_param(codegen, location, "$d", None).map(Into::into))
+                .map(|_| {
+                    self.add_new_poly_param(codegen, location, "$d", None)
+                        // ArrayType expects SymbolRefAttribute not StringAttribute
+                        .map(|s| codegen.flat_sym(s.value()).into())
+                })
                 .collect::<Result<Vec<Attribute>>>()?;
             let elem_ty_pname = self.add_new_poly_param(codegen, location, "$e", None)?;
             let arr_elem_ty = TVarType::new(codegen.context, StringRef::new(elem_ty_pname.value()));
