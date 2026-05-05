@@ -58,6 +58,7 @@ use llzk::prelude::OperationRef;
 use llzk::prelude::PassManager;
 use llzk::prelude::PodRecordAttribute;
 use llzk::prelude::PodType;
+use llzk::prelude::RecordValue;
 use llzk::prelude::Region;
 use llzk::prelude::RegionLike;
 use llzk::prelude::StringAttribute;
@@ -78,6 +79,7 @@ use llzk::symbol_table;
 use llzk::value_ext::OwningValueRange;
 use llzk::value_ext::ValueRange;
 use melior::utility;
+use melior::StringRef;
 use num_bigint_dig::BigInt;
 use num_bigint_dig::BigUint;
 use num_bigint_dig::ModInverse;
@@ -2426,4 +2428,11 @@ pub fn users_of<'ctx: 'a, 'a>(value: impl ValueLike<'ctx> + Copy) -> Vec<Operati
         }
     }
     users
+}
+
+/// Wraps the given pod record tuples into instances of [`RecordValue`].
+pub fn wrap_pod_records<'str, 'ctx, 'val>(
+    records: impl IntoIterator<Item = (&'str str, Value<'ctx, 'val>)>,
+) -> Vec<RecordValue<'ctx, 'val>> {
+    records.into_iter().map(|(name, value)| RecordValue::new(StringRef::new(name), value)).collect()
 }
