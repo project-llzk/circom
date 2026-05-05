@@ -2398,3 +2398,21 @@ pub(crate) fn build_func_call_with_template_params<'c>(
         .build()
         .map_err(Into::into)
 }
+
+/// Returns the operations that use the given value.
+///
+/// TODO: llzk-rs should provide this function.
+pub fn users_of<'ctx: 'a, 'a>(value: impl ValueLike<'ctx> + Copy) -> Vec<OperationRef<'ctx, 'a>> {
+    let mut users = Vec::new();
+    // SAFETY: MLIR owns the value use-list and the owning operations. This helper only walks the
+    // list and creates non-owning references while the surrounding module is still alive.
+    // Use C API directly since `llzk-rs` does not expose a safe iterator over value uses.
+    unsafe {
+        let mut op_use = mlir_sys::mlirValueGetFirstUse(value.to_raw());
+        while !op_use.ptr.is_null() {
+            users.push(OperationRef::from_raw(mlir_sys::mlirOpOperandGetOwner(op_use)));
+            op_use = mlir_sys::mlirOpOperandGetNextUse(op_use);
+        }
+    }
+    users
+}

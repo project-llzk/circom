@@ -7,7 +7,6 @@
 use crate::function_ext::function_return_type_param;
 use crate::program_ext::ProgramLike;
 use crate::shared;
-use crate::shared::next_in_block_mut;
 use crate::shared::LlzkCodegen;
 use crate::traversal::walk_from_block;
 use crate::traversal::WalkCallbacks;
@@ -40,22 +39,6 @@ use std::convert::TryFrom;
 /// unused result Values in order to resolve a type verification issue.
 const UNUSED_CALL_RESULT_WRAPPER_NAME: &str = "synthetic";
 
-/// Returns the operations that use the given value.
-fn users_of<'ctx: 'a, 'a>(value: impl ValueLike<'ctx> + Copy) -> Vec<OperationRef<'ctx, 'a>> {
-    let mut users = Vec::new();
-    // SAFETY: MLIR owns the value use-list and the owning operations. This helper only walks the
-    // list and creates non-owning references while the surrounding module is still alive.
-    // Use C API directly since `llzk-rs` does not expose a safe iterator over value uses.
-    unsafe {
-        let mut op_use = mlir_sys::mlirValueGetFirstUse(value.to_raw());
-        while !op_use.ptr.is_null() {
-            users.push(OperationRef::from_raw(mlir_sys::mlirOpOperandGetOwner(op_use)));
-            op_use = mlir_sys::mlirOpOperandGetNextUse(op_use);
-        }
-    }
-    users
-}
-
 /// Infers the concrete result type required by all `poly.unifiable_cast` users of a call.
 /// Returns `Ok(None)` when the call result has no use sites.
 fn infer_type_from_unifiable_cast_uses<'ctx: 'a, 'a>(
@@ -64,7 +47,7 @@ fn infer_type_from_unifiable_cast_uses<'ctx: 'a, 'a>(
     let result = call_op.result(0)?;
     let location = call_op.location();
     let mut inferred_type = None;
-    for user in users_of(result) {
+    for user in shared::users_of(result) {
         if !poly::is_unifiable_cast_op(&user) {
             bail!("expected poly.unifiable_cast but found {user}");
         }
@@ -99,7 +82,7 @@ fn parent_template<'ctx: 'a, 'a>(
 fn remove_generated_tvar_param(template: TemplateOpRef<'_, '_>, name: &str) -> Result<()> {
     let mut op = template.body().first_operation_mut();
     while let Some(mut cur) = op {
-        op = next_in_block_mut(&cur);
+        op = shared::next_in_block_mut(&cur);
         if let Ok(param) = TemplateParamOpRefMut::try_from(cur) {
             if param.sym_name() == name {
                 let _drop = shared::remove_from_parent(&mut cur);
@@ -203,7 +186,9 @@ fn wrap_call_in_synthetic_template<'ctx>(
 
 /// Specializes the result type of a `function.call` operation from its inferred concrete type.
 /// The original call is replaced by a new one with the concrete result type; all uses of the old
-/// result are updated to point to the new result.
+/// result are updated to point to the new result. After updating, any `poly.unifiable_cast` ops
+/// that became identity casts (input type == output type) as a result of this specialization are
+/// removed and their uses forwarded directly to their input.
 fn specialize_call_result_type<'ctx>(
     codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     call_op: OperationRef<'ctx, '_>,
@@ -220,7 +205,33 @@ fn specialize_call_result_type<'ctx>(
         call_op,
         function::call(codegen.op_builder(), location, callee, &operands, &[use_type])?.into(),
     );
-    replace_all_uses(Value::from(old_result), Value::from(new_call.result(0)?));
+    let new_result = Value::from(new_call.result(0)?);
+    replace_all_uses(Value::from(old_result), new_result);
+
+    // After replace_all_uses, any `poly.unifiable_cast` that was consuming the old tvar result now
+    // consumes `new_result`. If such a cast has become an identity (input type == output type),
+    // it is a no-op introduced solely to bridge the tvar; remove it and forward its output uses
+    // directly to its input.
+    let identity_casts: Vec<_> = shared::users_of(new_result)
+        .into_iter()
+        .filter(|user| {
+            poly::is_unifiable_cast_op(user)
+                && user
+                    .result(0)
+                    .ok()
+                    .zip(user.operand(0).ok())
+                    .is_some_and(|(res, inp)| res.r#type() == inp.r#type())
+        })
+        .collect();
+
+    for op in identity_casts {
+        let cast_result = op.result(0)?;
+        let cast_input = op.operand(0)?;
+        replace_all_uses(Value::from(cast_result), cast_input);
+        let _drop =
+            shared::remove_from_parent(&mut unsafe { OperationRefMut::from_raw(op.to_raw()) });
+    }
+
     Ok(())
 }
 
