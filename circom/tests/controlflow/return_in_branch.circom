@@ -52,7 +52,7 @@ component main = Foo();
 // CHECK-NEXT:      struct.def @Foo {
 // CHECK-NEXT:        function.def @compute(%[[VAL_14:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@Foo::@Foo<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = struct.new : <@Foo::@Foo<[]>>
-// CHECK-NEXT:          function.call @synthetic::@synthetic<[none]>(%[[VAL_14]]) : (!felt.type<"bn128">) -> ()
+// CHECK-NEXT:          function.call @synthetic::@synthetic<[?]>(%[[VAL_14]]) : (!felt.type<"bn128">) -> ()
 // CHECK-NEXT:          function.return %[[VAL_15]] : !struct.type<@Foo::@Foo<[]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@Foo::@Foo<[]>>, %[[VAL_17:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
