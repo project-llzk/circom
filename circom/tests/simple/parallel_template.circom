@@ -32,20 +32,24 @@ component main = Parallel();
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@Parallel::@Parallel<[]>>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = function.call @Foo::@Foo::@compute() : () -> !struct.type<@Foo::@Foo<[]>>
-// CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_6]] }  : <[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:          struct.writem %[[VAL_2]][@foo$inputs] = %[[VAL_3]] : <@Parallel::@Parallel<[]>>, !pod.type<[]>
-// CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_7]][@comp] : <[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>, !struct.type<@Foo::@Foo<[]>>
-// CHECK-NEXT:          struct.writem %[[VAL_2]][@foo] = %[[VAL_8]] : <@Parallel::@Parallel<[]>>, !struct.type<@Foo::@Foo<[]>>
+// CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = function.call @Foo::@Foo::@compute() : () -> !struct.type<@Foo::@Foo<[]>>
+// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_5]] }  : <[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
+// CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
+// CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
+// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = function.call @Foo::@Foo::@compute() : () -> !struct.type<@Foo::@Foo<[]>>
+// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_10]] }  : <[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:          struct.writem %[[VAL_2]][@foo$inputs] = %[[VAL_7]] : <@Parallel::@Parallel<[]>>, !pod.type<[]>
+// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_11]][@comp] : <[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>, !struct.type<@Foo::@Foo<[]>>
+// CHECK-NEXT:          struct.writem %[[VAL_2]][@foo] = %[[VAL_12]] : <@Parallel::@Parallel<[]>>, !struct.type<@Foo::@Foo<[]>>
 // CHECK-NEXT:          function.return %[[VAL_2]] : !struct.type<@Parallel::@Parallel<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_9:[0-9a-zA-Z_\.]+]]: !struct.type<@Parallel::@Parallel<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_9]][@foo] : <@Parallel::@Parallel<[]>>, !struct.type<@Foo::@Foo<[]>>
-// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_9]][@foo$inputs] : <@Parallel::@Parallel<[]>>, !pod.type<[]>
-// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:          function.call @Foo::@Foo::@constrain(%[[VAL_10]]) : (!struct.type<@Foo::@Foo<[]>>) -> ()
+// CHECK-NEXT:        function.def @constrain(%[[VAL_13:[0-9a-zA-Z_\.]+]]: !struct.type<@Parallel::@Parallel<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_13]][@foo] : <@Parallel::@Parallel<[]>>, !struct.type<@Foo::@Foo<[]>>
+// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_13]][@foo$inputs] : <@Parallel::@Parallel<[]>>, !pod.type<[]>
+// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
+// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:          function.call @Foo::@Foo::@constrain(%[[VAL_14]]) : (!struct.type<@Foo::@Foo<[]>>) -> ()
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

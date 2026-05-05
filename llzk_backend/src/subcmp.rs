@@ -1,10 +1,14 @@
 //! Helper types for handling subcomponents.
 
 use crate::function::FunctionContext;
+use crate::gen_context::BlockGenContext;
 use crate::program_ext::ProgramInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared::map_array_inner_type;
+use crate::shared::wrap_pod_records;
 use crate::shared::LlzkCodegen;
+use crate::shared::TmplParamsInstance;
+use crate::shared::TypeSizeExpr;
 use crate::template_ext::SignalDeclarations;
 use crate::template_ext::TemplateLike as _;
 use anyhow::Result;
@@ -20,9 +24,12 @@ use llzk::prelude::PodType;
 use llzk::prelude::StructType;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
+use melior::ir::Operation;
+use melior::ir::Value;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryFrom;
+use std::convert::TryInto;
 
 /// Names used for `pod` records.
 pub mod names {
@@ -317,6 +324,47 @@ impl<'ctx> MixedSubcmpLayout<'ctx> {
     pub fn entries(&self) -> &[MixedSubcmpEntry<'ctx>] {
         &self.entries
     }
+
+    /// Generates the initialization operation for this mixed subcomponent.
+    fn generate_initialization_op<'val>(
+        &self,
+        empty_params: Value<'ctx, 'val>,
+        block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+    ) -> Result<Operation<'ctx>> {
+        // Generate initialization ops for each entry as normal.
+        // Then combine all of them into one `pod.new` operation passing all the entries.
+        let entries = self
+            .entries
+            .iter()
+            .map(|entry| {
+                let name = entry.record_name();
+                let subcmp_type: SubcmpType = entry.struct_type().try_into()?;
+                let records = subcmp_type.initialize_records(
+                    empty_params,
+                    block_gen,
+                    codegen,
+                    location,
+                    None,
+                )?;
+                let entry_init = block_gen.append_op_unnamed_result(pod::new(
+                    codegen.op_builder(),
+                    location,
+                    &wrap_pod_records(records),
+                    Some(entry.memory_type),
+                ))?;
+
+                Ok((name, entry_init))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        Ok(pod::new(
+            codegen.op_builder(),
+            location,
+            &wrap_pod_records(entries),
+            Some(self.memory_type),
+        ))
+    }
 }
 
 /// Runtime layout for a subcomponent binding.
@@ -406,8 +454,9 @@ impl<'ctx> SubcmpType<'ctx> {
     }
 
     /// Returns the element type if the type is an [`ArrayType`]. Returns the type itself otherwise.
-    fn scalar_or_inner(&self) -> Type<'ctx> {
-        ArrayType::try_from(self.inner).map(|t| t.element_type()).unwrap_or(self.inner)
+    pub fn struct_type(&self) -> StructType<'ctx> {
+        let t = ArrayType::try_from(self.inner).map(|t| t.element_type()).unwrap_or(self.inner);
+        t.try_into().unwrap() // Must be a StructType.
     }
 
     /// Type used to represent template parameters.
@@ -447,7 +496,7 @@ impl<'ctx> SubcmpType<'ctx> {
             (names::COUNT, codegen.index_type()),
             // Holds the output of calling `@compute`. Before the call, this value is undefined
             // and should not be read from.
-            (names::COMP, self.scalar_or_inner()),
+            (names::COMP, self.struct_type().into()),
             // Holds the affine map operands of the subcomponents, if any.
             (names::PARAMS, self.params_pod_type(codegen).into()),
         ]
@@ -474,6 +523,97 @@ impl<'ctx> SubcmpType<'ctx> {
     /// Returns the actual MLIR type of the subcomponent.
     pub fn r#type(&self) -> Type<'ctx> {
         self.inner
+    }
+
+    /// Returns the size of the inputs.
+    pub fn input_size(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    ) -> Result<TypeSizeExpr<'ctx>> {
+        let template_name = self.template_name();
+        let subcmp_struct_type = self.struct_type();
+        let template_data = codegen
+            .program
+            .get_templates(false)
+            .into_iter()
+            .find(|t| t.get_name() == template_name)
+            .ok_or_else(|| anyhow::anyhow!("template '{template_name}' not found"))?;
+        let template_params = TmplParamsInstance::new(
+            template_data.get_name_of_params(),
+            subcmp_struct_type.params_vec(),
+        );
+
+        fn acc_add<'ctx>(
+            acc: TypeSizeExpr<'ctx>,
+            signal_size: Result<TypeSizeExpr<'ctx>>,
+        ) -> Result<TypeSizeExpr<'ctx>> {
+            Ok(acc.add(signal_size?))
+        }
+        template_data
+            .get_declaration_inputs()
+            .iter()
+            .map(|(signal_name, _)| -> Result<TypeSizeExpr<'ctx>> {
+                let signal_type = template_params
+                    .map_type(codegen.get_input_signal_type(template_name, signal_name)?)?;
+                codegen.count_input_signals(signal_type)
+            })
+            .try_fold(TypeSizeExpr::zero(), acc_add)
+    }
+
+    /// Returns a list of records that will be used to initialize s subcomponent's memory pod.
+    ///
+    /// If the subcomponent has no inputs it will call `@compute`. Do not use this function
+    /// to emit IR inside the `@constrain` function!
+    pub fn initialize_records<'val>(
+        &self,
+        params_pod: Value<'ctx, 'val>,
+        block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+        tmpl_params_instance: Option<&TmplParamsInstance<'_, 'ctx>>,
+    ) -> Result<Vec<(&'static str, Value<'ctx, 'val>)>> {
+        let count = self.input_size(codegen)?;
+        // If the count == 0 means that the subcomponent has no inputs. In that
+        // case we call `@compute` here directly and store it into COMP.
+        if count.is_const_zero() {
+            let empty_inputs = block_gen.append_op_unnamed_result(pod::new(
+                codegen.op_builder(),
+                location,
+                &[],
+                Some(codegen.pod_type(&[])),
+            ))?;
+            let instance = block_gen.gen_compute_call(
+                self.r#type().try_into()?,
+                empty_inputs,
+                params_pod,
+                location,
+                codegen,
+            )?;
+            return Ok(vec![(names::COMP, instance)]);
+        }
+        Ok(vec![
+            (
+                names::COUNT,
+                count.to_index_value(codegen, block_gen, location, tmpl_params_instance)?,
+            ),
+            (names::PARAMS, params_pod),
+        ])
+    }
+
+    /// Creates a subcomponent type that focuses on the struct type of the subcomponent.
+    ///
+    /// If the subcomponent is an array returns a [`SubcmpType`] with the inner type.
+    fn scoped_to_inner(&self) -> Self {
+        Self::new(self.struct_type().into(), self.template_name.clone())
+    }
+}
+
+impl<'ctx> TryFrom<StructType<'ctx>> for SubcmpType<'ctx> {
+    type Error = anyhow::Error;
+
+    fn try_from(value: StructType<'ctx>) -> std::result::Result<Self, Self::Error> {
+        let template_name = value.name().leaf().as_str()?.to_owned();
+        Ok(Self { inner: value.into(), template_name })
     }
 }
 
@@ -502,6 +642,24 @@ enum SubcmpPrologueLayout<'ctx> {
     Uniform(SubcmpType<'ctx>),
     /// Mixed concrete binding.
     Mixed(MixedSubcmpLayout<'ctx>),
+}
+
+impl SubcmpPrologueLayout<'_> {
+    /// Returns true if the subcomponent type has a very concrete instance.
+    ///
+    /// In this context 'very concrete' means that the struct does not have
+    /// any parameters.
+    ///
+    /// In `templated` mode this will apply only to subcomponents with template types that do not have any
+    /// parameters. In `concrete` mode this will apply to all subcomponents.
+    fn is_very_concrete(&self) -> bool {
+        match &self {
+            SubcmpPrologueLayout::Uniform(subcmp_type) => {
+                subcmp_type.struct_type().params().is_empty()
+            }
+            _ => true,
+        }
+    }
 }
 
 impl<'ctx> SubcmpPrologueData<'ctx> {
@@ -584,6 +742,83 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
         Ok(())
     }
 
+    /// Generates the operation that initializes a subcomponent.
+    fn generate_initialization_op<'func, 'blk, 'val>(
+        &self,
+        compute_ctx: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        decl: &SubcmpDeclInfo<'ctx>,
+    ) -> Result<Operation<'ctx>>
+    where
+        'val: 'blk,
+    {
+        use SubcmpPrologueLayout::*;
+        let memory_type = self.memory_type(codegen);
+        if let Ok(comp_pod) = ArrayType::try_from(memory_type) {
+            let array = codegen.new_array_new_op(decl.location(), comp_pod, ArrayCtor::Empty);
+            return Ok(array);
+        }
+
+        if !self.layout.is_very_concrete() {
+            // If the subcomponent has parameters we defer initialization to
+            // the constructor call.
+            return Ok(nondet(decl.location(), memory_type));
+        }
+
+        let empty_params = compute_ctx.append_op_unnamed_result(pod::new(
+            codegen.op_builder(),
+            decl.location(),
+            &[],
+            Some(codegen.pod_type(&[])),
+        ))?;
+        // Initialize the subcomponent here. In templated mode the subcomponent may get
+        // initialized twice, once here and another in the constructor callsite.
+        // In concrete mode the initialization should happen only here.
+        match &self.layout {
+            Uniform(subcmp_type) => self.generate_initialization_op_with_subcmp_type(
+                subcmp_type,
+                empty_params,
+                compute_ctx,
+                codegen,
+                decl.location(),
+            ),
+            Mixed(mixed_subcmp_layout) => mixed_subcmp_layout.generate_initialization_op(
+                empty_params,
+                compute_ctx,
+                codegen,
+                decl.location(),
+            ),
+        }
+    }
+
+    /// Generates the initialization op of a subcomponent using the given [`SubcmpType`].
+    fn generate_initialization_op_with_subcmp_type<'blk, 'val>(
+        &self,
+        subcmp_type: &SubcmpType<'ctx>,
+        empty_params: Value<'ctx, 'val>,
+        block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+    ) -> Result<Operation<'ctx>>
+    where
+        'val: 'blk,
+    {
+        let records = subcmp_type.initialize_records(
+            empty_params,
+            block_gen,
+            codegen,
+            location,
+            // We don't need template parameters in this case
+            None,
+        )?;
+        Ok(pod::new(
+            codegen.op_builder(),
+            location,
+            &wrap_pod_records(records),
+            Some(subcmp_type.comp_pod(codegen).try_into()?),
+        ))
+    }
+
     /// Generates the subcomponents prologue in the compute function.
     ///
     /// For each subcomponent creates an initializer operation and binds it
@@ -600,13 +835,13 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
         'val: 'blk,
     {
         let decl = &subcmp_decls[self.name()];
-        let memory_type = self.memory_type(codegen);
-        compute_ctx.block_ctx.declare_name_ensure_not_present(
-            self.name(),
-            match ArrayType::try_from(memory_type) {
-                Ok(ty) => codegen.new_array_new_op(decl.location(), ty, ArrayCtor::Empty),
-                Err(_) => nondet(decl.location(), memory_type),
-            },
+        let initialization_op = self.generate_initialization_op(compute_ctx, codegen, decl)?;
+        compute_ctx.block_ctx.declare_name_ensure_not_present(self.name(), initialization_op)?;
+        self.initialize_subcmp_array(
+            *compute_ctx.block_ctx.get_named_value(self.name())?,
+            compute_ctx,
+            codegen,
+            decl.location(),
         )?;
         compute_ctx.block_ctx.declare_name_ensure_not_present(
             self.name_inputs(),
@@ -615,6 +850,57 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
                 Err(_) => {
                     pod::new(codegen.op_builder(), decl.location(), &[], Some(self.inputs_as()?))
                 }
+            },
+        )
+    }
+
+    /// Generates a loop nest that initializes a subcomponent if it's an array and the layout is very concrete.
+    fn initialize_subcmp_array<'func, 'blk, 'val>(
+        &self,
+        comp_memory: Value<'ctx, 'val>,
+        compute_ctx: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        location: Location<'ctx>,
+    ) -> Result<()>
+    where
+        'val: 'blk,
+    {
+        let Ok(comp_pod) = ArrayType::try_from(self.memory_type(codegen)) else { return Ok(()) };
+        if !self.layout.is_very_concrete() {
+            return Ok(());
+        }
+        let SubcmpPrologueLayout::Uniform(subcmp_type) = &self.layout else {
+            unreachable!("Mixed subcomponents cannot be represented with uniform array types")
+        };
+        let subcmp_type = subcmp_type.scoped_to_inner();
+        let empty_params = compute_ctx.append_op_unnamed_result(pod::new(
+            codegen.op_builder(),
+            location,
+            &[],
+            Some(codegen.pod_type(&[])),
+        ))?;
+
+        compute_ctx.gen_loop_nest_from_attrs(
+            codegen,
+            location,
+            &comp_pod.dims(),
+            |block_gen, indices| {
+                let init_op = self.generate_initialization_op_with_subcmp_type(
+                    &subcmp_type,
+                    empty_params,
+                    block_gen,
+                    codegen,
+                    location,
+                )?;
+                let comp_memory_pod = block_gen.append_op_unnamed_result(init_op)?;
+                block_gen.append_array_write(
+                    codegen,
+                    comp_memory,
+                    indices,
+                    location,
+                    comp_memory_pod,
+                    None,
+                )
             },
         )
     }

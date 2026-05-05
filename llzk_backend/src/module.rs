@@ -826,10 +826,10 @@ impl<'ctx, P: ProgramLike> GenerateLLZKInModule<'ctx, P> for P {
 
 /// Collects the inputs' types of a template in a pod type.
 #[inline]
-fn collect_inputs<'ctx>(
+fn collect_inputs<'ast, 'ctx>(
     template_name: &str,
     subcmp_type: StructType<'ctx>,
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'ast, 'ctx, impl ProgramLike>,
 ) -> Result<Type<'ctx>> {
     let template = codegen
         .program
@@ -908,13 +908,12 @@ fn record_mixed_subcmp_decl<'ctx, 'ast>(
             instance_template_name.to_owned(),
         );
         let memory_type = subcmp_type.comp_pod(codegen).try_into()?;
-        let inputs_type =
-            collect_inputs(instance_template_name, instance.struct_type(), codegen)?.try_into()?;
-        entries.push(MixedSubcmpEntry::new(instance, memory_type, inputs_type));
+        let inputs_type = collect_inputs(instance_template_name, instance.struct_type(), codegen)?;
+        entries.push(MixedSubcmpEntry::new(instance, memory_type, inputs_type.try_into()?));
         component_records
             .push(PodRecordAttribute::new(instance.record_name(), instance.struct_type().into()));
         memory_records.push(PodRecordAttribute::new(instance.record_name(), memory_type.into()));
-        inputs_records.push(PodRecordAttribute::new(instance.record_name(), inputs_type.into()));
+        inputs_records.push(PodRecordAttribute::new(instance.record_name(), inputs_type));
     }
 
     let component_type = PodType::new(codegen.context, &component_records);
