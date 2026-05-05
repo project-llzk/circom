@@ -2298,6 +2298,8 @@ pub fn dim_expr_name(expr: &Expression) -> String {
 }
 
 /// Get the `sym_name` attribute from the operation, if present.
+///
+/// TODO: llzk-rs should provide this function.
 pub fn get_sym_name_attr<'c: 'a, 'a>(
     op: &impl OperationLike<'c, 'a>,
 ) -> Result<StringAttribute<'c>> {
@@ -2317,6 +2319,8 @@ pub fn insert_unique_symbol_op<'c: 'a, 'a>(
 
 /// Print a single operation using "assume verified" flag to avoid verification errors on
 /// in-progress IR.
+///
+/// TODO: llzk-rs should provide this function.
 #[allow(unused)]
 pub fn print_operation<'c: 'a, 'a>(op: &impl OperationLike<'c, 'a>) {
     // Melior does not currently have a wrapper for `mlirOpPrintingFlagsAssumeVerified()`
@@ -2341,6 +2345,8 @@ pub fn print_operation<'c: 'a, 'a>(op: &impl OperationLike<'c, 'a>) {
 }
 
 /// Print all operations in a block using [`print_operation`].
+///
+/// TODO: llzk-rs should provide this function.
 #[allow(unused)]
 pub fn print_block<'c: 'a, 'a>(block: &impl BlockLike<'c, 'a>) {
     let mut op = block.first_operation();
@@ -2351,6 +2357,8 @@ pub fn print_block<'c: 'a, 'a>(block: &impl BlockLike<'c, 'a>) {
 }
 
 /// Print all blocks (and their operations) in a region using [`print_block`].
+///
+/// TODO: llzk-rs should provide this function.
 #[allow(unused)]
 pub fn print_region<'c: 'a, 'a>(region: &impl RegionLike<'c, 'a>) {
     let mut block = region.first_block();
