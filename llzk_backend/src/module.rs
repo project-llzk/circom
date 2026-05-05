@@ -589,8 +589,7 @@ where
 
     let template_region_ops = func_like
         .initial_poly_param_names()
-        .iter()
-        .map(|name| poly::param(location, name, Some(codegen.tvar_type(name))).map(Into::into))
+        .map(|name| poly::param(location, &name, Some(codegen.tvar_type(&name))).map(Into::into))
         .collect::<Vec<_>>();
     let (new_template, _guard) = codegen.create_and_set_current_template(
         location,
