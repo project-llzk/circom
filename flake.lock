@@ -39,11 +39,11 @@
         "release-helpers": "release-helpers"
       },
       "locked": {
-        "lastModified": 1776990215,
-        "narHash": "sha256-DfFkV7Joi3oet50lBc9bRlPPB8sB4JgC38WrlE9v0RU=",
+        "lastModified": 1778019913,
+        "narHash": "sha256-LviWvJRTsbbZ6DOWFlMrz1jlA0GfNR176qCD7cfetVI=",
         "owner": "project-llzk",
         "repo": "llzk-lib",
-        "rev": "db2eec371f1830084aa351d8144d22218978fb7b",
+        "rev": "50a345d4677013d1585f1d9360b691eb6a7790bf",
         "type": "github"
       },
       "original": {
@@ -94,11 +94,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1777580415,
-        "narHash": "sha256-0ie514CtpZfqqmt1XXh48F10mzWOCBSoTg2EWy3Vcsc=",
+        "lastModified": 1778020106,
+        "narHash": "sha256-hB+eOjc8Z+n01sLT65We+arKq/YHxitY4P69LqB3jM0=",
         "ref": "refs/heads/main",
-        "rev": "fc1de5008ecf8c75ceb05426973c61b571833b2d",
-        "revCount": 392,
+        "rev": "835ee193d63fa835c9d08f62fceda0f6b7076a1d",
+        "revCount": 396,
         "type": "git",
         "url": "https://github.com/project-llzk/llzk-rs"
       },
