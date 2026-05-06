@@ -72,7 +72,7 @@ component main = InvalidArgIndex(3, 2);
 // CHECK-NEXT:            ^bb0(%[[VAL_33:[0-9a-zA-Z_\.]+]]: !array.type<@"k_Mul_n@338" x !pod.type<[@a: !felt.type<"bn128">]>>, %[[VAL_34:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
 // CHECK-NEXT:              %[[VAL_35:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:              %[[VAL_36:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:              %[[VAL_37:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_36]], @params = %[[VAL_35]] }  : <[@count: index, @comp: !struct.type<@OR::@OR<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:              %[[VAL_37:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@OR::@OR<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:              %[[VAL_38:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_6]], %[[VAL_25]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:              %[[VAL_39:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_38]], %[[VAL_34]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:              %[[VAL_40:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_39]] : !felt.type<"bn128">
