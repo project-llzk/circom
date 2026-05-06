@@ -44,7 +44,6 @@ use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::pod;
 use llzk::dialect::poly;
 use llzk::dialect::r#struct;
-use llzk::map_operands;
 use llzk::map_operands::MapOperandsBuilder;
 use llzk::prelude::ArrayType;
 use llzk::prelude::BlockRef;
@@ -64,7 +63,6 @@ use llzk::prelude::TemplateSymbolBindingOpLike;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
-use llzk::symbol_table;
 use llzk::value_ext::OwningValueRange;
 use llzk::value_ext::ValueRange;
 use melior::ir::Attribute;
@@ -1569,7 +1567,7 @@ impl<'ast, 'ctx, 'val, 'info> CtorCallScope<'ast, 'ctx, 'val, 'info> {
             }
             else => {
                 let value = expr.gen_llzk_in_block(codegen, fc, self.info)?;
-                let casted = fc.cast_to_index_if_needed(self.location, value)?;
+                let casted = fc.cast_to_index_if_needed(codegen, self.location, value)?;
                 map_operands.push(OwningValueRange::from([casted].as_slice()));
                 Ok(value)
             }
