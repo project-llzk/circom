@@ -36,9 +36,11 @@ use llzk::dialect::pod;
 use llzk::dialect::poly;
 use llzk::map_operands::MapOperandsBuilder;
 use llzk::prelude::is_felt_type;
+use llzk::prelude::is_type_variable;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::melior_dialects::index;
 use llzk::prelude::melior_dialects::scf;
+use llzk::prelude::replace_uses_of_with;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::BlockLike as _;
@@ -56,14 +58,18 @@ use llzk::prelude::PodType;
 use llzk::prelude::Region;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::StringAttribute;
+use llzk::prelude::StringRef;
 use llzk::prelude::StructType;
-use llzk::prelude::TemplateExprOp;
+use llzk::prelude::TVarType;
+use llzk::prelude::TemplateSymbolBindingOp;
+use llzk::prelude::TemplateSymbolBindingOpLike;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
 use llzk::prelude::FUNC_NAME_COMPUTE;
 use llzk::prelude::FUNC_NAME_CONSTRAIN;
 use llzk::typing::types_unify;
+use llzk::utils::IsA as _;
 use llzk::value_ext::OwningValueRange;
 use llzk::value_ext::ValueRange;
 use melior::dialect::ods::math;
@@ -77,10 +83,11 @@ use program_structure::ast::Expression;
 use program_structure::ast::ExpressionInfixOpcode;
 use program_structure::ast::ExpressionPrefixOpcode;
 use program_structure::ast::Meta;
-use program_structure::error_code::ReportCode;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto;
+use std::fmt::Debug;
 use std::iter::zip;
 use std::iter::FromIterator as _;
 
@@ -689,11 +696,13 @@ where
     /// Pre-computed LLZK types for circom `var` declarations, keyed by var name. Populated from
     /// [crate::module::DeclarationInfo] when generating `poly.expr` bodies for templates so that
     /// dimension expressions referencing other vars do not trigger recursive code generation.
-    pub(crate) var_decl_types: &'decls HashMap<String, Type<'ctx>>,
+    var_decl_types: &'decls HashMap<String, Type<'ctx>>,
     /// Mapping of `poly.param` and `poly.expr` symbol names visible in the current context to
     /// their optional type restriction. The `poly.param` generally don't have a type restriction,
     /// but the `poly.expr` always produces a specific typed result.
-    poly_template_binding_names: HashMap<String, Option<Type<'ctx>>>,
+    ///
+    /// Uses [`RefCell`] to allow mutation from `&self` (e.g., in `record_new_sym_binding`).
+    poly_template_binding_names: RefCell<HashMap<String, Option<Type<'ctx>>>>,
 }
 
 impl AsMut<Self> for BlockGenContext<'_, '_, '_, '_> {
@@ -717,7 +726,9 @@ where
         Self {
             block_ctx,
             var_decl_types,
-            poly_template_binding_names: poly_template_binding_names.into_iter().collect(),
+            poly_template_binding_names: RefCell::new(
+                poly_template_binding_names.into_iter().collect(),
+            ),
         }
     }
 
@@ -726,10 +737,11 @@ where
     /// that template parameters are available as SSA Values in the block context.
     pub fn with_poly_template_binding_locals(
         mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Self> {
-        let mut sorted: Vec<_> = self.poly_template_binding_names.iter().collect();
+        let map = self.poly_template_binding_names.borrow();
+        let mut sorted: Vec<_> = map.iter().collect();
         if codegen.config.stabilize {
             sorted.sort_by(|(a, _), (b, _)| a.cmp(b));
         }
@@ -740,6 +752,7 @@ where
                 poly::read_const(location, name, ty.unwrap_or_else(|| codegen.felt_type().into())),
             )?;
         }
+        drop(map); // drop the borrow before moving out of `self` for the return
         Ok(self)
     }
 
@@ -792,7 +805,7 @@ where
     #[inline]
     fn unify_constrain_eq_types(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         lhs: Value<'ctx, 'val>,
         rhs: Value<'ctx, 'val>,
@@ -812,7 +825,7 @@ where
     /// if necessary.
     pub fn append_constrain_eq(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         lhs: Value<'ctx, 'val>,
         rhs: Value<'ctx, 'val>,
@@ -825,7 +838,7 @@ where
     /// and the [ArrayType] of the `arr_ref` value.
     pub fn append_array_write(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         arr_ref: Value<'ctx, 'val>,
         indices: &[Value<'ctx, 'val>],
         location: Location<'ctx>,
@@ -864,11 +877,36 @@ where
     /// and the [ArrayType] of the `arr_ref` value.
     pub fn append_array_read(
         &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         arr_ref: Value<'ctx, 'val>,
         indices: &[Value<'ctx, 'val>],
         location: Location<'ctx>,
         var_name: Option<&str>,
     ) -> Result<Value<'ctx, 'val>> {
+        // Special case for array read from `tvar` base. Must generate new `poly.param` for each
+        // dimension and for the element type, then create an `array.type` using those. Generate
+        // a unifiable cast to that new type and then `array.read` from that value with all indices.
+        if arr_ref.r#type().isa::<TVarType>() {
+            let dims = indices
+                .iter()
+                .map(|_| {
+                    self.add_new_poly_param(codegen, location, "$d", None)
+                        // ArrayType expects SymbolRefAttribute not StringAttribute
+                        .map(|s| codegen.flat_sym(s.value()).into())
+                })
+                .collect::<Result<Vec<Attribute>>>()?;
+            let elem_ty_pname = self.add_new_poly_param(codegen, location, "$e", None)?;
+            let arr_elem_ty = TVarType::new(codegen.context, StringRef::new(elem_ty_pname.value()));
+            let arr_ty = ArrayType::new(arr_elem_ty.into(), &dims);
+            let arr_ref = self.unifiable_cast(location, arr_ref, arr_ty.into())?;
+            return self.append_op_unnamed_result(array::read(
+                location,
+                arr_elem_ty.into(),
+                arr_ref,
+                indices,
+            ));
+        }
+        // Normal case
         let arr_ty = ArrayType::try_from(arr_ref.r#type()).with_context(|| {
             let v = var_name.map_or(String::from("array"), |s| format!("'{s}'"));
             format!("Conflicting types to read {v} at {location}")
@@ -897,7 +935,7 @@ where
     /// Cast `val` to bool and emit a `bool.assert` op.
     pub fn append_assert(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<()> {
@@ -906,7 +944,8 @@ where
         self.append_op_no_result(bool::assert(location, cond, msg)?.into())
     }
 
-    /// Append a `unifiable_cast` operation to cast `val` to the `expected` type.
+    /// Append a `unifiable_cast` operation to cast `val` to the `expected` type, unless it already
+    /// has that type in which case `val` is just returned.
     #[inline]
     pub fn unifiable_cast(
         &mut self,
@@ -914,10 +953,13 @@ where
         val: Value<'ctx, 'val>,
         expected: Type<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
-        if types_unify(val.r#type(), expected) {
+        let current_type = val.r#type();
+        if current_type == expected {
+            Ok(val)
+        } else if types_unify(current_type, expected) {
             self.append_op_unnamed_result(poly::unifiable_cast(location, val, expected))
         } else {
-            anyhow::bail!("Unsupported cast to '{expected}' from value type '{}'", val.r#type())
+            anyhow::bail!("Unsupported cast to '{expected}' from value type '{}'", current_type)
         }
     }
 
@@ -925,25 +967,44 @@ where
     #[inline]
     pub fn cast_to_felt(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
-        self.append_op_unnamed_result(cast::tofelt(location, val, Some(codegen.felt_type())))
+        if is_type_variable(val.r#type()) {
+            self.unifiable_cast(location, val, codegen.felt_type().into())
+        } else {
+            self.append_op_unnamed_result(cast::tofelt(location, val, Some(codegen.felt_type())))
+        }
     }
 
     /// Append a cast to felt (field element) type if the given value is not already a felt.
     #[inline]
     pub fn cast_to_felt_if_needed(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
-        if !is_felt_type(val.r#type()) {
-            self.cast_to_felt(codegen, location, val)
-        } else {
+        if is_felt_type(val.r#type()) {
             Ok(val)
+        } else {
+            self.cast_to_felt(codegen, location, val)
+        }
+    }
+
+    /// Append a cast to index type.
+    #[inline]
+    pub fn cast_to_index(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        if is_type_variable(val.r#type()) {
+            self.unifiable_cast(location, val, codegen.index_type())
+        } else {
+            self.append_op_unnamed_result(cast::toindex(location, val).into())
         }
     }
 
@@ -951,13 +1012,14 @@ where
     #[inline]
     pub fn cast_to_index_if_needed(
         &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
-        if !is_index(val.r#type()) {
-            self.append_op_unnamed_result(cast::toindex(location, val).into())
-        } else {
+        if is_index(val.r#type()) {
             Ok(val)
+        } else {
+            self.cast_to_index(codegen, location, val)
         }
     }
 
@@ -965,17 +1027,18 @@ where
     #[inline]
     pub fn cast_to_bool_if_needed(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
         // The conversion to bool is simply to check `!=0` which is the same as
         // `normalize()` in `modular_arithmetic.rs`.
-        if is_felt_type(val.r#type()) {
+        let val_type = val.r#type();
+        if is_felt_type(val_type) {
             let zero = self
                 .append_op_unnamed_result(codegen.new_felt_const_op(&BigInt::zero(), location)?)?;
             self.append_op_unnamed_result(bool::ne(location, val, zero)?)
-        } else if is_index(val.r#type()) {
+        } else if is_index(val_type) {
             let zero = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
             self.append_op_unnamed_result(index::cmp(
                 codegen.context,
@@ -985,8 +1048,12 @@ where
                 location,
             ))
         } else {
-            assert!(is_bool(val.r#type()));
-            Ok(val)
+            let bool_type = codegen.bool_type().into();
+            if val_type == bool_type {
+                Ok(val)
+            } else {
+                self.unifiable_cast(location, val, bool_type)
+            }
         }
     }
 
@@ -994,7 +1061,7 @@ where
     #[inline]
     pub fn cast_to_expected_type_if_needed(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
         expected: Type<'ctx>,
@@ -1006,12 +1073,12 @@ where
         } else if is_felt_type(expected) {
             self.cast_to_felt_if_needed(codegen, location, val)
         } else if is_index(expected) {
-            self.cast_to_index_if_needed(location, val)
+            self.cast_to_index_if_needed(codegen, location, val)
         } else if is_bool(expected) {
             self.cast_to_bool_if_needed(codegen, location, val)
         } else {
             anyhow::bail!(
-                "Unsupported 'expected' type '{expected}' with value type {}",
+                "Unsupported cast to 'expected' type '{expected}' from value type {}",
                 val.r#type()
             )
         }
@@ -1025,7 +1092,7 @@ where
     /// out-of-bounds, then the array is default-filled. Otherwise, copy elements into destination.
     fn copy_into_array(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         meta: &Meta,
         dst: Value<'ctx, 'val>,
         dst_ty: ArrayType<'ctx>,
@@ -1092,7 +1159,7 @@ where
     /// destination array (this requires 0-filling or truncation).
     pub fn handle_simple_assignment(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         meta: &Meta,
         var: &String,
         rvalue: Value<'ctx, 'val>,
@@ -1136,7 +1203,9 @@ where
             }
         }
         if types_unify(existing.r#type(), rvalue.r#type()) {
-            todo!("'handle_simple_assignment' with unifiable but different types if this happens");
+            let location = codegen.location_from_meta(meta);
+            let rvalue = self.unifiable_cast(location, rvalue, existing.r#type())?;
+            return self.block_ctx.set_named_value(var.clone(), rvalue);
         }
         anyhow::bail!(
             "could not assign value of type '{}' to '{var}', which has type '{}'",
@@ -1150,7 +1219,7 @@ where
     #[allow(clippy::too_many_arguments)]
     pub fn handle_substitution_stmt_nonsignal<'info>(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         info: InfoProviders<'info, 'ctx>,
         meta: &Meta,
         var: &String,
@@ -1179,7 +1248,7 @@ where
                             todo!("Handle Substitution component access in BlockGenContext")
                         }
                     }?;
-                    self.cast_to_index_if_needed(location, idx)
+                    self.cast_to_index_if_needed(codegen, location, idx)
                 })
                 .collect::<Result<Vec<Value<'_, '_>>>>()?;
             let arr_ref = *self.block_ctx.get_named_value(var)?;
@@ -1191,7 +1260,7 @@ where
     pub fn gen_index_ops<'ast, 'info, E>(
         &mut self,
         indices: impl IntoIterator<Item = &'ast E>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         info: InfoProviders<'info, 'ctx>,
     ) -> Result<Vec<Value<'ctx, 'val>>>
@@ -1202,7 +1271,7 @@ where
             .into_iter()
             .map(|e| {
                 let val = e.gen_llzk_in_block(codegen, self, info)?;
-                self.append_op_unnamed_result(cast::toindex(location, val))
+                self.cast_to_index(codegen, location, val)
             })
             .collect()
     }
@@ -1210,7 +1279,7 @@ where
     /// Generate LLZK code in the current function for a circom prefix operation.
     pub fn gen_prefix_op(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         meta: &Meta,
         op: &ExpressionPrefixOpcode,
         rhs: Value<'ctx, 'val>,
@@ -1223,34 +1292,22 @@ where
             ))?;
             self.append_op_unnamed_result(index::sub(zero, rhs, codegen.location_from_meta(meta)))
         };
+        let loc = codegen.location_from_meta(meta);
         match op {
             ExpressionPrefixOpcode::Sub => {
-                if is_felt_type(rhs.r#type()) {
-                    return self.append_op_unnamed_result(felt::neg(
-                        codegen.location_from_meta(meta),
-                        rhs,
-                    )?);
-                }
                 // For index negation, we need to subtract from zero.
                 if shared::is_index(rhs.r#type()) {
                     return get_negative_idx();
                 }
+                // Otherwise, cast to felt and use felt negation.
+                let rhs_felt = self.cast_to_felt_if_needed(codegen, loc, rhs)?;
+                return self.append_op_unnamed_result(felt::neg(loc, rhs_felt)?);
             }
             ExpressionPrefixOpcode::BoolNot => {
-                if shared::is_bool(rhs.r#type()) {
-                    return self.append_op_unnamed_result(bool::not(
-                        codegen.location_from_meta(meta),
-                        rhs,
-                    )?);
-                }
+                let rhs_bool = self.cast_to_bool_if_needed(codegen, loc, rhs)?;
+                return self.append_op_unnamed_result(bool::not(loc, rhs_bool)?);
             }
             ExpressionPrefixOpcode::Complement => {
-                if is_felt_type(rhs.r#type()) {
-                    return self.append_op_unnamed_result(felt::bit_not(
-                        codegen.location_from_meta(meta),
-                        rhs,
-                    )?);
-                }
                 // For index negation, we need to subtract one from the negative
                 // value (for the identity that `~x == -x - 1`).
                 if shared::is_index(rhs.r#type()) {
@@ -1258,23 +1315,15 @@ where
                     let one = self.append_op_unnamed_result(index::constant(
                         codegen.context,
                         IntegerAttribute::new(rhs.r#type(), 1),
-                        codegen.location_from_meta(meta),
+                        loc,
                     ))?;
-                    return self.append_op_unnamed_result(index::sub(
-                        negative_idx,
-                        one,
-                        codegen.location_from_meta(meta),
-                    ));
+                    return self.append_op_unnamed_result(index::sub(negative_idx, one, loc));
                 }
+                // Otherwise, cast to felt and use felt bitwise NOT.
+                let rhs_felt = self.cast_to_felt_if_needed(codegen, loc, rhs)?;
+                return self.append_op_unnamed_result(felt::bit_not(loc, rhs_felt)?);
             }
         }
-        let err_msg = format!(
-            "Cannot generate LLZK for prefix {:?} with operand type '{}'",
-            self,
-            rhs.r#type()
-        );
-        codegen.emit_circom_error(meta, err_msg.as_str(), ReportCode::PrefixOperatorWithWrongTypes);
-        Err(anyhow!(err_msg))
     }
 
     /// If both operands have types that match the respective filter predicates, generate the
@@ -1299,7 +1348,7 @@ where
     /// Generate LLZK code in the current function for an infix operation.
     pub fn gen_infix_op(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         meta: &Meta,
         op: &ExpressionInfixOpcode,
         lhs: Value<'ctx, 'val>,
@@ -1340,6 +1389,19 @@ where
             }};
         }
 
+        // If both sides can be converted to `felt` type via `unifiable_cast`, do so and then
+        // generate the op. This should only be used as a last resort after more specific type
+        // checks and conversions because it will generate what's described or return an `Err`.
+        macro_rules! try_unifiable_felt_op {
+            ($op_path:path) => {{
+                let loc = codegen.location_from_meta(meta);
+                let felt_ty = codegen.felt_type().into();
+                let lhs = self.unifiable_cast(loc, lhs, felt_ty)?;
+                let rhs = self.unifiable_cast(loc, rhs, felt_ty)?;
+                return self.append_op_unnamed_result($op_path(loc, lhs, rhs)?);
+            }};
+        }
+
         macro_rules! try_index_op {
             ($op_path:path) => {{
                 try_callback_for_type!(shared::is_index, |_| {
@@ -1359,11 +1421,12 @@ where
         }
 
         // Macro to handle the common pattern for felt and index type checks.
-        // For index operations that use felt:: module and simple index operations.
+        // For index operations that use `felt::` module and simple index operations.
         macro_rules! try_felt_or_index_op {
             ($felt_op:path, $index_op:path) => {{
                 try_felt_op!($felt_op);
                 try_index_op!($index_op);
+                try_unifiable_felt_op!($felt_op);
             }};
         }
 
@@ -1371,11 +1434,12 @@ where
             ($felt_op:path, $math_op:path) => {{
                 try_felt_op!($felt_op);
                 try_math_op!($math_op);
+                try_unifiable_felt_op!($felt_op);
             }};
         }
 
         // Macro to handle the common pattern for felt and index type checks.
-        // For comparison operations that use bool:: module and index::cmpi.
+        // For comparison operations that use `bool::` module and `index::cmpi`.
         macro_rules! try_bool_cmp_op {
             ($bool_op:path, $cmp:ident) => {{
                 try_felt_op!($bool_op);
@@ -1383,6 +1447,7 @@ where
                     let loc = codegen.location_from_meta(meta);
                     Ok(index::cmp(codegen.context, arith::CmpiPredicate::$cmp, lhs, rhs, loc))
                 });
+                try_unifiable_felt_op!($bool_op);
             }};
         }
 
@@ -1448,21 +1513,13 @@ where
                 try_felt_or_index_op!(felt::bit_xor, index::xor);
             }
         }
-        let err_msg = format!(
-            "Cannot generate LLZK for infix {:?} with LHS type '{}' and RHS type '{}'",
-            op,
-            lhs.r#type(),
-            rhs.r#type()
-        );
-        codegen.emit_circom_error(meta, err_msg.as_str(), ReportCode::InfixOperatorWithWrongTypes);
-        Err(anyhow!(err_msg))
     }
 
     /// Create a new `scf.yield` op, in the given block, that yields multiple values with associated
     /// variable names. Create an [Attribute] containing comma-separated list of `value_names`
     /// and attach it to the `scf.yield` op using the [OPERAND_VAL_NAMES] attribute key.
     fn append_multi_operand_yield_to_block(
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block: BlockRef<'ctx, 'val>,
         values: &[Value<'ctx, 'val>],
         value_names: &[String],
@@ -1474,25 +1531,93 @@ where
         no_results(block.append_operation(op))
     }
 
+    /// For a pair of values yielded from the `then` and `else` regions of an `scf.if`,
+    /// determine the canonical yield type. If the types already agree, that type is returned
+    /// unchanged. Otherwise the non-tvar type is selected (falling back to `then_value`'s type
+    /// when both are tvars), and a `poly.unifiable_cast` is inserted before the `scf.yield`
+    /// terminator in whichever region produces the wrong type.
+    fn unify_scf_branch_types(
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        location: Location<'ctx>,
+        then_region: &Region<'ctx>,
+        then_value: Value<'ctx, 'val>,
+        else_region: &Region<'ctx>,
+        else_value: Value<'ctx, 'val>,
+    ) -> Result<Type<'ctx>> {
+        let then_ty = then_value.r#type();
+        let else_ty = else_value.r#type();
+        if then_ty == else_ty {
+            return Ok(then_ty);
+        }
+
+        if is_type_variable(else_ty) {
+            Self::insert_cast_before_yield(else_region, location, else_value, then_ty)
+                .map(|_| then_ty)
+        } else {
+            Self::insert_cast_before_yield(then_region, location, then_value, else_ty)
+                .map(|_| else_ty)
+        }
+        .inspect_err(|_| {
+            if codegen.config.verbose {
+                println!("Current module state:");
+                codegen.dump_module();
+                println!("\nPending 'then' region:");
+                shared::print_region(then_region);
+                println!("\nPending 'else' region:");
+                shared::print_region(else_region);
+            }
+        })
+    }
+
+    /// If the type of `value` is not equal to `target_ty`, insert a `poly.unifiable_cast` of
+    /// `value` to `target_ty` immediately before the single `scf.yield` terminator of
+    /// `region`'s first block, and replace the yield's use of `value` with the cast result.
+    fn insert_cast_before_yield(
+        region: &Region<'ctx>,
+        location: Location<'ctx>,
+        value: Value<'ctx, 'val>,
+        target_ty: Type<'ctx>,
+    ) -> Result<()> {
+        let current_type = value.r#type();
+        ensure!(
+            types_unify(current_type, target_ty),
+            "scf.if branch value type '{}' does not unify with expected type '{}'",
+            current_type,
+            target_ty
+        );
+        if current_type != target_ty {
+            let block = region.first_block().expect("region has a block");
+            ensure!(block.next_in_region().is_none(), "region has more than one block");
+            let terminator = block.terminator().expect("block has a terminator");
+            let new_cast = block.insert_operation_before(
+                terminator,
+                poly::unifiable_cast(location, value, target_ty),
+            );
+            replace_uses_of_with(&terminator, value, Value::from(new_cast.result(0)?));
+        }
+        Ok(())
+    }
+
     /// Append an `scf.if` op using pre-generated branch regions that each yield one value.
-    /// Ensures both yielded values have the same type, emits the `scf.if`, and casts the
-    /// result to `expected_result_type` when provided and unifiable.
+    /// Asserts both yielded values have the same type, emits the `scf.if`, and casts the
+    /// result to `expected_result_type` when provided and legal. Otherwise, returns Err.
     pub fn gen_safe_scf_if(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         (then_region, then_value): (Region<'ctx>, Value<'ctx, 'val>),
         (else_region, else_value): (Region<'ctx>, Value<'ctx, 'val>),
         expected_result_type: Option<Type<'ctx>>,
     ) -> Result<Value<'ctx, 'val>> {
-        // Ensure values yielded from both blocks have the same type. Strict equality per `scf.if`.
-        let yield_type = then_value.r#type();
-        assert_eq!(
-            yield_type,
-            else_value.r#type(),
-            "branches of scf.if must yield identical value types"
-        );
+        let yield_type = Self::unify_scf_branch_types(
+            codegen,
+            location,
+            &then_region,
+            then_value,
+            &else_region,
+            else_value,
+        )?;
         let if_op_result = self.append_op_unnamed_result(scf::r#if(
             condition,
             &[yield_type],
@@ -1508,52 +1633,84 @@ where
         if_op_result
     }
 
-    /// Append an `scf.if` op using pre-generated branch regions that each yield the same number of
-    /// values. Ensures both yielded values have the same type, emits the `scf.if`, and casts
-    /// the result to `expected_result_type` when provided and unifiable.
-    pub fn gen_safe_scf_multivalued_if(
+    /// Append an `scf.if` op using pre-generated branch regions that each yield N values.
+    /// Asserts corresponding yielded values have the same type, emits the `scf.if`, and casts the
+    /// results to `expected_result_types` when provided and legal. Otherwise, returns Err.
+    ///
+    /// Each [Region] is assumed to contain a single block with an `scf.yield` terminator. If
+    /// `then_values` or `else_values` is None, the Values are retrieved from the block terminator.
+    #[allow(clippy::too_many_arguments)]
+    pub fn gen_safe_scf_if_multi(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
-        (then_region, then_values): (Region<'ctx>, &[Value<'ctx, 'val>]),
-        (else_region, else_values): (Region<'ctx>, &[Value<'ctx, 'val>]),
+        then_region: Region<'ctx>,
+        then_values: Option<&[Value<'ctx, 'val>]>,
+        else_region: Region<'ctx>,
+        else_values: Option<&[Value<'ctx, 'val>]>,
         expected_result_types: Option<&[Type<'ctx>]>,
     ) -> Result<Vec<Value<'ctx, 'val>>> {
-        assert_eq!(
-            then_values.len(),
-            else_values.len(),
-            "branches of scf.if must have identical length"
-        );
-        if let Some(expected_result_types) = expected_result_types {
-            assert_eq!(
-                then_values.len(),
-                expected_result_types.len(),
-                "branches of scf.id and expected result types must have identical length"
-            );
-        }
-        for (then_value, else_value) in std::iter::zip(then_values, else_values) {
-            // Ensure values yielded from both blocks have the same type. Strict equality per
-            // `scf.if`.
-            assert_eq!(
-                then_value.r#type(),
-                else_value.r#type(),
-                "branches of scf.if must yield identical value types"
-            );
-        }
-        let yield_types = then_values.iter().map(|v| v.r#type()).collect::<Vec<_>>();
-        let if_op_result =
-            self.append_op(scf::r#if(condition, &yield_types, then_region, else_region, location));
+        let yielded_values_from_region =
+            |region: &Region<'ctx>, branch_name: &str| -> Result<Vec<Value<'ctx, 'val>>> {
+                let block = region
+                    .first_block()
+                    .with_context(|| format!("scf.if {branch_name} region has no block"))?;
+                let terminator = block
+                    .terminator()
+                    .with_context(|| format!("scf.if {branch_name} region has no terminator"))?;
+                ensure!(
+                    scf::is_scf_yield(&terminator),
+                    "scf.if {branch_name} block has terminator other than scf.yield"
+                );
+                Ok(terminator.operands().collect())
+            };
 
-        let values = if_op_result.results().map(|r| unsafe { Value::from_raw(r.to_raw()) });
+        let then_values = match then_values {
+            Some(values) => values.to_vec(),
+            None => yielded_values_from_region(&then_region, "then")?,
+        };
+        let else_values = match else_values {
+            Some(values) => values.to_vec(),
+            None => yielded_values_from_region(&else_region, "else")?,
+        };
+
+        ensure!(
+            then_values.len() == else_values.len(),
+            "branches of scf.if must yield the same number of values"
+        );
+
+        if let Some(expected) = expected_result_types {
+            ensure!(
+                then_values.len() == expected.len(),
+                "scf.if expected result types must match the number of yielded values"
+            );
+        }
+
+        let yield_types = zip(then_values, else_values)
+            .map(|(then_value, else_value)| {
+                Self::unify_scf_branch_types(
+                    codegen,
+                    location,
+                    &then_region,
+                    then_value,
+                    &else_region,
+                    else_value,
+                )
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        let scf_if_op =
+            self.append_op(scf::r#if(condition, &yield_types, then_region, else_region, location));
+        let results = scf_if_op.results().map(Value::from).collect::<Vec<_>>();
 
         match expected_result_types {
-            Some(expected) => std::iter::zip(values, expected)
-                .map(|(value, expected)| {
-                    self.cast_to_expected_type_if_needed(codegen, location, value, *expected)
+            Some(expected) => zip(results, expected)
+                .map(|(result, expected)| {
+                    self.cast_to_expected_type_if_needed(codegen, location, result, *expected)
                 })
                 .collect(),
-            None => Ok(values.collect()),
+            None => Ok(results),
         }
     }
 
@@ -1561,7 +1718,7 @@ where
     /// block context with the results of the `scf.if` op mapped to the given names.
     pub fn gen_scf_if_with_var_overwrites(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         mut then_info: NestedBlockInfo<'ctx, 'blk, 'val>,
@@ -1624,19 +1781,22 @@ where
         // Cast condition value to bool type if needed.
         let condition = self.cast_to_bool_if_needed(codegen, location, condition)?;
         // Generate the `scf.if` op for the circom `IfThenElse` statement.
-        let scf_if_op = self.append_op(scf::r#if(
-            condition,
-            &result_types,
-            then_info.region,
-            else_info.region,
+        let scf_if_results = self.gen_safe_scf_if_multi(
+            codegen,
             location,
-        ));
+            condition,
+            then_info.region,
+            Some(&then_values),
+            else_info.region,
+            Some(&else_values),
+            Some(&result_types),
+        )?;
 
         // Update the current block context with results from the `scf.if` op.
         overwrite_names
             .into_iter()
-            .zip(scf_if_op.results())
-            .try_for_each(|(name, result)| self.block_ctx.set_named_value(name, result.into()))?;
+            .zip(scf_if_results)
+            .try_for_each(|(name, result)| self.block_ctx.set_named_value(name, result))?;
         Ok(())
     }
 
@@ -1666,7 +1826,7 @@ where
     /// assumes that the branches do not modify the current block context and only produce values.
     pub fn gen_scf_if_no_var_overwrites<F1, F2>(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         then_value_gen: F1,
@@ -1687,7 +1847,7 @@ where
     /// the for-loop induction variable and is used to fill in the `scf.for` op.
     pub fn gen_simple_scf_for(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         start: Value<'ctx, 'val>,
         step: Value<'ctx, 'val>,
@@ -1705,7 +1865,7 @@ where
     #[inline]
     pub fn gen_normalized_scf_for(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         end: Value<'ctx, 'val>,
         body_fn: impl FnOnce(BlockRef<'ctx, '_>) -> Result<()>,
@@ -1720,7 +1880,7 @@ where
     /// Returns a [`Value`] with the updated counter.
     pub fn gen_subcmp_decrease_counter(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         subcmp_memory: Value<'ctx, 'val>,
         amount: u32,
@@ -1745,7 +1905,7 @@ where
     pub fn gen_decompose_pod(
         &mut self,
         pod: Value<'ctx, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Vec<Value<'ctx, 'val>>> {
         PodType::try_from(pod.r#type())?
@@ -1778,7 +1938,7 @@ where
         &mut self,
         struct_type: StructType<'ctx>,
         params_value: Value<'ctx, '_>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Vec<OwningValueRange<'ctx, '_>>> {
         let params = PodType::try_from(params_value.r#type())?.get_records();
@@ -1792,7 +1952,7 @@ where
                     record_name.as_str()?,
                     location,
                 )?)?;
-                let value = self.cast_to_index_if_needed(location, value)?;
+                let value = self.cast_to_index_if_needed(codegen, location, value)?;
 
                 Ok(OwningValueRange::from([value].as_slice()))
             })
@@ -1809,7 +1969,7 @@ where
         inputs: Value<'ctx, 'val>,
         params: Value<'ctx, 'val>,
         location: Location<'ctx>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<Value<'ctx, 'val>> {
         let input_values = self.gen_decompose_pod(inputs, codegen, location)?;
         let func_name = append_tail(&struct_type.name(), FUNC_NAME_COMPUTE.as_ref());
@@ -1838,7 +1998,7 @@ where
         subcmp: Value<'ctx, 'val>,
         inputs: Value<'ctx, 'val>,
         location: Location<'ctx>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<()> {
         let mut call_args = vec![subcmp];
         call_args.extend(self.gen_decompose_pod(inputs, codegen, location)?);
@@ -1857,7 +2017,7 @@ where
     /// generating the necessary IR if the attribute is a symbol reference to a struct param.
     pub fn array_dim_attr_to_idx_val(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         dim: Attribute<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -1873,12 +2033,13 @@ where
         if let Ok(sym_ref) = FlatSymbolRefAttribute::try_from(dim) {
             // Check if this is a template binding reference
             let sym_name = sym_ref.value();
-            if let Some(type_restriction) = self.poly_template_binding_names.get(sym_name) {
-                if let Some(ty) = type_restriction {
+            let type_restriction = self.poly_template_binding_names.borrow().get(sym_name).copied();
+            if let Some(opt_ty) = type_restriction {
+                if let Some(ty) = opt_ty {
                     // Read as the restricted type and then cast to index.
                     let op =
-                        self.append_op_unnamed_result(poly::read_const(location, sym_name, *ty))?;
-                    return self.cast_to_index_if_needed(location, op);
+                        self.append_op_unnamed_result(poly::read_const(location, sym_name, ty))?;
+                    return self.cast_to_index_if_needed(codegen, location, op);
                 } else {
                     // If there is no type restriction just use `index`.
                     return self.append_op_unnamed_result(poly::read_const(
@@ -1898,7 +2059,7 @@ where
     /// values representing the current value of each loop's induction variable.
     pub fn gen_loop_nest_from_attrs(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         dims: &[Attribute<'ctx>],
         body: impl FnOnce(&mut Self, &[Value<'ctx, 'val>]) -> Result<()>,
@@ -1921,7 +2082,7 @@ where
     /// values representing the current value of each loop's induction variable.
     pub fn gen_loop_nest(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         dim_values: &[Value<'ctx, 'val>],
         body: impl FnOnce(&mut Self, &[Value<'ctx, 'val>]) -> Result<()>,
@@ -1981,13 +2142,13 @@ where
     /// is otherwise the same.
     pub fn generate_uniform_array(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         value: Value<'ctx, 'val>,
         dimension: &ArrayDimension<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
         // Ensure all symbols are of index type
-        let dimension = &self.transform_symbols_to_index(location, dimension)?;
+        let dimension = &self.transform_symbols_to_index(codegen, location, dimension)?;
         let const_dim = IntegerAttribute::try_from(dimension);
         if let Ok(subarr_ty) = ArrayType::try_from(value.r#type()) {
             let arr_ty = dimension.new_array_type(&subarr_ty.into());
@@ -2069,7 +2230,7 @@ where
     /// block context with the results of the `scf.while` op mapped to the given names.
     pub fn gen_scf_while(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         condition: Value<'ctx, 'val>,
         loop_cond_info: NestedBlockInfo<'ctx, 'blk, 'val>,
@@ -2090,6 +2251,14 @@ where
         let (loop_carried_var_names, body_yield_values): (Vec<_>, Vec<_>) =
             overwrites_sorted.into_iter().unzip();
 
+        // Pre-compute loop_carried_types from the current block context. This must be done
+        // before appending the yield so we can detect and fix type mismatches (e.g., a body
+        // yield value has type `T_arg0` but the loop-carried type is `T_return`).
+        let loop_carried_types: Vec<_> = loop_carried_var_names
+            .iter()
+            .map(|name| Ok(self.block_ctx.get_named_value(name)?.r#type()))
+            .collect::<Result<_>>()?;
+
         // Append the loop body block with an `scf.yield`
         Self::append_multi_operand_yield_to_block(
             codegen,
@@ -2099,18 +2268,34 @@ where
             location,
         )?;
 
-        // Use `loop_carried_var_names` and the current block context to build a list of types of
-        // the loop-carried variables, add BlockArguments of those types in both blocks, and
-        // replace uses of the overwritten variables in both blocks with references to the new
-        // BlockArguments Values.
-        let mut loop_carried_types = Vec::new();
+        // Fix any type mismatches in the loop body yield: if a yield value's type differs from
+        // the expected loop-carried type but the types are unifiable (e.g., two distinct
+        // `poly.tvar` types), insert a `poly.unifiable_cast` before the yield terminator to
+        // bridge them. This can arise when an early return inside a loop yields the function
+        // parameter value (type `T_arg0`) into a slot whose loop-carried type is `T_return`.
+        {
+            let terminator = loop_body_info.block.terminator().expect("yield was just appended");
+            for (val, expected_ty) in
+                body_yield_values.iter().copied().zip(loop_carried_types.iter().copied())
+            {
+                if val.r#type() != expected_ty && types_unify(val.r#type(), expected_ty) {
+                    let cast_op = loop_body_info.block.insert_operation_before(
+                        terminator,
+                        poly::unifiable_cast(location, val, expected_ty),
+                    );
+                    replace_uses_of_with(&terminator, val, Value::from(cast_op.result(0)?));
+                }
+            }
+        }
+
+        // Add BlockArguments of the loop-carried types in both blocks, and replace uses of the
+        // overwritten variables in both blocks with references to the new BlockArguments Values.
         // Additionally, track if `VAR_NAME_HAD_RETURN` is among the loop-carried variables
         // (indicating there was a return somewhere within the loop body) to later update the
         // loop condition to ensure iteration stops when a return occurs.
         let mut return_flag: Option<Value> = None;
         for name in loop_carried_var_names.iter() {
             let orig_val = self.block_ctx.get_named_value(name).unwrap();
-            loop_carried_types.push(orig_val.r#type());
             replace_uses_with_new_block_argument(loop_body_info.block, orig_val, location);
             let f = replace_uses_with_new_block_argument(loop_cond_info.block, orig_val, location);
             if name == VAR_NAME_HAD_RETURN {
@@ -2179,17 +2364,18 @@ where
     #[inline]
     fn transform_symbols_to_index(
         &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         dimension: &ArrayDimension<'ctx, 'val>,
     ) -> Result<ArrayDimension<'ctx, 'val>> {
-        dimension.transform(|val| self.cast_to_index_if_needed(location, val))
+        dimension.transform(|val| self.cast_to_index_if_needed(codegen, location, val))
     }
 
     /// Handle a [program_structure::ast::Statement::Declaration] by generating a nondet felt value
     /// with the given dimensions and declaring it in the current block context.
     pub fn gen_declaration(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         meta: &Meta,
         name: &str,
         dimensions: &[Expression],
@@ -2213,6 +2399,20 @@ where
         let op = dims.new_nondet_felt_of_dimensions(codegen, meta)?;
         self.block_ctx.declare_name_ensure_not_present(name, op)
     }
+
+    /// Add a new polymorphic parameter via [`DimExprConverter::record_new_sym_binding`] and
+    /// return the uniqued name as a [`StringAttribute`].
+    pub fn add_new_poly_param(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        location: Location<'ctx>,
+        name: &str,
+        type_opt: Option<Type<'ctx>>,
+    ) -> Result<StringAttribute<'ctx>> {
+        poly::param(location, name, type_opt)
+            .map(|op| self.record_new_sym_binding(codegen, op.into()))
+            .map_err(Into::into)
+    }
 }
 
 impl<'ctx, 'blk, 'val> DimExprConverter<'ctx, 'val> for BlockGenContext<'_, 'ctx, 'blk, 'val>
@@ -2224,20 +2424,22 @@ where
         self.var_decl_types
     }
 
-    fn callback_store_poly_expr(
+    fn record_new_sym_binding(
         &self,
-        name: String,
-        op: TemplateExprOp<'ctx>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        op: TemplateSymbolBindingOp<'ctx>,
     ) -> StringAttribute<'ctx> {
-        // TODO: How/where can it be store when using this general BlockGenContext?
-        // TODO: Also, add new name+type to `self.poly_template_binding_names` so future
-        //       calls to `get_dim_expr` can find it. The field will need RefCell.
-        todo!("BlockGenContext::callback_store_poly_expr: {name} -> {op:?}");
+        let type_opt = op.type_opt();
+        let name = codegen.binding_insert_strategy().unwrap().store(codegen, op);
+        // Record the name+type so future calls to `get_dim_expr` can resolve it as a known
+        // poly binding (rather than trying to look it up as a runtime SSA value).
+        self.poly_template_binding_names.borrow_mut().insert(name.value().to_string(), type_opt);
+        name
     }
 
     fn get_dim_expr(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         expr: &Expression,
     ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
         // First try to compute statically, falling back to literal computation if all values are
@@ -2253,11 +2455,11 @@ where
                     // Grab the template symbol binding name if it exists (first try `poly.param`
                     // name then try `poly.expr` name). Otherwise, use `affine_map` to convert Value
                     // to Attribute.
-                    if self.poly_template_binding_names.contains_key(name) {
+                    if self.poly_template_binding_names.borrow().contains_key(name) {
                         ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
                     } else {
                         let expr_name = dim_expr_name(expr);
-                        if self.poly_template_binding_names.contains_key(&expr_name) {
+                        if self.poly_template_binding_names.borrow().contains_key(&expr_name) {
                             ArrayDimensionResult::new(codegen.flat_sym(expr_name).into(), &[])
                         } else if let Ok(v) = self.block_ctx.get_named_value(name) {
                             ArrayDimensionResult::new(
@@ -2300,7 +2502,7 @@ where
     /// Generates LLZK IR in the given block context.
     fn gen_llzk_in_block<'info>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
         info: InfoProviders<'info, 'ctx>,
     ) -> Result<Value<'ctx, 'val>>;
@@ -2320,7 +2522,7 @@ where
 {
     fn gen_llzk_in_block<'info>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
         info: InfoProviders<'info, 'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -2437,22 +2639,46 @@ where
                     .zip(param_types)
                     .map(|(arg, expected_type)| {
                         let operand_val = arg.gen_llzk_in_block(codegen, block_gen, info)?;
-                        block_gen.cast_to_expected_type_if_needed(
-                            codegen,
-                            location,
-                            operand_val,
-                            expected_type,
-                        )
+                        if is_type_variable(expected_type) {
+                            // If the expected type is `TVarType`, the function can accept any type
+                            // so no need to cast. In fact, adding a unifiable cast would introduce
+                            // an illegal reference to a `poly.param` from the target function! In
+                            // concrete mode, function arguments will have more specific types but
+                            // in non-concrete mode, they will all be `TVarType`.
+                            Ok(operand_val)
+                        } else {
+                            block_gen.cast_to_expected_type_if_needed(
+                                codegen,
+                                location,
+                                operand_val,
+                                expected_type,
+                            )
+                        }
                     })
                     .collect::<Result<Vec<Value>>>()?;
-                // Create the CallOp in each function using the collected args.
+                let return_type = target_function_data.get_type_of_return(codegen);
+                let return_type = if is_type_variable(return_type) {
+                    // This `TVarType` references a symbol from the callee function, which is not
+                    // valid within the caller. Must add a new `poly.param` in the caller for a new
+                    // `TVarType` and use that as the return type.
+                    //
+                    // It would be nice to add the `tvar` type restriction on the `poly.param` op
+                    // but the problem is that it must use the same symbol as the param name itself
+                    // and that is not known until after it's inserted into the symbol table to
+                    // ensure it has a unique name.
+                    let unique_name =
+                        block_gen.add_new_poly_param(codegen, location, "$t", None)?;
+                    codegen.tvar_type(unique_name.value())
+                } else {
+                    return_type
+                };
                 block_gen.append_op_unnamed_result(
                     function::call(
                         codegen.op_builder(),
                         location,
-                        codegen.flat_sym(id),
+                        codegen.double_ref_sym(id),
                         &call_operands,
-                        &[target_function_data.get_type_of_return(codegen)],
+                        &[return_type],
                     )?
                     .into(),
                 )

@@ -61,7 +61,7 @@ pub trait TemplateLike: std::fmt::Debug {
     /// Generate the LLZK Location for the template definition.
     fn get_location<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Location<'ctx>;
 
     /// Get the name of the template.
@@ -74,7 +74,7 @@ pub trait TemplateLike: std::fmt::Debug {
     /// if any.
     fn get_init_subcmp_decls<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<HashMap<String, SubcmpDeclInfo<'ctx>>>;
 
     /// Get the body statements of the template.
@@ -84,7 +84,7 @@ pub trait TemplateLike: std::fmt::Debug {
     /// found in this template body.
     fn get_declarations<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<DeclarationInfo<'ctx>>;
 
     /// Returns the inputs in declaration order, containing name and number of dimensions.
@@ -118,7 +118,7 @@ pub trait TemplateLike: std::fmt::Debug {
     /// Generate any LLZK code needed in the beginning of the template.
     fn gen_preamble<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         template: &TemplateContext<'_, 'ctx, '_, '_, '_, '_>,
     ) -> Result<()>;
 }
@@ -128,7 +128,7 @@ impl TemplateLike for TemplateData {
 
     fn get_location<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Location<'ctx> {
         codegen.location(self.get_file_id(), self.get_param_location())
     }
@@ -147,14 +147,14 @@ impl TemplateLike for TemplateData {
 
     fn get_init_subcmp_decls<'ctx>(
         &self,
-        _codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        _codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<HashMap<String, SubcmpDeclInfo<'ctx>>> {
         Ok(HashMap::new())
     }
 
     fn get_declarations<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<DeclarationInfo<'ctx>> {
         DeclarationInfo::from_template(codegen, self)
     }
@@ -177,7 +177,7 @@ impl TemplateLike for TemplateData {
 
     fn gen_preamble<'ctx>(
         &self,
-        _codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        _codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         _template: &TemplateContext<'_, 'ctx, '_, '_, '_, '_>,
     ) -> Result<()> {
         Ok(())
@@ -195,7 +195,7 @@ impl TemplateLike for TemplateInstance {
 
     fn get_location<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Location<'ctx> {
         codegen.location_unknown()
     }
@@ -214,7 +214,7 @@ impl TemplateLike for TemplateInstance {
 
     fn get_init_subcmp_decls<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<HashMap<String, SubcmpDeclInfo<'ctx>>> {
         let mut subcmp_decls = HashMap::new();
         let location = codegen.location_unknown();
@@ -259,7 +259,7 @@ impl TemplateLike for TemplateInstance {
 
     fn get_declarations<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<DeclarationInfo<'ctx>> {
         let mut declarations = DeclarationInfo::from_template(codegen, self)?;
         let location = self.get_location(codegen);
@@ -315,7 +315,7 @@ impl TemplateLike for TemplateInstance {
 
     fn gen_preamble<'ctx>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         template: &TemplateContext<'_, 'ctx, '_, '_, '_, '_>,
     ) -> Result<()> {
         fn build_nested(

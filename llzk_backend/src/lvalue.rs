@@ -145,7 +145,7 @@ impl<'ast> Lvalue<'ast> {
         &self,
         indices: &[&Expression],
         prev: Value<'ctx, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut C,
         location: Location<'ctx>,
         info: InfoProviders<'_, 'ctx>,
@@ -169,7 +169,8 @@ impl<'ast> Lvalue<'ast> {
                 location,
                 info,
             )?;
-            let value = block_gen.as_mut().append_array_read(prev, &indices, location, None)?;
+            let value =
+                block_gen.as_mut().append_array_read(codegen, prev, &indices, location, None)?;
             return cont.cont(value, block_gen);
         };
 
@@ -251,7 +252,7 @@ impl<'ast> Lvalue<'ast> {
         &self,
         prev: Value<'ctx, 'val>,
         entry_indices: &[usize],
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut C,
         location: Location<'ctx>,
         prev_pod_type: PodType<'ctx>,
@@ -294,7 +295,7 @@ impl<'ast> Lvalue<'ast> {
         &self,
         signal_name: &str,
         subcmp_value: Value<'ctx, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -334,7 +335,7 @@ impl<'ast> Lvalue<'ast> {
         &self,
         signal_name: &str,
         subcmp_value: Value<'ctx, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -362,7 +363,7 @@ impl<'ast> Lvalue<'ast> {
     /// is implemented by all function types that match the continuation's signature.
     pub fn get_value<'decls, 'ctx, 'blk, 'val, 'cont, R, C>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut C,
         subcmp_info: &dyn SubcmpInfo<'ctx>,
         location: Location<'ctx>,
@@ -681,7 +682,7 @@ impl fmt::Display for Lvalue<'_> {
 /// Emits the IR for a conditional check for array indices in a mixed subcomponent.
 pub(crate) fn emit_condition<'ctx, 'val>(
     entry_indices: &[usize],
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
     location: Location<'ctx>,
     true_value: Value<'ctx, 'val>,
@@ -760,7 +761,7 @@ pub trait Combine<'ctx, 'val>: sealed::CombineSealed + Sized + Copy {
     fn make_tail<'blk>(
         entries: &[CombineEntry<'ctx, 'blk, 'val, Self>],
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<(NestedBlockInfo<'ctx, 'blk, 'val>, Self)>;
 
@@ -778,7 +779,7 @@ pub trait Combine<'ctx, 'val>: sealed::CombineSealed + Sized + Copy {
     fn combine<'blk>(
         entries: Vec<CombineEntry<'ctx, 'blk, 'val, Self>>,
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Self> {
         let (tail, tail_data) = Self::make_tail(&entries, block_gen, codegen, location)?;
@@ -836,12 +837,14 @@ pub trait Combine<'ctx, 'val>: sealed::CombineSealed + Sized + Copy {
                 let then_region = info.region;
                 let else_region = tail.region;
                 let (mut new_info, values) = NestedBlockInfo::with_scope(block_gen, |block_gen| {
-                    block_gen.gen_safe_scf_multivalued_if(
+                    block_gen.gen_safe_scf_if_multi(
                         codegen,
                         location,
                         condition,
-                        (then_region, &then_values),
-                        (else_region, &else_values),
+                        then_region,
+                        Some(&then_values),
+                        else_region,
+                        Some(&else_values),
                         None,
                     )
                 })?;
@@ -997,7 +1000,7 @@ impl<'ctx, 'val> Combine<'ctx, 'val> for () {
     fn make_tail<'blk>(
         _: &[CombineEntry<'ctx, 'blk, 'val, Self>],
         _: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
-        _: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        _: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         _: Location<'ctx>,
     ) -> Result<(NestedBlockInfo<'ctx, 'blk, 'val>, Self)> {
         Ok((NestedBlockInfo::new(), ()))
@@ -1014,7 +1017,7 @@ impl<'ctx, 'val> Combine<'ctx, 'val> for Value<'ctx, 'val> {
     fn make_tail<'blk>(
         entries: &[CombineEntry<'ctx, 'blk, 'val, Self>],
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
-        _: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        _: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<(NestedBlockInfo<'ctx, 'blk, 'val>, Self)> {
         NestedBlockInfo::with_scope(block_gen, |block_gen| {

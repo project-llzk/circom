@@ -228,7 +228,7 @@ where
     /// mapping of `var` declaration names to their declared LLZK types, and set of visible
     /// `poly.param` and `poly.expr` names.
     pub fn new<const FREE_FUNC: bool>(
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         func: FuncDefOpRefMut<'ctx, 'func>,
         param_name_to_value: HashMap<String, Value<'ctx, 'val>>,
         var_decl_types: &'decls HashMap<String, Type<'ctx>>,
@@ -269,7 +269,7 @@ where
     /// case, it is marked with the [CIRCOM_RETURN_MARKER_ATTR] attribute.
     pub fn append_circom_return(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         value: Value<'ctx, 'val>,
     ) -> Result<()> {
@@ -287,7 +287,7 @@ where
     #[inline]
     pub fn cast_to_return_type_if_needed(
         &mut self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -300,7 +300,7 @@ where
         &mut self,
         value: Value<'ctx, 'val>,
         location: Location<'ctx>,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         body: impl FnOnce(&mut Self) -> Result<()>,
     ) -> Result<()> {
         let zero = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
@@ -318,11 +318,15 @@ where
         self.append_op_no_result(scf::r#yield(&[], location))?;
         self.block_ctx.pop();
 
+        // No need to use `gen_safe_scf_if()` here since there's no result value.
         self.append_op_no_result(scf::r#if(cmp, &[], then_region, new_region_empty(), location))
     }
 
     /// Finalizes the context.
-    pub fn finalize(&mut self, codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>) -> Result<()> {
+    pub fn finalize(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+    ) -> Result<()> {
         self.func.walk_mut(WalkOrder::PreOrder, |mut op| {
             // Remove any `llzk.nondet` ops from the function whose result value is unused. These
             // were added, for example, when visiting [Statement::Declaration] but their uses were
@@ -377,7 +381,7 @@ where
     /// branch (with return op there also converted to a yield op). The new `scf.if` op result is
     /// used in a new `scf.return` op added after the new `scf.if`.
     fn refactor_return_in_if(
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         ret_op: OperationRefMut<'ctx, '_>,
         mut parent_if_op: OperationRefMut<'ctx, '_>,
     ) -> Result<()> {
@@ -463,19 +467,27 @@ where
             no_results(new_then_block.append_operation(new_yield))?;
         }
 
-        // Create new `scf.if` op using the new "then" and "else" blocks. Replace `parent_if_op`
-        // with this new `scf.if` and then append a return/yield with the new `scf.if` results.
+        // Create new `scf.if` op using the new "then" and "else" blocks.
         let blk = parent_if_op.block().context("expected parent block for original `if`")?;
-        let new_if_ref = blk.append_operation(scf::r#if(
-            parent_if_op.operand(0)?,
-            new_else_result_info.result_types(),
-            new_then_region,
-            new_else_region,
+        let empty_var_decl_types = Default::default();
+        let mut gen_ctx_in_parent_if_op_block = BlockGenContext::new(
+            BlockContextStack::new(blk),
+            &empty_var_decl_types,
+            std::iter::empty(),
+        );
+        let result_values = gen_ctx_in_parent_if_op_block.gen_safe_scf_if_multi(
+            codegen,
             parent_if_op.location(),
-        ));
+            parent_if_op.operand(0)?,
+            new_then_region,
+            None,
+            new_else_region,
+            None,
+            Some(new_else_result_info.result_types()),
+        )?;
 
-        // Add return if the destination block is the function def body, else yield.
-        let result_values: Vec<_> = new_if_ref.results().map(Value::from).collect();
+        // Replace `parent_if_op` with the new `scf.if` and then append a return/yield with the new
+        // `scf.if` results. If the destination block is the function body use return, else yield.
         let op = if blk.parent_operation().is_some_and(|r| function::is_func_def(&r)) {
             function::r#return(parent_if_op.location(), &result_values)
         } else {
@@ -544,7 +556,7 @@ where
     /// Generates LLZK IR from [Statement] nodes in a circom function.
     fn gen_llzk_in_function<'info>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
         info: InfoProviders<'info, 'ctx>,
     ) -> Result<Self::Output>;
@@ -588,7 +600,7 @@ where
 /// when a circom [Statement::IfThenElse] contains a return statement.
 #[allow(clippy::too_many_arguments)]
 fn handle_unbalanced_return<'ctx, 'func, 'blk, 'val>(
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
     location: Location<'ctx>,
     return_val: Value<'ctx, 'val>,
@@ -640,7 +652,7 @@ where
 ///  }
 /// ```
 fn gen_unbalanced_return_extra<'ctx, 'func, 'blk, 'val>(
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
     location: Location<'ctx>,
 ) -> Result<()>
@@ -671,7 +683,7 @@ where
 
 /// Generate LLZK code for a circom [Statement::IfThenElse].
 fn gen_if_then_else<'ctx, 'func, 'blk, 'val, 'info>(
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
     info: InfoProviders<'info, 'ctx>,
     meta: &Meta,
@@ -762,7 +774,7 @@ where
 
 /// Generate LLZK code for a circom [Statement::While].
 fn gen_while<'ctx, 'func, 'blk, 'val, 'info>(
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
     info: InfoProviders<'info, 'ctx>,
     meta: &Meta,
@@ -846,7 +858,7 @@ where
 /// This is needed to support the `try_for_loop_heuristic` macro.
 #[inline]
 fn gen_init_block<'ctx, 'func, 'blk, 'val>(
-    codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
     info: InfoProviders<'_, 'ctx>,
     initializations: &[Statement],
@@ -871,7 +883,7 @@ where
 
     fn gen_llzk_in_function<'info>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
         info: InfoProviders<'info, 'ctx>,
     ) -> Result<Self::Output> {
@@ -974,7 +986,7 @@ where
 
     fn gen_llzk_in_function<'info>(
         &self,
-        codegen: &LlzkCodegen<'_, 'ctx, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
         info: InfoProviders<'info, 'ctx>,
     ) -> Result<Self::Output> {
