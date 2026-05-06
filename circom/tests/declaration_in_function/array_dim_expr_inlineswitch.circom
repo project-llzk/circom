@@ -32,11 +32,11 @@ component main = A();
 // CHECK-NEXT:      struct.def @A {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@A::@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = struct.new : <@A::@A<[]>>
-// CHECK-NEXT:          function.call @synthetic::@synthetic<[none]>() : () -> ()
+// CHECK-NEXT:          function.call @synthetic::@synthetic<[?]>() : () -> ()
 // CHECK-NEXT:          function.return %[[VAL_5]] : !struct.type<@A::@A<[]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_6:[0-9a-zA-Z_\.]+]]: !struct.type<@A::@A<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          function.call @synthetic_0::@synthetic<[none]>() : () -> ()
+// CHECK-NEXT:          function.call @synthetic_0::@synthetic<[?]>() : () -> ()
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

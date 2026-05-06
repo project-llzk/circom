@@ -28,7 +28,6 @@ use llzk::prelude::TemplateOpRef;
 use llzk::prelude::TemplateParamOpRefMut;
 use llzk::prelude::TemplateSymbolBindingOpLike as _;
 use llzk::prelude::Type;
-use llzk::prelude::TypeAttribute;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
 use llzk::symbol_ref::SymbolRefAttribute;
@@ -173,7 +172,7 @@ fn wrap_call_in_synthetic_template<'ctx>(
         callee,
         &original_operands,
         &[], // synthetic function returns void; original result was already unused
-        Some(&[TypeAttribute::new(Type::none(codegen.context)).into()]),
+        Some(&[codegen.type_wildcard_attr()]),
     )?;
 
     // Insert the replacement before the original call, then remove the original.

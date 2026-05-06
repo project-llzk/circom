@@ -38,14 +38,14 @@ component main = A();
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  5 : <"bn128">
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = felt.const  10 : <"bn128">
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.const  15 : <"bn128">
-// CHECK-NEXT:          function.call @synthetic::@synthetic<[none]>(%[[VAL_8]], %[[VAL_9]], %[[VAL_10]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">) -> ()
+// CHECK-NEXT:          function.call @synthetic::@synthetic<[?]>(%[[VAL_8]], %[[VAL_9]], %[[VAL_10]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">) -> ()
 // CHECK-NEXT:          function.return %[[VAL_7]] : !struct.type<@A::@A<[]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_11:[0-9a-zA-Z_\.]+]]: !struct.type<@A::@A<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.const  5 : <"bn128">
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  10 : <"bn128">
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = felt.const  15 : <"bn128">
-// CHECK-NEXT:          function.call @synthetic_0::@synthetic<[none]>(%[[VAL_12]], %[[VAL_13]], %[[VAL_14]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">) -> ()
+// CHECK-NEXT:          function.call @synthetic_0::@synthetic<[?]>(%[[VAL_12]], %[[VAL_13]], %[[VAL_14]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">) -> ()
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

@@ -30,12 +30,12 @@ component main = A();
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@A::@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = struct.new : <@A::@A<[]>>
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  5 : <"bn128">
-// CHECK-NEXT:          function.call @synthetic::@synthetic<[none]>(%[[VAL_4]]) : (!felt.type<"bn128">) -> ()
+// CHECK-NEXT:          function.call @synthetic::@synthetic<[?]>(%[[VAL_4]]) : (!felt.type<"bn128">) -> ()
 // CHECK-NEXT:          function.return %[[VAL_3]] : !struct.type<@A::@A<[]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_5:[0-9a-zA-Z_\.]+]]: !struct.type<@A::@A<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  5 : <"bn128">
-// CHECK-NEXT:          function.call @synthetic_0::@synthetic<[none]>(%[[VAL_6]]) : (!felt.type<"bn128">) -> ()
+// CHECK-NEXT:          function.call @synthetic_0::@synthetic<[?]>(%[[VAL_6]]) : (!felt.type<"bn128">) -> ()
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
