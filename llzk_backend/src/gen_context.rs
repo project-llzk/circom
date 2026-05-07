@@ -1123,6 +1123,16 @@ where
                 if codegen.config.verbose {
                     println!("[copy_into_array]   src_dim: {src_dim} -> dest_dim: {dest_dim}");
                 }
+                // If both dimensions are compile-time constants, compute min(src, dst) at codegen
+                // time and emit a single arith.constant.
+                if let (Ok(s), Ok(d)) =
+                    (IntegerAttribute::try_from(src_dim), IntegerAttribute::try_from(dest_dim))
+                {
+                    let min_val = s.value().min(d.value());
+                    return self
+                        .append_op_unnamed_result(codegen.new_index_const_op(min_val, location));
+                }
+                // Otherwise, emit code to compute min(src, dst) at runtime.
                 let src_val = self.array_dim_attr_to_idx_val(codegen, location, src_dim)?;
                 let dest_val = self.array_dim_attr_to_idx_val(codegen, location, dest_dim)?;
                 let condition = self.append_op_unnamed_result(arith::cmpi(
