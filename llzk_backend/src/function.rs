@@ -32,19 +32,25 @@ use crate::write_chain::SignalWriteInfo;
 use anyhow::Context as _;
 use anyhow::Result;
 use llzk::dialect;
+use llzk::dialect::array;
+use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::bool;
 use llzk::dialect::function;
+use llzk::dialect::poly;
 use llzk::operation::erase_op;
 use llzk::operation::WalkOperationMutLike as _;
+use llzk::prelude::is_type_variable;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::melior_dialects::scf;
 use llzk::prelude::melior_dialects::scf::is_scf_if;
 use llzk::prelude::melior_dialects::scf::is_scf_yield;
+use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::FuncDefOpRefMut;
+use llzk::prelude::IntegerAttribute;
 use llzk::prelude::Location;
 use llzk::prelude::LoopBoundsAttribute;
 use llzk::prelude::Operation;
@@ -63,6 +69,7 @@ use program_structure::ast::Statement;
 use program_structure::ast::VariableType;
 use program_structure::error_code::ReportCode;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::ops::Deref;
 use std::ops::DerefMut;
 
@@ -567,6 +574,110 @@ where
 /// the remaining statements in the same block should be skipped).
 type SkipRestOfBlock = bool;
 
+/// Enumerate all N-dimensional index tuples for the given constant dimension sizes.
+/// E.g., `[2, 3]` → `[[0,0], [0,1], [0,2], [1,0], [1,1], [1,2]]`.
+fn cartesian_product_indices(dims: &[i64]) -> Vec<Vec<i64>> {
+    dims.iter().fold(vec![vec![]], |acc, &dim| {
+        acc.into_iter()
+            .flat_map(|prefix| {
+                (0..dim).map(move |i| {
+                    let mut p = prefix.clone();
+                    p.push(i);
+                    p
+                })
+            })
+            .collect()
+    })
+}
+
+/// For two concrete array types with the same number of dimensions, generate inline copy code
+/// that copies elements from `src` (type `src_ty`) into a newly allocated empty array of type
+/// `dst_ty`, appending all generated ops directly to `block`. Only elements within the min
+/// bounds of each dimension are copied; elements beyond the source bounds are not modified.
+/// All dimension attributes in `src_ty` and `dst_ty` must be constant integer indices (true
+/// for all VCF concrete types).
+fn copy_concrete_array_to_type_in_block<'ctx, 'blk, 'val>(
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+    location: Location<'ctx>,
+    block: BlockRef<'ctx, 'blk>,
+    src: Value<'ctx, 'val>,
+    src_ty: ArrayType<'ctx>,
+    dst_ty: ArrayType<'ctx>,
+) -> Result<Value<'ctx, 'val>>
+where
+    'ctx: 'blk,
+    'blk: 'val,
+{
+    fn const_dims(arr_ty: ArrayType<'_>) -> Result<Vec<i64>> {
+        arr_ty
+            .dims()
+            .iter()
+            .map(|d| {
+                let int_attr = IntegerAttribute::try_from(*d)
+                    .map_err(|_| anyhow::anyhow!("non-constant array dimension"))?;
+                let dim = int_attr.value();
+                anyhow::ensure!(dim >= 0, "negative array dimension");
+                Ok(dim)
+            })
+            .collect()
+    }
+
+    let src_dims = const_dims(src_ty)?;
+    let dst_dims = const_dims(dst_ty)?;
+    assert_eq!(
+        src_dims.len(),
+        dst_dims.len(),
+        "src and dst must have the same number of dimensions"
+    );
+
+    // Allocate a new uninitialized array of the destination type.
+    let dst = single_result_as_value(block.append_operation(codegen.new_array_new_op(
+        location,
+        dst_ty,
+        ArrayCtor::Empty,
+    )))?;
+
+    // Copy elements within the min bounds of each dimension pair.
+    let min_dims: Vec<i64> = src_dims.iter().zip(&dst_dims).map(|(s, d)| *s.min(d)).collect();
+    for indices in cartesian_product_indices(&min_dims) {
+        let idx_vals: Vec<Value> = indices
+            .into_iter()
+            .map(|i| {
+                single_result_as_value(
+                    block.append_operation(codegen.new_index_const_op(i, location)),
+                )
+            })
+            .collect::<Result<_>>()?;
+        let elem = single_result_as_value(block.append_operation(array::read(
+            location,
+            src_ty.element_type(),
+            src,
+            &idx_vals,
+        )))?;
+        block.append_operation(array::write(location, dst, &idx_vals, elem));
+    }
+
+    Ok(dst)
+}
+
+/// Append a `poly.unifiable_cast` to cast `value` to `target_ty` directly on `block` if the
+/// types differ. Returns `value` unchanged if the types are already equal.
+fn cast_to_type_in_block<'ctx, 'blk, 'val>(
+    location: Location<'ctx>,
+    block: BlockRef<'ctx, 'blk>,
+    value: Value<'ctx, 'val>,
+    target_ty: Type<'ctx>,
+) -> Result<Value<'ctx, 'val>>
+where
+    'ctx: 'blk,
+    'blk: 'val,
+{
+    if value.r#type() == target_ty {
+        return Ok(value);
+    }
+    single_result_as_value(block.append_operation(poly::unifiable_cast(location, value, target_ty)))
+}
+
 /// Within a nested (i.e. non-root) block, get the Value wrapped within an `scf.yield` op that was
 /// created from a circom return op.
 fn get_val_of_circom_return_and_erase<'ctx, 'blk, 'val>(
@@ -727,7 +838,97 @@ where
     let else_return_opt = get_val_of_circom_return_and_erase(else_info.block);
     if let Some(then_return) = then_return_opt {
         if let Some(else_return) = else_return_opt {
-            // Both return, just add the return value to both overwrite maps.
+            // Both return. If the branch types differ and would not be correctly unified by
+            // `gen_scf_if_with_var_overwrites`, coerce each branch to the function's declared
+            // return type so that all scf.if branches yield the same type.
+            //
+            // This is only needed when both branches produce different *concrete* (non-tvar) types.
+            // If either side is a type variable, `unify_scf_branch_types` handles it correctly.
+            //
+            // For concrete array types with the same number of dimensions, `poly.unifiable_cast`
+            // is not applicable (concrete arrays of different sizes do not unify), so we instead
+            // generate inline element-wise copy code to produce an array of the return type,
+            // following circom's truncation/extension semantics.
+            let then_ty = then_return.r#type();
+            let else_ty = else_return.r#type();
+            let (then_return, else_return) = if then_ty != else_ty {
+                let then_is_tvar = is_type_variable(then_ty);
+                let else_is_tvar = is_type_variable(else_ty);
+                let return_ty = function.return_type();
+                if !then_is_tvar && !else_is_tvar {
+                    // Both branches produce different concrete types. Coerce each to the
+                    // function's declared return type so all scf.if branches yield the same
+                    // type. For concrete arrays with the same number of dimensions, generate
+                    // inline element-wise copy code (poly.unifiable_cast is not applicable to
+                    // concrete arrays of different sizes); otherwise use unifiable_cast.
+                    match (ArrayType::try_from(then_ty), ArrayType::try_from(else_ty)) {
+                        // Both branches return concrete arrays with the same number of
+                        // dimensions: copy each into a fresh array of the return type.
+                        (Ok(then_arr_ty), Ok(else_arr_ty))
+                            if then_arr_ty.num_dims() == else_arr_ty.num_dims() =>
+                        {
+                            let return_arr_ty = ArrayType::try_from(return_ty).context(
+                                "expected array return type when both branches return arrays",
+                            )?;
+                            (
+                                copy_concrete_array_to_type_in_block(
+                                    codegen,
+                                    location,
+                                    then_info.block,
+                                    then_return,
+                                    then_arr_ty,
+                                    return_arr_ty,
+                                )?,
+                                copy_concrete_array_to_type_in_block(
+                                    codegen,
+                                    location,
+                                    else_info.block,
+                                    else_return,
+                                    else_arr_ty,
+                                    return_arr_ty,
+                                )?,
+                            )
+                        }
+                        // Non-array concrete mismatch: use unifiable_cast.
+                        _ => (
+                            cast_to_type_in_block(
+                                location,
+                                then_info.block,
+                                then_return,
+                                return_ty,
+                            )?,
+                            cast_to_type_in_block(
+                                location,
+                                else_info.block,
+                                else_return,
+                                return_ty,
+                            )?,
+                        ),
+                    }
+                } else if then_is_tvar && !else_is_tvar && then_ty == return_ty {
+                    // Then branch already yields the function's T_return tvar; cast the
+                    // concrete else branch to match, avoiding a round-trip
+                    // (concrete -> T_return -> concrete) that would otherwise be added by
+                    // unify_scf_branch_types.
+                    (
+                        then_return,
+                        cast_to_type_in_block(location, else_info.block, else_return, return_ty)?,
+                    )
+                } else if !then_is_tvar && else_is_tvar && else_ty == return_ty {
+                    // Else branch already yields the function's T_return tvar; cast the
+                    // concrete then branch to match for the same reason.
+                    (
+                        cast_to_type_in_block(location, then_info.block, then_return, return_ty)?,
+                        else_return,
+                    )
+                } else {
+                    // Both are type variables or the tvar is not T_return; let
+                    // unify_scf_branch_types handle unification correctly.
+                    (then_return, else_return)
+                }
+            } else {
+                (then_return, else_return)
+            };
             then_info.var_overwrites.insert(VAR_NAME_RETURN_VAL.to_string(), then_return);
             else_info.var_overwrites.insert(VAR_NAME_RETURN_VAL.to_string(), else_return);
         } else {
