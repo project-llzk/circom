@@ -129,7 +129,7 @@ component main = Outer();
 // CHECK-NEXT:            %[[VAL_58:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_56]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_59:[0-9a-zA-Z_\.]+]] = pod.new { @P = %[[VAL_56]] }  : <[@P: !felt.type<"bn128">]>
 // CHECK-NEXT:            %[[VAL_60:[0-9a-zA-Z_\.]+]] = arith.constant 4 : index
-// CHECK-NEXT:            %[[VAL_61:[0-9a-zA-Z_\.]+]] = pod.new(%[[VAL_58]]) : <[@count: index, @comp: !struct.type<@Inner::@Inner<[#[[$ATTR_0]]]>>, @params: !pod.type<[@P: !felt.type<"bn128">]>]>
+// CHECK-NEXT:            %[[VAL_61:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_60]], @params = %[[VAL_59]] } (%[[VAL_58]]) : <[@count: index, @comp: !struct.type<@Inner::@Inner<[#[[$ATTR_0]]]>>, @params: !pod.type<[@P: !felt.type<"bn128">]>]>
 // CHECK-NEXT:            %[[VAL_62:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_56]] : !felt.type<"bn128">
 // CHECK-NEXT:            array.write %[[VAL_37]]{{\[}}%[[VAL_62]]] = %[[VAL_61]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Inner::@Inner<[#[[$ATTR_0]]]>>, @params: !pod.type<[@P: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Inner::@Inner<[#[[$ATTR_0]]]>>, @params: !pod.type<[@P: !felt.type<"bn128">]>]>
 // CHECK-NEXT:            %[[VAL_63:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">

@@ -41,7 +41,7 @@ component main = UsingExample();
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = function.call @Example::@Example::@compute() : () -> !struct.type<@Example::@Example<[]>>
-// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Example::@Example<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_10]] }  : <[@count: index, @comp: !struct.type<@Example::@Example<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          struct.writem %[[VAL_2]][@example$inputs] = %[[VAL_7]] : <@UsingExample::@UsingExample<[]>>, !pod.type<[]>
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_11]][@comp] : <[@count: index, @comp: !struct.type<@Example::@Example<[]>>, @params: !pod.type<[]>]>, !struct.type<@Example::@Example<[]>>
 // CHECK-NEXT:          struct.writem %[[VAL_2]][@example] = %[[VAL_12]] : <@UsingExample::@UsingExample<[]>>, !struct.type<@Example::@Example<[]>>

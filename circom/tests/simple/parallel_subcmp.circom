@@ -38,7 +38,7 @@ component main = Parallel();
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = function.call @Foo::@Foo::@compute() : () -> !struct.type<@Foo::@Foo<[]>>
-// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_10]] }  : <[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          struct.writem %[[VAL_2]][@foo$inputs] = %[[VAL_7]] : <@Parallel::@Parallel<[]>>, !pod.type<[]>
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_11]][@comp] : <[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>, !struct.type<@Foo::@Foo<[]>>
 // CHECK-NEXT:          struct.writem %[[VAL_2]][@foo] = %[[VAL_12]] : <@Parallel::@Parallel<[]>>, !struct.type<@Foo::@Foo<[]>>

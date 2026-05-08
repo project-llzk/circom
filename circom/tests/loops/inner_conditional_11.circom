@@ -58,7 +58,7 @@ component main = Poseidon();
 // CHECK-NEXT:            %[[VAL_21:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_20]] -> (!array.type<2 x !pod.type<[@inp: !felt.type<"bn128">]>>) {
 // CHECK-NEXT:              %[[VAL_22:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:              %[[VAL_23:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:              %[[VAL_24:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:              %[[VAL_24:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_23]], @params = %[[VAL_22]] }  : <[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:              %[[VAL_25:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:              %[[VAL_26:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_25]] : !felt.type<"bn128">
 // CHECK-NEXT:              array.write %[[VAL_2]]{{\[}}%[[VAL_26]]] = %[[VAL_24]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>
@@ -97,7 +97,7 @@ component main = Poseidon();
 // CHECK-NEXT:              %[[VAL_50:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_49]] -> (!array.type<2 x !pod.type<[@inp: !felt.type<"bn128">]>>) {
 // CHECK-NEXT:                %[[VAL_51:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:                %[[VAL_52:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:                %[[VAL_53:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:                %[[VAL_53:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_52]], @params = %[[VAL_51]] }  : <[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:                %[[VAL_54:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:                %[[VAL_55:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_54]] : !felt.type<"bn128">
 // CHECK-NEXT:                array.write %[[VAL_2]]{{\[}}%[[VAL_55]]] = %[[VAL_53]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>
