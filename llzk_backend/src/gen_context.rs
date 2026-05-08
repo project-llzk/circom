@@ -2620,7 +2620,7 @@ where
             }
             Expression::Call { meta, id, args } => {
                 let location = codegen.location_from_meta(meta);
-                let target_function_data = codegen.program.get_function_data(id);
+                let target_function_data = codegen.program.get_function_data(id)?;
                 // Visit each argument and collect the resulting LLZK Values for both functions.
                 let param_types = target_function_data.get_type_of_params(codegen);
                 assert_eq!(param_types.len(), args.len(), "Argument-parameter count mismatch");

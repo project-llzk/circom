@@ -4,6 +4,9 @@ use crate::function_ext::FunctionLike;
 use crate::shared::LlzkCodegen;
 use crate::template_ext::SignalDeclarations;
 use crate::template_ext::TemplateLike;
+use anyhow::anyhow;
+use anyhow::bail;
+use anyhow::Result;
 use compiler::compiler_interface::VCP;
 use program_structure::ast::Expression;
 use program_structure::file_definition::FileID;
@@ -14,17 +17,17 @@ use program_structure::program_archive::ProgramArchive;
 /// A dyn-safe trait for obtaining information about the program.
 pub trait ProgramInfo {
     /// Looks for a template with the given name.
-    fn find_template(&self, name: &str) -> anyhow::Result<&dyn SignalDeclarations>;
+    fn find_template(&self, name: &str) -> Result<&dyn SignalDeclarations>;
 }
 
 impl<P: ProgramLike> ProgramInfo for LlzkCodegen<'_, '_, '_, P> {
-    fn find_template(&self, name: &str) -> anyhow::Result<&dyn SignalDeclarations> {
+    fn find_template(&self, name: &str) -> Result<&dyn SignalDeclarations> {
         self.program
             .get_templates(false)
             .into_iter()
             .find(|t| t.get_name() == name)
             .map(|t| -> &dyn SignalDeclarations { t })
-            .ok_or_else(|| anyhow::anyhow!("template '{name}' not found"))
+            .ok_or_else(|| anyhow!("template '{name}' not found"))
     }
 }
 
@@ -56,16 +59,12 @@ pub trait ProgramLike: std::fmt::Debug {
     fn contains_function(&self, name: &str) -> bool {
         self.get_functions(false).into_iter().any(|f| f.get_name() == name)
     }
-    /// Returns the function with the given name.
-    ///
-    /// # Panics
-    ///
-    /// If the program does not have a function with that name.
-    fn get_function_data(&self, name: &str) -> &impl FunctionLike {
+    /// Returns the function with the given name or an error if it does not exist.
+    fn get_function_data(&self, name: &str) -> Result<&impl FunctionLike> {
         self.get_functions(false)
             .into_iter()
             .find(|f| f.get_name() == name)
-            .unwrap_or_else(|| panic!("Function not found: {}", name))
+            .ok_or_else(|| anyhow!("Function not found: {}", name))
     }
     /// Get an iterator over all templates in the program.
     fn get_templates(&self, sorted: bool) -> impl IntoIterator<Item = &impl TemplateLike>;
@@ -116,8 +115,12 @@ impl ProgramLike for ProgramArchive {
     fn contains_function(&self, name: &str) -> bool {
         self.contains_function(name)
     }
-    fn get_function_data(&self, name: &str) -> &impl FunctionLike {
-        self.get_function_data(name)
+    /// Returns the function with the given name or an error if it does not exist.
+    fn get_function_data(&self, name: &str) -> Result<&impl FunctionLike> {
+        if !self.contains_function(name) {
+            bail!("Function not found: {}", name);
+        }
+        Ok(self.get_function_data(name))
     }
     fn get_templates(&self, sorted: bool) -> impl IntoIterator<Item = &impl TemplateLike> {
         let mut templates: Vec<_> = self.templates.values().collect();
