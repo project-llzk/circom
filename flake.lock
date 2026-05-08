@@ -19,32 +19,37 @@
     "llzk-lib": {
       "inputs": {
         "flake-utils": [
+          "llzk-rs-pkgs",
           "llzk-pkgs",
           "flake-utils"
         ],
         "llzk-pkgs": [
+          "llzk-rs-pkgs",
           "llzk-pkgs"
         ],
         "nixpkgs": [
+          "llzk-rs-pkgs",
           "llzk-pkgs",
           "nixpkgs"
         ],
-        "pcl-mlir-pkg": "pcl-mlir-pkg",
+        "pcl-mlir-pkg": [
+          "llzk-rs-pkgs",
+          "pcl-mlir-pkg"
+        ],
         "release-helpers": "release-helpers"
       },
       "locked": {
-        "lastModified": 1778241358,
+        "lastModified": 1778251350,
         "narHash": "sha256-gEJgahXsfqnWR+jMpQzmjYxP2er84JgHetUDaeabZfA=",
-        "ref": "dani/fix-capi-ctor-2",
-        "rev": "3e146a586144039a67427f740eec93a36c68cb8b",
-        "revCount": 454,
-        "type": "git",
-        "url": "https://github.com/project-llzk/llzk-lib"
+        "owner": "project-llzk",
+        "repo": "llzk-lib",
+        "rev": "aff1b0f2f9151a0f51b48b0b87ef76eb4bb7a087",
+        "type": "github"
       },
       "original": {
-        "ref": "dani/fix-capi-ctor-2",
-        "type": "git",
-        "url": "https://github.com/project-llzk/llzk-lib"
+        "owner": "project-llzk",
+        "repo": "llzk-lib",
+        "type": "github"
       }
     },
     "llzk-pkgs": {
@@ -72,9 +77,7 @@
           "llzk-pkgs",
           "flake-utils"
         ],
-        "llzk-lib": [
-          "llzk-lib"
-        ],
+        "llzk-lib": "llzk-lib",
         "llzk-pkgs": [
           "llzk-pkgs"
         ],
@@ -82,7 +85,7 @@
           "llzk-pkgs",
           "nixpkgs"
         ],
-        "pcl-mlir-pkg": "pcl-mlir-pkg_2",
+        "pcl-mlir-pkg": "pcl-mlir-pkg",
         "release-helpers": [
           "llzk-rs-pkgs",
           "llzk-lib",
@@ -91,11 +94,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1778175505,
-        "narHash": "sha256-WHm/jYXlKtawZfnHP87PCLmrr5vQkVX9mUAm6z8v0qk=",
+        "lastModified": 1778251475,
+        "narHash": "sha256-qo+jCUCZIoTn9wMWLpmEFHZYODqyYeysfKsFsv72OGs=",
         "ref": "refs/heads/main",
-        "rev": "fc16f2121465963d242b407213e13dd5fc8ee807",
-        "revCount": 398,
+        "rev": "0a318c2c70532911666aa36e3aabdf58d975a4bc",
+        "revCount": 400,
         "type": "git",
         "url": "https://github.com/project-llzk/llzk-rs"
       },
@@ -121,41 +124,6 @@
       }
     },
     "pcl-mlir-pkg": {
-      "inputs": {
-        "flake-utils": [
-          "llzk-lib",
-          "llzk-pkgs",
-          "flake-utils"
-        ],
-        "nixpkgs": [
-          "llzk-lib",
-          "llzk-pkgs",
-          "nixpkgs"
-        ],
-        "release-helpers": [
-          "llzk-lib",
-          "release-helpers"
-        ],
-        "shared-pkgs": [
-          "llzk-lib",
-          "llzk-pkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1762544039,
-        "narHash": "sha256-Esd4SAzUt5G3esTa6fTmivKpRScEROwSME4nN/SAU4w=",
-        "owner": "Veridise",
-        "repo": "pcl-mlir",
-        "rev": "55cf619b032314198aacafc305871fb66b12b70e",
-        "type": "github"
-      },
-      "original": {
-        "owner": "Veridise",
-        "repo": "pcl-mlir",
-        "type": "github"
-      }
-    },
-    "pcl-mlir-pkg_2": {
       "inputs": {
         "flake-utils": [
           "llzk-rs-pkgs",
@@ -193,11 +161,13 @@
     "release-helpers": {
       "inputs": {
         "flake-utils": [
+          "llzk-rs-pkgs",
           "llzk-lib",
           "llzk-pkgs",
           "flake-utils"
         ],
         "nixpkgs": [
+          "llzk-rs-pkgs",
           "llzk-lib",
           "llzk-pkgs",
           "nixpkgs"
@@ -223,7 +193,10 @@
           "llzk-pkgs",
           "flake-utils"
         ],
-        "llzk-lib": "llzk-lib",
+        "llzk-lib": [
+          "llzk-rs-pkgs",
+          "llzk-lib"
+        ],
         "llzk-pkgs": "llzk-pkgs",
         "llzk-rs-pkgs": "llzk-rs-pkgs",
         "nixpkgs": [
