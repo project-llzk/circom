@@ -19,37 +19,32 @@
     "llzk-lib": {
       "inputs": {
         "flake-utils": [
-          "llzk-rs-pkgs",
           "llzk-pkgs",
           "flake-utils"
         ],
         "llzk-pkgs": [
-          "llzk-rs-pkgs",
           "llzk-pkgs"
         ],
         "nixpkgs": [
-          "llzk-rs-pkgs",
           "llzk-pkgs",
           "nixpkgs"
         ],
-        "pcl-mlir-pkg": [
-          "llzk-rs-pkgs",
-          "pcl-mlir-pkg"
-        ],
+        "pcl-mlir-pkg": "pcl-mlir-pkg",
         "release-helpers": "release-helpers"
       },
       "locked": {
-        "lastModified": 1778163154,
-        "narHash": "sha256-W0pZh5Wa626omyCdiCnfkqNh1LVNyb1rmN2DkkdSlTM=",
-        "owner": "project-llzk",
-        "repo": "llzk-lib",
-        "rev": "bde6b14c37ea7f6df22a051f4e6c3e1b2f6264b6",
-        "type": "github"
+        "lastModified": 1778241358,
+        "narHash": "sha256-gEJgahXsfqnWR+jMpQzmjYxP2er84JgHetUDaeabZfA=",
+        "ref": "dani/fix-capi-ctor-2",
+        "rev": "3e146a586144039a67427f740eec93a36c68cb8b",
+        "revCount": 454,
+        "type": "git",
+        "url": "https://github.com/project-llzk/llzk-lib"
       },
       "original": {
-        "owner": "project-llzk",
-        "repo": "llzk-lib",
-        "type": "github"
+        "ref": "dani/fix-capi-ctor-2",
+        "type": "git",
+        "url": "https://github.com/project-llzk/llzk-lib"
       }
     },
     "llzk-pkgs": {
@@ -77,7 +72,9 @@
           "llzk-pkgs",
           "flake-utils"
         ],
-        "llzk-lib": "llzk-lib",
+        "llzk-lib": [
+          "llzk-lib"
+        ],
         "llzk-pkgs": [
           "llzk-pkgs"
         ],
@@ -85,7 +82,7 @@
           "llzk-pkgs",
           "nixpkgs"
         ],
-        "pcl-mlir-pkg": "pcl-mlir-pkg",
+        "pcl-mlir-pkg": "pcl-mlir-pkg_2",
         "release-helpers": [
           "llzk-rs-pkgs",
           "llzk-lib",
@@ -94,11 +91,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1778163310,
-        "narHash": "sha256-Cieb5G6HlMjIAQ5hz65bLo55uroYk4q4Epj+Cwi/WZ4=",
+        "lastModified": 1778175505,
+        "narHash": "sha256-WHm/jYXlKtawZfnHP87PCLmrr5vQkVX9mUAm6z8v0qk=",
         "ref": "refs/heads/main",
-        "rev": "c33bd4343be414848fd38ebe632ed13d7174b760",
-        "revCount": 397,
+        "rev": "fc16f2121465963d242b407213e13dd5fc8ee807",
+        "revCount": 398,
         "type": "git",
         "url": "https://github.com/project-llzk/llzk-rs"
       },
@@ -124,6 +121,41 @@
       }
     },
     "pcl-mlir-pkg": {
+      "inputs": {
+        "flake-utils": [
+          "llzk-lib",
+          "llzk-pkgs",
+          "flake-utils"
+        ],
+        "nixpkgs": [
+          "llzk-lib",
+          "llzk-pkgs",
+          "nixpkgs"
+        ],
+        "release-helpers": [
+          "llzk-lib",
+          "release-helpers"
+        ],
+        "shared-pkgs": [
+          "llzk-lib",
+          "llzk-pkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1762544039,
+        "narHash": "sha256-Esd4SAzUt5G3esTa6fTmivKpRScEROwSME4nN/SAU4w=",
+        "owner": "Veridise",
+        "repo": "pcl-mlir",
+        "rev": "55cf619b032314198aacafc305871fb66b12b70e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Veridise",
+        "repo": "pcl-mlir",
+        "type": "github"
+      }
+    },
+    "pcl-mlir-pkg_2": {
       "inputs": {
         "flake-utils": [
           "llzk-rs-pkgs",
@@ -161,13 +193,11 @@
     "release-helpers": {
       "inputs": {
         "flake-utils": [
-          "llzk-rs-pkgs",
           "llzk-lib",
           "llzk-pkgs",
           "flake-utils"
         ],
         "nixpkgs": [
-          "llzk-rs-pkgs",
           "llzk-lib",
           "llzk-pkgs",
           "nixpkgs"
@@ -193,10 +223,7 @@
           "llzk-pkgs",
           "flake-utils"
         ],
-        "llzk-lib": [
-          "llzk-rs-pkgs",
-          "llzk-lib"
-        ],
+        "llzk-lib": "llzk-lib",
         "llzk-pkgs": "llzk-pkgs",
         "llzk-rs-pkgs": "llzk-rs-pkgs",
         "nixpkgs": [

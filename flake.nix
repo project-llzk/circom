@@ -3,15 +3,35 @@
     llzk-pkgs.url = "github:project-llzk/llzk-nix-pkgs";
     nixpkgs.follows = "llzk-pkgs/nixpkgs";
     flake-utils.follows = "llzk-pkgs/flake-utils";
+    # llzk-rs-pkgs = {
+    #   url = "git+https://github.com/project-llzk/llzk-rs";
+    #   inputs = {
+    #     nixpkgs.follows = "llzk-pkgs/nixpkgs";
+    #     flake-utils.follows = "llzk-pkgs/flake-utils";
+    #     llzk-pkgs.follows = "llzk-pkgs";
+    #   };
+    # };
+    # llzk-lib.follows = "llzk-rs-pkgs/llzk-lib";
+
+    # Temporary change to test out PR branch 
     llzk-rs-pkgs = {
       url = "git+https://github.com/project-llzk/llzk-rs";
       inputs = {
         nixpkgs.follows = "llzk-pkgs/nixpkgs";
         flake-utils.follows = "llzk-pkgs/flake-utils";
         llzk-pkgs.follows = "llzk-pkgs";
+        llzk-lib.follows = "llzk-lib";
       };
     };
-    llzk-lib.follows = "llzk-rs-pkgs/llzk-lib";
+    llzk-lib = {
+      url = "git+https://github.com/project-llzk/llzk-lib?ref=dani/fix-capi-ctor-2";
+      inputs = {
+        nixpkgs.follows = "llzk-pkgs/nixpkgs";
+        flake-utils.follows = "llzk-pkgs/flake-utils";
+        llzk-pkgs.follows = "llzk-pkgs";
+      };
+    };
+    # End of Temporary change
     release-helpers.follows = "llzk-rs-pkgs/llzk-lib/release-helpers";
     rust-overlay.follows = "llzk-rs-pkgs/rust-overlay";
   };
