@@ -6,7 +6,9 @@
 //! [GenResult] and [Chainable] that implement some boilerplate to make the actual code generation
 //! within [GenerateLLZKInTemplate] a lot simpler.
 
+use crate::affine_map::AffineMapAttribute;
 use crate::function::FunctionContext;
+use crate::function::InfoProviders;
 use crate::gen_context::BlockGenContext;
 use crate::gen_context::GenWithCircomScopeHandling;
 use crate::gen_context::GenerateLLZKInAnyBlock;
@@ -42,6 +44,7 @@ use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::pod;
 use llzk::dialect::poly;
 use llzk::dialect::r#struct;
+use llzk::map_operands::MapOperandsBuilder;
 use llzk::prelude::ArrayType;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FlatSymbolRefAttribute;
@@ -60,6 +63,8 @@ use llzk::prelude::TemplateSymbolBindingOpLike;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
+use llzk::value_ext::OwningValueRange;
+use llzk::value_ext::ValueRange;
 use melior::ir::Attribute;
 use melior::ir::Location;
 use num_bigint_dig::BigInt;
@@ -888,7 +893,11 @@ where
                         if self.template_def.has_const_expr_named(&expr_name) {
                             ArrayDimensionResult::new(codegen.flat_sym(expr_name).into(), &[])
                         } else {
-                            ArrayDimensionResult::insufficient_data_result() // defer to `BlockGenContext`
+                            // Return an identity affine map instead.
+                            ArrayDimensionResult::new(
+                                AffineMapAttribute::identity(codegen.context, 1).into(),
+                                &[],
+                            )
                         }
                     }
                 }
@@ -1483,7 +1492,7 @@ where
 ///
 /// Exposes helper functions for emitting the common parts of the IR between the `compute` and
 /// `constrain` functions.
-struct CtorCallScope<'ast, 'ctx, 'val> {
+struct CtorCallScope<'ast, 'ctx, 'val, 'info> {
     /// Name of the subcomponent's template
     id: &'ast str,
     /// Source location.
@@ -1494,16 +1503,20 @@ struct CtorCallScope<'ast, 'ctx, 'val> {
     subcmp_type: SubcmpType<'ctx>,
     /// Subcomponent memory pod type.
     pod_type: PodType<'ctx>,
+    /// Constructor arguments.
+    args: &'ast [Expression],
+    /// Info for emitting IR recursively.
+    info: InfoProviders<'info, 'ctx>,
 }
 
-impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
+impl<'ast, 'ctx, 'val, 'info> CtorCallScope<'ast, 'ctx, 'val, 'info> {
     /// Creates a new scope.
     fn new(
         meta: &'ast Meta,
         id: &'ast str,
         args: &'ast [Expression],
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
-        template: &TemplateContext<'_, 'ctx, '_, '_, '_, 'val>,
+        template: &'info TemplateContext<'_, 'ctx, '_, '_, '_, 'val>,
     ) -> Result<Self> {
         let location = codegen.location_from_meta(meta);
         let dimensions = template.get_dim_exprs(codegen, args)?;
@@ -1512,7 +1525,7 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
 
         let records = subcmp_type.comp_pod_records(codegen);
         let pod_type = codegen.pod_type(&records);
-        Ok(Self { id, location, dimensions, subcmp_type, pod_type })
+        Ok(Self { id, location, dimensions, subcmp_type, pod_type, args, info: template.into() })
     }
 
     /// Returns the list of names associated to the template parameters.
@@ -1535,15 +1548,29 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
     fn emit_param_op(
         &self,
         attr: Attribute<'ctx>,
+        expr: &Expression,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
+        map_operands: &mut Vec<OwningValueRange<'ctx, 'val>>,
     ) -> Result<Value<'ctx, 'val>> {
-        let op = type_switch! { attr,
-            IntegerAttribute as int => codegen.new_felt_const_op(&BigInt::from(int.value()), self.location)?,
-            FlatSymbolRefAttribute as sym => poly::read_const(self.location, sym.value(), self.subcmp_type.param_type(codegen)),
-            else => unreachable!("Attribute {}", attr)
-        };
-        fc.append_op_unnamed_result(op)
+        type_switch! { attr,
+            IntegerAttribute as int => {
+                fc.append_op_unnamed_result(
+                    codegen.new_felt_const_op(&BigInt::from(int.value()), self.location)?
+                )
+            }
+            FlatSymbolRefAttribute as sym => {
+                fc.append_op_unnamed_result(
+                    poly::read_const(self.location, sym.value(), self.subcmp_type.param_type(codegen))
+                )
+            }
+            else => {
+                let value = expr.gen_llzk_in_block(codegen, fc, self.info)?;
+                let casted = fc.cast_to_index_if_needed(codegen, self.location, value)?;
+                map_operands.push(OwningValueRange::from([casted].as_slice()));
+                Ok(value)
+            }
+        }
     }
 
     /// Emits IR representing a read of each template parameter.
@@ -1551,13 +1578,17 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
+        map_operands: &mut Vec<OwningValueRange<'ctx, 'val>>,
     ) -> Result<Vec<RecordValue<'ctx, 'val>>> {
-        std::iter::zip(self.params_formals(codegen), self.dimensions.attrs())
-            .map(|(formal, attr)| {
-                let value = self.emit_param_op(attr, codegen, fc)?;
-                Ok(RecordValue::new(StringRef::new(formal), value))
-            })
-            .collect()
+        std::iter::zip(
+            self.params_formals(codegen),
+            std::iter::zip(self.dimensions.attrs(), self.args),
+        )
+        .map(|(formal, (attr, expr))| {
+            let value = self.emit_param_op(attr, expr, codegen, fc, map_operands)?;
+            Ok(RecordValue::new(StringRef::new(formal), value))
+        })
+        .collect()
     }
 
     /// Shared parts between the constraint and compute functions when emitting IR for subcomponent
@@ -1577,7 +1608,8 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
             Value<'ctx, 'val>,
         ) -> Result<Vec<(&'static str, Value<'ctx, 'val>)>>,
     {
-        let params = self.emit_params(codegen, fc)?;
+        let mut map_operands_values = vec![];
+        let params = self.emit_params(codegen, fc, &mut map_operands_values)?;
         let params_pod = fc.append_op_unnamed_result(pod::new(
             codegen.op_builder(),
             self.location,
@@ -1586,12 +1618,17 @@ impl<'ast, 'ctx, 'val> CtorCallScope<'ast, 'ctx, 'val> {
         ))?;
 
         let records = wrap_pod_records(cb(fc, params_pod)?);
+        let mut map_operands = MapOperandsBuilder::new();
+        for value_range in &map_operands_values {
+            map_operands.append_operands_with_dim_count(ValueRange::try_from(value_range)?, 1);
+        }
 
-        fc.append_op_unnamed_result(pod::new(
+        fc.append_op_unnamed_result(pod::new_with_affine_init(
             codegen.op_builder(),
             self.location,
             &records,
-            Some(self.pod_type),
+            self.pod_type,
+            map_operands,
         ))
     }
 }

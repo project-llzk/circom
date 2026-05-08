@@ -89,6 +89,7 @@ use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::fmt::Debug;
 use std::iter::zip;
+use std::iter::FromIterator as _;
 
 /// Special variable name used to reference the return Value throughout the
 /// conversion of circom return locations to LLZK return locations.
@@ -128,6 +129,25 @@ impl<'ctx, 'val> ScfYieldable<'ctx, 'val> for () {
     type YieldValues = [Value<'ctx, 'val>; 0];
     fn to_yield_values(self) -> [Value<'ctx, 'val>; 0] {
         []
+    }
+}
+
+/// An option-like type that can be used as the `YieldValues` type of [`ScfYieldable`].
+#[derive(Default, Debug)]
+pub struct MaybeYield<'ctx, 'val>(Vec<Value<'ctx, 'val>>);
+
+impl<'ctx, 'val> AsRef<[Value<'ctx, 'val>]> for MaybeYield<'ctx, 'val> {
+    fn as_ref(&self) -> &[Value<'ctx, 'val>] {
+        self.0.as_ref()
+    }
+}
+
+impl<'ctx, 'val, T: ScfYieldable<'ctx, 'val>> ScfYieldable<'ctx, 'val> for Option<T> {
+    type YieldValues = MaybeYield<'ctx, 'val>;
+
+    fn to_yield_values(self) -> Self::YieldValues {
+        self.map(|t| MaybeYield(Vec::from_iter(t.to_yield_values().as_ref().iter().copied())))
+            .unwrap_or_default()
     }
 }
 
@@ -2476,6 +2496,41 @@ where
                 }
             }
         }
+    }
+}
+
+impl<'ctx, 'func, 'blk, 'val> GenWithCircomScopeHandling<'ctx, 'func, 'blk, 'val>
+    for BlockGenContext<'_, 'ctx, 'blk, 'val>
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    type BlockType = BlockRef<'ctx, 'blk>;
+    type HandlerDataType = NestedBlockInfo<'ctx, 'blk, 'val>;
+
+    fn stack_top(&self) -> Self::BlockType {
+        *self.block_ctx.top_block()
+    }
+
+    fn stack_push(&mut self, block: Self::BlockType) {
+        self.block_ctx.push(block)
+    }
+
+    fn stack_pop<H>(
+        &mut self,
+        overwrite_handler: H,
+        overwrite_data: &mut Self::HandlerDataType,
+    ) -> Result<()>
+    where
+        H: Fn(
+            &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
+            &mut NestedBlockInfo<'ctx, 'blk, 'val>,
+            HashMap<String, Value<'ctx, 'val>>,
+        ) -> Result<()>,
+    {
+        let popped = self.block_ctx.pop();
+        overwrite_handler(self, overwrite_data, popped)
     }
 }
 
