@@ -1,7 +1,6 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
-// XFAIL:.*
 
 pragma circom 2.0.0;
 
@@ -19,7 +18,7 @@ template all(N){
 
 component main = all(5);
 
-// CHECK-LABEL: #[[$ATTR_0]] = affine_map<(d0) -> (d0)>
+// CHECK:       #[[$ATTR_0:[0-9a-zA-Z_\.]+]] = affine_map<(d0) -> (d0)>
 // CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@all::@all<[5]>>} {
 // CHECK-NEXT:    poly.template @all {
 // CHECK-NEXT:      poly.param @N
@@ -43,7 +42,7 @@ component main = all(5);
 // CHECK-NEXT:            %[[VAL_12:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_10]][@N] : <[@N: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_13:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_12]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_14:[0-9a-zA-Z_\.]+]] = function.call @fun::@fun::@compute() {(%[[VAL_13]])} : () -> !struct.type<@fun::@fun<[#[[$ATTR_0]]]>>
-// CHECK-NEXT:            %[[VAL_15:[0-9a-zA-Z_\.]+]] = pod.new(%[[VAL_9]]) : <[@count: index, @comp: !struct.type<@fun::@fun<[#[[$ATTR_0]]]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
+// CHECK-NEXT:            %[[VAL_15:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_14]] } (%[[VAL_9]]) : <[@count: index, @comp: !struct.type<@fun::@fun<[#[[$ATTR_0]]]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
 // CHECK-NEXT:            %[[VAL_16:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_8]] : !felt.type<"bn128">
 // CHECK-NEXT:            array.write %[[VAL_2]]{{\[}}%[[VAL_16]]] = %[[VAL_15]] : <@N x !pod.type<[@count: index, @comp: !struct.type<@fun::@fun<[#[[$ATTR_0]]]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@fun::@fun<[#[[$ATTR_0]]]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
 // CHECK-NEXT:            %[[VAL_17:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
