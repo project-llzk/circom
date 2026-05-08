@@ -4,7 +4,7 @@
 
 pragma circom 2.0.0;
 
-// Vector copy version of `array_copy2_loop.circom` test. Output is identical except for basic blocks.
+// Vector copy version of `array_copy2_loop.circom` test.
 template Array2(n) {
     signal input inp[n];
     signal output out[n];
