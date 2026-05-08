@@ -5,11 +5,13 @@
 
 pragma circom 2.0.0;
 
-// Vector copy version of `array_copy1_loop.circom` test. Output is identical except for basic blocks.
+// Scalar copy version of `main_param_array.circom` test.
 template Array1(n, S) {
     signal output out[n];
 
-    out <== S;
+    for (var i = 0; i < n; i++) {
+      out[i] <== S[i];
+    }
 }
 
 component main = Array1(5, [11,22,33,44,55]);

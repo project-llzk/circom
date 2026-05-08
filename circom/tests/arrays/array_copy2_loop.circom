@@ -4,7 +4,7 @@
 
 pragma circom 2.0.0;
 
-// Scalar copy version of `array_copy2_vec.circom` test. Output is identical except for basic blocks.
+// Scalar copy version of `array_copy2_vec.circom` test.
 template Array2(n) {
     signal input a[n];
     signal output b[n];

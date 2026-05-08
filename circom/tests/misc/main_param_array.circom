@@ -5,15 +5,10 @@
 
 pragma circom 2.0.0;
 
-// Scalar copy version of `array_copy1_vec.circom` test. Output is identical except for basic blocks.
-template Array1(n, S) {
-    signal output out[n];
-
-    for (var i = 0; i < n; i++) {
-      out[i] <== S[i];
-    }
+template T(n, S) {
+    signal output out[n] <== S;
 }
 
-component main = Array1(5, [11,22,33,44,55]);
+component main = T(5, [11,22,33,44,55]);
 
 // CHECK-LABEL: module attributes {

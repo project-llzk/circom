@@ -5,13 +5,14 @@
 
 pragma circom 2.0.0;
 
-// Vector copy version of `array_copy1_loop.circom` test.
-template Array4(n, m, S) {
-    signal output out[n][m];
-
-    out <== S;
+function f() {
+    return 42;
 }
 
-component main = Array4(3, 2, [[11,22],[33,44],[55,66]]);
+template T(n) {
+    signal output out <== n;
+}
+
+component main = T(f());
 
 // CHECK-LABEL: module attributes {
