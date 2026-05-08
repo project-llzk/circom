@@ -1,12 +1,12 @@
 //! Entry point for LLZK code generation.
 
+use crate::affine_map::AffineMapAttribute;
 use crate::module::GenerateLLZKInModule;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::LlzkCodegen;
 pub use crate::shared::LlzkConfig;
 use ansi_term::Color;
-use anyhow::anyhow;
 use anyhow::Result;
 use llzk::prelude::IntegerAttribute;
 use llzk::prelude::LlzkContext;
@@ -28,24 +28,20 @@ fn new_llzk_module<'ctx>(
 ) -> Result<Module<'ctx>> {
     let main_info = program.get_main_component_info();
 
-    // Compute constant parameters of the main component StructType.
-    // TODO: This approach does not currently handle ArrayInLine or Call expressions that can be
-    // used as parameters to the main component. The Call case could be handled by finding the
-    // target function and evaluating it statically. The ArrayInLine (i.e. a literal array like
-    // `[9,3,1]`) however may require generating an additional wrapper struct that can construct
-    // the array and pass it to the main component. Alternatively, put the array in a global const
-    // and then generate the main component with one less template parameter and read the global.
+    // Compute parameters of the main component StructType.
+    //
+    // For values that are statically known as i64, materialize an index integer attribute.
+    // For non-scalar or non-reducible expressions (e.g. ArrayInLine or Call), keep the main
+    // instance generic in that slot using an identity affine map placeholder.
     let params = main_info
         .params
         .into_iter()
-        .enumerate()
-        .map(|(i, e)| {
-            shared::try_compute_as_i64(&e, prime)?
-                .ok_or_else(|| anyhow!("main component parameter {i} is not a positive constant"))
+        .map(|e| {
+            Ok(shared::try_compute_as_i64(&e, prime)?
+                .map(|p| IntegerAttribute::new(Type::index(context), p).into())
+                .unwrap_or_else(|| AffineMapAttribute::identity(context, 1).into()))
         })
         .collect::<Result<Vec<_>>>()?;
-    let params: Vec<_> =
-        params.into_iter().map(|p| IntegerAttribute::new(Type::index(context), p).into()).collect();
 
     // Create the LLZK module, using the location of the main component declaration expression.
     let location =
