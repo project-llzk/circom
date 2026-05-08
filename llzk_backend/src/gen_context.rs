@@ -2499,6 +2499,41 @@ where
     }
 }
 
+impl<'ctx, 'func, 'blk, 'val> GenWithCircomScopeHandling<'ctx, 'func, 'blk, 'val>
+    for BlockGenContext<'_, 'ctx, 'blk, 'val>
+where
+    'ctx: 'func,
+    'func: 'blk,
+    'blk: 'val,
+{
+    type BlockType = BlockRef<'ctx, 'blk>;
+    type HandlerDataType = NestedBlockInfo<'ctx, 'blk, 'val>;
+
+    fn stack_top(&self) -> Self::BlockType {
+        *self.block_ctx.top_block()
+    }
+
+    fn stack_push(&mut self, block: Self::BlockType) {
+        self.block_ctx.push(block)
+    }
+
+    fn stack_pop<H>(
+        &mut self,
+        overwrite_handler: H,
+        overwrite_data: &mut Self::HandlerDataType,
+    ) -> Result<()>
+    where
+        H: Fn(
+            &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
+            &mut NestedBlockInfo<'ctx, 'blk, 'val>,
+            HashMap<String, Value<'ctx, 'val>>,
+        ) -> Result<()>,
+    {
+        let popped = self.block_ctx.pop();
+        overwrite_handler(self, overwrite_data, popped)
+    }
+}
+
 /// A trait to generate LLZK IR to an arbitrary LLZK block.
 ///
 /// 'ctx: lifetime of the `LlzkContext` and generated `Module`

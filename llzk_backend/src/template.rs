@@ -898,7 +898,6 @@ where
                                 AffineMapAttribute::identity(codegen.context, 1).into(),
                                 &[],
                             )
-                            //ArrayDimensionResult::insufficient_data_result() // defer to `BlockGenContext`
                         }
                     }
                 }

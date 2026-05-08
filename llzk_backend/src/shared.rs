@@ -4,6 +4,7 @@ use crate::affine_map::AffineMapAttribute;
 use crate::function::InfoProviders;
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::BlockGenContext;
+use crate::gen_context::GenWithCircomScopeHandling as _;
 use crate::gen_context::GenerateLLZKInAnyBlock;
 use crate::gen_context::NestedBlockInfo;
 use crate::lvalue::Lvalue;
@@ -1984,12 +1985,12 @@ where
                         println!("[Block] Pushing scope @ {}", codegen.location_from_meta(meta));
                     }
                     let top = *gen_ctx.block_ctx.top_block();
-                    gen_ctx.block_ctx.push(top);
-                    for s in stmts {
-                        gen_stmt_fully(s, codegen, gen_ctx)?;
-                    }
-                    let overwrites = gen_ctx.block_ctx.pop();
-                    gen_ctx.block_ctx.set_named_values(overwrites)?;
+                    gen_ctx.gen_in_given_block_with_new_circom_scope_and_merge_overwrites(
+                        top,
+                        |gen_ctx| {
+                            stmts.iter().try_for_each(|stmt| gen_stmt_fully(stmt, codegen, gen_ctx))
+                        },
+                    )?;
                     if codegen.config.verbose {
                         println!("[Block] Popping scope @ {}", codegen.location_from_meta(meta));
                     }
@@ -2286,7 +2287,7 @@ where
         let Some(val) =
             gen_up_to_target(codegen, &mut expr_gen_ctx, target_expr, body_opt.unwrap(), &trace)?
         else {
-            // If `gen_up_to_target` return `None` that means that we don't have enough
+            // If `gen_up_to_target` returns `None` that means that we don't have enough
             // information for creating the poly expression, so we give up here by returning an
             // identity affine map.
             return ArrayDimensionResult::new(
