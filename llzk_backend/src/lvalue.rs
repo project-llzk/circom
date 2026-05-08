@@ -322,9 +322,16 @@ impl<'ast> Lvalue<'ast> {
         let signal_name = if signal_name == "_" {
             let outputs = codegen.program.get_template_data(template_name).get_outputs();
             if outputs.len() == 1 {
-                outputs.keys().next().expect("output map has one entry so key must exist").clone()
+                outputs
+                    .keys()
+                    .next()
+                    .expect("template with one output must have one output-map key")
+                    .clone()
             } else {
-                signal_name.to_owned()
+                anyhow::bail!(
+                    "cannot resolve placeholder output '_' for template '{template_name}' with {} outputs",
+                    outputs.len()
+                );
             }
         } else {
             signal_name.to_owned()
