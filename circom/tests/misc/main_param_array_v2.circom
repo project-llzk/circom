@@ -5,7 +5,7 @@
 
 pragma circom 2.0.0;
 
-// Scalar copy version of `array_copy1_vec.circom` test.
+// Scalar copy version of `main_param_array.circom` test.
 template Array1(n, S) {
     signal output out[n];
 
