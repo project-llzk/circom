@@ -8,6 +8,7 @@ use crate::shared;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COMP;
 use crate::subcmp::SubcmpInfo;
+use crate::template_ext::TemplateLike;
 use anyhow::Result;
 use llzk::dialect::llzk::nondet;
 use llzk::dialect::pod;
@@ -317,15 +318,25 @@ impl<'ast> Lvalue<'ast> {
             StructType as _ => subcmp_value,
         };
         let comp_value_type = StructType::try_from(comp_value.r#type())?;
-        let field_ty = codegen
-            .get_output_signal_type(shared::get_name_tail(&comp_value_type)?, signal_name)?;
+        let template_name = shared::get_name_tail(&comp_value_type)?;
+        let signal_name = if signal_name == "_" {
+            let outputs = codegen.program.get_template_data(template_name).get_outputs();
+            if outputs.len() == 1 {
+                outputs.keys().next().expect("output map has one entry so key must exist").clone()
+            } else {
+                signal_name.to_owned()
+            }
+        } else {
+            signal_name.to_owned()
+        };
+        let field_ty = codegen.get_output_signal_type(template_name, &signal_name)?;
 
         block_gen.append_op_unnamed_result(r#struct::readm(
             codegen.op_builder(),
             location,
             field_ty,
             comp_value,
-            signal_name,
+            &signal_name,
         )?)
     }
 
