@@ -858,18 +858,18 @@ where
                 if !then_is_tvar && !else_is_tvar {
                     // Both branches produce different concrete types. Coerce each to the
                     // function's declared return type so all scf.if branches yield the same
-                    // type. For concrete arrays with the same number of dimensions, generate
-                    // inline element-wise copy code (poly.unifiable_cast is not applicable to
-                    // concrete arrays of different sizes); otherwise use unifiable_cast.
-                    match (ArrayType::try_from(then_ty), ArrayType::try_from(else_ty)) {
-                        // Both branches return concrete arrays with the same number of
-                        // dimensions: copy each into a fresh array of the return type.
-                        (Ok(then_arr_ty), Ok(else_arr_ty))
+                    // type. For concrete arrays with the same number of dimensions where the
+                    // return type is also a concrete array, generate inline element-wise copy
+                    // code (poly.unifiable_cast is not applicable to concrete arrays of
+                    // different sizes); in all other cases use unifiable_cast.
+                    match (
+                        ArrayType::try_from(then_ty),
+                        ArrayType::try_from(else_ty),
+                        ArrayType::try_from(return_ty),
+                    ) {
+                        (Ok(then_arr_ty), Ok(else_arr_ty), Ok(return_arr_ty))
                             if then_arr_ty.num_dims() == else_arr_ty.num_dims() =>
                         {
-                            let return_arr_ty = ArrayType::try_from(return_ty).context(
-                                "expected array return type when both branches return arrays",
-                            )?;
                             (
                                 copy_concrete_array_to_type_in_block(
                                     codegen,
@@ -889,7 +889,8 @@ where
                                 )?,
                             )
                         }
-                        // Non-array concrete mismatch: use unifiable_cast.
+                        // Non-array mismatch, dimension mismatch, or tvar return type:
+                        // use unifiable_cast to coerce each branch to the return type.
                         _ => (
                             cast_to_type_in_block(
                                 location,
