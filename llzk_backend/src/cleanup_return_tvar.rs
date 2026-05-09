@@ -155,8 +155,9 @@ fn wrap_call_in_synthetic_template<'ctx>(
     )?;
 
     // Insert the template into the module, uniquing the name to avoid collisions.
-    let template_name =
-        shared::insert_unique_symbol_op(&codegen.module.as_operation(), template_op);
+    let op_ref = shared::insert_unique_symbol_op(&codegen.module.as_operation(), template_op);
+    let template_name = shared::get_sym_name_attr(&op_ref)
+        .expect("`poly.template` must have `sym_name` attribute per ODS");
     let callee = SymbolRefAttribute::new_from_str(
         codegen.context,
         template_name.value(),
@@ -172,7 +173,7 @@ fn wrap_call_in_synthetic_template<'ctx>(
         callee,
         &original_operands,
         &[], // synthetic function returns void; original result was already unused
-        Some(&[codegen.type_wildcard_attr()]),
+        Some(&[codegen.wildcard_attr()]),
     )?;
 
     // Insert the replacement before the original call, then remove the original.

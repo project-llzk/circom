@@ -73,6 +73,7 @@ use llzk::prelude::TemplateOpRef;
 use llzk::prelude::TemplateOpRefMut;
 use llzk::prelude::TemplateSymbolBindingOp;
 use llzk::prelude::TemplateSymbolBindingOpLike;
+use llzk::prelude::TemplateSymbolBindingOpRef;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
@@ -648,11 +649,12 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         Ok((template_ref, CurrentTemplateAutoReset { cell_ref: &self.binding_insert_strategy }))
     }
 
-    /// Get the LLZK template currently being generated.
+    /// Get the strategy used to store `poly.expr` / `poly.param` symbol bindings as they are
+    /// generated.
     pub fn binding_insert_strategy<'s>(
         &'s self,
     ) -> Option<Ref<'s, dyn PolyBindingStorageStrategy<'ctx, P> + 'r>> {
-        Ref::filter_map(self.binding_insert_strategy.borrow(), |strategy| strategy.as_deref()).ok()
+        Ref::filter_map(self.binding_insert_strategy.borrow(), Option::as_deref).ok()
     }
 
     /// Push `stmt` onto the statement trace and return a guard that pops it on drop.
@@ -1174,8 +1176,8 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     }
 
     /// Get the attribute used to represent a wildcard type in the template parameter
-    /// list of a `function.call` op.
-    pub fn type_wildcard_attr(&self) -> Attribute<'ctx> {
+    /// list of a `function.call` op or array dimension.
+    pub fn wildcard_attr(&self) -> Attribute<'ctx> {
         self.index_attr(unsafe { mlir_sys::mlirShapedTypeGetDynamicStrideOrOffset() }).into()
     }
 }
@@ -1799,11 +1801,13 @@ pub trait PolyBindingStorageStrategy<'ctx, P: ProgramLike>: std::fmt::Debug {
     /// Returns `true` if a binding with the given name has already been stored.
     fn contains_name(&self, name: &str) -> bool;
 
-    /// Stores the given op and returns its (possibly uniqued) name attribute.
+    /// Stores the given op, calls `on_insert` with a reference to it (while the reference
+    /// is valid), then returns the uniqued symbol name as a [`StringAttribute`].
     fn store(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, P>,
         op: TemplateSymbolBindingOp<'ctx>,
+        on_insert: &dyn for<'a> Fn(TemplateSymbolBindingOpRef<'ctx, 'a>),
     ) -> StringAttribute<'ctx>;
 
     /// Converts this boxed strategy into a [`PendingPolyBindings`], if that is the concrete type.
@@ -1839,6 +1843,7 @@ impl<'ctx, P: ProgramLike> PolyBindingStorageStrategy<'ctx, P> for PendingPolyBi
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, P>,
         op: TemplateSymbolBindingOp<'ctx>,
+        on_insert: &dyn for<'a> Fn(TemplateSymbolBindingOpRef<'ctx, 'a>),
     ) -> StringAttribute<'ctx> {
         // Ensure the operation "sym_name" attribute is unique by appending a suffix if necessary.
         let base_name = op.sym_name().to_string();
@@ -1866,10 +1871,12 @@ impl<'ctx, P: ProgramLike> PolyBindingStorageStrategy<'ctx, P> for PendingPolyBi
             uniq_map.insert(base_name.clone(), 0);
             op
         };
-        // Store the operation and return its unique name.
-        let final_name = op.sym_name_attr();
+
+        // Call the callback while `op` is still owned, then move it into the Vec.
+        let name = op.sym_name_attr();
+        on_insert(op.as_ref());
         self.new_sym_bindings.borrow_mut().push(op);
-        final_name
+        name
     }
 
     fn into_pending(self: Box<Self>) -> Option<PendingPolyBindings<'ctx>> {
@@ -1886,8 +1893,13 @@ impl<'ctx, P: ProgramLike> PolyBindingStorageStrategy<'ctx, P> for TemplateOpRef
         &self,
         _: &LlzkCodegen<'_, 'ctx, '_, P>,
         op: TemplateSymbolBindingOp<'ctx>,
+        on_insert: &dyn for<'a> Fn(TemplateSymbolBindingOpRef<'ctx, 'a>),
     ) -> StringAttribute<'ctx> {
-        insert_unique_symbol_op(self, op)
+        let op_ref: TemplateSymbolBindingOpRef = insert_unique_symbol_op(self, op)
+            .try_into()
+            .expect("input was TemplateSymbolBindingOp");
+        on_insert(op_ref);
+        op_ref.sym_name_attr()
     }
 }
 
@@ -1945,13 +1957,16 @@ where
         std::iter::empty()
     }
 
-    /// Callback to store a `poly.expr` and `poly.param` operations generated on the fly.
+    /// Store a `poly.expr` or `poly.param` operation generated on the fly.
+    /// The `on_insert` callback is called with a reference to the stored op which
+    /// allows the `add_new_tvar_poly_param()` caller to call `set_type_restriction`.
     fn record_new_sym_binding(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         op: TemplateSymbolBindingOp<'ctx>,
+        on_insert: &dyn for<'a> Fn(TemplateSymbolBindingOpRef<'ctx, 'a>),
     ) -> StringAttribute<'ctx> {
-        codegen.binding_insert_strategy().unwrap().store(codegen, op)
+        codegen.binding_insert_strategy().unwrap().store(codegen, op, on_insert)
     }
 
     /// Get the mapping of `var` name to declared LLZK type.
@@ -2311,8 +2326,7 @@ where
             &expr_op,
         )?;
 
-        let uniqued_name = self.record_new_sym_binding(codegen, expr_op.into());
-        // Have to convert the StringAttribute to FlatSymbolRefAttribute before returning it.
+        let uniqued_name = self.record_new_sym_binding(codegen, expr_op.into(), &|_| {});
         ArrayDimensionResult::new(codegen.flat_sym(uniqued_name.value()).into(), &[])
     }
 }
@@ -2406,13 +2420,12 @@ pub fn get_sym_name_attr<'c: 'a, 'a>(
 
 /// Insert a new symbol operation into the symbol table owned by `sym_table_op`. The inserted symbol
 /// is renamed automatically if necessary to avoid collisions. Ownership of `new_symbol_op` is
-/// transferred to the symbol table. Return the (possibly renamed) symbol name.
+/// transferred to the `sym_table_op`. Return ref to the op.
 pub fn insert_unique_symbol_op<'c: 'a, 'a>(
     sym_table_op: &impl OperationLike<'c, 'a>,
     new_symbol_op: impl Into<Operation<'c>>,
-) -> StringAttribute<'c> {
-    get_sym_name_attr(&symbol_table::insert(sym_table_op, new_symbol_op.into()))
-        .expect("Symbol ops must have `sym_name` attribute per ODS")
+) -> OperationRef<'c, 'a> {
+    symbol_table::insert(sym_table_op, new_symbol_op.into())
 }
 
 /// Print a single operation using "assume verified" flag to avoid verification errors on

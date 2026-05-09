@@ -61,8 +61,10 @@ use llzk::prelude::StringAttribute;
 use llzk::prelude::StringRef;
 use llzk::prelude::StructType;
 use llzk::prelude::TVarType;
+use llzk::prelude::TemplateParamOpLike;
 use llzk::prelude::TemplateSymbolBindingOp;
 use llzk::prelude::TemplateSymbolBindingOpLike;
+use llzk::prelude::TemplateSymbolBindingOpRef;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
@@ -889,19 +891,13 @@ where
         location: Location<'ctx>,
         var_name: Option<&str>,
     ) -> Result<Value<'ctx, 'val>> {
-        // Special case for array read from `tvar` base. Must generate new `poly.param` for each
-        // dimension and for the element type, then create an `array.type` using those. Generate
-        // a unifiable cast to that new type and then `array.read` from that value with all indices.
+        // Special case for array read from `tvar` base. Must generate new `poly.param` for the
+        // element type, then create an `array.type` using that and the wildcard/unknown size for
+        // dimensions. Generate a unifiable cast to that new type and then `array.read` from that
+        // value with all indices.
         if arr_ref.r#type().isa::<TVarType>() {
-            let dims = indices
-                .iter()
-                .map(|_| {
-                    self.add_new_poly_param(codegen, location, "$d", None)
-                        // ArrayType expects SymbolRefAttribute not StringAttribute
-                        .map(|s| codegen.flat_sym(s.value()).into())
-                })
-                .collect::<Result<Vec<Attribute>>>()?;
-            let elem_ty_pname = self.add_new_poly_param(codegen, location, "$e", None)?;
+            let dims = vec![codegen.wildcard_attr(); indices.len()];
+            let elem_ty_pname = self.add_new_tvar_poly_param(codegen, location, "$e")?;
             let arr_elem_ty = TVarType::new(codegen.context, StringRef::new(elem_ty_pname.value()));
             let arr_ty = ArrayType::new(arr_elem_ty.into(), &dims);
             let arr_ref = self.unifiable_cast(location, arr_ref, arr_ty.into())?;
@@ -2416,17 +2412,25 @@ where
         self.block_ctx.declare_name_ensure_not_present(name, op)
     }
 
-    /// Add a new polymorphic parameter via [`DimExprConverter::record_new_sym_binding`] and
-    /// return the uniqued name as a [`StringAttribute`].
-    pub fn add_new_poly_param(
+    /// Add a new polymorphic parameter with `poly.tvar` type via
+    /// [`DimExprConverter::record_new_sym_binding`] and return the uniqued symbol name.
+    pub fn add_new_tvar_poly_param(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         name: &str,
-        type_opt: Option<Type<'ctx>>,
     ) -> Result<StringAttribute<'ctx>> {
-        poly::param(location, name, type_opt)
-            .map(|op| self.record_new_sym_binding(codegen, op.into()))
+        poly::param(location, name, None)
+            .map(|op| {
+                self.record_new_sym_binding(codegen, op.into(), &|op_ref| match op_ref {
+                    TemplateSymbolBindingOpRef::Param(op_ref) => {
+                        // Once the final unique symbol name is known, update the
+                        // `poly.param` op with the correct type restriction.
+                        op_ref.set_type_restriction(Some(codegen.tvar_type(op_ref.sym_name())));
+                    }
+                    TemplateSymbolBindingOpRef::Expr(_) => unreachable!("just created poly::param"),
+                })
+            })
             .map_err(Into::into)
     }
 }
@@ -2444,9 +2448,10 @@ where
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         op: TemplateSymbolBindingOp<'ctx>,
+        on_insert: &dyn for<'a> Fn(TemplateSymbolBindingOpRef<'ctx, 'a>),
     ) -> StringAttribute<'ctx> {
         let type_opt = op.type_opt();
-        let name = codegen.binding_insert_strategy().unwrap().store(codegen, op);
+        let name = codegen.binding_insert_strategy().unwrap().store(codegen, op, on_insert);
         // Record the name+type so future calls to `get_dim_expr` can resolve it as a known
         // poly binding (rather than trying to look it up as a runtime SSA value).
         self.poly_template_binding_names.borrow_mut().insert(name.value().to_string(), type_opt);
@@ -2712,14 +2717,8 @@ where
                     // This `TVarType` references a symbol from the callee function, which is not
                     // valid within the caller. Must add a new `poly.param` in the caller for a new
                     // `TVarType` and use that as the return type.
-                    //
-                    // It would be nice to add the `tvar` type restriction on the `poly.param` op
-                    // but the problem is that it must use the same symbol as the param name itself
-                    // and that is not known until after it's inserted into the symbol table to
-                    // ensure it has a unique name.
-                    let unique_name =
-                        block_gen.add_new_poly_param(codegen, location, "$t", None)?;
-                    codegen.tvar_type(unique_name.value())
+                    let sym_attr = block_gen.add_new_tvar_poly_param(codegen, location, "$t")?;
+                    codegen.tvar_type(sym_attr.value())
                 } else {
                     return_type
                 };
