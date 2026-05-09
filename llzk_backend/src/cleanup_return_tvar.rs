@@ -238,6 +238,11 @@ fn specialize_call_result_type<'ctx>(
 pub(crate) fn specialize_tvar_function_calls<'ctx>(
     codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
 ) -> Result<()> {
+    if codegen.config.verbose {
+        println!("Module state before `specialize_tvar_function_calls()`:");
+        codegen.dump_module();
+    }
+
     let mut calls = Vec::new();
     walk_from_block(
         codegen.module.body(),
