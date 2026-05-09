@@ -25,6 +25,7 @@ use llzk::prelude::OperationResult;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::TemplateOpLike as _;
 use llzk::prelude::TemplateOpRef;
+use llzk::prelude::TemplateOpRefMut;
 use llzk::prelude::TemplateParamOpRefMut;
 use llzk::prelude::TemplateSymbolBindingOpLike as _;
 use llzk::prelude::Type;
@@ -235,6 +236,26 @@ fn specialize_call_result_type<'ctx>(
     Ok(())
 }
 
+/// Count the number of `poly.param` ops that are direct children of the `poly.template` with the
+/// given `sym_name` in the module body. Returns `None` if no matching template is found.
+fn count_poly_params_in_callee_template(
+    codegen: &LlzkCodegen<'_, '_, '_, impl ProgramLike>,
+    callee_func_name: &str,
+) -> Option<usize> {
+    let mut op = codegen.module.body().first_operation_mut();
+    while let Some(cur) = op {
+        op = shared::next_in_block_mut(&cur);
+        if let Ok(tmpl) = TemplateOpRefMut::try_from(cur) {
+            let is_match =
+                shared::get_sym_name_attr(&tmpl).is_ok_and(|a| a.value() == callee_func_name);
+            if is_match {
+                return Some(tmpl.const_param_names().len());
+            }
+        }
+    }
+    None
+}
+
 /// Specializes type-variable function call results from their concrete cast use sites.
 pub(crate) fn specialize_tvar_function_calls<'ctx>(
     codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
@@ -275,6 +296,44 @@ pub(crate) fn specialize_tvar_function_calls<'ctx>(
         let template = parent_template(&call_op)?;
         remove_generated_tvar_param(template, &tvar_name)?;
         let _drop = shared::remove_from_parent(&mut unsafe { OperationRefMut::from_raw(raw_call) });
+    }
+
+    // Second pass: set `templateParams` on circom function calls whose callee template has more
+    // `poly.param` ops than the default (#args + #results). In the normal case the first pass
+    // above removes all temporary tvar params (e.g. `$t_0`) from every callee template, leaving
+    // the count equal to the default and making this pass a no-op. This pass exists as a safety
+    // net for any edge case where extra params survive. Only `function.call` ops with exactly one
+    // nested callee reference are considered — the `@f::@f` style used for circom function calls,
+    // as opposed to struct method calls like `@T::@T::@compute` which have two nested refs.
+    let mut circom_func_calls = Vec::new();
+    walk_from_block(
+        codegen.module.body(),
+        WalkCallbacks::for_ops(|op| {
+            if function::is_func_call(&op) {
+                // TODO: CallOp in `llzk-rs` needs a getter for the callee.
+                if let Ok(callee) = op.attribute("callee").and_then(SymbolRefAttribute::try_from) {
+                    if callee.nested().len() == 1 {
+                        circom_func_calls.push(op.to_raw());
+                    }
+                }
+            }
+        }),
+    );
+
+    for raw_call in circom_func_calls {
+        let call_op = unsafe { OperationRef::from_raw(raw_call) };
+        let callee = SymbolRefAttribute::try_from(call_op.attribute("callee")?)?;
+        // For `@f::@f`, `nested()[0]` is the function/template name within the module.
+        let func_name = callee.nested()[0].value();
+        if let Some(param_count) = count_poly_params_in_callee_template(codegen, func_name) {
+            // When the verifier sees a `function.call` without an explicit `templateParams`
+            // attribute it assumes the callee has exactly (#args + #results) params. Only set
+            // `templateParams` explicitly when the callee has additional params beyond that.
+            let default_param_count = call_op.operand_count() + call_op.result_count();
+            if param_count > default_param_count {
+                shared::set_func_call_template_params_wildcards(codegen, call_op, param_count);
+            }
+        }
     }
 
     Ok(())
