@@ -1,7 +1,6 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
-// XFAIL:.*
 
 pragma circom 2.0.0;
 
@@ -25,4 +24,88 @@ template BigModOld(n, k) {
 
 component main = BigModOld(8, 2);
 
-// CHECK-LABEL: module attributes {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BigModOld::@BigModOld<[8, 2]>>} {
+// CHECK-NEXT:    poly.template @long_div2 {
+// CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
+// CHECK-NEXT:      poly.param @T_arg1 : !poly.tvar<@T_arg1>
+// CHECK-NEXT:      poly.param @T_arg2 : !poly.tvar<@T_arg2>
+// CHECK-NEXT:      poly.param @T_arg3 : !poly.tvar<@T_arg3>
+// CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
+// CHECK-NEXT:      function.def @long_div2(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0>, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg1>, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg2>, %[[VAL_3:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg3>) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_4]], %[[VAL_4]], %[[VAL_4]], %[[VAL_4]], %[[VAL_4]] : <5 x !felt.type<"bn128">>
+// CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_2]] : (!poly.tvar<@T_arg2>) -> !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_8:[0-9a-zA-Z_\.]+]] = %[[VAL_6]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
+// CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = bool.cmp ge(%[[VAL_8]], %[[VAL_9]]) : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:          scf.condition(%[[VAL_10]]) %[[VAL_8]] : !felt.type<"bn128">
+// CHECK-NEXT:        } do {
+// CHECK-NEXT:        ^bb0(%[[VAL_11:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
+// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_2]] : (!poly.tvar<@T_arg2>) -> !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_11]], %[[VAL_12]]) : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:          scf.if %[[VAL_13]] {
+// CHECK-NEXT:            %[[VAL_14:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:            %[[VAL_15:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_1]] : (!poly.tvar<@T_arg1>) -> index
+// CHECK-NEXT:            array.write %[[VAL_5]]{{\[}}%[[VAL_15]]] = %[[VAL_14]] : <5 x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:            %[[VAL_17:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_18:[0-9a-zA-Z_\.]+]] = %[[VAL_16]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
+// CHECK-NEXT:              %[[VAL_19:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_1]] : (!poly.tvar<@T_arg1>) -> !felt.type<"bn128">
+// CHECK-NEXT:              %[[VAL_20:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_18]], %[[VAL_19]]) : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:              scf.condition(%[[VAL_20]]) %[[VAL_18]] : !felt.type<"bn128">
+// CHECK-NEXT:            } do {
+// CHECK-NEXT:            ^bb0(%[[VAL_21:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
+// CHECK-NEXT:              %[[VAL_22:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_2]] : (!poly.tvar<@T_arg2>) -> !felt.type<"bn128">
+// CHECK-NEXT:              %[[VAL_23:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_21]], %[[VAL_22]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:              %[[VAL_24:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_23]] : !felt.type<"bn128">
+// CHECK-NEXT:              %[[VAL_25:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_3]] : (!poly.tvar<@T_arg3>) -> !array.type<? x !poly.tvar<@"$e">>
+// CHECK-NEXT:              %[[VAL_26:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_25]]{{\[}}%[[VAL_24]]] : <? x !poly.tvar<@"$e">>, !poly.tvar<@"$e">
+// CHECK-NEXT:              %[[VAL_27:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_21]] : !felt.type<"bn128">
+// CHECK-NEXT:              %[[VAL_28:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_26]] : (!poly.tvar<@"$e">) -> !felt.type<"bn128">
+// CHECK-NEXT:              array.write %[[VAL_5]]{{\[}}%[[VAL_27]]] = %[[VAL_28]] : <5 x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:              %[[VAL_29:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:              %[[VAL_30:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_21]], %[[VAL_29]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:              scf.yield %[[VAL_30]] : !felt.type<"bn128">
+// CHECK-NEXT:            }
+// CHECK-NEXT:          } else {
+// CHECK-NEXT:          }
+// CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = felt.sub %[[VAL_11]], %[[VAL_31]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:          scf.yield %[[VAL_32]] : !felt.type<"bn128">
+// CHECK-NEXT:        }
+// CHECK-NEXT:        %[[VAL_33:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_5]] : (!array.type<5 x !felt.type<"bn128">>) -> !poly.tvar<@T_return>
+// CHECK-NEXT:        function.return %[[VAL_33]] : !poly.tvar<@T_return>
+// CHECK-NEXT:      }
+// CHECK-NEXT:      poly.param @"$e" : !poly.tvar<@"$e">
+// CHECK-NEXT:    }
+// CHECK-NEXT:    poly.template @BigModOld {
+// CHECK-NEXT:      poly.param @n
+// CHECK-NEXT:      poly.param @k
+// CHECK-NEXT:      poly.expr @"2_Mul_k@556" {
+// CHECK-NEXT:        %[[VAL_34:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
+// CHECK-NEXT:        %[[VAL_35:[0-9a-zA-Z_\.]+]] = poly.read_const @k : !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_36:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_35]], %[[VAL_34]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:        poly.yield %[[VAL_36]] : !felt.type<"bn128">
+// CHECK-NEXT:      }
+// CHECK-NEXT:      struct.def @BigModOld {
+// CHECK-NEXT:        function.def @compute(%[[VAL_37:[0-9a-zA-Z_\.]+]]: !array.type<@"2_Mul_k@556" x !felt.type<"bn128">>) -> !struct.type<@BigModOld::@BigModOld<[@n, @k]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:          %[[VAL_38:[0-9a-zA-Z_\.]+]] = struct.new : <@BigModOld::@BigModOld<[@n, @k]>>
+// CHECK-NEXT:          %[[VAL_39:[0-9a-zA-Z_\.]+]] = poly.read_const @"2_Mul_k@556" : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_40:[0-9a-zA-Z_\.]+]] = poly.read_const @k : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_41:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_42:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_43:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_42]], %[[VAL_42]], %[[VAL_42]], %[[VAL_42]], %[[VAL_42]] : <5 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_44:[0-9a-zA-Z_\.]+]] = function.call @long_div2::@long_div2<[?, ?, ?, ?, ?, ?]>(%[[VAL_41]], %[[VAL_40]], %[[VAL_40]], %[[VAL_37]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !array.type<@"2_Mul_k@556" x !felt.type<"bn128">>) -> !array.type<5 x !felt.type<"bn128">>
+// CHECK-NEXT:          function.return %[[VAL_38]] : !struct.type<@BigModOld::@BigModOld<[@n, @k]>>
+// CHECK-NEXT:        }
+// CHECK-NEXT:        function.def @constrain(%[[VAL_45:[0-9a-zA-Z_\.]+]]: !struct.type<@BigModOld::@BigModOld<[@n, @k]>>, %[[VAL_46:[0-9a-zA-Z_\.]+]]: !array.type<@"2_Mul_k@556" x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = poly.read_const @"2_Mul_k@556" : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = poly.read_const @k : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_50]], %[[VAL_50]], %[[VAL_50]], %[[VAL_50]], %[[VAL_50]] : <5 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = function.call @long_div2::@long_div2<[?, ?, ?, ?, ?, ?]>(%[[VAL_49]], %[[VAL_48]], %[[VAL_48]], %[[VAL_46]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !array.type<@"2_Mul_k@556" x !felt.type<"bn128">>) -> !array.type<5 x !felt.type<"bn128">>
+// CHECK-NEXT:          function.return
+// CHECK-NEXT:        }
+// CHECK-NEXT:      }
+// CHECK-NEXT:    }
+// CHECK-NEXT:  }
