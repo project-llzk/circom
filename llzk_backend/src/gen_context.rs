@@ -811,6 +811,12 @@ where
         rhs: Value<'ctx, 'val>,
     ) -> Result<(Value<'ctx, 'val>, Value<'ctx, 'val>)> {
         match (lhs.r#type(), rhs.r#type()) {
+            (t0, t1) if is_type_variable(t0) => {
+                Ok((self.cast_to_expected_type_if_needed(codegen, location, lhs, t1)?, rhs))
+            }
+            (t0, t1) if is_type_variable(t1) => {
+                Ok((lhs, self.cast_to_expected_type_if_needed(codegen, location, rhs, t0)?))
+            }
             (t0, t1) if is_felt_type(t0) && !is_felt_type(t1) => {
                 Ok((lhs, self.cast_to_felt(codegen, location, rhs)?))
             }
