@@ -103,3 +103,5 @@ template IsNegative() {
 }
 
 component main = IsNegative();
+
+// CHECK-LABEL: module attributes {
