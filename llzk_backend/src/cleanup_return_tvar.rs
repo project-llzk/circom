@@ -12,6 +12,7 @@ use crate::traversal::walk_from_block;
 use crate::traversal::WalkCallbacks;
 use anyhow::bail;
 use anyhow::Result;
+use llzk::attributes::array::ArrayAttribute;
 use llzk::dialect::function;
 use llzk::dialect::poly;
 use llzk::prelude::Block;
@@ -33,6 +34,7 @@ use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
 use llzk::symbol_ref::SymbolRefAttribute;
 use llzk::value_ext::replace_all_uses;
+use melior::ir::operation::OperationMutLike;
 use std::convert::TryFrom;
 
 /// Base name for synthetic functions created to wrap `function.call` operations with
@@ -310,7 +312,7 @@ pub(crate) fn specialize_tvar_function_calls<'ctx>(
         codegen.module.body(),
         WalkCallbacks::for_ops(|op| {
             if function::is_func_call(&op) {
-                // TODO: CallOp in `llzk-rs` needs a getter for the callee.
+                // TODO: CallOp in `llzk-rs` needs a wrapper for `llzkFunction_CallOpGetCallee`
                 if let Ok(callee) = op.attribute("callee").and_then(SymbolRefAttribute::try_from) {
                     if callee.nested().len() == 1 {
                         circom_func_calls.push(op.to_raw());
@@ -321,7 +323,7 @@ pub(crate) fn specialize_tvar_function_calls<'ctx>(
     );
 
     for raw_call in circom_func_calls {
-        let call_op = unsafe { OperationRef::from_raw(raw_call) };
+        let mut call_op = unsafe { OperationRefMut::from_raw(raw_call) };
         let callee = SymbolRefAttribute::try_from(call_op.attribute("callee")?)?;
         // For `@f::@f`, `nested()[0]` is the function/template name within the module.
         let func_name = callee.nested()[0].value();
@@ -331,7 +333,14 @@ pub(crate) fn specialize_tvar_function_calls<'ctx>(
             // `templateParams` explicitly when the callee has additional params beyond that.
             let default_param_count = call_op.operand_count() + call_op.result_count();
             if param_count > default_param_count {
-                shared::set_func_call_template_params_wildcards(codegen, call_op, param_count);
+                // TODO: this could use actual types for params and returns instead of wildcards.
+                let attr = ArrayAttribute::new(
+                    codegen.context,
+                    &vec![codegen.wildcard_attr(); param_count],
+                );
+                // TODO: CallOp in `llzk-rs` needs a wrapper for
+                // `llzkFunction_CallOpSetTemplateParams`
+                call_op.set_attribute("templateParams", attr.into());
             }
         }
     }
