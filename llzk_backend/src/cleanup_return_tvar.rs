@@ -12,6 +12,7 @@ use crate::traversal::walk_from_block;
 use crate::traversal::WalkCallbacks;
 use anyhow::bail;
 use anyhow::Result;
+use llzk::attributes::array::ArrayAttribute;
 use llzk::dialect::function;
 use llzk::dialect::poly;
 use llzk::prelude::Block;
@@ -25,6 +26,7 @@ use llzk::prelude::OperationResult;
 use llzk::prelude::RegionLike as _;
 use llzk::prelude::TemplateOpLike as _;
 use llzk::prelude::TemplateOpRef;
+use llzk::prelude::TemplateOpRefMut;
 use llzk::prelude::TemplateParamOpRefMut;
 use llzk::prelude::TemplateSymbolBindingOpLike as _;
 use llzk::prelude::Type;
@@ -32,6 +34,7 @@ use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
 use llzk::symbol_ref::SymbolRefAttribute;
 use llzk::value_ext::replace_all_uses;
+use melior::ir::operation::OperationMutLike;
 use std::convert::TryFrom;
 
 /// Base name for synthetic functions created to wrap `function.call` operations with
@@ -106,7 +109,7 @@ fn remove_generated_tvar_param(template: TemplateOpRef<'_, '_>, name: &str) -> R
 /// }
 /// ```
 ///
-/// The replacement call at the original site passes `templateParams = [none]` for `@T_return`.
+/// The replacement call at the original site passes `templateParams = [?]` for `@T_return`.
 fn wrap_call_in_synthetic_template<'ctx>(
     codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     call_op: OperationRef<'ctx, '_>,
@@ -155,16 +158,17 @@ fn wrap_call_in_synthetic_template<'ctx>(
     )?;
 
     // Insert the template into the module, uniquing the name to avoid collisions.
-    let template_name =
-        shared::insert_unique_symbol_op(&codegen.module.as_operation(), template_op);
+    let op_ref = shared::insert_unique_symbol_op(&codegen.module.as_operation(), template_op);
+    let template_name = shared::get_sym_name_attr(&op_ref)
+        .expect("`poly.template` must have `sym_name` attribute per ODS");
     let callee = SymbolRefAttribute::new_from_str(
         codegen.context,
         template_name.value(),
         &[UNUSED_CALL_RESULT_WRAPPER_NAME],
     );
 
-    // The replacement call passes the original operands and uses `none` for the template params
-    // (i.e. the unused return `tvar` of the call op).
+    // The replacement call passes the original operands and uses wildcard attribute for the
+    // template params (i.e. the unused return `tvar` of the call op).
     let original_operands: Vec<_> = call_op.operands().collect();
     let replacement = shared::build_func_call_with_template_params(
         codegen.context,
@@ -172,7 +176,7 @@ fn wrap_call_in_synthetic_template<'ctx>(
         callee,
         &original_operands,
         &[], // synthetic function returns void; original result was already unused
-        Some(&[codegen.type_wildcard_attr()]),
+        Some(&[codegen.wildcard_attr()]),
     )?;
 
     // Insert the replacement before the original call, then remove the original.
@@ -234,10 +238,35 @@ fn specialize_call_result_type<'ctx>(
     Ok(())
 }
 
+/// Count the number of `poly.param` ops that are direct children of the `poly.template` with the
+/// given `sym_name` in the module body. Returns `None` if no matching template is found.
+fn count_poly_params_in_callee_template(
+    codegen: &LlzkCodegen<'_, '_, '_, impl ProgramLike>,
+    callee_func_name: &str,
+) -> Option<usize> {
+    let mut op = codegen.module.body().first_operation_mut();
+    while let Some(cur) = op {
+        op = shared::next_in_block_mut(&cur);
+        if let Ok(tmpl) = TemplateOpRefMut::try_from(cur) {
+            let is_match =
+                shared::get_sym_name_attr(&tmpl).is_ok_and(|a| a.value() == callee_func_name);
+            if is_match {
+                return Some(tmpl.const_param_names().len());
+            }
+        }
+    }
+    None
+}
+
 /// Specializes type-variable function call results from their concrete cast use sites.
 pub(crate) fn specialize_tvar_function_calls<'ctx>(
     codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
 ) -> Result<()> {
+    if codegen.config.verbose {
+        println!("Module state before `specialize_tvar_function_calls()`:");
+        codegen.dump_module();
+    }
+
     let mut calls = Vec::new();
     walk_from_block(
         codegen.module.body(),
@@ -269,6 +298,51 @@ pub(crate) fn specialize_tvar_function_calls<'ctx>(
         let template = parent_template(&call_op)?;
         remove_generated_tvar_param(template, &tvar_name)?;
         let _drop = shared::remove_from_parent(&mut unsafe { OperationRefMut::from_raw(raw_call) });
+    }
+
+    // Second pass: set `templateParams` on circom function calls whose callee template has more
+    // `poly.param` ops than the default (#args + #results). In the normal case the first pass
+    // above removes all temporary tvar params (e.g. `$t_0`) from every callee template, leaving
+    // the count equal to the default and making this pass a no-op. This pass exists as a safety
+    // net for any edge case where extra params survive. Only `function.call` ops with exactly one
+    // nested callee reference are considered — the `@f::@f` style used for circom function calls,
+    // as opposed to struct method calls like `@T::@T::@compute` which have two nested refs.
+    let mut circom_func_calls = Vec::new();
+    walk_from_block(
+        codegen.module.body(),
+        WalkCallbacks::for_ops(|op| {
+            if function::is_func_call(&op) {
+                // TODO: CallOp in `llzk-rs` needs a wrapper for `llzkFunction_CallOpGetCallee`
+                if let Ok(callee) = op.attribute("callee").and_then(SymbolRefAttribute::try_from) {
+                    if callee.nested().len() == 1 {
+                        circom_func_calls.push(op.to_raw());
+                    }
+                }
+            }
+        }),
+    );
+
+    for raw_call in circom_func_calls {
+        let mut call_op = unsafe { OperationRefMut::from_raw(raw_call) };
+        let callee = SymbolRefAttribute::try_from(call_op.attribute("callee")?)?;
+        // For `@f::@f`, `nested()[0]` is the function/template name within the module.
+        let func_name = callee.nested()[0].value();
+        if let Some(param_count) = count_poly_params_in_callee_template(codegen, func_name) {
+            // When the verifier sees a `function.call` without an explicit `templateParams`
+            // attribute it assumes the callee has exactly (#args + #results) params. Only set
+            // `templateParams` explicitly when the callee has additional params beyond that.
+            let default_param_count = call_op.operand_count() + call_op.result_count();
+            if param_count > default_param_count {
+                // TODO: this could use actual types for params and returns instead of wildcards.
+                let attr = ArrayAttribute::new(
+                    codegen.context,
+                    &vec![codegen.wildcard_attr(); param_count],
+                );
+                // TODO: CallOp in `llzk-rs` needs a wrapper for
+                // `llzkFunction_CallOpSetTemplateParams`
+                call_op.set_attribute("templateParams", attr.into());
+            }
+        }
     }
 
     Ok(())
