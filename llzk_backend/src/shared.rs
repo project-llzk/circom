@@ -2522,6 +2522,8 @@ pub(crate) fn build_func_call_with_template_params<'c>(
 /// Sets the `templateParams` attribute of a `function.call` operation to a list of `count`
 /// wildcards, using the MLIR C API directly to mutate the attribute in place.
 ///
+/// SAFETY: `call_op` is a valid MLIR object owned by the surrounding module.
+///
 /// TODO: llzk-rs should provide this (or similar) API.
 pub(crate) fn set_func_call_template_params_wildcards<'ctx>(
     codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
@@ -2532,7 +2534,6 @@ pub(crate) fn set_func_call_template_params_wildcards<'ctx>(
     let ctx = codegen.context.deref();
     let wildcards = vec![codegen.wildcard_attr(); count];
     let arr = ArrayAttribute::new(ctx, &wildcards);
-    // SAFETY: `call_op` and `arr` are valid MLIR objects owned by the surrounding module.
     // We use the C API directly because melior does not expose attribute mutation on OperationRef.
     unsafe {
         mlir_sys::mlirOperationSetAttributeByName(

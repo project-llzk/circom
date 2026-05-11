@@ -107,7 +107,7 @@ fn remove_generated_tvar_param(template: TemplateOpRef<'_, '_>, name: &str) -> R
 /// }
 /// ```
 ///
-/// The replacement call at the original site passes `templateParams = [none]` for `@T_return`.
+/// The replacement call at the original site passes `templateParams = [?]` for `@T_return`.
 fn wrap_call_in_synthetic_template<'ctx>(
     codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     call_op: OperationRef<'ctx, '_>,
@@ -165,8 +165,8 @@ fn wrap_call_in_synthetic_template<'ctx>(
         &[UNUSED_CALL_RESULT_WRAPPER_NAME],
     );
 
-    // The replacement call passes the original operands and uses `none` for the template params
-    // (i.e. the unused return `tvar` of the call op).
+    // The replacement call passes the original operands and uses wildcard attribute for the
+    // template params (i.e. the unused return `tvar` of the call op).
     let original_operands: Vec<_> = call_op.operands().collect();
     let replacement = shared::build_func_call_with_template_params(
         codegen.context,
