@@ -2530,7 +2530,7 @@ pub(crate) fn set_func_call_template_params_wildcards<'ctx>(
 ) {
     use melior::ir::attribute::ArrayAttribute;
     let ctx = codegen.context.deref();
-    let wildcards: Vec<Attribute<'ctx>> = (0..count).map(|_| codegen.wildcard_attr()).collect();
+    let wildcards = vec![codegen.wildcard_attr(); count];
     let arr = ArrayAttribute::new(ctx, &wildcards);
     // SAFETY: `call_op` and `arr` are valid MLIR objects owned by the surrounding module.
     // We use the C API directly because melior does not expose attribute mutation on OperationRef.
