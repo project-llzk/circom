@@ -913,7 +913,17 @@ where
                 | Expression::InlineSwitchOp { .. }
                 | Expression::PrefixOp { .. }
                 | Expression::InfixOp { .. }
-                | Expression::Call { .. } => self.gen_template_poly_expr(codegen, expr),
+                | Expression::Call { .. } => {
+                    let expr_name = dim_expr_name(expr);
+                    if self.template_def.has_const_expr_named(&expr_name) {
+                        // Return the const expr representing the constant value.
+                        ArrayDimensionResult::new(codegen.flat_sym(expr_name).into(), &[])
+                    } else {
+                        // Generate it otherwise.
+                        self.gen_template_poly_expr(codegen, expr)
+                    }
+                }
+
                 // The remaining cases do not produce a scalar value.
                 // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
                 // Give the same error that the circom type checker gives. The type checker ran

@@ -2354,6 +2354,10 @@ where
         )?;
 
         let uniqued_name = self.record_new_sym_binding(codegen, expr_op.into(), &|_| {});
+
+        if codegen.config.verbose {
+            println!("[{}] Generated `poly.expr` with name '{uniqued_name}'", std::any::type_name_of_val(self));
+        }
         ArrayDimensionResult::new(codegen.flat_sym(uniqued_name.value()).into(), &[])
     }
 }
