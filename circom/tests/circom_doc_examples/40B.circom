@@ -20,9 +20,9 @@ template Num2Bits(n) {
     lc1 === in;
 }
 
-template check_bits(n) {
+template check_bits(m) {
   signal input in;
-  component check = Num2Bits(n);
+  component check = Num2Bits(m);
   check.in <== in;
   _ <== check.out;
 }

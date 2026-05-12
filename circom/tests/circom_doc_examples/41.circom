@@ -20,10 +20,10 @@ template Num2Bits(n) {
     lc1 === in;
 }
 
-template parity(n) {
+template parity(m) {
   signal input in;
   signal output out;
-  component check = Num2Bits(n);
+  component check = Num2Bits(m);
   check.in <== in;
   out <== check.out[0];
   _ <== check.out;

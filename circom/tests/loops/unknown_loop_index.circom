@@ -20,27 +20,27 @@ template Num2Bits(n) {
     lc1 === in;
 }
 
-template LessThan(n) {
-    assert(n <= 252);
+template LessThan(m) {
+    assert(m <= 252);
     signal input in[2];
     signal output out;
 
-    component n2b = Num2Bits(n+1);
+    component n2b = Num2Bits(m+1);
 
-    n2b.in <== in[0]+ (1<<n) - in[1];
+    n2b.in <== in[0]+ (1<<m) - in[1];
 
-    out <== 1-n2b.out[n];
+    out <== 1-n2b.out[m];
 }
 
 // Pointless loop
-template CountDown(n) {
+template CountDown(x) {
     signal input in;
     signal output out;
 
-    var counter = n + 1;
+    var counter = x + 1;
 
     while (counter > in) {
-        n--;
+        x--;
     }
 
     in === counter;
@@ -48,17 +48,17 @@ template CountDown(n) {
     out <-- counter;
 }
 
-template UnknownLoopIndex(n) {
+template UnknownLoopIndex(y) {
     signal input idx;
-    signal input choices[n];
+    signal input choices[y];
     signal output out;
 
-    component lt = LessThan(n);
+    component lt = LessThan(y);
     lt.in[0] <== idx;
-    lt.in[1] <== n;
+    lt.in[1] <== y;
     lt.out === 1;
 
-    component c = CountDown(n);
+    component c = CountDown(y);
     c.in <== idx;
 
     // This constraint will be unknown (error[T20462])

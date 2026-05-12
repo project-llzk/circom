@@ -20,41 +20,41 @@ template Num2Bits(n) {
     lc1 === in;
 }
 
-template LessThan(n) {
-    assert(n <= 252);
+template LessThan(m) {
+    assert(m <= 252);
     signal input in[2];
     signal output out;
 
-    component n2b = Num2Bits(n+1);
+    component n2b = Num2Bits(m+1);
 
-    n2b.in <== in[0]+ (1<<n) - in[1];
+    n2b.in <== in[0]+ (1<<m) - in[1];
 
-    out <== 1-n2b.out[n];
+    out <== 1-n2b.out[m];
 }
 
-template GreaterEqThan(n) {
+template GreaterEqThan(x) {
     signal input in[2];
     signal output out;
 
-    component lt = LessThan(n);
+    component lt = LessThan(x);
 
     lt.in[0] <== in[1];
     lt.in[1] <== in[0]+1;
     lt.out ==> out;
 }
 
-template ForUnknownIndex(n) {
+template ForUnknownIndex(y) {
     signal input in;
     signal output out;
 
     var arr2[10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-    component get = GreaterEqThan(n);
+    component get = GreaterEqThan(y);
     get.in[0] <== in;
     get.in[1] <== 0;
     get.out === 1;
 
-    component lt = LessThan(n);
+    component lt = LessThan(y);
     lt.in[0] <== in;
     lt.in[1] <== 10;
     lt.out === 1;
