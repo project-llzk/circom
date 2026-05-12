@@ -395,9 +395,9 @@ component main = ForUnknownIndex(252);
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_230:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_231:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_211]][@comp] : <[@count: index, @comp: !struct.type<@Num2Bits::@Num2Bits<[@"n_Add_1@633"]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, !struct.type<@Num2Bits::@Num2Bits<[@"n_Add_1@633"]>>
-// CHECK-NEXT:          %[[VAL_232:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_231]][@out] : <@Num2Bits::@Num2Bits<[@"n_Add_1@633"]>>, !array.type<@n x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_232:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_231]][@out] : <@Num2Bits::@Num2Bits<[@"n_Add_1@633"]>>, !array.type<? x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_233:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_202]] : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_234:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_232]]{{\[}}%[[VAL_233]]] : <@n x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_234:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_232]]{{\[}}%[[VAL_233]]] : <? x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_235:[0-9a-zA-Z_\.]+]] = felt.sub %[[VAL_230]], %[[VAL_234]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          struct.writem %[[VAL_201]][@out] = %[[VAL_235]] : <@LessThan::@LessThan<[@n]>>, !felt.type<"bn128">
 // CHECK-NEXT:          struct.writem %[[VAL_201]][@n2b$inputs] = %[[VAL_204]] : <@LessThan::@LessThan<[@n]>>, !pod.type<[@in: !felt.type<"bn128">]>
@@ -430,9 +430,9 @@ component main = ForUnknownIndex(252);
 // CHECK-NEXT:          %[[VAL_259:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_243]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_259]], %[[VAL_258]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_260:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_261:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_242]][@out] : <@Num2Bits::@Num2Bits<[@"n_Add_1@633"]>>, !array.type<@n x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_261:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_242]][@out] : <@Num2Bits::@Num2Bits<[@"n_Add_1@633"]>>, !array.type<? x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_262:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_239]] : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_263:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_261]]{{\[}}%[[VAL_262]]] : <@n x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_263:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_261]]{{\[}}%[[VAL_262]]] : <? x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_264:[0-9a-zA-Z_\.]+]] = felt.sub %[[VAL_260]], %[[VAL_263]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_241]], %[[VAL_264]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_265:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_243]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">

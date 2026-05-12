@@ -128,9 +128,9 @@ component main = Array01(5);
 // CHECK-NEXT:          } do {
 // CHECK-NEXT:          ^bb0(%[[VAL_63:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
 // CHECK-NEXT:            %[[VAL_64:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_37]][@comp] : <[@count: index, @comp: !struct.type<@A::@A<[@n]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, !struct.type<@A::@A<[@n]>>
-// CHECK-NEXT:            %[[VAL_65:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_64]][@b] : <@A::@A<[@n]>>, !array.type<@n x !felt.type<"bn128">>
+// CHECK-NEXT:            %[[VAL_65:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_64]][@b] : <@A::@A<[@n]>>, !array.type<? x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_66:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_63]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_67:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_65]]{{\[}}%[[VAL_66]]] : <@n x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_67:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_65]]{{\[}}%[[VAL_66]]] : <? x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_68:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_63]] : !felt.type<"bn128">
 // CHECK-NEXT:            array.write %[[VAL_32]]{{\[}}%[[VAL_68]]] = %[[VAL_67]] : <@n x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_69:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
@@ -173,9 +173,9 @@ component main = Array01(5);
 // CHECK-NEXT:            scf.condition(%[[VAL_96]]) %[[VAL_95]] : !felt.type<"bn128">
 // CHECK-NEXT:          } do {
 // CHECK-NEXT:          ^bb0(%[[VAL_97:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CHECK-NEXT:            %[[VAL_98:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_76]][@b] : <@A::@A<[@n]>>, !array.type<@n x !felt.type<"bn128">>
+// CHECK-NEXT:            %[[VAL_98:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_76]][@b] : <@A::@A<[@n]>>, !array.type<? x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_99:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_97]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_100:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_98]]{{\[}}%[[VAL_99]]] : <@n x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_100:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_98]]{{\[}}%[[VAL_99]]] : <? x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_101:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_97]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_102:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_75]]{{\[}}%[[VAL_101]]] : <@n x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:            constrain.eq %[[VAL_102]], %[[VAL_100]] : !felt.type<"bn128">, !felt.type<"bn128">
