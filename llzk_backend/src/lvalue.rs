@@ -4,7 +4,6 @@ use crate::function::InfoProviders;
 use crate::gen_context::BlockGenContext;
 use crate::gen_context::NestedBlockInfo;
 use crate::program_ext::ProgramLike;
-use crate::shared;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COMP;
 use crate::subcmp::SubcmpInfo;
