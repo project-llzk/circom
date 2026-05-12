@@ -1465,7 +1465,7 @@ where
                                 fc,
                                 codegen,
                                 scope.location,
-                                Some(&scope.tmpl_params_instance(codegen)),
+                                None,
                             )
                         })
                     },
