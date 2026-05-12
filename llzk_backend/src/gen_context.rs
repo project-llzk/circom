@@ -2470,7 +2470,14 @@ where
         } else {
             match expr {
                 Expression::Number(_, _) => {
-                    unreachable!("handled by try_compute_as_i64")
+                    let expr_name = dim_expr_name(expr);
+                    if self.poly_template_binding_names.borrow().contains_key(&expr_name) {
+                        // Return the const expr representing the constant value.
+                        ArrayDimensionResult::new(codegen.flat_sym(expr_name).into(), &[])
+                    } else {
+                        // Generate it otherwise.
+                        self.gen_template_poly_expr(codegen, expr)
+                    }
                 }
                 Expression::Variable { meta, name, access } if access.is_empty() => {
                     // Grab the template symbol binding name if it exists (first try `poly.param`
