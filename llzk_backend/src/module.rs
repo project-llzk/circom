@@ -526,9 +526,6 @@ where
             ArrayDimensionResult::new(codegen.index_attr(integer).into(), &[])
         } else {
             match expr {
-                Expression::Number(_, _) => {
-                    unreachable!("handled by try_compute_as_i64")
-                }
                 Expression::Variable { name, access, .. } if access.is_empty() => {
                     if self.template_params.contains(name) {
                         ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
@@ -546,6 +543,7 @@ where
                 }
                 // Variable case with non-empty `access`
                 Expression::Variable { .. }
+                | Expression::Number(_, _)
                 | Expression::InlineSwitchOp { .. }
                 | Expression::PrefixOp { .. }
                 | Expression::InfixOp { .. }
