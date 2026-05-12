@@ -712,18 +712,46 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         .ok_or_else(|| anyhow!("No input signal with name {signal_name}"))
     }
 
+    /// Replaces symbol attributes with a wildcard, leaving the other attributes untouched.
+    fn strip_template_params_from_attr(&self, attr: Attribute<'ctx>) -> Attribute<'ctx> {
+        type_switch! { attr,
+            SymbolRefAttribute as _ => self.wildcard_attr(),
+            FlatSymbolRefAttribute as _ => self.wildcard_attr(),
+            else => attr
+        }
+    }
+
+    /// Replaces the attributes of the given type following the logic in [`strip_template_params_from_attr`].
+    ///
+    /// # Panics 
+    ///
+    /// When passed a type we don't handle yet. This is mean to serve as a canary for missing
+    /// support.
+    fn strip_template_params_from_type(&self, t: Type<'ctx>) -> Type<'ctx> {
+        type_switch! { t,
+            ArrayType => {
+                let element_type = self.strip_template_params_from_type(t.element_type());
+                let dims = t.dims().into_iter().map(|a| self.strip_template_params_from_attr(a)).collect::<Vec<_>>();
+                ArrayType::new(element_type, &dims).into()
+            }
+            FeltType as _ => t,
+        }
+    }
+
     /// Get the type of an output signal with the given name in the given template, if it exists.
     pub fn get_output_signal_type(
         &self,
-        template_name: &str,
+        template: StructType<'ctx>,
         signal_name: &str,
     ) -> Result<Type<'ctx>> {
+        let template_name = get_name_tail(&template)?;
         let borrow = self.template_decls.borrow();
         match borrow.get(template_name) {
             None => anyhow::bail!("No declaration info for {template_name}"),
             Some(DeclInfo::Full(info)) => info.get_output_type(signal_name),
             Some(DeclInfo::Remnant { outputs, .. }) => outputs.get(signal_name).copied(),
         }
+        .map(|t| self.strip_template_params_from_type(t))
         .ok_or_else(|| anyhow!("No output signal with name {signal_name}"))
     }
 
