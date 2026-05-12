@@ -4,6 +4,7 @@ use crate::function::InfoProviders;
 use crate::gen_context::BlockGenContext;
 use crate::gen_context::NestedBlockInfo;
 use crate::program_ext::ProgramLike;
+use crate::shared;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COMP;
 use crate::subcmp::SubcmpInfo;
@@ -30,7 +31,6 @@ use std::cmp;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryFrom as _;
-use std::convert::TryInto as _;
 use std::fmt;
 use std::iter::FromIterator as _;
 
@@ -316,8 +316,9 @@ impl<'ast> Lvalue<'ast> {
             }
             StructType as _ => subcmp_value,
         };
+        let comp_value_type = StructType::try_from(comp_value.r#type())?;
         let field_ty = codegen
-            .get_output_signal_type(comp_value.r#type().try_into()?, signal_name)?;
+            .get_output_signal_type(shared::get_name_tail(&comp_value_type)?, signal_name)?;
 
         block_gen.append_op_unnamed_result(r#struct::readm(
             codegen.op_builder(),
