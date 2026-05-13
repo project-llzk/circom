@@ -725,7 +725,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     ///
     /// # Panics 
     ///
-    /// When passed a type we don't handle yet. This is mean to serve as a canary for missing
+    /// When passed a type we don't handle yet. This is meant to serve as a canary for missing
     /// support.
     fn strip_template_params_from_type(&self, t: Type<'ctx>) -> Type<'ctx> {
         type_switch! { t,
