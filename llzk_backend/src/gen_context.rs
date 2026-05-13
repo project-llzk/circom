@@ -1,6 +1,5 @@
 //! Handles circom var scoping and LLZK blocks stack management.
 
-use crate::affine_map::AffineMapAttribute;
 use crate::function::InfoProviders;
 use crate::function_ext::FunctionLike as _;
 use crate::lvalue::Lvalue;
@@ -25,6 +24,7 @@ use anyhow::anyhow;
 use anyhow::ensure;
 use anyhow::Context as _;
 use anyhow::Result;
+use llzk::attributes::array::AffineMapAttribute;
 use llzk::dialect::array;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::bool;
@@ -71,6 +71,7 @@ use llzk::prelude::ValueLike as _;
 use llzk::prelude::FUNC_NAME_COMPUTE;
 use llzk::prelude::FUNC_NAME_CONSTRAIN;
 use llzk::typing::types_unify;
+use llzk::utils::print_region;
 use llzk::utils::IsA as _;
 use llzk::value_ext::OwningValueRange;
 use llzk::value_ext::ValueRange;
@@ -1574,9 +1575,9 @@ where
                 println!("Current module state:");
                 codegen.dump_module();
                 println!("\nPending 'then' region:");
-                shared::print_region(then_region);
+                print_region(then_region);
                 println!("\nPending 'else' region:");
-                shared::print_region(else_region);
+                print_region(else_region);
             }
         })
     }

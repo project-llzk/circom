@@ -1,6 +1,5 @@
 //! Shared code generation utilities.
 
-use crate::affine_map::AffineMapAttribute;
 use crate::function::InfoProviders;
 use crate::gen_context::BlockContextStack;
 use crate::gen_context::BlockGenContext;
@@ -21,6 +20,7 @@ use anyhow::anyhow;
 use anyhow::ensure;
 use anyhow::Context as _;
 use anyhow::Result;
+use llzk::attributes::array::AffineMapAttribute;
 use llzk::builder::OpBuilder;
 use llzk::dialect;
 use llzk::dialect::array;
@@ -721,7 +721,8 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         }
     }
 
-    /// Replaces the attributes of the given type following the logic in [`strip_template_params_from_attr`].
+    /// Replaces the attributes of the given type following the logic in
+    /// [`strip_template_params_from_attr`].
     ///
     /// # Panics
     ///
@@ -901,12 +902,6 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         T: Into<i64>,
     {
         IntegerAttribute::new(self.index_type(), integer.into())
-    }
-
-    /// Create an affine_map attribute from a string definition.
-    pub fn affine_map_attr(&self, definition: &str) -> Result<Attribute<'ctx>> {
-        Attribute::parse(self.context, definition)
-            .ok_or_else(|| anyhow!("could not parse affine_map definition"))
     }
 
     /// Creates a [`FlatSymbolRefAttribute`] from the given string.
@@ -2455,120 +2450,12 @@ pub fn get_sym_name_attr<'c: 'a, 'a>(
 /// Insert a new symbol operation into the symbol table owned by `sym_table_op`. The inserted symbol
 /// is renamed automatically if necessary to avoid collisions. Ownership of `new_symbol_op` is
 /// transferred to the `sym_table_op`. Return ref to the op.
+#[inline]
 pub fn insert_unique_symbol_op<'c: 'a, 'a>(
     sym_table_op: &impl OperationLike<'c, 'a>,
     new_symbol_op: impl Into<Operation<'c>>,
 ) -> OperationRef<'c, 'a> {
     symbol_table::insert(sym_table_op, new_symbol_op.into())
-}
-
-/// Print a single operation using "assume verified" flag to avoid verification errors on
-/// in-progress IR.
-///
-/// TODO: llzk-rs should provide this function.
-#[allow(unused)]
-pub fn print_operation<'c: 'a, 'a>(op: &impl OperationLike<'c, 'a>) {
-    // Melior does not currently have a wrapper for `mlirOpPrintingFlagsAssumeVerified()`
-    unsafe extern "C" fn print_chunk(s: mlir_sys::MlirStringRef, _user_data: *mut c_void) {
-        let slice = std::slice::from_raw_parts(s.data as *const u8, s.length);
-        print!("{}", std::str::from_utf8_unchecked(slice));
-    }
-    unsafe {
-        let flags = mlir_sys::mlirOpPrintingFlagsCreate();
-        mlir_sys::mlirOpPrintingFlagsAssumeVerified(flags);
-        mlir_sys::mlirOperationPrintWithFlags(
-            op.to_raw(),
-            flags,
-            Some(print_chunk),
-            std::ptr::null_mut(),
-        );
-        mlir_sys::mlirOpPrintingFlagsDestroy(flags);
-    }
-    println!();
-}
-
-/// Print all operations in a block using [`print_operation`].
-///
-/// TODO: llzk-rs should provide this function.
-#[allow(unused)]
-pub fn print_block<'c: 'a, 'a>(block: &impl BlockLike<'c, 'a>) {
-    let mut op = block.first_operation();
-    while let Some(o) = op {
-        print_operation(&o);
-        op = o.next_in_block();
-    }
-}
-
-/// Print all blocks (and their operations) in a region using [`print_block`].
-///
-/// TODO: llzk-rs should provide this function.
-#[allow(unused)]
-pub fn print_region<'c: 'a, 'a>(region: &impl RegionLike<'c, 'a>) {
-    let mut block = region.first_block();
-    while let Some(b) = block {
-        print_block(&b);
-        block = b.next_in_region();
-    }
-}
-
-/// Build a `function.call` operation using [`OperationBuilder`], supporting the optional
-/// `templateParams` attribute for calling functions inside `poly.template` regions when
-/// template parameters are not bound by the call's argument or result types.
-///
-/// TODO: llzk-rs should provide this function (or even more general with map operands too).
-pub(crate) fn build_func_call_with_template_params<'c>(
-    context: &'c LlzkContext,
-    location: Location<'c>,
-    callee: SymbolRefAttribute<'c>,
-    args: &[Value<'c, '_>],
-    result_types: &[Type<'c>],
-    template_params: Option<&[Attribute<'c>]>,
-) -> Result<Operation<'c>> {
-    use melior::ir::attribute::ArrayAttribute;
-    use melior::ir::attribute::DenseI32ArrayAttribute;
-    use melior::ir::operation::OperationBuilder;
-    use melior::ir::Identifier;
-
-    let ctx = context.deref();
-    let arg_count = i32::try_from(args.len()).expect("arg count too large");
-    let mut attrs = vec![
-        (Identifier::new(ctx, "callee"), callee.into()),
-        (Identifier::new(ctx, "mapOpGroupSizes"), DenseI32ArrayAttribute::new(ctx, &[]).into()),
-        (
-            Identifier::new(ctx, "operandSegmentSizes"),
-            DenseI32ArrayAttribute::new(ctx, &[arg_count, 0]).into(),
-        ),
-    ];
-    if let Some(params) = template_params {
-        attrs.push((
-            Identifier::new(ctx, "templateParams"),
-            ArrayAttribute::new(ctx, params).into(),
-        ));
-    }
-    OperationBuilder::new("function.call", location)
-        .add_attributes(&attrs)
-        .add_operands(args)
-        .add_results(result_types)
-        .build()
-        .map_err(Into::into)
-}
-
-/// Returns the operations that use the given value.
-///
-/// TODO: llzk-rs should provide this function.
-pub fn users_of<'ctx: 'a, 'a>(value: impl ValueLike<'ctx> + Copy) -> Vec<OperationRef<'ctx, 'a>> {
-    let mut users = Vec::new();
-    // SAFETY: MLIR owns the value use-list and the owning operations. This helper only walks the
-    // list and creates non-owning references while the surrounding module is still alive.
-    // Use C API directly since `llzk-rs` does not expose a safe iterator over value uses.
-    unsafe {
-        let mut op_use = mlir_sys::mlirValueGetFirstUse(value.to_raw());
-        while !op_use.ptr.is_null() {
-            users.push(OperationRef::from_raw(mlir_sys::mlirOpOperandGetOwner(op_use)));
-            op_use = mlir_sys::mlirOpOperandGetNextUse(op_use);
-        }
-    }
-    users
 }
 
 /// Wraps the given pod record tuples into instances of [`RecordValue`].

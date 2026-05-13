@@ -18,7 +18,6 @@ mod module;
 mod program_ext;
 #[macro_use]
 mod shared;
-mod affine_map;
 mod lvalue;
 mod subcmp;
 mod template;

@@ -1,7 +1,6 @@
 //! Handles the top-level constructs (i.e. circom templates and functions), by delegating
 //! to the [crate::function] and [crate::template] modules to generate the code for each.
 
-use crate::affine_map::AffineMapAttribute;
 use crate::cleanup_return_tvar::specialize_tvar_function_calls;
 use crate::function::FunctionContext;
 use crate::function::GenerateLLZKInFunction as _;
@@ -24,6 +23,7 @@ use crate::template::TemplateContext;
 use crate::template_ext::TemplateLike;
 use anyhow::bail;
 use anyhow::Result;
+use llzk::attributes::array::AffineMapAttribute;
 use llzk::attributes::NamedAttribute;
 use llzk::dialect::function;
 use llzk::dialect::poly;
