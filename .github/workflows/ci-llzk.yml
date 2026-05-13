@@ -54,4 +54,4 @@ jobs:
         env:
           CI_BOT_PAT: "${{ secrets.CI_BUILD_TOKEN }}"
       - name: Run clippy
-        run: cargo clippy -p llzk_backend -- --no-deps
+        run: cargo clippy -p llzk_backend --tests -- --no-deps
