@@ -27,7 +27,6 @@ use crate::shared::ArrayDimensionResult;
 use crate::shared::ArrayDimensions;
 use crate::shared::DimExprConverter;
 use crate::shared::LlzkCodegen;
-use crate::shared::TmplParamsInstance;
 use crate::subcmp::names::COMP;
 use crate::subcmp::MixedSubcmpLayout;
 use crate::subcmp::SubcmpBinding;
@@ -1551,14 +1550,6 @@ impl<'ast, 'ctx, 'val, 'info> CtorCallScope<'ast, 'ctx, 'val, 'info> {
         codegen: &LlzkCodegen<'f, 'ctx, '_, impl ProgramLike>,
     ) -> &'f [String] {
         codegen.program.get_template_data(self.id).get_name_of_params()
-    }
-
-    /// Returns an instance of a template parameters instance map.
-    fn tmpl_params_instance<'f>(
-        &self,
-        codegen: &LlzkCodegen<'f, 'ctx, '_, impl ProgramLike>,
-    ) -> TmplParamsInstance<'f, 'ctx> {
-        TmplParamsInstance::new(self.params_formals(codegen), &self.dimensions)
     }
 
     /// Emits IR for reading a template parameter, represented by the given attribute.

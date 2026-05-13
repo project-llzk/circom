@@ -723,7 +723,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
 
     /// Replaces the attributes of the given type following the logic in [`strip_template_params_from_attr`].
     ///
-    /// # Panics 
+    /// # Panics
     ///
     /// When passed a type we don't handle yet. This is meant to serve as a canary for missing
     /// support.
@@ -2356,7 +2356,10 @@ where
         let uniqued_name = self.record_new_sym_binding(codegen, expr_op.into(), &|_| {});
 
         if codegen.config.verbose {
-            println!("[{}] Generated `poly.expr` with name '{uniqued_name}'", std::any::type_name_of_val(self));
+            println!(
+                "[{}] Generated `poly.expr` with name '{uniqued_name}'",
+                std::any::type_name_of_val(self)
+            );
         }
         ArrayDimensionResult::new(codegen.flat_sym(uniqued_name.value()).into(), &[])
     }
