@@ -6,7 +6,6 @@
 //! [GenResult] and [Chainable] that implement some boilerplate to make the actual code generation
 //! within [GenerateLLZKInTemplate] a lot simpler.
 
-use crate::affine_map::AffineMapAttribute;
 use crate::function::FunctionContext;
 use crate::function::InfoProviders;
 use crate::gen_context::BlockGenContext;
@@ -39,6 +38,7 @@ use crate::write_chain::WriteChain;
 use crate::write_chain::WriteTarget;
 use anyhow::anyhow;
 use anyhow::Result;
+use llzk::attributes::array::AffineMapAttribute;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::pod;
 use llzk::dialect::poly;

@@ -17,10 +17,11 @@ use llzk::dialect::function;
 use llzk::dialect::poly;
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
+use llzk::prelude::CallOpLike;
+use llzk::prelude::CallOpRef;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::FunctionType;
-use llzk::prelude::OperationLike as _;
-use llzk::prelude::OperationRef;
+use llzk::prelude::OperationLike;
 use llzk::prelude::OperationRefMut;
 use llzk::prelude::OperationResult;
 use llzk::prelude::RegionLike as _;
@@ -34,7 +35,7 @@ use llzk::prelude::Value;
 use llzk::prelude::ValueLike;
 use llzk::symbol_ref::SymbolRefAttribute;
 use llzk::value_ext::replace_all_uses;
-use melior::ir::operation::OperationMutLike;
+use llzk::value_ext::users_of;
 use std::convert::TryFrom;
 
 /// Base name for synthetic functions created to wrap `function.call` operations with
@@ -44,12 +45,11 @@ const UNUSED_CALL_RESULT_WRAPPER_NAME: &str = "synthetic";
 /// Infers the concrete result type required by all `poly.unifiable_cast` users of a call.
 /// Returns `Ok(None)` when the call result has no use sites.
 fn infer_type_from_unifiable_cast_uses<'ctx: 'a, 'a>(
-    call_op: OperationRef<'ctx, 'a>,
+    call_op: CallOpRef<'ctx, 'a>,
 ) -> Result<Option<Type<'ctx>>> {
     let result = call_op.result(0)?;
-    let location = call_op.location();
     let mut inferred_type = None;
-    for user in shared::users_of(result) {
+    for user in users_of(result) {
         if !poly::is_unifiable_cast_op(&user) {
             bail!("expected poly.unifiable_cast but found {user}");
         }
@@ -58,7 +58,8 @@ fn infer_type_from_unifiable_cast_uses<'ctx: 'a, 'a>(
         match inferred_type {
             None => inferred_type = Some(use_type),
             Some(ty) if ty != use_type => bail!(
-                "function.call at {location} has type-variable result used as both {ty} and {use_type}"
+                "function.call at {} has type-variable result used as both {ty} and {use_type}",
+                call_op.location()
             ),
             Some(_) => {}
         }
@@ -68,7 +69,7 @@ fn infer_type_from_unifiable_cast_uses<'ctx: 'a, 'a>(
 
 /// Finds the enclosing `poly.template` operation for a nested operation.
 fn parent_template<'ctx: 'a, 'a>(
-    op: &'a OperationRef<'ctx, 'a>,
+    op: &impl OperationLike<'ctx, 'a>,
 ) -> Result<TemplateOpRef<'ctx, 'a>> {
     let mut parent_opt = shared::parent_operation(op);
     while let Some(parent) = parent_opt {
@@ -112,11 +113,10 @@ fn remove_generated_tvar_param(template: TemplateOpRef<'_, '_>, name: &str) -> R
 /// The replacement call at the original site passes `templateParams = [?]` for `@T_return`.
 fn wrap_call_in_synthetic_template<'ctx>(
     codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
-    call_op: OperationRef<'ctx, '_>,
+    call_op: CallOpRef<'ctx, '_>,
 ) -> Result<()> {
     let location = call_op.location();
     let operand_types: Vec<_> = call_op.operands().map(|v| v.r#type()).collect();
-    let callee = SymbolRefAttribute::try_from(call_op.attribute("callee")?)?;
 
     // The tvar type that lives inside the synthetic template, referencing its own @T_return param.
     let synthetic_tvar_type = codegen.tvar_type(function_return_type_param());
@@ -137,7 +137,7 @@ fn wrap_call_in_synthetic_template<'ctx>(
         let inner_call = function::call(
             codegen.op_builder(),
             location,
-            callee,
+            call_op.get_callee()?,
             &block_args,
             &[synthetic_tvar_type],
         )?;
@@ -170,20 +170,21 @@ fn wrap_call_in_synthetic_template<'ctx>(
     // The replacement call passes the original operands and uses wildcard attribute for the
     // template params (i.e. the unused return `tvar` of the call op).
     let original_operands: Vec<_> = call_op.operands().collect();
-    let replacement = shared::build_func_call_with_template_params(
-        codegen.context,
+    let replacement = function::call_with_template_params(
+        codegen.op_builder(),
         location,
         callee,
         &original_operands,
-        &[], // synthetic function returns void; original result was already unused
-        Some(&[codegen.wildcard_attr()]),
+        // no return from synthetic function; original result was already unused
+        &[] as &[Type<'ctx>],
+        &[codegen.wildcard_attr()],
     )?;
 
     // Insert the replacement before the original call, then remove the original.
     let call_block = call_op
         .block()
         .ok_or_else(|| anyhow::anyhow!("function.call at {location} has no parent block"))?;
-    call_block.insert_operation_before(call_op, replacement);
+    call_block.insert_operation_before(call_op.into(), replacement.into());
     Ok(())
 }
 
@@ -194,18 +195,18 @@ fn wrap_call_in_synthetic_template<'ctx>(
 /// removed and their uses forwarded directly to their input.
 fn specialize_call_result_type<'ctx>(
     codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
-    call_op: OperationRef<'ctx, '_>,
+    call_op: CallOpRef<'ctx, '_>,
     old_result: OperationResult<'ctx, '_>,
     use_type: Type<'ctx>,
 ) -> Result<()> {
-    let callee = SymbolRefAttribute::try_from(call_op.attribute("callee")?)?;
+    let callee = call_op.get_callee()?;
     let operands: Vec<_> = call_op.operands().collect();
     let location = call_op.location();
     let block = call_op
         .block()
         .ok_or_else(|| anyhow::anyhow!("function.call at {location} has no parent block"))?;
     let new_call = block.insert_operation_before(
-        call_op,
+        call_op.into(),
         function::call(codegen.op_builder(), location, callee, &operands, &[use_type])?.into(),
     );
     let new_result = Value::from(new_call.result(0)?);
@@ -215,7 +216,7 @@ fn specialize_call_result_type<'ctx>(
     // consumes `new_result`. If such a cast has become an identity (input type == output type),
     // it is a no-op introduced solely to bridge the tvar; remove it and forward its output uses
     // directly to its input.
-    let identity_casts: Vec<_> = shared::users_of(new_result)
+    let identity_casts: Vec<_> = users_of(new_result)
         .into_iter()
         .filter(|user| {
             poly::is_unifiable_cast_op(user)
@@ -281,7 +282,7 @@ pub(crate) fn specialize_tvar_function_calls<'ctx>(
     );
 
     for raw_call in calls {
-        let call_op = unsafe { OperationRef::from_raw(raw_call) };
+        let call_op = unsafe { CallOpRef::from_raw(raw_call) };
         let old_result = call_op.result(0)?;
         // Generate a new call with the inferred type from user(s) of the call result
         // or a new call to a synthetic wrapper function if there are no users.
@@ -311,20 +312,17 @@ pub(crate) fn specialize_tvar_function_calls<'ctx>(
     walk_from_block(
         codegen.module.body(),
         WalkCallbacks::for_ops(|op| {
-            if function::is_func_call(&op) {
-                // TODO: CallOp in `llzk-rs` needs a wrapper for `llzkFunction_CallOpGetCallee`
-                if let Ok(callee) = op.attribute("callee").and_then(SymbolRefAttribute::try_from) {
-                    if callee.nested().len() == 1 {
-                        circom_func_calls.push(op.to_raw());
-                    }
+            if let Ok(callee) = CallOpRef::try_from(op).and_then(|c| c.get_callee()) {
+                if callee.nested().len() == 1 {
+                    circom_func_calls.push(op.to_raw());
                 }
             }
         }),
     );
 
     for raw_call in circom_func_calls {
-        let mut call_op = unsafe { OperationRefMut::from_raw(raw_call) };
-        let callee = SymbolRefAttribute::try_from(call_op.attribute("callee")?)?;
+        let call_op = unsafe { CallOpRef::from_raw(raw_call) };
+        let callee = call_op.get_callee()?;
         // For `@f::@f`, `nested()[0]` is the function/template name within the module.
         let func_name = callee.nested()[0].value();
         if let Some(param_count) = count_poly_params_in_callee_template(codegen, func_name) {
@@ -338,9 +336,7 @@ pub(crate) fn specialize_tvar_function_calls<'ctx>(
                     codegen.context,
                     &vec![codegen.wildcard_attr(); param_count],
                 );
-                // TODO: CallOp in `llzk-rs` needs a wrapper for
-                // `llzkFunction_CallOpSetTemplateParams`
-                call_op.set_attribute("templateParams", attr.into());
+                call_op.set_template_params(Some(attr));
             }
         }
     }
