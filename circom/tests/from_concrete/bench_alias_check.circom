@@ -87,7 +87,7 @@ component main = AliasCheck();
 // CHECK-NEXT:      struct.def @AliasCheck_2 {
 // CHECK-NEXT:        struct.member @compConstant : !struct.type<@CompConstant_1::@CompConstant_1<[]>>
 // CHECK-NEXT:        struct.member @compConstant$inputs : !pod.type<[@in: !array.type<254 x !felt.type<"bn128">>]>
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">>) -> !struct.type<@AliasCheck_2::@AliasCheck_2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@AliasCheck_2::@AliasCheck_2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@AliasCheck_2::@AliasCheck_2<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = arith.constant 254 : index
@@ -127,7 +127,7 @@ component main = AliasCheck();
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@compConstant] = %[[VAL_28]] : <@AliasCheck_2::@AliasCheck_2<[]>>, !struct.type<@CompConstant_1::@CompConstant_1<[]>>
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@AliasCheck_2::@AliasCheck_2<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_29:[0-9a-zA-Z_\.]+]]: !struct.type<@AliasCheck_2::@AliasCheck_2<[]>>, %[[VAL_30:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_29:[0-9a-zA-Z_\.]+]]: !struct.type<@AliasCheck_2::@AliasCheck_2<[]>>, %[[VAL_30:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_29]][@compConstant] : <@AliasCheck_2::@AliasCheck_2<[]>>, !struct.type<@CompConstant_1::@CompConstant_1<[]>>
 // CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_29]][@compConstant$inputs] : <@AliasCheck_2::@AliasCheck_2<[]>>, !pod.type<[@in: !array.type<254 x !felt.type<"bn128">>]>
 // CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -163,7 +163,7 @@ component main = AliasCheck();
 // CHECK-NEXT:        struct.member @sout : !felt.type<"bn128">
 // CHECK-NEXT:        struct.member @num2bits : !struct.type<@Num2Bits_0::@Num2Bits_0<[]>>
 // CHECK-NEXT:        struct.member @num2bits$inputs : !pod.type<[@in: !felt.type<"bn128">]>
-// CHECK-NEXT:        function.def @compute(%[[VAL_49:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">>) -> !struct.type<@CompConstant_1::@CompConstant_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_49:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@CompConstant_1::@CompConstant_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = struct.new : <@CompConstant_1::@CompConstant_1<[]>>
 // CHECK-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<127 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
@@ -306,7 +306,7 @@ component main = AliasCheck();
 // CHECK-NEXT:          struct.writem %[[VAL_50]][@parts] = %[[VAL_51]] : <@CompConstant_1::@CompConstant_1<[]>>, !array.type<127 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_50]] : !struct.type<@CompConstant_1::@CompConstant_1<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_180:[0-9a-zA-Z_\.]+]]: !struct.type<@CompConstant_1::@CompConstant_1<[]>>, %[[VAL_181:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_180:[0-9a-zA-Z_\.]+]]: !struct.type<@CompConstant_1::@CompConstant_1<[]>>, %[[VAL_181:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_182:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_180]][@out] : <@CompConstant_1::@CompConstant_1<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_183:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_180]][@parts] : <@CompConstant_1::@CompConstant_1<[]>>, !array.type<127 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_184:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_180]][@sout] : <@CompConstant_1::@CompConstant_1<[]>>, !felt.type<"bn128">
@@ -443,7 +443,7 @@ component main = AliasCheck();
 // CHECK-NEXT:    poly.template @Num2Bits_0 {
 // CHECK-NEXT:      struct.def @Num2Bits_0 {
 // CHECK-NEXT:        struct.member @out : !array.type<135 x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_307:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@Num2Bits_0::@Num2Bits_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_307:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@Num2Bits_0::@Num2Bits_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_308:[0-9a-zA-Z_\.]+]] = struct.new : <@Num2Bits_0::@Num2Bits_0<[]>>
 // CHECK-NEXT:          %[[VAL_309:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<135 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_310:[0-9a-zA-Z_\.]+]] = felt.const  135 : <"bn128">
@@ -473,7 +473,7 @@ component main = AliasCheck();
 // CHECK-NEXT:          struct.writem %[[VAL_308]][@out] = %[[VAL_309]] : <@Num2Bits_0::@Num2Bits_0<[]>>, !array.type<135 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_308]] : !struct.type<@Num2Bits_0::@Num2Bits_0<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_334:[0-9a-zA-Z_\.]+]]: !struct.type<@Num2Bits_0::@Num2Bits_0<[]>>, %[[VAL_335:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_334:[0-9a-zA-Z_\.]+]]: !struct.type<@Num2Bits_0::@Num2Bits_0<[]>>, %[[VAL_335:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_336:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_334]][@out] : <@Num2Bits_0::@Num2Bits_0<[]>>, !array.type<135 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_337:[0-9a-zA-Z_\.]+]] = felt.const  135 : <"bn128">
 // CHECK-NEXT:          %[[VAL_338:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">

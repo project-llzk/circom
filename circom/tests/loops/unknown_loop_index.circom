@@ -73,7 +73,7 @@ component main = UnknownLoopIndex(100);
 // CHECK-NEXT:      poly.param @x
 // CHECK-NEXT:      struct.def @CountDown {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@CountDown::@CountDown<[@x]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@CountDown::@CountDown<[@x]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@CountDown::@CountDown<[@x]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @x : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
@@ -90,7 +90,7 @@ component main = UnknownLoopIndex(100);
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@out] = %[[VAL_4]] : <@CountDown::@CountDown<[@x]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@CountDown::@CountDown<[@x]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_11:[0-9a-zA-Z_\.]+]]: !struct.type<@CountDown::@CountDown<[@x]>>, %[[VAL_12:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_11:[0-9a-zA-Z_\.]+]]: !struct.type<@CountDown::@CountDown<[@x]>>, %[[VAL_12:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = poly.read_const @x : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_11]][@out] : <@CountDown::@CountDown<[@x]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
@@ -124,7 +124,7 @@ component main = UnknownLoopIndex(100);
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
 // CHECK-NEXT:        struct.member @n2b : !struct.type<@Num2Bits::@Num2Bits<[@"m_Add_1@633"]>>
 // CHECK-NEXT:        struct.member @n2b$inputs : !pod.type<[@in: !felt.type<"bn128">]>
-// CHECK-NEXT:        function.def @compute(%[[VAL_28:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">>) -> !struct.type<@LessThan::@LessThan<[@m]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_28:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@LessThan::@LessThan<[@m]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = struct.new : <@LessThan::@LessThan<[@m]>>
 // CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = poly.read_const @m : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = poly.read_const @"m_Add_1@633" : !felt.type<"bn128">
@@ -171,7 +171,7 @@ component main = UnknownLoopIndex(100);
 // CHECK-NEXT:          struct.writem %[[VAL_29]][@n2b] = %[[VAL_63]] : <@LessThan::@LessThan<[@m]>>, !struct.type<@Num2Bits::@Num2Bits<[@"m_Add_1@633"]>>
 // CHECK-NEXT:          function.return %[[VAL_29]] : !struct.type<@LessThan::@LessThan<[@m]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_64:[0-9a-zA-Z_\.]+]]: !struct.type<@LessThan::@LessThan<[@m]>>, %[[VAL_65:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_64:[0-9a-zA-Z_\.]+]]: !struct.type<@LessThan::@LessThan<[@m]>>, %[[VAL_65:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_66:[0-9a-zA-Z_\.]+]] = poly.read_const @m : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_67:[0-9a-zA-Z_\.]+]] = poly.read_const @"m_Add_1@633" : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_68:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_64]][@out] : <@LessThan::@LessThan<[@m]>>, !felt.type<"bn128">
@@ -211,7 +211,7 @@ component main = UnknownLoopIndex(100);
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @Num2Bits {
 // CHECK-NEXT:        struct.member @out : !array.type<@n x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_93:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@Num2Bits::@Num2Bits<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_93:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@Num2Bits::@Num2Bits<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_94:[0-9a-zA-Z_\.]+]] = struct.new : <@Num2Bits::@Num2Bits<[@n]>>
 // CHECK-NEXT:          %[[VAL_95:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_96:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<@n x !felt.type<"bn128">>
@@ -240,7 +240,7 @@ component main = UnknownLoopIndex(100);
 // CHECK-NEXT:          struct.writem %[[VAL_94]][@out] = %[[VAL_96]] : <@Num2Bits::@Num2Bits<[@n]>>, !array.type<@n x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_94]] : !struct.type<@Num2Bits::@Num2Bits<[@n]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_119:[0-9a-zA-Z_\.]+]]: !struct.type<@Num2Bits::@Num2Bits<[@n]>>, %[[VAL_120:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_119:[0-9a-zA-Z_\.]+]]: !struct.type<@Num2Bits::@Num2Bits<[@n]>>, %[[VAL_120:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_121:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_122:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_119]][@out] : <@Num2Bits::@Num2Bits<[@n]>>, !array.type<@n x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_123:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -282,7 +282,7 @@ component main = UnknownLoopIndex(100);
 // CHECK-NEXT:        struct.member @c$inputs : !pod.type<[@in: !felt.type<"bn128">]>
 // CHECK-NEXT:        struct.member @lt : !struct.type<@LessThan::@LessThan<[@y]>>
 // CHECK-NEXT:        struct.member @lt$inputs : !pod.type<[@in: !array.type<2 x !felt.type<"bn128">>]>
-// CHECK-NEXT:        function.def @compute(%[[VAL_149:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_150:[0-9a-zA-Z_\.]+]]: !array.type<@y x !felt.type<"bn128">>) -> !struct.type<@UnknownLoopIndex::@UnknownLoopIndex<[@y]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_149:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "idx"}, %[[VAL_150:[0-9a-zA-Z_\.]+]]: !array.type<@y x !felt.type<"bn128">> {function.arg_name = "choices"}) -> !struct.type<@UnknownLoopIndex::@UnknownLoopIndex<[@y]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_151:[0-9a-zA-Z_\.]+]] = struct.new : <@UnknownLoopIndex::@UnknownLoopIndex<[@y]>>
 // CHECK-NEXT:          %[[VAL_152:[0-9a-zA-Z_\.]+]] = poly.read_const @y : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_153:[0-9a-zA-Z_\.]+]] = pod.new : <[@in: !felt.type<"bn128">]>
@@ -355,7 +355,7 @@ component main = UnknownLoopIndex(100);
 // CHECK-NEXT:          struct.writem %[[VAL_151]][@lt] = %[[VAL_198]] : <@UnknownLoopIndex::@UnknownLoopIndex<[@y]>>, !struct.type<@LessThan::@LessThan<[@y]>>
 // CHECK-NEXT:          function.return %[[VAL_151]] : !struct.type<@UnknownLoopIndex::@UnknownLoopIndex<[@y]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_199:[0-9a-zA-Z_\.]+]]: !struct.type<@UnknownLoopIndex::@UnknownLoopIndex<[@y]>>, %[[VAL_200:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_201:[0-9a-zA-Z_\.]+]]: !array.type<@y x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_199:[0-9a-zA-Z_\.]+]]: !struct.type<@UnknownLoopIndex::@UnknownLoopIndex<[@y]>>, %[[VAL_200:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "idx"}, %[[VAL_201:[0-9a-zA-Z_\.]+]]: !array.type<@y x !felt.type<"bn128">> {function.arg_name = "choices"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_202:[0-9a-zA-Z_\.]+]] = poly.read_const @y : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_203:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_199]][@out] : <@UnknownLoopIndex::@UnknownLoopIndex<[@y]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_204:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_199]][@c] : <@UnknownLoopIndex::@UnknownLoopIndex<[@y]>>, !struct.type<@CountDown::@CountDown<[@y]>>

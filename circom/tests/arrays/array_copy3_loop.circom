@@ -23,7 +23,7 @@ component main = Array3(5);
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @Array3 {
 // CHECK-NEXT:        struct.member @out : !array.type<@n,@n x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@n,@n x !felt.type<"bn128">>) -> !struct.type<@Array3::@Array3<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@n,@n x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@Array3::@Array3<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Array3::@Array3<[@n]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<@n,@n x !felt.type<"bn128">>
@@ -56,7 +56,7 @@ component main = Array3(5);
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@out] = %[[VAL_3]] : <@Array3::@Array3<[@n]>>, !array.type<@n,@n x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@Array3::@Array3<[@n]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_23:[0-9a-zA-Z_\.]+]]: !struct.type<@Array3::@Array3<[@n]>>, %[[VAL_24:[0-9a-zA-Z_\.]+]]: !array.type<@n,@n x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_23:[0-9a-zA-Z_\.]+]]: !struct.type<@Array3::@Array3<[@n]>>, %[[VAL_24:[0-9a-zA-Z_\.]+]]: !array.type<@n,@n x !felt.type<"bn128">> {function.arg_name = "inp"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_23]][@out] : <@Array3::@Array3<[@n]>>, !array.type<@n,@n x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = felt.const  0

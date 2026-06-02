@@ -146,12 +146,12 @@ component main = Array1();
 // CHECK-NEXT:    poly.template @Foo {
 // CHECK-NEXT:      struct.def @Foo {
 // CHECK-NEXT:        struct.member @b : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_82:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@Foo::@Foo<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_82:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a"}) -> !struct.type<@Foo::@Foo<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_83:[0-9a-zA-Z_\.]+]] = struct.new : <@Foo::@Foo<[]>>
 // CHECK-NEXT:          struct.writem %[[VAL_83]][@b] = %[[VAL_82]] : <@Foo::@Foo<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_83]] : !struct.type<@Foo::@Foo<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_84:[0-9a-zA-Z_\.]+]]: !struct.type<@Foo::@Foo<[]>>, %[[VAL_85:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_84:[0-9a-zA-Z_\.]+]]: !struct.type<@Foo::@Foo<[]>>, %[[VAL_85:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_86:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_84]][@b] : <@Foo::@Foo<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_86]], %[[VAL_85]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          function.return

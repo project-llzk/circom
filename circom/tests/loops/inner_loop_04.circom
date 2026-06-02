@@ -21,7 +21,7 @@ component main = InnerLoops(2);
 // CHECK-NEXT:    poly.template @InnerLoops {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @InnerLoops {
-// CHECK-NEXT:        function.def @compute(%[[V_A:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type<"bn128">>) -> !struct.type<@InnerLoops::@InnerLoops<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[V_A:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type<"bn128">> {function.arg_name = "a"}) -> !struct.type<@InnerLoops::@InnerLoops<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[V_1:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerLoops::@InnerLoops<[@n]>>
 // CHECK-NEXT:          %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[V_3:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -61,7 +61,7 @@ component main = InnerLoops(2);
 // CHECK-NEXT:          }
 // CHECK-NEXT:          function.return %[[V_1]] : !struct.type<@InnerLoops::@InnerLoops<[@n]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[V_A:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerLoops::@InnerLoops<[@n]>>, %[[V_36:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[V_A:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerLoops::@InnerLoops<[@n]>>, %[[V_36:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type<"bn128">> {function.arg_name = "a"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[V_38:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:          %[[V_B:[0-9a-zA-Z_\.]+]] = array.new  : <@n x !felt.type<"bn128">>

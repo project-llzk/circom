@@ -32,7 +32,7 @@ component main = UnknownLoopOOB();
 // CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub}
 // CHECK-NEXT:        struct.member @a : !struct.type<@accumulate::@accumulate<[]>>
 // CHECK-NEXT:        struct.member @a$inputs : !pod.type<[@i: !felt.type<"bn128">]>
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">>) -> !struct.type<@UnknownLoopOOB::@UnknownLoopOOB<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "m"}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "n"}) -> !struct.type<@UnknownLoopOOB::@UnknownLoopOOB<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@UnknownLoopOOB::@UnknownLoopOOB<[]>>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -64,7 +64,7 @@ component main = UnknownLoopOOB();
 // CHECK-NEXT:          struct.writem %[[VAL_2]][@a] = %[[VAL_22]] : <@UnknownLoopOOB::@UnknownLoopOOB<[]>>, !struct.type<@accumulate::@accumulate<[]>>
 // CHECK-NEXT:          function.return %[[VAL_2]] : !struct.type<@UnknownLoopOOB::@UnknownLoopOOB<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_23:[0-9a-zA-Z_\.]+]]: !struct.type<@UnknownLoopOOB::@UnknownLoopOOB<[]>>, %[[VAL_24:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_25:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_23:[0-9a-zA-Z_\.]+]]: !struct.type<@UnknownLoopOOB::@UnknownLoopOOB<[]>>, %[[VAL_24:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "m"}, %[[VAL_25:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "n"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_23]][@y] : <@UnknownLoopOOB::@UnknownLoopOOB<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_23]][@a] : <@UnknownLoopOOB::@UnknownLoopOOB<[]>>, !struct.type<@accumulate::@accumulate<[]>>
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_23]][@a$inputs] : <@UnknownLoopOOB::@UnknownLoopOOB<[]>>, !pod.type<[@i: !felt.type<"bn128">]>
@@ -79,7 +79,7 @@ component main = UnknownLoopOOB();
 // CHECK-NEXT:    poly.template @accumulate {
 // CHECK-NEXT:      struct.def @accumulate {
 // CHECK-NEXT:        struct.member @o : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_32:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@accumulate::@accumulate<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_32:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "i"}) -> !struct.type<@accumulate::@accumulate<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = struct.new : <@accumulate::@accumulate<[]>>
 // CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_35:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_36:[0-9a-zA-Z_\.]+]] = %[[VAL_34]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
@@ -94,7 +94,7 @@ component main = UnknownLoopOOB();
 // CHECK-NEXT:          struct.writem %[[VAL_33]][@o] = %[[VAL_35]] : <@accumulate::@accumulate<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_33]] : !struct.type<@accumulate::@accumulate<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_41:[0-9a-zA-Z_\.]+]]: !struct.type<@accumulate::@accumulate<[]>>, %[[VAL_42:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_41:[0-9a-zA-Z_\.]+]]: !struct.type<@accumulate::@accumulate<[]>>, %[[VAL_42:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "i"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_43:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_41]][@o] : <@accumulate::@accumulate<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_44:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_45:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_46:[0-9a-zA-Z_\.]+]] = %[[VAL_44]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {

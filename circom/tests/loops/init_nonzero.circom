@@ -26,7 +26,7 @@ component main = NonZeroInit();
 // CHECK-NEXT:    poly.template @NonZeroInit {
 // CHECK-NEXT:      struct.def @NonZeroInit {
 // CHECK-NEXT:        struct.member @b : !array.type<9 x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<9 x !felt.type<"bn128">>) -> !struct.type<@NonZeroInit::@NonZeroInit<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<9 x !felt.type<"bn128">> {function.arg_name = "a"}) -> !struct.type<@NonZeroInit::@NonZeroInit<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@NonZeroInit::@NonZeroInit<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<9 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  4
@@ -77,7 +77,7 @@ component main = NonZeroInit();
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@b] = %[[VAL_2]] : <@NonZeroInit::@NonZeroInit<[]>>, !array.type<9 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@NonZeroInit::@NonZeroInit<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_36:[0-9a-zA-Z_\.]+]]: !struct.type<@NonZeroInit::@NonZeroInit<[]>>, %[[VAL_37:[0-9a-zA-Z_\.]+]]: !array.type<9 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_36:[0-9a-zA-Z_\.]+]]: !struct.type<@NonZeroInit::@NonZeroInit<[]>>, %[[VAL_37:[0-9a-zA-Z_\.]+]]: !array.type<9 x !felt.type<"bn128">> {function.arg_name = "a"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_38:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_36]][@b] : <@NonZeroInit::@NonZeroInit<[]>>, !array.type<9 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_39:[0-9a-zA-Z_\.]+]] = felt.const  4
 // CHECK-NEXT:          %[[VAL_40:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_41:[0-9a-zA-Z_\.]+]] = %[[VAL_39]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {

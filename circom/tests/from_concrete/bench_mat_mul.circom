@@ -69,7 +69,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:    poly.template @matElemMul_0 {
 // CHECK-NEXT:      struct.def @matElemMul_0 {
 // CHECK-NEXT:        struct.member @out : !array.type<1,3 x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">>, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">>) -> !struct.type<@matElemMul_0::@matElemMul_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">> {function.arg_name = "a"}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">> {function.arg_name = "b"}) -> !struct.type<@matElemMul_0::@matElemMul_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@matElemMul_0::@matElemMul_0<[]>>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
@@ -111,7 +111,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:          struct.writem %[[VAL_2]][@out] = %[[VAL_3]] : <@matElemMul_0::@matElemMul_0<[]>>, !array.type<1,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_2]] : !struct.type<@matElemMul_0::@matElemMul_0<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_33:[0-9a-zA-Z_\.]+]]: !struct.type<@matElemMul_0::@matElemMul_0<[]>>, %[[VAL_34:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">>, %[[VAL_35:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_33:[0-9a-zA-Z_\.]+]]: !struct.type<@matElemMul_0::@matElemMul_0<[]>>, %[[VAL_34:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">> {function.arg_name = "a"}, %[[VAL_35:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">> {function.arg_name = "b"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_33]][@out] : <@matElemMul_0::@matElemMul_0<[]>>, !array.type<1,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_37:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_38:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
@@ -158,7 +158,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:      struct.def @matElemSum_1 {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
 // CHECK-NEXT:        struct.member @sum : !array.type<3 x !felt.type<"bn128">>
-// CHECK-NEXT:        function.def @compute(%[[VAL_67:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">>) -> !struct.type<@matElemSum_1::@matElemSum_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_67:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">> {function.arg_name = "a"}) -> !struct.type<@matElemSum_1::@matElemSum_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_68:[0-9a-zA-Z_\.]+]] = struct.new : <@matElemSum_1::@matElemSum_1<[]>>
 // CHECK-NEXT:          %[[VAL_69:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_70:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
@@ -218,7 +218,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:          struct.writem %[[VAL_68]][@sum] = %[[VAL_69]] : <@matElemSum_1::@matElemSum_1<[]>>, !array.type<3 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_68]] : !struct.type<@matElemSum_1::@matElemSum_1<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_116:[0-9a-zA-Z_\.]+]]: !struct.type<@matElemSum_1::@matElemSum_1<[]>>, %[[VAL_117:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_116:[0-9a-zA-Z_\.]+]]: !struct.type<@matElemSum_1::@matElemSum_1<[]>>, %[[VAL_117:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">> {function.arg_name = "a"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_118:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_116]][@out] : <@matElemSum_1::@matElemSum_1<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_119:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_116]][@sum] : <@matElemSum_1::@matElemSum_1<[]>>, !array.type<3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_120:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
@@ -288,7 +288,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:        struct.member @matElemMulComp$inputs : !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type<"bn128">>, @b: !array.type<1,3 x !felt.type<"bn128">>]>>
 // CHECK-NEXT:        struct.member @matElemSumComp : !array.type<2,2 x !struct.type<@matElemSum_1::@matElemSum_1<[]>>>
 // CHECK-NEXT:        struct.member @matElemSumComp$inputs : !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type<"bn128">>]>>
-// CHECK-NEXT:        function.def @compute(%[[VAL_168:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type<"bn128">>, %[[VAL_169:[0-9a-zA-Z_\.]+]]: !array.type<3,2 x !felt.type<"bn128">>) -> !struct.type<@matMul_2::@matMul_2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_168:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type<"bn128">> {function.arg_name = "a"}, %[[VAL_169:[0-9a-zA-Z_\.]+]]: !array.type<3,2 x !felt.type<"bn128">> {function.arg_name = "b"}) -> !struct.type<@matMul_2::@matMul_2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_170:[0-9a-zA-Z_\.]+]] = struct.new : <@matMul_2::@matMul_2<[]>>
 // CHECK-NEXT:          %[[VAL_171:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_172:[0-9a-zA-Z_\.]+]] = array.new  : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0::@matElemMul_0<[]>>, @params: !pod.type<[]>]>>
@@ -530,7 +530,7 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:          struct.writem %[[VAL_170]][@out] = %[[VAL_171]] : <@matMul_2::@matMul_2<[]>>, !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_170]] : !struct.type<@matMul_2::@matMul_2<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_367:[0-9a-zA-Z_\.]+]]: !struct.type<@matMul_2::@matMul_2<[]>>, %[[VAL_368:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type<"bn128">>, %[[VAL_369:[0-9a-zA-Z_\.]+]]: !array.type<3,2 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_367:[0-9a-zA-Z_\.]+]]: !struct.type<@matMul_2::@matMul_2<[]>>, %[[VAL_368:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type<"bn128">> {function.arg_name = "a"}, %[[VAL_369:[0-9a-zA-Z_\.]+]]: !array.type<3,2 x !felt.type<"bn128">> {function.arg_name = "b"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_370:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_367]][@out] : <@matMul_2::@matMul_2<[]>>, !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_371:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_367]][@matElemMulComp] : <@matMul_2::@matMul_2<[]>>, !array.type<2,2 x !struct.type<@matElemMul_0::@matElemMul_0<[]>>>
 // CHECK-NEXT:          %[[VAL_372:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_367]][@matElemMulComp$inputs] : <@matMul_2::@matMul_2<[]>>, !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type<"bn128">>, @b: !array.type<1,3 x !felt.type<"bn128">>]>>

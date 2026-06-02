@@ -33,7 +33,7 @@ component main = UnknownLoopComponent();
 // CHECK-NEXT:        struct.member @bits : !felt.type<"bn128"> {llzk.pub}
 // CHECK-NEXT:        struct.member @nb : !struct.type<@nbits::@nbits<[]>>
 // CHECK-NEXT:        struct.member @nb$inputs : !pod.type<[@in: !felt.type<"bn128">]>
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@UnknownLoopComponent::@UnknownLoopComponent<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "num"}) -> !struct.type<@UnknownLoopComponent::@UnknownLoopComponent<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@UnknownLoopComponent::@UnknownLoopComponent<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -63,7 +63,7 @@ component main = UnknownLoopComponent();
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@nb] = %[[VAL_19]] : <@UnknownLoopComponent::@UnknownLoopComponent<[]>>, !struct.type<@nbits::@nbits<[]>>
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@UnknownLoopComponent::@UnknownLoopComponent<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_20:[0-9a-zA-Z_\.]+]]: !struct.type<@UnknownLoopComponent::@UnknownLoopComponent<[]>>, %[[VAL_21:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_20:[0-9a-zA-Z_\.]+]]: !struct.type<@UnknownLoopComponent::@UnknownLoopComponent<[]>>, %[[VAL_21:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "num"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_20]][@bits] : <@UnknownLoopComponent::@UnknownLoopComponent<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_20]][@nb] : <@UnknownLoopComponent::@UnknownLoopComponent<[]>>, !struct.type<@nbits::@nbits<[]>>
 // CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_20]][@nb$inputs] : <@UnknownLoopComponent::@UnknownLoopComponent<[]>>, !pod.type<[@in: !felt.type<"bn128">]>
@@ -78,7 +78,7 @@ component main = UnknownLoopComponent();
 // CHECK-NEXT:    poly.template @nbits {
 // CHECK-NEXT:      struct.def @nbits {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_28:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@nbits::@nbits<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_28:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@nbits::@nbits<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = struct.new : <@nbits::@nbits<[]>>
 // CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -98,7 +98,7 @@ component main = UnknownLoopComponent();
 // CHECK-NEXT:          struct.writem %[[VAL_29]][@out] = %[[VAL_32]]#1 : <@nbits::@nbits<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_29]] : !struct.type<@nbits::@nbits<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_44:[0-9a-zA-Z_\.]+]]: !struct.type<@nbits::@nbits<[]>>, %[[VAL_45:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_44:[0-9a-zA-Z_\.]+]]: !struct.type<@nbits::@nbits<[]>>, %[[VAL_45:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_46:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_44]][@out] : <@nbits::@nbits<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">

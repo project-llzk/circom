@@ -146,12 +146,12 @@ component main = ComputeValue();
 // CHECK-NEXT:    poly.template @GetWeight {
 // CHECK-NEXT:      poly.param @A
 // CHECK-NEXT:      struct.def @GetWeight {
-// CHECK-NEXT:        function.def @compute(%[[VAL_88:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@GetWeight::@GetWeight<[@A]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_88:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "inp"}) -> !struct.type<@GetWeight::@GetWeight<[@A]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_89:[0-9a-zA-Z_\.]+]] = struct.new : <@GetWeight::@GetWeight<[@A]>>
 // CHECK-NEXT:          %[[VAL_90:[0-9a-zA-Z_\.]+]] = poly.read_const @A : !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_89]] : !struct.type<@GetWeight::@GetWeight<[@A]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_91:[0-9a-zA-Z_\.]+]]: !struct.type<@GetWeight::@GetWeight<[@A]>>, %[[VAL_92:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_91:[0-9a-zA-Z_\.]+]]: !struct.type<@GetWeight::@GetWeight<[@A]>>, %[[VAL_92:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "inp"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_93:[0-9a-zA-Z_\.]+]] = poly.read_const @A : !felt.type<"bn128">
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }

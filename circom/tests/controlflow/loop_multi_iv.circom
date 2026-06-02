@@ -24,7 +24,7 @@ component main = LoopMultiIV();
 // CHECK-NEXT:    poly.template @complicatedLoopFn {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
-// CHECK-NEXT:      function.def @complicatedLoopFn(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0>) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
+// CHECK-NEXT:      function.def @complicatedLoopFn(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0> {function.arg_name = "in"}) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
@@ -50,13 +50,13 @@ component main = LoopMultiIV();
 // CHECK-NEXT:    poly.template @LoopMultiIV {
 // CHECK-NEXT:      struct.def @LoopMultiIV {
 // CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_21:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@LoopMultiIV::@LoopMultiIV<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_21:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "inp"}) -> !struct.type<@LoopMultiIV::@LoopMultiIV<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = struct.new : <@LoopMultiIV::@LoopMultiIV<[]>>
 // CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = function.call @complicatedLoopFn::@complicatedLoopFn(%[[VAL_21]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
 // CHECK-NEXT:          struct.writem %[[VAL_22]][@outp] = %[[VAL_23]] : <@LoopMultiIV::@LoopMultiIV<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_22]] : !struct.type<@LoopMultiIV::@LoopMultiIV<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_24:[0-9a-zA-Z_\.]+]]: !struct.type<@LoopMultiIV::@LoopMultiIV<[]>>, %[[VAL_25:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_24:[0-9a-zA-Z_\.]+]]: !struct.type<@LoopMultiIV::@LoopMultiIV<[]>>, %[[VAL_25:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "inp"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_24]][@outp] : <@LoopMultiIV::@LoopMultiIV<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = function.call @complicatedLoopFn::@complicatedLoopFn(%[[VAL_25]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_26]], %[[VAL_27]] : !felt.type<"bn128">, !felt.type<"bn128">

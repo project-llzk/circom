@@ -430,6 +430,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
             if codegen.program.get_main_public_inputs().contains(name) {
                 attrs.push(PublicAttribute::new_named_attr(codegen.context));
             }
+            attrs.push(function::arg_name_attr(codegen.context, &name));
             self.inputs.push(InputSignalInfo {
                 name: name.clone(),
                 type_and_loc: (decl_type, location),
@@ -574,10 +575,11 @@ where
     }
     let location = func_like.get_location(codegen);
     let inputs = func_like.get_type_of_params(codegen);
+    let arg_attrs = func_like.get_name_of_params().iter().map(|name| vec![function::arg_name_attr(codegen.context, &name)]).collect::<Vec<_>>();
     let result = func_like.get_type_of_return(codegen);
     let func_type = FunctionType::new(codegen.context, &inputs, &[result]);
     let func_def =
-        function::def(location, func_like.get_name(), func_type, &[], None).and_then(|f| {
+        function::def(location, func_like.get_name(), func_type, &[], Some(&arg_attrs)).and_then(|f| {
             let arguments: Vec<(Type, Location)> =
                 inputs.into_iter().map(|t| (t, location)).collect();
             f.region(0)?.append_block(Block::new(&arguments));

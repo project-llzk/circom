@@ -51,7 +51,7 @@ component main = Main();
 // CHECK-NEXT:    poly.template @f {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
-// CHECK-NEXT:      function.def @f(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0>) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
+// CHECK-NEXT:      function.def @f(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0> {function.arg_name = "a"}) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_1]] : !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -68,7 +68,7 @@ component main = Main();
 // CHECK-NEXT:      struct.def @CallDiffTypeTest {
 // CHECK-NEXT:        struct.member @outA : !array.type<@N x !felt.type<"bn128">> {llzk.pub}
 // CHECK-NEXT:        struct.member @outB : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !array.type<8,5,@N x !felt.type<"bn128">>, %[[VAL_9:[0-9a-zA-Z_\.]+]]: !array.type<8,@N x !felt.type<"bn128">>) -> !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !array.type<8,5,@N x !felt.type<"bn128">> {function.arg_name = "inA"}, %[[VAL_9:[0-9a-zA-Z_\.]+]]: !array.type<8,@N x !felt.type<"bn128">> {function.arg_name = "inB"}) -> !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = struct.new : <@CallDiffTypeTest::@CallDiffTypeTest<[@N]>>
 // CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = function.call @f::@f<[?, ?, ?]>(%[[VAL_8]]) : (!array.type<8,5,@N x !felt.type<"bn128">>) -> !array.type<@N x !felt.type<"bn128">>
@@ -77,7 +77,7 @@ component main = Main();
 // CHECK-NEXT:          struct.writem %[[VAL_10]][@outB] = %[[VAL_13]] : <@CallDiffTypeTest::@CallDiffTypeTest<[@N]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_10]] : !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[@N]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_14:[0-9a-zA-Z_\.]+]]: !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[@N]>>, %[[VAL_15:[0-9a-zA-Z_\.]+]]: !array.type<8,5,@N x !felt.type<"bn128">>, %[[VAL_16:[0-9a-zA-Z_\.]+]]: !array.type<8,@N x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_14:[0-9a-zA-Z_\.]+]]: !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[@N]>>, %[[VAL_15:[0-9a-zA-Z_\.]+]]: !array.type<8,5,@N x !felt.type<"bn128">> {function.arg_name = "inA"}, %[[VAL_16:[0-9a-zA-Z_\.]+]]: !array.type<8,@N x !felt.type<"bn128">> {function.arg_name = "inB"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_14]][@outA] : <@CallDiffTypeTest::@CallDiffTypeTest<[@N]>>, !array.type<@N x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_14]][@outB] : <@CallDiffTypeTest::@CallDiffTypeTest<[@N]>>, !felt.type<"bn128">
@@ -99,7 +99,7 @@ component main = Main();
 // CHECK-NEXT:        struct.member @crt1$inputs : !pod.type<[@inA: !array.type<8,5,3 x !felt.type<"bn128">>, @inB: !array.type<8,3 x !felt.type<"bn128">>]>
 // CHECK-NEXT:        struct.member @crt2 : !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[2]>>
 // CHECK-NEXT:        struct.member @crt2$inputs : !pod.type<[@inA: !array.type<8,5,2 x !felt.type<"bn128">>, @inB: !array.type<8,2 x !felt.type<"bn128">>]>
-// CHECK-NEXT:        function.def @compute(%[[VAL_22:[0-9a-zA-Z_\.]+]]: !array.type<8,5,3 x !felt.type<"bn128">>, %[[VAL_23:[0-9a-zA-Z_\.]+]]: !array.type<8,3 x !felt.type<"bn128">>, %[[VAL_24:[0-9a-zA-Z_\.]+]]: !array.type<8,5,2 x !felt.type<"bn128">>, %[[VAL_25:[0-9a-zA-Z_\.]+]]: !array.type<8,2 x !felt.type<"bn128">>) -> !struct.type<@Main::@Main<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_22:[0-9a-zA-Z_\.]+]]: !array.type<8,5,3 x !felt.type<"bn128">> {function.arg_name = "inA"}, %[[VAL_23:[0-9a-zA-Z_\.]+]]: !array.type<8,3 x !felt.type<"bn128">> {function.arg_name = "inB"}, %[[VAL_24:[0-9a-zA-Z_\.]+]]: !array.type<8,5,2 x !felt.type<"bn128">> {function.arg_name = "inC"}, %[[VAL_25:[0-9a-zA-Z_\.]+]]: !array.type<8,2 x !felt.type<"bn128">> {function.arg_name = "inD"}) -> !struct.type<@Main::@Main<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.new : <@Main::@Main<[]>>
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = pod.new : <[@inA: !array.type<8,5,3 x !felt.type<"bn128">>, @inB: !array.type<8,3 x !felt.type<"bn128">>]>
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = pod.new : <[@inA: !array.type<8,5,2 x !felt.type<"bn128">>, @inB: !array.type<8,2 x !felt.type<"bn128">>]>
@@ -189,7 +189,7 @@ component main = Main();
 // CHECK-NEXT:          struct.writem %[[VAL_26]][@crt2] = %[[VAL_84]] : <@Main::@Main<[]>>, !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[2]>>
 // CHECK-NEXT:          function.return %[[VAL_26]] : !struct.type<@Main::@Main<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_85:[0-9a-zA-Z_\.]+]]: !struct.type<@Main::@Main<[]>>, %[[VAL_86:[0-9a-zA-Z_\.]+]]: !array.type<8,5,3 x !felt.type<"bn128">>, %[[VAL_87:[0-9a-zA-Z_\.]+]]: !array.type<8,3 x !felt.type<"bn128">>, %[[VAL_88:[0-9a-zA-Z_\.]+]]: !array.type<8,5,2 x !felt.type<"bn128">>, %[[VAL_89:[0-9a-zA-Z_\.]+]]: !array.type<8,2 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_85:[0-9a-zA-Z_\.]+]]: !struct.type<@Main::@Main<[]>>, %[[VAL_86:[0-9a-zA-Z_\.]+]]: !array.type<8,5,3 x !felt.type<"bn128">> {function.arg_name = "inA"}, %[[VAL_87:[0-9a-zA-Z_\.]+]]: !array.type<8,3 x !felt.type<"bn128">> {function.arg_name = "inB"}, %[[VAL_88:[0-9a-zA-Z_\.]+]]: !array.type<8,5,2 x !felt.type<"bn128">> {function.arg_name = "inC"}, %[[VAL_89:[0-9a-zA-Z_\.]+]]: !array.type<8,2 x !felt.type<"bn128">> {function.arg_name = "inD"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_90:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_85]][@outA] : <@Main::@Main<[]>>, !array.type<3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_91:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_85]][@outB] : <@Main::@Main<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_92:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_85]][@outC] : <@Main::@Main<[]>>, !array.type<2 x !felt.type<"bn128">>

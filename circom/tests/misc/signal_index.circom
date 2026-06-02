@@ -35,7 +35,7 @@ component main {public [a, b]} = A();
 // CHECK-NEXT:        struct.member @x : !felt.type<"bn128">
 // CHECK-NEXT:        struct.member @cb : !struct.type<@B::@B<[]>>
 // CHECK-NEXT:        struct.member @cb$inputs : !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {llzk.pub}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {llzk.pub}) -> !struct.type<@A::@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a", llzk.pub}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "b", llzk.pub}) -> !struct.type<@A::@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@A::@A<[]>>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
@@ -83,7 +83,7 @@ component main {public [a, b]} = A();
 // CHECK-NEXT:          struct.writem %[[VAL_2]][@cb] = %[[VAL_32]] : <@A::@A<[]>>, !struct.type<@B::@B<[]>>
 // CHECK-NEXT:          function.return %[[VAL_2]] : !struct.type<@A::@A<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_33:[0-9a-zA-Z_\.]+]]: !struct.type<@A::@A<[]>>, %[[VAL_34:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {llzk.pub}, %[[VAL_35:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {llzk.pub}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_33:[0-9a-zA-Z_\.]+]]: !struct.type<@A::@A<[]>>, %[[VAL_34:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a", llzk.pub}, %[[VAL_35:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "b", llzk.pub}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_33]][@c] : <@A::@A<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_37:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_33]][@x] : <@A::@A<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_38:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_33]][@cb] : <@A::@A<[]>>, !struct.type<@B::@B<[]>>
@@ -109,13 +109,13 @@ component main {public [a, b]} = A();
 // CHECK-NEXT:    poly.template @B {
 // CHECK-NEXT:      struct.def @B {
 // CHECK-NEXT:        struct.member @c : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_49:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {llzk.pub}, %[[VAL_50:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {llzk.pub}) -> !struct.type<@B::@B<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_49:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a", llzk.pub}, %[[VAL_50:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "b", llzk.pub}) -> !struct.type<@B::@B<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = struct.new : <@B::@B<[]>>
 // CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_49]], %[[VAL_50]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          struct.writem %[[VAL_51]][@c] = %[[VAL_52]] : <@B::@B<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_51]] : !struct.type<@B::@B<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_53:[0-9a-zA-Z_\.]+]]: !struct.type<@B::@B<[]>>, %[[VAL_54:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {llzk.pub}, %[[VAL_55:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {llzk.pub}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_53:[0-9a-zA-Z_\.]+]]: !struct.type<@B::@B<[]>>, %[[VAL_54:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a", llzk.pub}, %[[VAL_55:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "b", llzk.pub}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_53]][@c] : <@B::@B<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_54]], %[[VAL_55]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_56]], %[[VAL_57]] : !felt.type<"bn128">, !felt.type<"bn128">

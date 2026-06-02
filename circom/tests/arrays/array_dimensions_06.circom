@@ -20,13 +20,13 @@ component main = ArrayDims(7);
 // CHECK-NEXT:        poly.yield %[[VAL_2]] : !felt.type<"bn128">
 // CHECK-NEXT:      }
 // CHECK-NEXT:      struct.def @ArrayDims {
-// CHECK-NEXT:        function.def @compute(%[[VAL_3:[0-9a-zA-Z_\.]+]]: !array.type<@"N_Add_1@279" x !felt.type<"bn128">>) -> !struct.type<@ArrayDims::@ArrayDims<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_3:[0-9a-zA-Z_\.]+]]: !array.type<@"N_Add_1@279" x !felt.type<"bn128">> {function.arg_name = "arr"}) -> !struct.type<@ArrayDims::@ArrayDims<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = struct.new : <@ArrayDims::@ArrayDims<[@N]>>
 // CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Add_1@279" : !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_4]] : !struct.type<@ArrayDims::@ArrayDims<[@N]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_7:[0-9a-zA-Z_\.]+]]: !struct.type<@ArrayDims::@ArrayDims<[@N]>>, %[[VAL_8:[0-9a-zA-Z_\.]+]]: !array.type<@"N_Add_1@279" x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_7:[0-9a-zA-Z_\.]+]]: !struct.type<@ArrayDims::@ArrayDims<[@N]>>, %[[VAL_8:[0-9a-zA-Z_\.]+]]: !array.type<@"N_Add_1@279" x !felt.type<"bn128">> {function.arg_name = "arr"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Add_1@279" : !felt.type<"bn128">
 // CHECK-NEXT:          function.return
