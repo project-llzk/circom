@@ -12,7 +12,6 @@ use anyhow::Result;
 use llzk::dialect::llzk::nondet;
 use llzk::dialect::pod;
 use llzk::dialect::r#struct;
-use llzk::prelude::IntegerAttribute;
 use llzk::prelude::Location;
 use llzk::prelude::PodType;
 use llzk::prelude::StructType;
@@ -204,12 +203,7 @@ impl<'ast> Lvalue<'ast> {
         // Constant true used as starting point for concatenating the conditions for a particular
         // index set together with a fold.
         let true_value = {
-            let attr = IntegerAttribute::new(codegen.bool_type().into(), 1);
-            block_gen.as_mut().append_op_unnamed_result(arith::constant(
-                codegen.context,
-                attr.into(),
-                location,
-            ))
+            block_gen.as_mut().append_op_unnamed_result(codegen.new_bool_const_op(true, location))
         }?;
 
         let entries = mixed_subcmp_layout
