@@ -137,7 +137,7 @@ fn wrap_call_in_synthetic_template<'ctx>(
         let inner_call = function::call(
             codegen.op_builder(),
             location,
-            call_op.get_callee()?,
+            call_op.callee()?,
             &block_args,
             &[synthetic_tvar_type],
         )?;
@@ -199,7 +199,7 @@ fn specialize_call_result_type<'ctx>(
     old_result: OperationResult<'ctx, '_>,
     use_type: Type<'ctx>,
 ) -> Result<()> {
-    let callee = call_op.get_callee()?;
+    let callee = call_op.callee()?;
     let operands: Vec<_> = call_op.operands().collect();
     let location = call_op.location();
     let block = call_op
@@ -312,7 +312,7 @@ pub(crate) fn specialize_tvar_function_calls<'ctx>(
     walk_from_block(
         codegen.module.body(),
         WalkCallbacks::for_ops(|op| {
-            if let Ok(callee) = CallOpRef::try_from(op).and_then(|c| c.get_callee()) {
+            if let Ok(callee) = CallOpRef::try_from(op).and_then(|c| c.callee()) {
                 if callee.nested().len() == 1 {
                     circom_func_calls.push(op.to_raw());
                 }
@@ -322,7 +322,7 @@ pub(crate) fn specialize_tvar_function_calls<'ctx>(
 
     for raw_call in circom_func_calls {
         let call_op = unsafe { CallOpRef::from_raw(raw_call) };
-        let callee = call_op.get_callee()?;
+        let callee = call_op.callee()?;
         // For `@f::@f`, `nested()[0]` is the function/template name within the module.
         let func_name = callee.nested()[0].value();
         if let Some(param_count) = count_poly_params_in_callee_template(codegen, func_name) {

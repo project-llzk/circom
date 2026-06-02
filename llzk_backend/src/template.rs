@@ -219,7 +219,7 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
     pub fn get_signal_type(&self, name: &str) -> Result<Type<'ctx>> {
         Ok(self
             .struct_def
-            .get_member_def(name)
+            .find_member_def(name)
             .ok_or_else(|| anyhow!("no field '{name}' in struct"))?
             .member_type())
     }

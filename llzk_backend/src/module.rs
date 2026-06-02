@@ -728,7 +728,7 @@ where
 
     // Insert read operations for struct fields into constrain functions.
     let location = codegen.location_unknown();
-    for member in new_struct.get_member_defs() {
+    for member in new_struct.member_defs() {
         let member_name = member.member_name();
         constrain_ctx.block_ctx.declare_name_if_not_present(member_name, || {
             r#struct::readm(

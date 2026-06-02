@@ -182,12 +182,13 @@ impl<'ast> Lvalue<'ast> {
             if let Some(record_name) =
                 info.subcmp_info.mixed_subcmp_record_for_indices(self.root_var(), &concrete_indices)
             {
-                let record_type =
-                    prev_pod_type.get_type_of_record(record_name).ok_or_else(|| {
-                        anyhow::anyhow!(
-                            "record {record_name} not found in mixed subcomponent pod: {prev}"
-                        )
-                    })?;
+                let record_type = prev_pod_type.record_type(record_name).ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "record {} not found in mixed subcomponent pod: {}",
+                        record_name,
+                        prev
+                    )
+                })?;
                 let read_value = block_gen.as_mut().append_op_unnamed_result(pod::read(
                     location,
                     prev,
@@ -275,7 +276,7 @@ impl<'ast> Lvalue<'ast> {
                         self.root_var()
                     )
                 })?;
-            let record_type = prev_pod_type.get_type_of_record(record_name).ok_or_else(|| {
+            let record_type = prev_pod_type.record_type(record_name).ok_or_else(|| {
                 anyhow::anyhow!("record {record_name} not found in mixed subcomponent pod: {prev}")
             })?;
             let read_value = block_gen.as_mut().append_op_unnamed_result(pod::read(
@@ -306,7 +307,7 @@ impl<'ast> Lvalue<'ast> {
                     subcmp_value,
                     codegen.flat_sym(COMP),
                     ty
-                        .get_type_of_record(COMP)
+                        .record_type(COMP)
                         .ok_or_else(|| {
                             anyhow::anyhow!(
                                 "record {COMP} not found in subcomponent memory pod: {subcmp_value}"
@@ -345,7 +346,7 @@ impl<'ast> Lvalue<'ast> {
             codegen.flat_sym(signal_name),
             PodType::try_from(subcmp_value.r#type())
                 .map_err(|e| anyhow::anyhow!("not a pod type '{e}' coming from {subcmp_value}"))?
-                .get_type_of_record(signal_name)
+                .record_type(signal_name)
                 .ok_or_else(|| {
                     anyhow::anyhow!(
                         "subcomponent input signal {signal_name} not found: {subcmp_value}"
