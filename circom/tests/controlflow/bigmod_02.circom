@@ -46,7 +46,7 @@ component main = BigModOld();
 // CHECK-NEXT:    poly.template @short_div {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
-// CHECK-NEXT:      function.def @short_div(%[[VAL_7:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0>) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
+// CHECK-NEXT:      function.def @short_div(%[[VAL_7:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0> {function.arg_name = "n"}) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_7]] : (!poly.tvar<@T_arg0>) -> !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = bool.cmp gt(%[[VAL_9]], %[[VAL_8]]) : !felt.type<"bn128">, !felt.type<"bn128">

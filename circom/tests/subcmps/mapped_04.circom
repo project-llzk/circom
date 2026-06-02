@@ -43,7 +43,7 @@ component main = Wrapper();
 // CHECK-NEXT:      poly.param @q
 // CHECK-NEXT:      struct.def @MatrixOp {
 // CHECK-NEXT:        struct.member @outp : !array.type<5,3 x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<5,3 x !felt.type<"bn128">>) -> !struct.type<@MatrixOp::@MatrixOp<[@q]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<5,3 x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@MatrixOp::@MatrixOp<[@q]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@MatrixOp::@MatrixOp<[@q]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @q : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<5,3 x !felt.type<"bn128">>
@@ -79,7 +79,7 @@ component main = Wrapper();
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@outp] = %[[VAL_3]] : <@MatrixOp::@MatrixOp<[@q]>>, !array.type<5,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@MatrixOp::@MatrixOp<[@q]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_26:[0-9a-zA-Z_\.]+]]: !struct.type<@MatrixOp::@MatrixOp<[@q]>>, %[[VAL_27:[0-9a-zA-Z_\.]+]]: !array.type<5,3 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_26:[0-9a-zA-Z_\.]+]]: !struct.type<@MatrixOp::@MatrixOp<[@q]>>, %[[VAL_27:[0-9a-zA-Z_\.]+]]: !array.type<5,3 x !felt.type<"bn128">> {function.arg_name = "inp"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = poly.read_const @q : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_26]][@outp] : <@MatrixOp::@MatrixOp<[@q]>>, !array.type<5,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -121,7 +121,7 @@ component main = Wrapper();
 // CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub}
 // CHECK-NEXT:        struct.member @m : !array.type<4 x !struct.type<@MatrixOp::@MatrixOp<[#[[$ATTR_0]]]>>>
 // CHECK-NEXT:        struct.member @m$inputs : !array.type<4 x !pod.type<[@inp: !array.type<5,3 x !felt.type<"bn128">>]>>
-// CHECK-NEXT:        function.def @compute(%[[VAL_53:[0-9a-zA-Z_\.]+]]: !array.type<5,3 x !felt.type<"bn128">>) -> !struct.type<@Wrapper::@Wrapper<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_53:[0-9a-zA-Z_\.]+]]: !array.type<5,3 x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@Wrapper::@Wrapper<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = struct.new : <@Wrapper::@Wrapper<[]>>
 // CHECK-NEXT:          %[[VAL_55:[0-9a-zA-Z_\.]+]] = array.new  : <4 x !pod.type<[@count: index, @comp: !struct.type<@MatrixOp::@MatrixOp<[#[[$ATTR_0]]]>>, @params: !pod.type<[@q: !felt.type<"bn128">]>]>>
 // CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = array.new  : <4 x !pod.type<[@inp: !array.type<5,3 x !felt.type<"bn128">>]>>
@@ -222,7 +222,7 @@ component main = Wrapper();
 // CHECK-NEXT:          struct.writem %[[VAL_54]][@m] = %[[VAL_128]] : <@Wrapper::@Wrapper<[]>>, !array.type<4 x !struct.type<@MatrixOp::@MatrixOp<[#[[$ATTR_0]]]>>>
 // CHECK-NEXT:          function.return %[[VAL_54]] : !struct.type<@Wrapper::@Wrapper<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_135:[0-9a-zA-Z_\.]+]]: !struct.type<@Wrapper::@Wrapper<[]>>, %[[VAL_136:[0-9a-zA-Z_\.]+]]: !array.type<5,3 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_135:[0-9a-zA-Z_\.]+]]: !struct.type<@Wrapper::@Wrapper<[]>>, %[[VAL_136:[0-9a-zA-Z_\.]+]]: !array.type<5,3 x !felt.type<"bn128">> {function.arg_name = "inp"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_137:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_135]][@outp] : <@Wrapper::@Wrapper<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_138:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_135]][@m] : <@Wrapper::@Wrapper<[]>>, !array.type<4 x !struct.type<@MatrixOp::@MatrixOp<[#[[$ATTR_0]]]>>>
 // CHECK-NEXT:          %[[VAL_139:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_135]][@m$inputs] : <@Wrapper::@Wrapper<[]>>, !array.type<4 x !pod.type<[@inp: !array.type<5,3 x !felt.type<"bn128">>]>>

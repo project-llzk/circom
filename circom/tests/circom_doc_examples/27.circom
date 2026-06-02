@@ -34,7 +34,7 @@ component main = A();
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
 // CHECK-NEXT:        struct.member @b : !struct.type<@Bits2Num::@Bits2Num<[10]>>
 // CHECK-NEXT:        struct.member @b$inputs : !pod.type<[@in: !array.type<10 x !felt.type<"bn128">>]>
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">>) -> !struct.type<@A::@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">> {function.arg_name = "a"}) -> !struct.type<@A::@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@A::@A<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = pod.new : <[@in: !array.type<10 x !felt.type<"bn128">>]>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  10 : <"bn128">
@@ -62,7 +62,7 @@ component main = A();
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@b] = %[[VAL_17]] : <@A::@A<[]>>, !struct.type<@Bits2Num::@Bits2Num<[10]>>
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@A::@A<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_18:[0-9a-zA-Z_\.]+]]: !struct.type<@A::@A<[]>>, %[[VAL_19:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_18:[0-9a-zA-Z_\.]+]]: !struct.type<@A::@A<[]>>, %[[VAL_19:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">> {function.arg_name = "a"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_18]][@out] : <@A::@A<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_18]][@b] : <@A::@A<[]>>, !struct.type<@Bits2Num::@Bits2Num<[10]>>
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_18]][@b$inputs] : <@A::@A<[]>>, !pod.type<[@in: !array.type<10 x !felt.type<"bn128">>]>
@@ -83,7 +83,7 @@ component main = A();
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @Bits2Num {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_29:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type<"bn128">>) -> !struct.type<@Bits2Num::@Bits2Num<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_29:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@Bits2Num::@Bits2Num<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = struct.new : <@Bits2Num::@Bits2Num<[@n]>>
 // CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -106,7 +106,7 @@ component main = A();
 // CHECK-NEXT:          struct.writem %[[VAL_30]][@out] = %[[VAL_35]]#2 : <@Bits2Num::@Bits2Num<[@n]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_30]] : !struct.type<@Bits2Num::@Bits2Num<[@n]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_50:[0-9a-zA-Z_\.]+]]: !struct.type<@Bits2Num::@Bits2Num<[@n]>>, %[[VAL_51:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_50:[0-9a-zA-Z_\.]+]]: !struct.type<@Bits2Num::@Bits2Num<[@n]>>, %[[VAL_51:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type<"bn128">> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_50]][@out] : <@Bits2Num::@Bits2Num<[@n]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">

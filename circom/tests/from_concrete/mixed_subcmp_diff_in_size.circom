@@ -74,7 +74,7 @@ component main = BabyPbk();
 // CHECK-NEXT:      struct.def @BabyPbk_4 {
 // CHECK-NEXT:        struct.member @mulFix : !struct.type<@EscalarMulFix_3::@EscalarMulFix_3<[]>>
 // CHECK-NEXT:        struct.member @mulFix$inputs : !pod.type<[@emfIn: !array.type<253 x !felt.type<"bn128">>]>
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@BabyPbk_4::@BabyPbk_4<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@BabyPbk_4::@BabyPbk_4<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@BabyPbk_4::@BabyPbk_4<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = arith.constant 253 : index
@@ -129,7 +129,7 @@ component main = BabyPbk();
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@mulFix] = %[[VAL_39]] : <@BabyPbk_4::@BabyPbk_4<[]>>, !struct.type<@EscalarMulFix_3::@EscalarMulFix_3<[]>>
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@BabyPbk_4::@BabyPbk_4<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_40:[0-9a-zA-Z_\.]+]]: !struct.type<@BabyPbk_4::@BabyPbk_4<[]>>, %[[VAL_41:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_40:[0-9a-zA-Z_\.]+]]: !struct.type<@BabyPbk_4::@BabyPbk_4<[]>>, %[[VAL_41:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_42:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_40]][@mulFix] : <@BabyPbk_4::@BabyPbk_4<[]>>, !struct.type<@EscalarMulFix_3::@EscalarMulFix_3<[]>>
 // CHECK-NEXT:          %[[VAL_43:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_40]][@mulFix$inputs] : <@BabyPbk_4::@BabyPbk_4<[]>>, !pod.type<[@emfIn: !array.type<253 x !felt.type<"bn128">>]>
 // CHECK-NEXT:          %[[VAL_44:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type<"bn128">>
@@ -176,7 +176,7 @@ component main = BabyPbk();
 // CHECK-NEXT:        struct.member @m2e$inputs : !array.type<1 x !pod.type<[@in: !array.type<2 x !felt.type<"bn128">>]>>
 // CHECK-NEXT:        struct.member @segments : !pod.type<[@idx_0: !struct.type<@SegmentMulFix_0::@SegmentMulFix_0<[]>>, @idx_1: !struct.type<@SegmentMulFix_1::@SegmentMulFix_1<[]>>]>
 // CHECK-NEXT:        struct.member @segments$inputs : !pod.type<[@idx_0: !pod.type<[@e: !array.type<249 x !felt.type<"bn128">>, @base: !array.type<2 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@e: !array.type<6 x !felt.type<"bn128">>, @base: !array.type<2 x !felt.type<"bn128">>]>]>
-// CHECK-NEXT:        function.def @compute(%[[VAL_69:[0-9a-zA-Z_\.]+]]: !array.type<253 x !felt.type<"bn128">>) -> !struct.type<@EscalarMulFix_3::@EscalarMulFix_3<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_69:[0-9a-zA-Z_\.]+]]: !array.type<253 x !felt.type<"bn128">> {function.arg_name = "emfIn"}) -> !struct.type<@EscalarMulFix_3::@EscalarMulFix_3<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_70:[0-9a-zA-Z_\.]+]] = struct.new : <@EscalarMulFix_3::@EscalarMulFix_3<[]>>
 // CHECK-NEXT:          %[[VAL_71:[0-9a-zA-Z_\.]+]] = array.new  : <1 x !pod.type<[@count: index, @comp: !struct.type<@Montgomery2Edwards_2::@Montgomery2Edwards_2<[]>>, @params: !pod.type<[]>]>>
 // CHECK-NEXT:          %[[VAL_72:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
@@ -566,7 +566,7 @@ component main = BabyPbk();
 // CHECK-NEXT:          struct.writem %[[VAL_70]][@segments] = %[[VAL_361]] : <@EscalarMulFix_3::@EscalarMulFix_3<[]>>, !pod.type<[@idx_0: !struct.type<@SegmentMulFix_0::@SegmentMulFix_0<[]>>, @idx_1: !struct.type<@SegmentMulFix_1::@SegmentMulFix_1<[]>>]>
 // CHECK-NEXT:          function.return %[[VAL_70]] : !struct.type<@EscalarMulFix_3::@EscalarMulFix_3<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_362:[0-9a-zA-Z_\.]+]]: !struct.type<@EscalarMulFix_3::@EscalarMulFix_3<[]>>, %[[VAL_363:[0-9a-zA-Z_\.]+]]: !array.type<253 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_362:[0-9a-zA-Z_\.]+]]: !struct.type<@EscalarMulFix_3::@EscalarMulFix_3<[]>>, %[[VAL_363:[0-9a-zA-Z_\.]+]]: !array.type<253 x !felt.type<"bn128">> {function.arg_name = "emfIn"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_364:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_362]][@m2e] : <@EscalarMulFix_3::@EscalarMulFix_3<[]>>, !array.type<1 x !struct.type<@Montgomery2Edwards_2::@Montgomery2Edwards_2<[]>>>
 // CHECK-NEXT:          %[[VAL_365:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_362]][@m2e$inputs] : <@EscalarMulFix_3::@EscalarMulFix_3<[]>>, !array.type<1 x !pod.type<[@in: !array.type<2 x !felt.type<"bn128">>]>>
 // CHECK-NEXT:          %[[VAL_366:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_362]][@segments] : <@EscalarMulFix_3::@EscalarMulFix_3<[]>>, !pod.type<[@idx_0: !struct.type<@SegmentMulFix_0::@SegmentMulFix_0<[]>>, @idx_1: !struct.type<@SegmentMulFix_1::@SegmentMulFix_1<[]>>]>
@@ -759,11 +759,11 @@ component main = BabyPbk();
 // CHECK-NEXT:    poly.template @Montgomery2Edwards_2 {
 // CHECK-NEXT:      struct.def @Montgomery2Edwards_2 {
 // CHECK-NEXT:        struct.member @out : !array.type<2 x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_511:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">>) -> !struct.type<@Montgomery2Edwards_2::@Montgomery2Edwards_2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_511:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@Montgomery2Edwards_2::@Montgomery2Edwards_2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_512:[0-9a-zA-Z_\.]+]] = struct.new : <@Montgomery2Edwards_2::@Montgomery2Edwards_2<[]>>
 // CHECK-NEXT:          function.return %[[VAL_512]] : !struct.type<@Montgomery2Edwards_2::@Montgomery2Edwards_2<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_513:[0-9a-zA-Z_\.]+]]: !struct.type<@Montgomery2Edwards_2::@Montgomery2Edwards_2<[]>>, %[[VAL_514:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_513:[0-9a-zA-Z_\.]+]]: !struct.type<@Montgomery2Edwards_2::@Montgomery2Edwards_2<[]>>, %[[VAL_514:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_515:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_513]][@out] : <@Montgomery2Edwards_2::@Montgomery2Edwards_2<[]>>, !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
@@ -772,12 +772,12 @@ component main = BabyPbk();
 // CHECK-NEXT:    poly.template @SegmentMulFix_0 {
 // CHECK-NEXT:      struct.def @SegmentMulFix_0 {
 // CHECK-NEXT:        struct.member @dbl : !array.type<2 x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_516:[0-9a-zA-Z_\.]+]]: !array.type<249 x !felt.type<"bn128">>, %[[VAL_517:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">>) -> !struct.type<@SegmentMulFix_0::@SegmentMulFix_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_516:[0-9a-zA-Z_\.]+]]: !array.type<249 x !felt.type<"bn128">> {function.arg_name = "e"}, %[[VAL_517:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "base"}) -> !struct.type<@SegmentMulFix_0::@SegmentMulFix_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_518:[0-9a-zA-Z_\.]+]] = struct.new : <@SegmentMulFix_0::@SegmentMulFix_0<[]>>
 // CHECK-NEXT:          %[[VAL_519:[0-9a-zA-Z_\.]+]] = felt.const  83 : <"bn128">
 // CHECK-NEXT:          function.return %[[VAL_518]] : !struct.type<@SegmentMulFix_0::@SegmentMulFix_0<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_520:[0-9a-zA-Z_\.]+]]: !struct.type<@SegmentMulFix_0::@SegmentMulFix_0<[]>>, %[[VAL_521:[0-9a-zA-Z_\.]+]]: !array.type<249 x !felt.type<"bn128">>, %[[VAL_522:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_520:[0-9a-zA-Z_\.]+]]: !struct.type<@SegmentMulFix_0::@SegmentMulFix_0<[]>>, %[[VAL_521:[0-9a-zA-Z_\.]+]]: !array.type<249 x !felt.type<"bn128">> {function.arg_name = "e"}, %[[VAL_522:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "base"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_523:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_520]][@dbl] : <@SegmentMulFix_0::@SegmentMulFix_0<[]>>, !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_524:[0-9a-zA-Z_\.]+]] = felt.const  83 : <"bn128">
 // CHECK-NEXT:          function.return
@@ -787,12 +787,12 @@ component main = BabyPbk();
 // CHECK-NEXT:    poly.template @SegmentMulFix_1 {
 // CHECK-NEXT:      struct.def @SegmentMulFix_1 {
 // CHECK-NEXT:        struct.member @dbl : !array.type<2 x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_525:[0-9a-zA-Z_\.]+]]: !array.type<6 x !felt.type<"bn128">>, %[[VAL_526:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">>) -> !struct.type<@SegmentMulFix_1::@SegmentMulFix_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_525:[0-9a-zA-Z_\.]+]]: !array.type<6 x !felt.type<"bn128">> {function.arg_name = "e"}, %[[VAL_526:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "base"}) -> !struct.type<@SegmentMulFix_1::@SegmentMulFix_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_527:[0-9a-zA-Z_\.]+]] = struct.new : <@SegmentMulFix_1::@SegmentMulFix_1<[]>>
 // CHECK-NEXT:          %[[VAL_528:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          function.return %[[VAL_527]] : !struct.type<@SegmentMulFix_1::@SegmentMulFix_1<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_529:[0-9a-zA-Z_\.]+]]: !struct.type<@SegmentMulFix_1::@SegmentMulFix_1<[]>>, %[[VAL_530:[0-9a-zA-Z_\.]+]]: !array.type<6 x !felt.type<"bn128">>, %[[VAL_531:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_529:[0-9a-zA-Z_\.]+]]: !struct.type<@SegmentMulFix_1::@SegmentMulFix_1<[]>>, %[[VAL_530:[0-9a-zA-Z_\.]+]]: !array.type<6 x !felt.type<"bn128">> {function.arg_name = "e"}, %[[VAL_531:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "base"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_532:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_529]][@dbl] : <@SegmentMulFix_1::@SegmentMulFix_1<[]>>, !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_533:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          function.return

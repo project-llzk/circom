@@ -24,7 +24,7 @@ component main = A();
 
 // CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A_0::@A_0<[]>>} {
 // CHECK-NEXT:    poly.template @binop_bool_array_0 {
-// CHECK-NEXT:      function.def @binop_bool_array_0(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">>, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">>) -> !array.type<10 x !felt.type<"bn128">> attributes {function.allow_non_native_field_ops} {
+// CHECK-NEXT:      function.def @binop_bool_array_0(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">> {function.arg_name = "a"}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">> {function.arg_name = "b"}) -> !array.type<10 x !felt.type<"bn128">> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -95,13 +95,13 @@ component main = A();
 // CHECK-NEXT:    poly.template @A_0 {
 // CHECK-NEXT:      struct.def @A_0 {
 // CHECK-NEXT:        struct.member @out : !array.type<10 x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_52:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">>, %[[VAL_53:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">>) -> !struct.type<@A_0::@A_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_52:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">> {function.arg_name = "in1"}, %[[VAL_53:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">> {function.arg_name = "in2"}) -> !struct.type<@A_0::@A_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = struct.new : <@A_0::@A_0<[]>>
 // CHECK-NEXT:          %[[VAL_55:[0-9a-zA-Z_\.]+]] = function.call @binop_bool_array_0::@binop_bool_array_0(%[[VAL_52]], %[[VAL_53]]) : (!array.type<10 x !felt.type<"bn128">>, !array.type<10 x !felt.type<"bn128">>) -> !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          struct.writem %[[VAL_54]][@out] = %[[VAL_55]] : <@A_0::@A_0<[]>>, !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_54]] : !struct.type<@A_0::@A_0<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_56:[0-9a-zA-Z_\.]+]]: !struct.type<@A_0::@A_0<[]>>, %[[VAL_57:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">>, %[[VAL_58:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_56:[0-9a-zA-Z_\.]+]]: !struct.type<@A_0::@A_0<[]>>, %[[VAL_57:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">> {function.arg_name = "in1"}, %[[VAL_58:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">> {function.arg_name = "in2"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_59:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_56]][@out] : <@A_0::@A_0<[]>>, !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }

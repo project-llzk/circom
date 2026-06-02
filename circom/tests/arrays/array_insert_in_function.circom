@@ -53,13 +53,13 @@ component main = Caller();
 // CHECK-NEXT:    poly.template @Caller {
 // CHECK-NEXT:      struct.def @Caller {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_21:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@Caller::@Caller<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_21:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@Caller::@Caller<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = struct.new : <@Caller::@Caller<[]>>
 // CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = function.call @lookup::@lookup() : () -> !felt.type<"bn128">
 // CHECK-NEXT:          struct.writem %[[VAL_22]][@out] = %[[VAL_23]] : <@Caller::@Caller<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_22]] : !struct.type<@Caller::@Caller<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_24:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller::@Caller<[]>>, %[[VAL_25:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_24:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller::@Caller<[]>>, %[[VAL_25:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_24]][@out] : <@Caller::@Caller<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = function.call @lookup::@lookup() : () -> !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_26]], %[[VAL_27]] : !felt.type<"bn128">, !felt.type<"bn128">

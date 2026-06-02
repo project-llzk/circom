@@ -52,7 +52,7 @@ component main = SubCmps4(3);
 // CHECK-NEXT:        struct.member @a$inputs : !pod.type<[@inp: !array.type<@n x !felt.type<"bn128">>]>
 // CHECK-NEXT:        struct.member @b : !struct.type<@Sum::@Sum<[@n]>>
 // CHECK-NEXT:        struct.member @b$inputs : !pod.type<[@inp: !array.type<@n x !felt.type<"bn128">>]>
-// CHECK-NEXT:        function.def @compute(%[[VAL_3:[0-9a-zA-Z_\.]+]]: !array.type<@"n_Mul_2@443" x !felt.type<"bn128">>) -> !struct.type<@SubCmps4::@SubCmps4<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_3:[0-9a-zA-Z_\.]+]]: !array.type<@"n_Mul_2@443" x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@SubCmps4::@SubCmps4<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = struct.new : <@SubCmps4::@SubCmps4<[@n]>>
 // CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = poly.read_const @"n_Mul_2@443" : !felt.type<"bn128">
@@ -147,7 +147,7 @@ component main = SubCmps4(3);
 // CHECK-NEXT:          struct.writem %[[VAL_4]][@outp] = %[[VAL_7]] : <@SubCmps4::@SubCmps4<[@n]>>, !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_4]] : !struct.type<@SubCmps4::@SubCmps4<[@n]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_74:[0-9a-zA-Z_\.]+]]: !struct.type<@SubCmps4::@SubCmps4<[@n]>>, %[[VAL_75:[0-9a-zA-Z_\.]+]]: !array.type<@"n_Mul_2@443" x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_74:[0-9a-zA-Z_\.]+]]: !struct.type<@SubCmps4::@SubCmps4<[@n]>>, %[[VAL_75:[0-9a-zA-Z_\.]+]]: !array.type<@"n_Mul_2@443" x !felt.type<"bn128">> {function.arg_name = "inp"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_76:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_77:[0-9a-zA-Z_\.]+]] = poly.read_const @"n_Mul_2@443" : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_78:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_74]][@outp] : <@SubCmps4::@SubCmps4<[@n]>>, !array.type<2 x !felt.type<"bn128">>
@@ -208,7 +208,7 @@ component main = SubCmps4(3);
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @Sum {
 // CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_118:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type<"bn128">>) -> !struct.type<@Sum::@Sum<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_118:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@Sum::@Sum<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_119:[0-9a-zA-Z_\.]+]] = struct.new : <@Sum::@Sum<[@n]>>
 // CHECK-NEXT:          %[[VAL_120:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_121:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -228,7 +228,7 @@ component main = SubCmps4(3);
 // CHECK-NEXT:          struct.writem %[[VAL_119]][@outp] = %[[VAL_123]]#1 : <@Sum::@Sum<[@n]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_119]] : !struct.type<@Sum::@Sum<[@n]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_134:[0-9a-zA-Z_\.]+]]: !struct.type<@Sum::@Sum<[@n]>>, %[[VAL_135:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_134:[0-9a-zA-Z_\.]+]]: !struct.type<@Sum::@Sum<[@n]>>, %[[VAL_135:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type<"bn128">> {function.arg_name = "inp"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_136:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_137:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_134]][@outp] : <@Sum::@Sum<[@n]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_138:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">

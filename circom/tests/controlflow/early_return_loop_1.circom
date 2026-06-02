@@ -39,7 +39,7 @@ component main = EarlyReturn();
 // CHECK-NEXT:    poly.template @earlyReturnFn {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
-// CHECK-NEXT:      function.def @earlyReturnFn(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0>) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
+// CHECK-NEXT:      function.def @earlyReturnFn(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0> {function.arg_name = "in"}) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = llzk.nondet : !poly.tvar<@T_return>
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : i1
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -91,7 +91,7 @@ component main = EarlyReturn();
 // CHECK-NEXT:    poly.template @noEarlyReturnFn {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
-// CHECK-NEXT:      function.def @noEarlyReturnFn(%[[VAL_34:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0>) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
+// CHECK-NEXT:      function.def @noEarlyReturnFn(%[[VAL_34:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0> {function.arg_name = "in"}) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_35:[0-9a-zA-Z_\.]+]] = llzk.nondet : !poly.tvar<@T_return>
 // CHECK-NEXT:        %[[VAL_36:[0-9a-zA-Z_\.]+]] = llzk.nondet : i1
 // CHECK-NEXT:        %[[VAL_37:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -143,7 +143,7 @@ component main = EarlyReturn();
 // CHECK-NEXT:    poly.template @EarlyReturn {
 // CHECK-NEXT:      struct.def @EarlyReturn {
 // CHECK-NEXT:        struct.member @outp : !array.type<2 x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_68:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@EarlyReturn::@EarlyReturn<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_68:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "inp"}) -> !struct.type<@EarlyReturn::@EarlyReturn<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_69:[0-9a-zA-Z_\.]+]] = struct.new : <@EarlyReturn::@EarlyReturn<[]>>
 // CHECK-NEXT:          %[[VAL_70:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_71:[0-9a-zA-Z_\.]+]] = function.call @noEarlyReturnFn::@noEarlyReturnFn(%[[VAL_68]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
@@ -157,7 +157,7 @@ component main = EarlyReturn();
 // CHECK-NEXT:          struct.writem %[[VAL_69]][@outp] = %[[VAL_70]] : <@EarlyReturn::@EarlyReturn<[]>>, !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_69]] : !struct.type<@EarlyReturn::@EarlyReturn<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_77:[0-9a-zA-Z_\.]+]]: !struct.type<@EarlyReturn::@EarlyReturn<[]>>, %[[VAL_78:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_77:[0-9a-zA-Z_\.]+]]: !struct.type<@EarlyReturn::@EarlyReturn<[]>>, %[[VAL_78:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "inp"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_79:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_77]][@outp] : <@EarlyReturn::@EarlyReturn<[]>>, !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_80:[0-9a-zA-Z_\.]+]] = function.call @noEarlyReturnFn::@noEarlyReturnFn(%[[VAL_78]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_81:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">

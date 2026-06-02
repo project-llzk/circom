@@ -22,7 +22,7 @@ component main = TestSetAllUnknownWithinUnknownCondition(1);
 // CHECK-NEXT:    poly.template @TestSetAllUnknownWithinUnknownCondition {
 // CHECK-NEXT:      poly.param @k
 // CHECK-NEXT:      struct.def @TestSetAllUnknownWithinUnknownCondition {
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@TestSetAllUnknownWithinUnknownCondition::@TestSetAllUnknownWithinUnknownCondition<[@k]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@TestSetAllUnknownWithinUnknownCondition::@TestSetAllUnknownWithinUnknownCondition<[@k]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@TestSetAllUnknownWithinUnknownCondition::@TestSetAllUnknownWithinUnknownCondition<[@k]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @k : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -52,7 +52,7 @@ component main = TestSetAllUnknownWithinUnknownCondition(1);
 // CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_7]]{{\[}}%[[VAL_20]]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@TestSetAllUnknownWithinUnknownCondition::@TestSetAllUnknownWithinUnknownCondition<[@k]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_22:[0-9a-zA-Z_\.]+]]: !struct.type<@TestSetAllUnknownWithinUnknownCondition::@TestSetAllUnknownWithinUnknownCondition<[@k]>>, %[[VAL_23:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_22:[0-9a-zA-Z_\.]+]]: !struct.type<@TestSetAllUnknownWithinUnknownCondition::@TestSetAllUnknownWithinUnknownCondition<[@k]>>, %[[VAL_23:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = poly.read_const @k : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_25]], %[[VAL_25]], %[[VAL_25]], %[[VAL_25]], %[[VAL_25]], %[[VAL_25]], %[[VAL_25]], %[[VAL_25]], %[[VAL_25]], %[[VAL_25]] : <10 x !felt.type<"bn128">>

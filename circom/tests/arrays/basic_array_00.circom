@@ -17,7 +17,7 @@ component main = Array00();
 // CHECK-NEXT:    poly.template @Array00 {
 // CHECK-NEXT:      struct.def @Array00 {
 // CHECK-NEXT:        struct.member @b : !array.type<1 x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<1 x !felt.type<"bn128">>) -> !struct.type<@Array00::@Array00<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<1 x !felt.type<"bn128">> {function.arg_name = "a"}) -> !struct.type<@Array00::@Array00<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Array00::@Array00<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -29,7 +29,7 @@ component main = Array00();
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@b] = %[[VAL_2]] : <@Array00::@Array00<[]>>, !array.type<1 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@Array00::@Array00<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !struct.type<@Array00::@Array00<[]>>, %[[VAL_9:[0-9a-zA-Z_\.]+]]: !array.type<1 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !struct.type<@Array00::@Array00<[]>>, %[[VAL_9:[0-9a-zA-Z_\.]+]]: !array.type<1 x !felt.type<"bn128">> {function.arg_name = "a"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_8]][@b] : <@Array00::@Array00<[]>>, !array.type<1 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.const  0
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_11]] : !felt.type<"bn128">

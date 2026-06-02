@@ -30,7 +30,7 @@ component main = Foo(3);
 // CHECK-NEXT:      struct.def @Foo {
 // CHECK-NEXT:        struct.member @outp : !array.type<@N x !felt.type<"bn128">> {llzk.pub}
 // CHECK-NEXT:        struct.member @internal : !array.type<@N x !felt.type<"bn128">>
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type<"bn128">>) -> !struct.type<@Foo::@Foo<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@Foo::@Foo<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Foo::@Foo<[@N]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
 // CHECK-NEXT:          %{{[0-9a-zA-Z_\.]+}} = llzk.nondet : !array.type<@N x !felt.type<"bn128">>
@@ -67,7 +67,7 @@ component main = Foo(3);
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@outp] = %[[VAL_3]] : <@Foo::@Foo<[@N]>>, !array.type<@N x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@Foo::@Foo<[@N]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_25:[0-9a-zA-Z_\.]+]]: !struct.type<@Foo::@Foo<[@N]>>, %[[VAL_26:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_25:[0-9a-zA-Z_\.]+]]: !struct.type<@Foo::@Foo<[@N]>>, %[[VAL_26:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type<"bn128">> {function.arg_name = "inp"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_25]][@outp] : <@Foo::@Foo<[@N]>>, !array.type<@N x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_25]][@internal] : <@Foo::@Foo<[@N]>>, !array.type<@N x !felt.type<"bn128">>

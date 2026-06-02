@@ -25,7 +25,7 @@ component main = InnerLoops(2, 3);
 // CHECK-NEXT:      poly.param @m
 // CHECK-NEXT:      struct.def @InnerLoops {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[V_IN:[0-9a-zA-Z_\.]+]]: !array.type<@m x !felt.type<"bn128">>) -> !struct.type<@InnerLoops::@InnerLoops<[@n, @m]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[V_IN:[0-9a-zA-Z_\.]+]]: !array.type<@m x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@InnerLoops::@InnerLoops<[@n, @m]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[V_1:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerLoops::@InnerLoops<[@n, @m]>>
 // CHECK-NEXT:          %[[V_M:[0-9a-zA-Z_\.]+]] = poly.read_const @m : !felt.type<"bn128">
 // CHECK-NEXT:          %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
@@ -68,7 +68,7 @@ component main = InnerLoops(2, 3);
 // CHECK-NEXT:          struct.writem %[[V_1]][@out] = %[[V_34]] : <@InnerLoops::@InnerLoops<[@n, @m]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[V_1]] : !struct.type<@InnerLoops::@InnerLoops<[@n, @m]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[V_IN:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerLoops::@InnerLoops<[@n, @m]>>, %[[V_36:[0-9a-zA-Z_\.]+]]: !array.type<@m x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[V_IN:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerLoops::@InnerLoops<[@n, @m]>>, %[[V_36:[0-9a-zA-Z_\.]+]]: !array.type<@m x !felt.type<"bn128">> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[V_M:[0-9a-zA-Z_\.]+]] = poly.read_const @m : !felt.type<"bn128">
 // CHECK-NEXT:          %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[V_67:[0-9a-zA-Z_\.]+]] = struct.readm %[[V_IN]][@out] : <@InnerLoops::@InnerLoops<[@n, @m]>>, !felt.type<"bn128">

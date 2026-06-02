@@ -26,7 +26,7 @@ component main = InnerConditional3(3);
 // CHECK-NEXT:    poly.template @InnerConditional3_0 {
 // CHECK-NEXT:      struct.def @InnerConditional3_0 {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@InnerConditional3_0::@InnerConditional3_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@InnerConditional3_0::@InnerConditional3_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerConditional3_0::@InnerConditional3_0<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  3
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -53,7 +53,7 @@ component main = InnerConditional3(3);
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@out] = %[[VAL_5]]#0 : <@InnerConditional3_0::@InnerConditional3_0<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@InnerConditional3_0::@InnerConditional3_0<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_19:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerConditional3_0::@InnerConditional3_0<[]>>, %[[VAL_20:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_19:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerConditional3_0::@InnerConditional3_0<[]>>, %[[VAL_20:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_19]][@out] : <@InnerConditional3_0::@InnerConditional3_0<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = felt.const  3
 // CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = felt.const  0

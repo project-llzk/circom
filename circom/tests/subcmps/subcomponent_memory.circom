@@ -119,22 +119,22 @@ component main = A();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @B {
 // CHECK-NEXT:      struct.def @B {
-// CHECK-NEXT:        function.def @compute(%[[VAL_65:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_66:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">>) -> !struct.type<@B::@B<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_65:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "x"}, %[[VAL_66:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">> {function.arg_name = "y"}) -> !struct.type<@B::@B<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_67:[0-9a-zA-Z_\.]+]] = struct.new : <@B::@B<[]>>
 // CHECK-NEXT:          function.return %[[VAL_67]] : !struct.type<@B::@B<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_68:[0-9a-zA-Z_\.]+]]: !struct.type<@B::@B<[]>>, %[[VAL_69:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_70:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_68:[0-9a-zA-Z_\.]+]]: !struct.type<@B::@B<[]>>, %[[VAL_69:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "x"}, %[[VAL_70:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">> {function.arg_name = "y"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @C {
 // CHECK-NEXT:      struct.def @C {
-// CHECK-NEXT:        function.def @compute(%[[VAL_71:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@C::@C<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_71:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "f"}) -> !struct.type<@C::@C<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_72:[0-9a-zA-Z_\.]+]] = struct.new : <@C::@C<[]>>
 // CHECK-NEXT:          function.return %[[VAL_72]] : !struct.type<@C::@C<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_73:[0-9a-zA-Z_\.]+]]: !struct.type<@C::@C<[]>>, %[[VAL_74:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_73:[0-9a-zA-Z_\.]+]]: !struct.type<@C::@C<[]>>, %[[VAL_74:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "f"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

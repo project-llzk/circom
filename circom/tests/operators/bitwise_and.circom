@@ -19,7 +19,7 @@ component main = BitwiseAnd();
 // CHECK-NEXT:      struct.def @BitwiseAnd {
 // CHECK-NEXT:        struct.member @type : !felt.type<"bn128"> {llzk.pub}
 // CHECK-NEXT:        struct.member @check_v : !felt.type<"bn128">
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@BitwiseAnd::@BitwiseAnd<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "v"}) -> !struct.type<@BitwiseAnd::@BitwiseAnd<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@BitwiseAnd::@BitwiseAnd<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  5
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.bit_and %[[VAL_0]], %[[VAL_2]] : !felt.type<"bn128">, !felt.type<"bn128">
@@ -29,7 +29,7 @@ component main = BitwiseAnd();
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@check_v] = %[[VAL_5]] : <@BitwiseAnd::@BitwiseAnd<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@BitwiseAnd::@BitwiseAnd<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_6:[0-9a-zA-Z_\.]+]]: !struct.type<@BitwiseAnd::@BitwiseAnd<[]>>, %[[VAL_7:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_6:[0-9a-zA-Z_\.]+]]: !struct.type<@BitwiseAnd::@BitwiseAnd<[]>>, %[[VAL_7:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "v"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_6]][@type] : <@BitwiseAnd::@BitwiseAnd<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_6]][@check_v] : <@BitwiseAnd::@BitwiseAnd<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.const  32

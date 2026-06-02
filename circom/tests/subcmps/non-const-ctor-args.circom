@@ -45,7 +45,7 @@ component main = Outer();
 // CHECK-NEXT:      poly.param @P
 // CHECK-NEXT:      struct.def @Inner {
 // CHECK-NEXT:        struct.member @out : !array.type<4 x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<4 x !felt.type<"bn128">>) -> !struct.type<@Inner::@Inner<[@P]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<4 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@Inner::@Inner<[@P]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Inner::@Inner<[@P]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @P : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<4 x !felt.type<"bn128">>
@@ -68,7 +68,7 @@ component main = Outer();
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@out] = %[[VAL_3]] : <@Inner::@Inner<[@P]>>, !array.type<4 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@Inner::@Inner<[@P]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@Inner::@Inner<[@P]>>, %[[VAL_17:[0-9a-zA-Z_\.]+]]: !array.type<4 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@Inner::@Inner<[@P]>>, %[[VAL_17:[0-9a-zA-Z_\.]+]]: !array.type<4 x !felt.type<"bn128">> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = poly.read_const @P : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_16]][@out] : <@Inner::@Inner<[@P]>>, !array.type<4 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -98,7 +98,7 @@ component main = Outer();
 // CHECK-NEXT:        struct.member @mid : !array.type<8 x !felt.type<"bn128">>
 // CHECK-NEXT:        struct.member @inner : !array.type<2 x !struct.type<@Inner::@Inner<[#[[$ATTR_0]]]>>>
 // CHECK-NEXT:        struct.member @inner$inputs : !array.type<2 x !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>>
-// CHECK-NEXT:        function.def @compute(%[[VAL_33:[0-9a-zA-Z_\.]+]]: !array.type<8 x !felt.type<"bn128">>) -> !struct.type<@Outer::@Outer<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_33:[0-9a-zA-Z_\.]+]]: !array.type<8 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@Outer::@Outer<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = struct.new : <@Outer::@Outer<[]>>
 // CHECK-NEXT:          %[[VAL_35:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<8 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<8 x !felt.type<"bn128">>
@@ -230,7 +230,7 @@ component main = Outer();
 // CHECK-NEXT:          struct.writem %[[VAL_34]][@out] = %[[VAL_36]] : <@Outer::@Outer<[]>>, !array.type<8 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_34]] : !struct.type<@Outer::@Outer<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_135:[0-9a-zA-Z_\.]+]]: !struct.type<@Outer::@Outer<[]>>, %[[VAL_136:[0-9a-zA-Z_\.]+]]: !array.type<8 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_135:[0-9a-zA-Z_\.]+]]: !struct.type<@Outer::@Outer<[]>>, %[[VAL_136:[0-9a-zA-Z_\.]+]]: !array.type<8 x !felt.type<"bn128">> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_137:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_135]][@out] : <@Outer::@Outer<[]>>, !array.type<8 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_138:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_135]][@mid] : <@Outer::@Outer<[]>>, !array.type<8 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_139:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_135]][@inner] : <@Outer::@Outer<[]>>, !array.type<2 x !struct.type<@Inner::@Inner<[#[[$ATTR_0]]]>>>

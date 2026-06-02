@@ -27,7 +27,7 @@ component main = InnerConditional3(3);
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      struct.def @InnerConditional3 {
 // CHECK-NEXT:      struct.member @out : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[V_IN:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@InnerConditional3::@InnerConditional3<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[V_IN:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@InnerConditional3::@InnerConditional3<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[SELF:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerConditional3::@InnerConditional3<[@N]>>
 // CHECK-NEXT:          %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
 // CHECK-NEXT:          %[[V_A0:[0-9a-zA-Z_\.]+]] = felt.const  0
@@ -53,7 +53,7 @@ component main = InnerConditional3(3);
 // CHECK-NEXT:          struct.writem %[[SELF]][@out] = %[[V_5]]#0 : <@InnerConditional3::@InnerConditional3<[@N]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[SELF]] : !struct.type<@InnerConditional3::@InnerConditional3<[@N]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[SELF:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerConditional3::@InnerConditional3<[@N]>>, %[[V_IN:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[SELF:[0-9a-zA-Z_\.]+]]: !struct.type<@InnerConditional3::@InnerConditional3<[@N]>>, %[[V_IN:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[V_N:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
 // CHECK-NEXT:          %[[V_36:[0-9a-zA-Z_\.]+]] = struct.readm %[[SELF]][@out] : <@InnerConditional3::@InnerConditional3<[@N]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[V_A0:[0-9a-zA-Z_\.]+]] = felt.const  0

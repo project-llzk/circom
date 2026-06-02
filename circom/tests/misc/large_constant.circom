@@ -112,7 +112,7 @@ component main = IsNegative();
 // CHECK-NEXT:        struct.member @sout : !felt.type<"bn128">
 // CHECK-NEXT:        struct.member @num2bits : !struct.type<@Num2Bits::@Num2Bits<[135]>>
 // CHECK-NEXT:        struct.member @num2bits$inputs : !pod.type<[@in: !felt.type<"bn128">]>
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">>) -> !struct.type<@CompConstant::@CompConstant<[@ct]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@CompConstant::@CompConstant<[@ct]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@CompConstant::@CompConstant<[@ct]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @ct : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<127 x !felt.type<"bn128">>
@@ -257,7 +257,7 @@ component main = IsNegative();
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@parts] = %[[VAL_3]] : <@CompConstant::@CompConstant<[@ct]>>, !array.type<127 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@CompConstant::@CompConstant<[@ct]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_133:[0-9a-zA-Z_\.]+]]: !struct.type<@CompConstant::@CompConstant<[@ct]>>, %[[VAL_134:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_133:[0-9a-zA-Z_\.]+]]: !struct.type<@CompConstant::@CompConstant<[@ct]>>, %[[VAL_134:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_135:[0-9a-zA-Z_\.]+]] = poly.read_const @ct : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_136:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_133]][@out] : <@CompConstant::@CompConstant<[@ct]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_137:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_133]][@parts] : <@CompConstant::@CompConstant<[@ct]>>, !array.type<127 x !felt.type<"bn128">>
@@ -402,7 +402,7 @@ component main = IsNegative();
 // CHECK-NEXT:        struct.member @num2Bits$inputs : !pod.type<[@in: !felt.type<"bn128">]>
 // CHECK-NEXT:        struct.member @sign : !struct.type<@Sign::@Sign<[]>>
 // CHECK-NEXT:        struct.member @sign$inputs : !pod.type<[@in: !array.type<254 x !felt.type<"bn128">>]>
-// CHECK-NEXT:        function.def @compute(%[[VAL_264:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@IsNegative::@IsNegative<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_264:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@IsNegative::@IsNegative<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_265:[0-9a-zA-Z_\.]+]] = struct.new : <@IsNegative::@IsNegative<[]>>
 // CHECK-NEXT:          %[[VAL_266:[0-9a-zA-Z_\.]+]] = pod.new : <[@in: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_267:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
@@ -471,7 +471,7 @@ component main = IsNegative();
 // CHECK-NEXT:          struct.writem %[[VAL_265]][@sign] = %[[VAL_313]] : <@IsNegative::@IsNegative<[]>>, !struct.type<@Sign::@Sign<[]>>
 // CHECK-NEXT:          function.return %[[VAL_265]] : !struct.type<@IsNegative::@IsNegative<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_314:[0-9a-zA-Z_\.]+]]: !struct.type<@IsNegative::@IsNegative<[]>>, %[[VAL_315:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_314:[0-9a-zA-Z_\.]+]]: !struct.type<@IsNegative::@IsNegative<[]>>, %[[VAL_315:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_316:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_314]][@out] : <@IsNegative::@IsNegative<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_317:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_314]][@num2Bits] : <@IsNegative::@IsNegative<[]>>, !struct.type<@Num2Bits::@Num2Bits<[254]>>
 // CHECK-NEXT:          %[[VAL_318:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_314]][@num2Bits$inputs] : <@IsNegative::@IsNegative<[]>>, !pod.type<[@in: !felt.type<"bn128">]>
@@ -516,7 +516,7 @@ component main = IsNegative();
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @Num2Bits {
 // CHECK-NEXT:        struct.member @out : !array.type<@n x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_344:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@Num2Bits::@Num2Bits<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_344:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@Num2Bits::@Num2Bits<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_345:[0-9a-zA-Z_\.]+]] = struct.new : <@Num2Bits::@Num2Bits<[@n]>>
 // CHECK-NEXT:          %[[VAL_346:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_347:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<@n x !felt.type<"bn128">>
@@ -545,7 +545,7 @@ component main = IsNegative();
 // CHECK-NEXT:          struct.writem %[[VAL_345]][@out] = %[[VAL_347]] : <@Num2Bits::@Num2Bits<[@n]>>, !array.type<@n x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_345]] : !struct.type<@Num2Bits::@Num2Bits<[@n]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_370:[0-9a-zA-Z_\.]+]]: !struct.type<@Num2Bits::@Num2Bits<[@n]>>, %[[VAL_371:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_370:[0-9a-zA-Z_\.]+]]: !struct.type<@Num2Bits::@Num2Bits<[@n]>>, %[[VAL_371:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_372:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_373:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_370]][@out] : <@Num2Bits::@Num2Bits<[@n]>>, !array.type<@n x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_374:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -588,7 +588,7 @@ component main = IsNegative();
 // CHECK-NEXT:        struct.member @sign : !felt.type<"bn128"> {llzk.pub}
 // CHECK-NEXT:        struct.member @comp : !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>
 // CHECK-NEXT:        struct.member @comp$inputs : !pod.type<[@in: !array.type<254 x !felt.type<"bn128">>]>
-// CHECK-NEXT:        function.def @compute(%[[VAL_401:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">>) -> !struct.type<@Sign::@Sign<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_401:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@Sign::@Sign<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_402:[0-9a-zA-Z_\.]+]] = struct.new : <@Sign::@Sign<[]>>
 // CHECK-NEXT:          %[[VAL_403:[0-9a-zA-Z_\.]+]] = poly.read_const @"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]" : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_404:[0-9a-zA-Z_\.]+]] = pod.new : <[@in: !array.type<254 x !felt.type<"bn128">>]>
@@ -634,7 +634,7 @@ component main = IsNegative();
 // CHECK-NEXT:          struct.writem %[[VAL_402]][@comp] = %[[VAL_434]] : <@Sign::@Sign<[]>>, !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>
 // CHECK-NEXT:          function.return %[[VAL_402]] : !struct.type<@Sign::@Sign<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_435:[0-9a-zA-Z_\.]+]]: !struct.type<@Sign::@Sign<[]>>, %[[VAL_436:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_435:[0-9a-zA-Z_\.]+]]: !struct.type<@Sign::@Sign<[]>>, %[[VAL_436:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_437:[0-9a-zA-Z_\.]+]] = poly.read_const @"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]" : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_438:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_435]][@sign] : <@Sign::@Sign<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_439:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_435]][@comp] : <@Sign::@Sign<[]>>, !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>

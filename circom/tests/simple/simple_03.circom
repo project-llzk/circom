@@ -26,13 +26,13 @@ component main = Simple5();
 // CHECK-NEXT:        struct.member @x : !felt.type<"bn128"> {llzk.pub}
 // CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub}
 // CHECK-NEXT:        struct.member @z : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@Simple5::@Simple5<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a"}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "b"}, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "c"}) -> !struct.type<@Simple5::@Simple5<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = struct.new : <@Simple5::@Simple5<[]>>
 // CHECK-NEXT:          struct.writem %[[VAL_3]][@x] = %[[VAL_0]] : <@Simple5::@Simple5<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          struct.writem %[[VAL_3]][@y] = %[[VAL_1]] : <@Simple5::@Simple5<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_3]] : !struct.type<@Simple5::@Simple5<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@Simple5::@Simple5<[]>>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_6:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_7:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@Simple5::@Simple5<[]>>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a"}, %[[VAL_6:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "b"}, %[[VAL_7:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "c"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_4]][@x] : <@Simple5::@Simple5<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_4]][@y] : <@Simple5::@Simple5<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_4]][@z] : <@Simple5::@Simple5<[]>>, !felt.type<"bn128">

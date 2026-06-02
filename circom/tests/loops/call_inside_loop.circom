@@ -39,7 +39,7 @@ component main = CallInLoop(2, 3);
 // CHECK-NEXT:      poly.param @T_arg6 : !poly.tvar<@T_arg6>
 // CHECK-NEXT:      poly.param @T_arg7 : !poly.tvar<@T_arg7>
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
-// CHECK-NEXT:      function.def @fun(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0>, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg1>, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg2>, %[[VAL_3:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg3>, %[[VAL_4:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg4>, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg5>, %[[VAL_6:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg6>, %[[VAL_7:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg7>) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
+// CHECK-NEXT:      function.def @fun(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0> {function.arg_name = "a"}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg1> {function.arg_name = "n"}, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg2> {function.arg_name = "b"}, %[[VAL_3:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg3> {function.arg_name = "c"}, %[[VAL_4:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg4> {function.arg_name = "d"}, %[[VAL_5:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg5> {function.arg_name = "e"}, %[[VAL_6:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg6> {function.arg_name = "f"}, %[[VAL_7:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg7> {function.arg_name = "g"}) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_8]], %[[VAL_8]], %[[VAL_8]], %[[VAL_8]], %[[VAL_8]] : <5 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -90,7 +90,7 @@ component main = CallInLoop(2, 3);
 // CHECK-NEXT:      poly.param @m
 // CHECK-NEXT:      struct.def @CallInLoop {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_45:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) -> !struct.type<@CallInLoop::@CallInLoop<[@n, @m]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_45:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@CallInLoop::@CallInLoop<[@n, @m]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_46:[0-9a-zA-Z_\.]+]] = struct.new : <@CallInLoop::@CallInLoop<[@n, @m]>>
 // CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = poly.read_const @m : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
@@ -144,7 +144,7 @@ component main = CallInLoop(2, 3);
 // CHECK-NEXT:          struct.writem %[[VAL_46]][@out] = %[[VAL_87]] : <@CallInLoop::@CallInLoop<[@n, @m]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_46]] : !struct.type<@CallInLoop::@CallInLoop<[@n, @m]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_88:[0-9a-zA-Z_\.]+]]: !struct.type<@CallInLoop::@CallInLoop<[@n, @m]>>, %[[VAL_89:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_88:[0-9a-zA-Z_\.]+]]: !struct.type<@CallInLoop::@CallInLoop<[@n, @m]>>, %[[VAL_89:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_90:[0-9a-zA-Z_\.]+]] = poly.read_const @m : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_91:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_92:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_88]][@out] : <@CallInLoop::@CallInLoop<[@n, @m]>>, !felt.type<"bn128">

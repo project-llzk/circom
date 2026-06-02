@@ -34,7 +34,7 @@ component main = Caller(5);
 // CHECK-NEXT:        struct.member @outp : !felt.type<"bn128">
 // CHECK-NEXT:        struct.member @op : !struct.type<@Sum_0::@Sum_0<[]>>
 // CHECK-NEXT:        struct.member @op$inputs : !pod.type<[@inp: !array.type<5 x !felt.type<"bn128">>]>
-// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">>) -> !struct.type<@Caller_1::@Caller_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@Caller_1::@Caller_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Caller_1::@Caller_1<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = arith.constant 5 : index
@@ -62,7 +62,7 @@ component main = Caller(5);
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@op] = %[[VAL_17]] : <@Caller_1::@Caller_1<[]>>, !struct.type<@Sum_0::@Sum_0<[]>>
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@Caller_1::@Caller_1<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_18:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller_1::@Caller_1<[]>>, %[[VAL_19:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_18:[0-9a-zA-Z_\.]+]]: !struct.type<@Caller_1::@Caller_1<[]>>, %[[VAL_19:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">> {function.arg_name = "inp"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_18]][@outp] : <@Caller_1::@Caller_1<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_18]][@op] : <@Caller_1::@Caller_1<[]>>, !struct.type<@Sum_0::@Sum_0<[]>>
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_18]][@op$inputs] : <@Caller_1::@Caller_1<[]>>, !pod.type<[@inp: !array.type<5 x !felt.type<"bn128">>]>
@@ -80,7 +80,7 @@ component main = Caller(5);
 // CHECK-NEXT:    poly.template @Sum_0 {
 // CHECK-NEXT:      struct.def @Sum_0 {
 // CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        function.def @compute(%[[VAL_27:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">>) -> !struct.type<@Sum_0::@Sum_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_27:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@Sum_0::@Sum_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.new : <@Sum_0::@Sum_0<[]>>
 // CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = felt.const  5 : <"bn128">
 // CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -101,7 +101,7 @@ component main = Caller(5);
 // CHECK-NEXT:          struct.writem %[[VAL_28]][@outp] = %[[VAL_32]]#0 : <@Sum_0::@Sum_0<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_28]] : !struct.type<@Sum_0::@Sum_0<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_44:[0-9a-zA-Z_\.]+]]: !struct.type<@Sum_0::@Sum_0<[]>>, %[[VAL_45:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_44:[0-9a-zA-Z_\.]+]]: !struct.type<@Sum_0::@Sum_0<[]>>, %[[VAL_45:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">> {function.arg_name = "inp"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_46:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_44]][@outp] : <@Sum_0::@Sum_0<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = felt.const  5 : <"bn128">
 // CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
