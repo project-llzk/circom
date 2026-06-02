@@ -28,7 +28,6 @@ use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::felt;
 use llzk::dialect::pod;
 use llzk::dialect::poly;
-use llzk::dialect::poly::TVarType;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::replace_uses_of_with;
@@ -40,7 +39,6 @@ use llzk::prelude::Block;
 use llzk::prelude::BlockLike;
 use llzk::prelude::BlockRef;
 use llzk::prelude::BoolAttribute;
-use llzk::prelude::FeltConstAttribute;
 use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOp;
@@ -58,7 +56,6 @@ use llzk::prelude::OperationLike;
 use llzk::prelude::OperationMutLike;
 use llzk::prelude::OperationRef;
 use llzk::prelude::PassManager;
-use llzk::prelude::PodRecordAttribute;
 use llzk::prelude::PodType;
 use llzk::prelude::RecordValue;
 use llzk::prelude::Region;
@@ -782,7 +779,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     /// Get the unknown location.
     #[inline]
     pub fn location_unknown(&self) -> Location<'ctx> {
-        Location::unknown(self.context)
+        self.context.unknown_location()
     }
 
     /// Convert circom location information to MLIR location.
@@ -837,34 +834,28 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         Ok(dialect::llzk::nondet(location, result_type))
     }
 
-    /// Get the integer type of the given bitwidth.
-    #[inline]
-    pub fn int_type(&self, bits: u32) -> IntegerType<'ctx> {
-        IntegerType::new(self.context, bits)
-    }
-
     /// Get the boolean type (`i1`).
     #[inline]
-    pub fn bool_type(&self) -> IntegerType<'ctx> {
-        self.int_type(1)
+    pub fn bool_type(&self) -> Type<'ctx> {
+        self.context.bool_type()
     }
 
     /// Get the index type.
     #[inline]
     pub fn index_type(&self) -> Type<'ctx> {
-        Type::index(self.context)
+        self.context.index_type()
     }
 
     /// Get the felt type.
     #[inline]
     pub fn felt_type(&self) -> FeltType<'ctx> {
-        FeltType::with_field(self.context, &self.config.prime_str)
+        self.context.felt_type()
     }
 
     /// Get the polymorphic type variable type for the given name.
     #[inline]
     pub fn tvar_type(&self, name: &str) -> Type<'ctx> {
-        TVarType::new(self.context, StringRef::new(name)).into()
+        self.context.tvar_type(name).into()
     }
 
     /// Get the struct type for the given struct name and parameters.
@@ -885,29 +876,31 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         self.struct_type_with_params(name, &[])
     }
 
-    /// Get a pod struct type with the given records.
+    /// Get a pod type with the given records.
     #[inline]
     pub fn pod_type(&self, records: &[(&str, Type<'ctx>)]) -> PodType<'ctx> {
-        let records = records
-            .iter()
-            .map(|(name, r#type)| PodRecordAttribute::new(name, *r#type))
-            .collect::<Vec<_>>();
-        PodType::new(self.context, &records)
+        self.context.pod_type(records)
     }
 
-    /// Create an index attribute.
+    /// Returns an [`IntegerAttribute`] with index type and the given value.
     #[inline]
     pub fn index_attr<T>(&self, integer: T) -> IntegerAttribute<'ctx>
     where
         T: Into<i64>,
     {
-        IntegerAttribute::new(self.index_type(), integer.into())
+        self.context.index_attr(integer)
     }
 
-    /// Creates a [`FlatSymbolRefAttribute`] from the given string.
+    /// Returns a [`BoolAttribute`] with the given value.
+    #[inline]
+    pub fn bool_attr(&self, val: bool) -> BoolAttribute<'_> {
+        self.context.bool_attr(val)
+    }
+
+    /// Returns a [`FlatSymbolRefAttribute`] created from the given string.
     #[inline]
     pub fn flat_sym(&self, sym: impl AsRef<str>) -> FlatSymbolRefAttribute<'ctx> {
-        FlatSymbolRefAttribute::new(self.context, sym.as_ref())
+        self.context.flat_sym_attr(sym)
     }
 
     /// Creates a [`SymbolRefAttribute`] from the given string as "@str::@str"
@@ -949,18 +942,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     /// Create an LLZK operation that produces a boolean constant value.
     #[inline]
     pub fn new_bool_const_op(&self, val: bool, location: Location<'ctx>) -> Operation<'ctx> {
-        arith::constant(self.context, BoolAttribute::new(self.context, val).into(), location)
-    }
-
-    /// Create an LLZK operation that produces an integer constant value.
-    #[inline]
-    pub fn new_int_const_op(
-        &self,
-        ty: Type<'ctx>,
-        val: i64,
-        location: Location<'ctx>,
-    ) -> Operation<'ctx> {
-        arith::constant(self.context, IntegerAttribute::new(ty, val).into(), location)
+        self.context.new_bool_const_op(val, location)
     }
 
     /// Create an LLZK operation that produces an index constant value.
@@ -969,7 +951,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     where
         T: Into<i64>,
     {
-        arith::constant(self.context, self.index_attr(val).into(), location)
+        self.context.new_index_const_op(val, location)
     }
 
     /// Create an LLZK `array.new` operation with the given type and constructor info.
@@ -993,29 +975,10 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         // ASSERT: The circom parser always produces non-negative constants. These can be negated
         // via PrefixOp but negative BigInt constants are never created directly.
         assert_ne!(val.sign(), num_bigint_dig::Sign::Minus, "Felt constants must be non-negative");
-        let attr = FeltConstAttribute::parse(
-            self.context,
-            // use required bits +1 to ensure unsigned representation
-            u32::try_from(val.bits())? + 1,
-            val.to_string().as_str(),
-            Some(&self.config.prime_str),
-        );
+        // Increase by one to ensure the value is kept unsigned.
+        let bitlen = val.bits() + 1;
+        let attr = self.context.felt_attr_from_str(bitlen.try_into().unwrap(), val.to_string());
         felt::constant(location, attr).map_err(Into::into)
-    }
-
-    /// Creates a new constant op to create a constant of the given type.
-    /// Assumes `type` will be a felt or integral/index type.
-    pub fn new_const_op(
-        &self,
-        location: Location<'ctx>,
-        r#type: Type<'ctx>,
-        val: i64,
-    ) -> Result<Operation<'ctx>> {
-        if is_felt_type(r#type) {
-            self.new_felt_const_op(&BigInt::from(val), location)
-        } else {
-            Ok(self.new_int_const_op(r#type, val, location))
-        }
     }
 
     /// Run the given pass pipeline on the given operation.

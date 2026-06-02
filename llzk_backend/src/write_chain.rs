@@ -20,12 +20,10 @@ use crate::template::TemplateContext;
 use anyhow::Result;
 use llzk::dialect::r#struct;
 use llzk::prelude::FuncDefOpLike as _;
-use llzk::prelude::IntegerAttribute;
 use llzk::prelude::Location;
 use llzk::prelude::PodType;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
-use melior::dialect::arith;
 use program_structure::ast::Access;
 use program_structure::ast::Expression;
 use std::convert::TryFrom as _;
@@ -253,11 +251,7 @@ impl<'ast> WriteChain<'ast> {
             location,
             InfoProviders { subcmp_info, signal_write_info },
         )?;
-        let true_value = {
-            let attr = IntegerAttribute::new(codegen.bool_type().into(), 1);
-            fc.append_op_unnamed_result(arith::constant(codegen.context, attr.into(), location))
-        }?;
-
+        let true_value = fc.append_op_unnamed_result(codegen.new_bool_const_op(true, location))?;
         let memory_value = *fc.block_ctx.get_named_value(root_var)?;
         let memory_type = PodType::try_from(memory_value.r#type())?;
         let inputs_name = crate::subcmp::names::inputs(root_var);

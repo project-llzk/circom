@@ -10,13 +10,10 @@ pub use crate::shared::LlzkConfig;
 use ansi_term::Color;
 use anyhow::anyhow;
 use anyhow::Result;
-use llzk::prelude::FeltConstAttribute;
-use llzk::prelude::IntegerAttribute;
 use llzk::prelude::LlzkContext;
 use llzk::prelude::Module;
 use llzk::prelude::OperationMutLike as _;
 use llzk::prelude::StructType;
-use llzk::prelude::Type;
 use llzk::prelude::TypeAttribute;
 use llzk::prelude::MAIN_ATTR_NAME;
 use melior::ir::Attribute;
@@ -39,7 +36,7 @@ fn to_u64_digits(n: &BigUint) -> Vec<u64> {
         .collect()
 }
 
-/// Prepares the paremeters of the main component StructType.
+/// Prepares the parameters of the main component StructType.
 ///
 /// TODO: This approach does not currently handle ArrayInLine or Call expressions that can be
 /// used as parameters to the main component. The Call case could be handled by finding the
@@ -60,18 +57,12 @@ fn prepare_main_component_params<'ctx>(
                 n.ok_or_else(|| anyhow!("main component parameter {i} is not a positive constant"))
             })?;
             Ok(match n.to_i64() {
-                Some(n) => IntegerAttribute::new(Type::index(context), n).into(),
+                Some(n) => context.index_attr(n).into(),
                 None => {
                     // Increase by one to ensure the value is kept unsigned.
                     let bitlen = n.bits() + 1;
                     let parts = to_u64_digits(&n);
-                    FeltConstAttribute::from_parts(
-                        context,
-                        bitlen.try_into().unwrap(),
-                        &parts,
-                        None,
-                    )
-                    .into()
+                    context.felt_attr_from_parts(bitlen.try_into().unwrap(), &parts).into()
                 }
             })
         })
@@ -106,7 +97,8 @@ fn new_llzk_module<'ctx>(
 /// Generate LLZK IR from the given `ProgramArchive` and write it to a file with the given filename.
 #[allow(clippy::result_unit_err)]
 pub fn generate_llzk(program: &impl ProgramLike, config: LlzkConfig) -> Result<(), ()> {
-    let ctx = LlzkContext::new();
+    let mut ctx = LlzkContext::new();
+    ctx.set_field(config.prime_str.as_str());
     let module = new_llzk_module(&ctx, program, &config.prime).map_err(|err| {
         if config.verbose {
             eprintln!("{} {err:?}", Color::Red.paint("Failed to generate LLZK IR:"));

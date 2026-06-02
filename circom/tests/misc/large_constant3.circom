@@ -13,7 +13,7 @@ template CompConstant(ct) {
 
 component main = CompConstant(10944121435919637611123202872628637544274182200208017171849102093287904247808);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@CompConstant::@CompConstant<[#felt<const 10944121435919637611123202872628637544274182200208017171849102093287904247808>]>>} {
+// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@CompConstant::@CompConstant<[#felt<const 10944121435919637611123202872628637544274182200208017171849102093287904247808 : <"bn128">>]>>} {
 // CHECK-NEXT:    poly.template @CompConstant {
 // CHECK-NEXT:      poly.param @ct
 // CHECK-NEXT:      struct.def @CompConstant {
