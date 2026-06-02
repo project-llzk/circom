@@ -174,7 +174,7 @@ impl<'ast> WriteChain<'ast> {
         signal_write_info: &dyn SignalWriteInfo,
         subcmp_info: &dyn SubcmpInfo<'ctx>,
     ) -> Result<()> {
-        let field_type = input_record_type.get_type_of_record(signal_name).ok_or_else(|| {
+        let field_type = input_record_type.record_type(signal_name).ok_or_else(|| {
             anyhow::anyhow!("subcomponent input signal {signal_name} not found: {input_record}")
         })?;
 
@@ -364,7 +364,7 @@ impl<'ast> WriteChain<'ast> {
                     ))?;
                 } else {
                     let record_type =
-                        memory_type.get_type_of_record(entry.record_name()).ok_or_else(|| {
+                        memory_type.record_type(entry.record_name()).ok_or_else(|| {
                             anyhow::anyhow!(
                                 "record {} not found in mixed subcomponent pod: {}",
                                 entry.record_name(),
@@ -440,12 +440,13 @@ impl<'ast> WriteChain<'ast> {
                     if let Some(record_name) = subcmp_info
                         .mixed_subcmp_record_for_indices(prev.lvalue.root_var(), &indices)
                     {
-                        let record_type =
-                            pod_type.get_type_of_record(record_name).ok_or_else(|| {
-                                anyhow::anyhow!(
-                        "record {record_name} not found in mixed subcomponent pod: {arr_ref}"
-                    )
-                            })?;
+                        let record_type = pod_type.record_type(record_name).ok_or_else(|| {
+                            anyhow::anyhow!(
+                                "record {} not found in mixed subcomponent pod: {}",
+                                record_name,
+                                arr_ref
+                            )
+                        })?;
                         let val = fc.cast_to_expected_type_if_needed(
                             codegen,
                             location,

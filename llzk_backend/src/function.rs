@@ -246,7 +246,7 @@ where
             // Ensure the specially-named values are declared in free functions.
             block_ctx.declare_name_if_not_present(VAR_NAME_RETURN_VAL, || {
                 // Get the result type from the free function. It supports exactly 1.
-                let ty = func.get_function_type()?;
+                let ty = func.function_type()?;
                 assert_eq!(ty.result_count(), 1);
                 codegen.new_nondet_at_location(codegen.location_unknown(), ty.result(0)?)
             })?;
@@ -265,7 +265,7 @@ where
     /// Get the return type of the function.
     pub fn return_type(&self) -> Type<'ctx> {
         self.func
-            .get_function_type()
+            .function_type()
             .expect("`function_type` attr must exist")
             .result(0)
             .expect("LLZK function must return a single result")

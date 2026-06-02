@@ -929,7 +929,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         let name = name.as_ref();
         let pod_type = PodType::try_from(pod.r#type())?;
         let record_type = pod_type
-            .get_type_of_record(name)
+            .record_type(name)
             .ok_or_else(|| anyhow!("record '{}' not found for pod {pod_type}", name))?;
         Ok(pod::read(location, pod, self.flat_sym(name), record_type))
     }
@@ -1170,7 +1170,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
                 }
             })
         } else if let Ok(pt) = PodType::try_from(t) {
-            pt.get_records().iter().try_fold(TypeSizeExpr::zero(), |acc, r| {
+            pt.records().iter().try_fold(TypeSizeExpr::zero(), |acc, r| {
                 Ok(acc.add(self.count_input_signals(r.r#type())?))
             })
         } else if let Ok(st) = StructType::try_from(t) {
@@ -2394,7 +2394,7 @@ pub fn new_region_and_block<'ctx: 'blk, 'blk>(
 
 /// Returns the type of a subcomponent as defined in its memory.
 pub fn comp_type<'ctx>(pod: PodType<'ctx>) -> Result<Type<'ctx>> {
-    pod.get_type_of_record(COMP)
+    pod.record_type(COMP)
         .ok_or_else(|| anyhow::anyhow!("missing {COMP} record in memory struct: {pod:?}"))
 }
 

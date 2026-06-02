@@ -1922,7 +1922,7 @@ where
         location: Location<'ctx>,
     ) -> Result<Vec<Value<'ctx, 'val>>> {
         PodType::try_from(pod.r#type())?
-            .get_records()
+            .records()
             .into_iter()
             .map(|record| {
                 let record_name = codegen.flat_sym(record.name().as_string_ref().as_str()?);
@@ -1954,7 +1954,7 @@ where
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Vec<OwningValueRange<'ctx, '_>>> {
-        let params = PodType::try_from(params_value.r#type())?.get_records();
+        let params = PodType::try_from(params_value.r#type())?.records();
         params_requiring_map_operands(struct_type)
             .into_iter()
             .map(|idx| {
