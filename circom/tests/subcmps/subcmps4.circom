@@ -37,7 +37,7 @@ template SubCmps4(n) {
 
 component main = SubCmps4(3);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@SubCmps4::@SubCmps4<[3]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@SubCmps4::@SubCmps4<[3]>>} {
 // CHECK-NEXT:    poly.template @SubCmps4 {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      poly.expr @"n_Mul_2@443" {

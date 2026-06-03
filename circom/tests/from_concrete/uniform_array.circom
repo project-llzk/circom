@@ -34,7 +34,7 @@ template Caller(n, m) {
 }
 
 component main = Caller(5, 3);
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Caller_2::@Caller_2<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Caller_2::@Caller_2<[]>>} {
 // CHECK-NEXT:    poly.template @Caller_2 {
 // CHECK-NEXT:      struct.def @Caller_2 {
 // CHECK-NEXT:        struct.member @inter : !array.type<3 x !felt.type<"bn128">>

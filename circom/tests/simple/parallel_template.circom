@@ -12,7 +12,7 @@ template Parallel() {
 
 component main = Parallel();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Parallel::@Parallel<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Parallel::@Parallel<[]>>} {
 // CHECK-NEXT:    poly.template @Foo {
 // CHECK-NEXT:      struct.def @Foo {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Foo::@Foo<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

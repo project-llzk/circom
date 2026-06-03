@@ -26,7 +26,7 @@ template SubCmps0D(n) {
 
 component main = SubCmps0D(3);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@SubCmps0D::@SubCmps0D<[3]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@SubCmps0D::@SubCmps0D<[3]>>} {
 // CHECK-NEXT:    poly.template @Add {
 // CHECK-NEXT:      struct.def @Add {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}

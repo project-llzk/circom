@@ -14,7 +14,7 @@ template BitwiseComplement() {
 
 component main = BitwiseComplement();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BitwiseComplement::@BitwiseComplement<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@BitwiseComplement::@BitwiseComplement<[]>>} {
 // CHECK-NEXT:    poly.template @BitwiseComplement {
 // CHECK-NEXT:      struct.def @BitwiseComplement {
 // CHECK-NEXT:        struct.member @type : !felt.type<"bn128"> {llzk.pub}

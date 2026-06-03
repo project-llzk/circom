@@ -13,7 +13,7 @@ template BoolAnd() {
 
 component main = BoolAnd();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BoolAnd::@BoolAnd<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@BoolAnd::@BoolAnd<[]>>} {
 // CHECK-NEXT:    poly.template @BoolAnd {
 // CHECK-NEXT:      struct.def @BoolAnd {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}

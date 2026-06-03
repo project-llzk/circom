@@ -34,7 +34,7 @@ template Wrapper() {
 component main = Wrapper();
 
 // CHECK:       #[[$ATTR_0:[0-9a-zA-Z_\.]+]] = affine_map<(d0) -> (d0)>
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Wrapper::@Wrapper<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Wrapper::@Wrapper<[]>>} {
 // CHECK-NEXT:    poly.template @ArrayOp {
 // CHECK-NEXT:      poly.param @q
 // CHECK-NEXT:      struct.def @ArrayOp {

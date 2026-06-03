@@ -20,7 +20,7 @@ template Caller(n) {
 }
 
 component main = Caller(5);
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Caller_1::@Caller_1<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Caller_1::@Caller_1<[]>>} {
 // CHECK-NEXT:    poly.template @C_0 {
 // CHECK-NEXT:      struct.def @C_0 {
 // CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub}

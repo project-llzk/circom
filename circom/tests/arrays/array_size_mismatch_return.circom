@@ -22,7 +22,7 @@ template ImplicitExtension() {
 
 component main = ImplicitExtension();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ImplicitExtension::@ImplicitExtension<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ImplicitExtension::@ImplicitExtension<[]>>} {
 // CHECK-NEXT:    poly.template @smaller {
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
 // CHECK-NEXT:      function.def @smaller() -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {

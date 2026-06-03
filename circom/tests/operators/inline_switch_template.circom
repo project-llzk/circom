@@ -22,7 +22,7 @@ template MultByInv() {
 
 component main = MultByInv();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@MultByInv::@MultByInv<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@MultByInv::@MultByInv<[]>>} {
 // CHECK-NEXT:    poly.template @MultByInv {
 // CHECK-NEXT:      struct.def @MultByInv {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}

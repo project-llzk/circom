@@ -20,7 +20,7 @@ template Simple5() {
 
 component main = Simple5();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Simple5::@Simple5<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Simple5::@Simple5<[]>>} {
 // CHECK-NEXT:    poly.template @Simple5 {
 // CHECK-NEXT:      struct.def @Simple5 {
 // CHECK-NEXT:        struct.member @x : !felt.type<"bn128"> {llzk.pub}

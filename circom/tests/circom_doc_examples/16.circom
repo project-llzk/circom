@@ -19,7 +19,7 @@ template all(N){
 component main = all(5);
 
 // CHECK:       #[[$ATTR_0:[0-9a-zA-Z_\.]+]] = affine_map<(d0) -> (d0)>
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@all::@all<[5]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@all::@all<[5]>>} {
 // CHECK-NEXT:    poly.template @all {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      struct.def @all {

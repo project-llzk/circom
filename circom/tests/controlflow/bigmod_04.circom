@@ -28,7 +28,7 @@ template BigModOld(n, k) {
 
 component main = BigModOld(8, 2);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BigModOld::@BigModOld<[8, 2]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@BigModOld::@BigModOld<[8, 2]>>} {
 // CHECK-NEXT:    poly.template @long_div2 {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_arg1 : !poly.tvar<@T_arg1>

@@ -14,7 +14,7 @@ template BytecodeOutput() {
 
 component main = BytecodeOutput();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BytecodeOutput::@BytecodeOutput<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@BytecodeOutput::@BytecodeOutput<[]>>} {
 // CHECK-NEXT:    poly.template @BytecodeOutput {
 // CHECK-NEXT:      struct.def @BytecodeOutput {
 // CHECK-NEXT:        struct.member @b : !felt.type<"bn128"> {llzk.pub}

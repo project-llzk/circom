@@ -25,7 +25,7 @@ template Good(N) {
 
 component main = Good(2);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Good::@Good<[2]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Good::@Good<[2]>>} {
 // CHECK-NEXT:    poly.template @Good {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      struct.def @Good {

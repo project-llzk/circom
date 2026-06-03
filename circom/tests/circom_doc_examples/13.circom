@@ -15,7 +15,7 @@ template right(N){
 
 component main = right(10);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@right::@right<[10]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@right::@right<[10]>>} {
 // CHECK-NEXT:    poly.template @right {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      struct.def @right {

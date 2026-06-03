@@ -11,7 +11,7 @@ template Van276() {
 
 component main = Van276();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Van276::@Van276<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Van276::@Van276<[]>>} {
 // CHECK-NEXT:    poly.template @Van276 {
 // CHECK-NEXT:      struct.def @Van276 {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Van276::@Van276<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

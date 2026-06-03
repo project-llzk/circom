@@ -19,7 +19,7 @@ template ComputeFee() {
 
 component main = ComputeFee();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ComputeFee::@ComputeFee<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ComputeFee::@ComputeFee<[]>>} {
 // CHECK-NEXT:    poly.template @feeShiftTable {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_arg1 : !poly.tvar<@T_arg1>

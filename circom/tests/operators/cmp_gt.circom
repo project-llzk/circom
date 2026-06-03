@@ -15,7 +15,7 @@ template CmpGT(n) {
 
 component main = CmpGT(5);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@CmpGT::@CmpGT<[5]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@CmpGT::@CmpGT<[5]>>} {
 // CHECK-NEXT:    poly.template @CmpGT {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @CmpGT {

@@ -19,7 +19,7 @@ template A(x) {
 
 component main = A(99);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A::@A<[99]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@A::@A<[99]>>} {
 // CHECK-NEXT:    poly.template @A {
 // CHECK-NEXT:      poly.param @x
 // CHECK-NEXT:      struct.def @A {

@@ -24,7 +24,7 @@ template Array1() {
 
 component main = Array1();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Array1::@Array1<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Array1::@Array1<[]>>} {
 // CHECK-NEXT:    poly.template @Array1 {
 // CHECK-NEXT:      struct.def @Array1 {
 // CHECK-NEXT:        struct.member @out : !array.type<5 x !felt.type<"bn128">> {llzk.pub}

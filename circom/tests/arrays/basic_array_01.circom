@@ -30,7 +30,7 @@ template Array01(n) {
 
 component main = Array01(5);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Array01::@Array01<[5]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Array01::@Array01<[5]>>} {
 // CHECK-NEXT:    poly.template @A {
 // CHECK-NEXT:      poly.param @m
 // CHECK-NEXT:      struct.def @A {

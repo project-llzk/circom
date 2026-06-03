@@ -23,7 +23,7 @@ template Call2() {
 
 component main = Call2();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Call2::@Call2<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Call2::@Call2<[]>>} {
 // CHECK-NEXT:    poly.template @nbits {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>

@@ -24,7 +24,7 @@ template ArrayReturnTemplate(n) {
 
 component main = ArrayReturnTemplate(4);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArrayReturnTemplate::@ArrayReturnTemplate<[4]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ArrayReturnTemplate::@ArrayReturnTemplate<[4]>>} {
 // CHECK-NEXT:    poly.template @return_array_A {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_arg1 : !poly.tvar<@T_arg1>

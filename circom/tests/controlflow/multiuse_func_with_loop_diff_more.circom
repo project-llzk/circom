@@ -23,7 +23,7 @@ template MultiUse() {
 
 component main = MultiUse();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@MultiUse::@MultiUse<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@MultiUse::@MultiUse<[]>>} {
 // CHECK-NEXT:    poly.template @f {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_arg1 : !poly.tvar<@T_arg1>

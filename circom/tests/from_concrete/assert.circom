@@ -11,7 +11,7 @@ template A(nBits) {
 
 component main = A(32);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A_0::@A_0<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@A_0::@A_0<[]>>} {
 // CHECK-NEXT:    poly.template @A_0 {
 // CHECK-NEXT:      struct.def @A_0 {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@A_0::@A_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

@@ -17,7 +17,7 @@ template Num2Bits(n) {
 
 component main = Num2Bits(2);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Num2Bits::@Num2Bits<[2]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Num2Bits::@Num2Bits<[2]>>} {
 // CHECK-NEXT:    poly.template @Num2Bits {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      poly.expr @"n_Mul_n@300" {

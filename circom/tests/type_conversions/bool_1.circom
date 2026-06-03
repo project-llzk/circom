@@ -17,7 +17,7 @@ template A(x) {
 
 component main = A(5);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A::@A<[5]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@A::@A<[5]>>} {
 // CHECK-NEXT:    poly.template @binop_comp {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_arg1 : !poly.tvar<@T_arg1>

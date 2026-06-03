@@ -18,7 +18,7 @@ template ArithRemainder() {
 
 component main = ArithRemainder();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArithRemainder::@ArithRemainder<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ArithRemainder::@ArithRemainder<[]>>} {
 // CHECK-NEXT:    poly.template @ArithRemainder {
 // CHECK-NEXT:      struct.def @ArithRemainder {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}

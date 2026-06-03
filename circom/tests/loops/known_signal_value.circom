@@ -24,7 +24,7 @@ template KnownLoopViaSignal() {
 
 component main = KnownLoopViaSignal();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@KnownLoopViaSignal::@KnownLoopViaSignal<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@KnownLoopViaSignal::@KnownLoopViaSignal<[]>>} {
 // CHECK-NEXT:    poly.template @KnownLoopViaSignal {
 // CHECK-NEXT:      struct.def @KnownLoopViaSignal {
 // CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub}

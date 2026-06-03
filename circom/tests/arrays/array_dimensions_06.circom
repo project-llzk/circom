@@ -10,7 +10,7 @@ template ArrayDims(N) {
 
 component main = ArrayDims(7);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArrayDims::@ArrayDims<[7]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ArrayDims::@ArrayDims<[7]>>} {
 // CHECK-NEXT:    poly.template @ArrayDims {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      poly.expr @"N_Add_1@279" {

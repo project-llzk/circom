@@ -27,7 +27,7 @@ template runner() {
 
 component main = runner();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@runner::@runner<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@runner::@runner<[]>>} {
 // CHECK-NEXT:    poly.template @InnerConditional5 {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      poly.param @T

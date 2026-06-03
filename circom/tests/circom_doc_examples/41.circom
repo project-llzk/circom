@@ -31,7 +31,7 @@ template parity(m) {
 
 component main = parity(10);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@parity::@parity<[10]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@parity::@parity<[10]>>} {
 // CHECK-NEXT:    poly.template @Num2Bits {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @Num2Bits {

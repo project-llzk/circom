@@ -53,7 +53,7 @@ template MultiplierN(N){
 
 component main {public [in]} = MultiplierN(3);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@MultiplierN::@MultiplierN<[3]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@MultiplierN::@MultiplierN<[3]>>} {
 // CHECK-NEXT:    poly.template @Multiplier2 {
 // CHECK-NEXT:      struct.def @Multiplier2 {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}

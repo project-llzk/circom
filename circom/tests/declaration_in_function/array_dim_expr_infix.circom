@@ -16,7 +16,7 @@ template A() {
 
 component main = A();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A::@A<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@A::@A<[]>>} {
 // CHECK-NEXT:    poly.template @f {
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
 // CHECK-NEXT:      function.def @f() -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {

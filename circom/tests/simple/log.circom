@@ -22,7 +22,7 @@ component main = A();
 // WARN-NEXT: 14 │   log(1658);
 // WARN-NEXT:    │   ^^^^^^^^^^ here
 
-//IR-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A::@A<[]>>} {
+//IR-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@A::@A<[]>>} {
 // IR-NEXT:    poly.template @A {
 // IR-NEXT:      struct.def @A {
 // IR-NEXT:        function.def @compute() -> !struct.type<@A::@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

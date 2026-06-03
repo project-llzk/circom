@@ -13,7 +13,7 @@ template ArrayShenanigans() {
 
 component main = ArrayShenanigans();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArrayShenanigans::@ArrayShenanigans<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ArrayShenanigans::@ArrayShenanigans<[]>>} {
 // CHECK-NEXT:    poly.template @ArrayShenanigans {
 // CHECK-NEXT:      struct.def @ArrayShenanigans {
 // CHECK-NEXT:        struct.member @outp : !array.type<2,2 x !felt.type<"bn128">> {llzk.pub}

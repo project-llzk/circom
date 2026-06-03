@@ -35,7 +35,7 @@ template Poseidon(nInputs) {
 
 component main = Poseidon(1);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Poseidon_0::@Poseidon_0<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Poseidon_0::@Poseidon_0<[]>>} {
 // CHECK-NEXT:    poly.template @POSEIDON_M_0 {
 // CHECK-NEXT:      function.def @POSEIDON_M_0(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "t"}) -> !array.type<3,3 x !felt.type<"bn128">> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">

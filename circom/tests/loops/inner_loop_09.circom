@@ -22,7 +22,7 @@ template InnerLoops(N) {
 
 component main = InnerLoops(2);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerLoops::@InnerLoops<[2]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@InnerLoops::@InnerLoops<[2]>>} {
 // CHECK-NEXT:    poly.template @InnerLoops {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      struct.def @InnerLoops {

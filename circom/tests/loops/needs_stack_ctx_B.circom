@@ -36,7 +36,7 @@ template NeedsStackContext(a, b) {
 
 component main = NeedsStackContext(3, 2);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@NeedsStackContext::@NeedsStackContext<[3, 2]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@NeedsStackContext::@NeedsStackContext<[3, 2]>>} {
 // CHECK-NEXT:    poly.template @fun {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_arg1 : !poly.tvar<@T_arg1>

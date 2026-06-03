@@ -10,7 +10,7 @@ template A(nBits) {
 
 component main = A(32);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@A::@A<[32]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@A::@A<[32]>>} {
 // CHECK-NEXT:    poly.template @A {
 // CHECK-NEXT:      poly.param @nBits
 // CHECK-NEXT:      struct.def @A {

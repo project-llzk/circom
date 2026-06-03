@@ -18,7 +18,7 @@ template CallRetTest() {
 
 component main = CallRetTest();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@CallRetTest::@CallRetTest<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@CallRetTest::@CallRetTest<[]>>} {
 // CHECK-NEXT:    poly.template @sum {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>

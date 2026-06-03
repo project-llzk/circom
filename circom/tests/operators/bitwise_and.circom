@@ -14,7 +14,7 @@ template BitwiseAnd() {
 
 component main = BitwiseAnd();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BitwiseAnd::@BitwiseAnd<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@BitwiseAnd::@BitwiseAnd<[]>>} {
 // CHECK-NEXT:    poly.template @BitwiseAnd {
 // CHECK-NEXT:      struct.def @BitwiseAnd {
 // CHECK-NEXT:        struct.member @type : !felt.type<"bn128"> {llzk.pub}

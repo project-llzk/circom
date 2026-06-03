@@ -26,7 +26,7 @@ template Num2Bits(n) {
 component main = Num2Bits(3);
 
 // CHECK:       #[[$ATTR_0:[0-9a-zA-Z_\.]+]] = affine_map<(d0) -> (d0)>
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Num2Bits::@Num2Bits<[3]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Num2Bits::@Num2Bits<[3]>>} {
 // CHECK-NEXT:    poly.template @Inner {
 // CHECK-NEXT:      poly.param @i
 // CHECK-NEXT:      struct.def @Inner {

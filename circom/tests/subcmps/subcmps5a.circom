@@ -20,7 +20,7 @@ template SubCmp() {
 
 component main = SubCmp();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@SubCmp::@SubCmp<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@SubCmp::@SubCmp<[]>>} {
 // CHECK-NEXT:    poly.template @Nop {
 // CHECK-NEXT:      struct.def @Nop {
 // CHECK-NEXT:        struct.member @o : !felt.type<"bn128"> {llzk.pub}

@@ -29,7 +29,7 @@ template B(N){
 component main = B(1);
 
 // CHECK:       #[[$ATTR_0:[0-9a-zA-Z_\.]+]] = affine_map<(d0) -> (d0)>
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@B::@B<[1]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@B::@B<[1]>>} {
 // CHECK-NEXT:    poly.template @A {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      poly.param @M

@@ -17,7 +17,7 @@ template B() {
 
 component main = B();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@B_2::@B_2<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@B_2::@B_2<[]>>} {
 // CHECK-NEXT:    poly.template @A_0 {
 // CHECK-NEXT:      struct.def @A_0 {
 // CHECK-NEXT:        struct.member @x : !felt.type<"bn128"> {llzk.pub}

@@ -17,7 +17,7 @@ template SimpleVariantIdx(n) {
 
 component main = SimpleVariantIdx(3);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@SimpleVariantIdx::@SimpleVariantIdx<[3]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@SimpleVariantIdx::@SimpleVariantIdx<[3]>>} {
 // CHECK-NEXT:    poly.template @SimpleVariantIdx {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @SimpleVariantIdx {

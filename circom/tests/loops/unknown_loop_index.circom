@@ -68,7 +68,7 @@ template UnknownLoopIndex(y) {
 
 component main = UnknownLoopIndex(100);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@UnknownLoopIndex::@UnknownLoopIndex<[100]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@UnknownLoopIndex::@UnknownLoopIndex<[100]>>} {
 // CHECK-NEXT:    poly.template @CountDown {
 // CHECK-NEXT:      poly.param @x
 // CHECK-NEXT:      struct.def @CountDown {

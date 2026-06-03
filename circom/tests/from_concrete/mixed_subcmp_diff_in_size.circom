@@ -69,7 +69,7 @@ template BabyPbk() {
 
 component main = BabyPbk();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BabyPbk_4::@BabyPbk_4<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@BabyPbk_4::@BabyPbk_4<[]>>} {
 // CHECK-NEXT:    poly.template @BabyPbk_4 {
 // CHECK-NEXT:      struct.def @BabyPbk_4 {
 // CHECK-NEXT:        struct.member @mulFix : !struct.type<@EscalarMulFix_3::@EscalarMulFix_3<[]>>
