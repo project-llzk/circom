@@ -83,7 +83,7 @@ fn new_llzk_module<'ctx>(
     // Create the LLZK module, using the location of the main component declaration expression.
     let location =
         shared::location(context, program, *program.get_main_file_id(), main_info.file_location);
-    let mut ret = llzk::dialect::module::llzk_module(location);
+    let mut ret = llzk::dialect::module::llzk_module(location, Some("circom"));
     ret.as_operation_mut().set_attribute(
         MAIN_ATTR_NAME.as_ref(),
         TypeAttribute::new(
