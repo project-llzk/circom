@@ -15,7 +15,7 @@ template CmpGE(n) {
 
 component main = CmpGE(5);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@CmpGE::@CmpGE<[5]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@CmpGE::@CmpGE<[5]>>} {
 // CHECK-NEXT:    poly.template @CmpGE {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @CmpGE {

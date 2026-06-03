@@ -32,7 +32,7 @@ template InnerConditional9(N) {
 
 component main = InnerConditional9(4);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerConditional9::@InnerConditional9<[4]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@InnerConditional9::@InnerConditional9<[4]>>} {
 // CHECK-NEXT:    poly.template @InnerConditional9 {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      struct.def @InnerConditional9 {

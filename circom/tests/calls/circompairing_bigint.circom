@@ -36,7 +36,7 @@ template BigMod() {
 
 component main = BigMod();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BigMod::@BigMod<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@BigMod::@BigMod<[]>>} {
 // CHECK-NEXT:    poly.template @long_div {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_arg1 : !poly.tvar<@T_arg1>

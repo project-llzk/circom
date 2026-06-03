@@ -17,7 +17,7 @@ template VariantIndex(n) {
 
 component main = VariantIndex(2);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@VariantIndex::@VariantIndex<[2]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@VariantIndex::@VariantIndex<[2]>>} {
 // CHECK-NEXT:    poly.template @VariantIndex {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      poly.expr @"n_Mul_n@304" {

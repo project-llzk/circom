@@ -27,7 +27,7 @@ template KnownFunctionArgs() {
 
 component main = KnownFunctionArgs();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@KnownFunctionArgs::@KnownFunctionArgs<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@KnownFunctionArgs::@KnownFunctionArgs<[]>>} {
 // CHECK-NEXT:    poly.template @funWithLoop {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>

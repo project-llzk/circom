@@ -11,7 +11,7 @@ template ArithQuotient() {
 
 component main = ArithQuotient();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArithQuotient::@ArithQuotient<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ArithQuotient::@ArithQuotient<[]>>} {
 // CHECK-NEXT:    poly.template @ArithQuotient {
 // CHECK-NEXT:      struct.def @ArithQuotient {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}

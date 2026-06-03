@@ -13,7 +13,7 @@ template UnknownIndexStore() {
 
 component main = UnknownIndexStore();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@UnknownIndexStore::@UnknownIndexStore<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@UnknownIndexStore::@UnknownIndexStore<[]>>} {
 // CHECK-NEXT:    poly.template @UnknownIndexStore {
 // CHECK-NEXT:      struct.def @UnknownIndexStore {
 // CHECK-NEXT:        struct.member @out : !array.type<8 x !felt.type<"bn128">> {llzk.pub}

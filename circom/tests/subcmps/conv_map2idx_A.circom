@@ -21,7 +21,7 @@ template ComputeValue() {
 component main = ComputeValue();
 
 // CHECK:       #[[$ATTR_0:[0-9a-zA-Z_\.]+]] = affine_map<(d0) -> (d0)>
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ComputeValue::@ComputeValue<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ComputeValue::@ComputeValue<[]>>} {
 // CHECK-NEXT:    poly.template @ComputeValue {
 // CHECK-NEXT:      struct.def @ComputeValue {
 // CHECK-NEXT:        struct.member @getWeights : !array.type<2 x !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>>

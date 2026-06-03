@@ -19,7 +19,7 @@ template Simple4(a) {
 
 component main = Simple4(10);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Simple4::@Simple4<[10]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Simple4::@Simple4<[10]>>} {
 // CHECK-NEXT:    poly.template @Simple4 {
 // CHECK-NEXT:      poly.param @a
 // CHECK-NEXT:      struct.def @Simple4 {

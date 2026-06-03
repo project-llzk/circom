@@ -14,7 +14,7 @@ template ReadFromOutputWithFeltCast() {
 
 component main = ReadFromOutputWithFeltCast();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ReadFromOutputWithFeltCast::@ReadFromOutputWithFeltCast<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ReadFromOutputWithFeltCast::@ReadFromOutputWithFeltCast<[]>>} {
 // CHECK-NEXT:    poly.template @ReadFromOutputWithFeltCast {
 // CHECK-NEXT:      struct.def @ReadFromOutputWithFeltCast {
 // CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub}

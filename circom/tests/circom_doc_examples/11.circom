@@ -15,7 +15,7 @@ template T15() {
 
 component main = T15();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@T15::@T15<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@T15::@T15<[]>>} {
 // CHECK-NEXT:    poly.template @T15 {
 // CHECK-NEXT:      struct.def @T15 {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}

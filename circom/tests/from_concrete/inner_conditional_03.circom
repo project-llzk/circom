@@ -22,7 +22,7 @@ template InnerConditional3(N) {
 
 component main = InnerConditional3(3);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InnerConditional3_0::@InnerConditional3_0<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@InnerConditional3_0::@InnerConditional3_0<[]>>} {
 // CHECK-NEXT:    poly.template @InnerConditional3_0 {
 // CHECK-NEXT:      struct.def @InnerConditional3_0 {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}

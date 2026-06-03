@@ -23,7 +23,7 @@ component main = SubCmp();
 
 // This test is not 100% testable because array support is not complete.
 // Currently we only care about having the right type in the field definition.
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@SubCmp::@SubCmp<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@SubCmp::@SubCmp<[]>>} {
 // CHECK-NEXT:    poly.template @Nop {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @Nop {

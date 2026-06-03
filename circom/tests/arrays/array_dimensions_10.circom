@@ -11,7 +11,7 @@ template ArrayDims() {
 
 component main = ArrayDims();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArrayDims::@ArrayDims<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ArrayDims::@ArrayDims<[]>>} {
 // CHECK-NEXT:    poly.template @ArrayDims {
 // CHECK-NEXT:      poly.expr @"a[1]@307" {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = felt.const  123 : <"bn128">

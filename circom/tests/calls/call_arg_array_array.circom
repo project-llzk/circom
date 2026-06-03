@@ -18,7 +18,7 @@ template CallArgTest() {
 
 component main = CallArgTest();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@CallArgTest::@CallArgTest<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@CallArgTest::@CallArgTest<[]>>} {
 // CHECK-NEXT:    poly.template @sum {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_arg1 : !poly.tvar<@T_arg1>

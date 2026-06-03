@@ -39,7 +39,7 @@ template Outer() {
 
 component main = Outer();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Outer_2::@Outer_2<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Outer_2::@Outer_2<[]>>} {
 // CHECK-NEXT:    poly.template @Inner_0 {
 // CHECK-NEXT:      struct.def @Inner_0 {
 // CHECK-NEXT:        struct.member @out : !array.type<4 x !felt.type<"bn128">> {llzk.pub}

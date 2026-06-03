@@ -21,7 +21,7 @@ template EvilArrayDims(N, M) {
 
 component main = EvilArrayDims(7, 2);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@EvilArrayDims::@EvilArrayDims<[7, 2]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@EvilArrayDims::@EvilArrayDims<[7, 2]>>} {
 // CHECK-NEXT:    poly.template @EvilArrayDims {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      poly.param @M

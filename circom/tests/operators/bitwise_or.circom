@@ -14,7 +14,7 @@ template BitwiseOr() {
 
 component main = BitwiseOr();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BitwiseOr::@BitwiseOr<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@BitwiseOr::@BitwiseOr<[]>>} {
 // CHECK-NEXT:    poly.template @BitwiseOr {
 // CHECK-NEXT:      struct.def @BitwiseOr {
 // CHECK-NEXT:        struct.member @type : !felt.type<"bn128"> {llzk.pub}

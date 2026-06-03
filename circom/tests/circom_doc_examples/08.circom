@@ -15,7 +15,7 @@ template IsZero() {
 
 component main {public [in]}= IsZero();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@IsZero::@IsZero<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@IsZero::@IsZero<[]>>} {
 // CHECK-NEXT:    poly.template @IsZero {
 // CHECK-NEXT:      struct.def @IsZero {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}

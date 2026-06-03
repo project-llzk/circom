@@ -22,7 +22,7 @@ template NonZeroInit() {
 
 component main = NonZeroInit();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@NonZeroInit::@NonZeroInit<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@NonZeroInit::@NonZeroInit<[]>>} {
 // CHECK-NEXT:    poly.template @NonZeroInit {
 // CHECK-NEXT:      struct.def @NonZeroInit {
 // CHECK-NEXT:        struct.member @b : !array.type<9 x !felt.type<"bn128">> {llzk.pub}

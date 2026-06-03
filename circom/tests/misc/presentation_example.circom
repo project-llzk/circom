@@ -20,7 +20,7 @@ template ComputeValue() {
 
 component main = ComputeValue();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ComputeValue::@ComputeValue<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ComputeValue::@ComputeValue<[]>>} {
 // CHECK-NEXT:    poly.template @ComputeValue {
 // CHECK-NEXT:      struct.def @ComputeValue {
 // CHECK-NEXT:        struct.member @ret : !array.type<2 x !felt.type<"bn128">> {llzk.pub}

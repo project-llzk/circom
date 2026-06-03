@@ -15,7 +15,7 @@ template B(n){
 }
 component main = B(2);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@B::@B<[2]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@B::@B<[2]>>} {
 // CHECK-NEXT:    poly.template @A {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @A {

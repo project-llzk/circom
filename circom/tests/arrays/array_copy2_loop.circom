@@ -16,7 +16,7 @@ template Array2(n) {
 
 component main = Array2(5);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Array2::@Array2<[5]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Array2::@Array2<[5]>>} {
 // CHECK-NEXT:    poly.template @Array2 {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @Array2 {

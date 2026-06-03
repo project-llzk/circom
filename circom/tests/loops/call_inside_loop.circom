@@ -28,7 +28,7 @@ template CallInLoop(n, m) {
 
 component main = CallInLoop(2, 3);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@CallInLoop::@CallInLoop<[2, 3]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@CallInLoop::@CallInLoop<[2, 3]>>} {
 // CHECK-NEXT:    poly.template @fun {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_arg1 : !poly.tvar<@T_arg1>

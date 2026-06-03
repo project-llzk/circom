@@ -11,7 +11,7 @@ template ArrayDims(N, M) {
 
 component main = ArrayDims(7, 2);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ArrayDims::@ArrayDims<[7, 2]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ArrayDims::@ArrayDims<[7, 2]>>} {
 // CHECK-NEXT:    poly.template @ArrayDims {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      poly.param @M

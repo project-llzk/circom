@@ -12,7 +12,7 @@ template BitwiseShiftLeft() {
 
 component main = BitwiseShiftLeft();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@BitwiseShiftLeft::@BitwiseShiftLeft<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@BitwiseShiftLeft::@BitwiseShiftLeft<[]>>} {
 // CHECK-NEXT:    poly.template @BitwiseShiftLeft {
 // CHECK-NEXT:      struct.def @BitwiseShiftLeft {
 // CHECK-NEXT:        struct.member @type : !felt.type<"bn128"> {llzk.pub}

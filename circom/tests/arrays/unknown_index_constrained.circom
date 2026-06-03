@@ -66,7 +66,7 @@ template ForUnknownIndex(y) {
 
 component main = ForUnknownIndex(252);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@ForUnknownIndex::@ForUnknownIndex<[252]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ForUnknownIndex::@ForUnknownIndex<[252]>>} {
 // CHECK-NEXT:    poly.template @ForUnknownIndex {
 // CHECK-NEXT:      poly.param @y
 // CHECK-NEXT:      struct.def @ForUnknownIndex {

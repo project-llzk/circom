@@ -24,7 +24,7 @@ template InvalidArgIndex(n, k) {
 
 component main = InvalidArgIndex(3, 2);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@InvalidArgIndex::@InvalidArgIndex<[3, 2]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@InvalidArgIndex::@InvalidArgIndex<[3, 2]>>} {
 // CHECK-NEXT:    poly.template @InvalidArgIndex {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      poly.param @k

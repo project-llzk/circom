@@ -40,7 +40,7 @@ template Outer() {
 component main = Outer();
 
 // CHECK:       #[[$ATTR_0:[0-9a-zA-Z_\.]+]] = affine_map<(d0) -> (d0)>
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@Outer::@Outer<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Outer::@Outer<[]>>} {
 // CHECK-NEXT:    poly.template @Inner {
 // CHECK-NEXT:      poly.param @P
 // CHECK-NEXT:      struct.def @Inner {

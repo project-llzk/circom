@@ -18,7 +18,7 @@ template TestSetAllUnknownWithinUnknownCondition(k) {
 
 component main = TestSetAllUnknownWithinUnknownCondition(1);
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@TestSetAllUnknownWithinUnknownCondition::@TestSetAllUnknownWithinUnknownCondition<[1]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@TestSetAllUnknownWithinUnknownCondition::@TestSetAllUnknownWithinUnknownCondition<[1]>>} {
 // CHECK-NEXT:    poly.template @TestSetAllUnknownWithinUnknownCondition {
 // CHECK-NEXT:      poly.param @k
 // CHECK-NEXT:      struct.def @TestSetAllUnknownWithinUnknownCondition {

@@ -103,7 +103,7 @@ template IsNegative() {
 
 component main = IsNegative();
 
-// CHECK-LABEL: module attributes {llzk.lang, llzk.main = !struct.type<@IsNegative::@IsNegative<[]>>} {
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@IsNegative::@IsNegative<[]>>} {
 // CHECK-NEXT:    poly.template @CompConstant {
 // CHECK-NEXT:      poly.param @ct
 // CHECK-NEXT:      struct.def @CompConstant {
