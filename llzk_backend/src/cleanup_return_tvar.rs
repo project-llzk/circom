@@ -114,7 +114,7 @@ fn remove_generated_tvar_param(template: TemplateOpRef<'_, '_>, name: &str) -> R
 fn wrap_call_in_synthetic_template<'ctx>(
     codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     call_op: CallOpRef<'ctx, '_>,
-) -> Result<()> {
+) -> Result<mlir_sys::MlirOperation> {
     let location = call_op.location();
     let operand_types: Vec<_> = call_op.operands().map(|v| v.r#type()).collect();
 
@@ -125,7 +125,7 @@ fn wrap_call_in_synthetic_template<'ctx>(
     let func_type = FunctionType::new(codegen.context, &operand_types, &[]);
     let func_def = function::def(location, UNUSED_CALL_RESULT_WRAPPER_NAME, func_type, &[], None)?;
     func_def.set_allow_non_native_field_ops_attr(true);
-    {
+    let inner_call = {
         let arg_locs: Vec<_> = operand_types.iter().map(|&t| (t, location)).collect();
         let block = func_def.region(0)?.append_block(Block::new(&arg_locs));
         let block_args = (0..operand_types.len())
@@ -141,11 +141,12 @@ fn wrap_call_in_synthetic_template<'ctx>(
             &block_args,
             &[synthetic_tvar_type],
         )?;
-        block.append_operation(inner_call.into());
+        let inner_call = block.append_operation(inner_call.into());
 
         // The result of the inner call is discarded; return void.
         block.append_operation(function::r#return(location, &[]));
-    } // block and block_args dropped here, releasing the borrow on func_def
+        inner_call.to_raw()
+    }; // block and block_args dropped here, releasing the borrow on func_def
 
     // Build poly.param @T_return : !poly.tvar<@T_return>.
     let param_op = poly::param(location, function_return_type_param(), Some(synthetic_tvar_type))?;
@@ -185,7 +186,7 @@ fn wrap_call_in_synthetic_template<'ctx>(
         .block()
         .ok_or_else(|| anyhow::anyhow!("function.call at {location} has no parent block"))?;
     call_block.insert_operation_before(call_op.into(), replacement.into());
-    Ok(())
+    Ok(inner_call)
 }
 
 /// Specializes the result type of a `function.call` operation from its inferred concrete type.
@@ -198,7 +199,7 @@ fn specialize_call_result_type<'ctx>(
     call_op: CallOpRef<'ctx, '_>,
     old_result: OperationResult<'ctx, '_>,
     use_type: Type<'ctx>,
-) -> Result<()> {
+) -> Result<mlir_sys::MlirOperation> {
     let callee = call_op.callee()?;
     let operands: Vec<_> = call_op.operands().collect();
     let location = call_op.location();
@@ -209,6 +210,7 @@ fn specialize_call_result_type<'ctx>(
         call_op.into(),
         function::call(codegen.op_builder(), location, callee, &operands, &[use_type])?.into(),
     );
+    let new_call_raw = new_call.to_raw();
     let new_result = Value::from(new_call.result(0)?);
     replace_all_uses(Value::from(old_result), new_result);
 
@@ -236,7 +238,7 @@ fn specialize_call_result_type<'ctx>(
             shared::remove_from_parent(&mut unsafe { OperationRefMut::from_raw(op.to_raw()) });
     }
 
-    Ok(())
+    Ok(new_call_raw)
 }
 
 /// Count the number of `poly.param` ops that are direct children of the `poly.template` with the
@@ -268,63 +270,57 @@ pub(crate) fn specialize_tvar_function_calls<'ctx>(
         codegen.dump_module();
     }
 
+    // All `CallOpRef` within the module body.
     let mut calls = Vec::new();
     walk_from_block(
         codegen.module.body(),
         WalkCallbacks::for_ops(|op| {
-            if function::is_func_call(&op)
-                && op.result_count() == 1
-                && poly::is_type_variable(op.result(0).expect("result exists").r#type())
-            {
+            if function::is_func_call(&op) {
                 calls.push(op.to_raw());
             }
         }),
     );
-
-    for raw_call in calls {
-        let call_op = unsafe { CallOpRef::from_raw(raw_call) };
-        let old_result = call_op.result(0)?;
-        // Generate a new call with the inferred type from user(s) of the call result
-        // or a new call to a synthetic wrapper function if there are no users.
-        match infer_type_from_unifiable_cast_uses(call_op)? {
-            Some(use_type) => {
-                specialize_call_result_type(codegen, call_op, old_result, use_type)?;
-            }
-            None => {
-                wrap_call_in_synthetic_template(codegen, call_op)?;
-            }
+    for raw_call in &mut calls {
+        let call_op = unsafe { CallOpRef::from_raw(*raw_call) };
+        if call_op.result_count() != 1 {
+            continue;
         }
-        // Remove the old op and type variable param.
-        let tvar_name = poly::TVarType::try_from(old_result.r#type())?.name().as_str()?.to_owned();
-        let template = parent_template(&call_op)?;
-        remove_generated_tvar_param(template, &tvar_name)?;
-        let _drop = shared::remove_from_parent(&mut unsafe { OperationRefMut::from_raw(raw_call) });
+        let call_result = call_op.result(0)?;
+        if let Ok(result_tvar) = poly::TVarType::try_from(call_result.r#type()) {
+            // Generate a new call with the inferred type from user(s) of the call result
+            // or a new call to a synthetic wrapper function if there are no users.
+            let rewritten_call = match infer_type_from_unifiable_cast_uses(call_op)? {
+                Some(use_type) => {
+                    specialize_call_result_type(codegen, call_op, call_result, use_type)?
+                }
+                None => wrap_call_in_synthetic_template(codegen, call_op)?,
+            };
+            // Remove the old op and type variable param.
+            let tvar_name = result_tvar.name().as_str()?.to_owned();
+            let template = parent_template(&call_op)?;
+            remove_generated_tvar_param(template, &tvar_name)?;
+            let _drop =
+                shared::remove_from_parent(&mut unsafe { OperationRefMut::from_raw(*raw_call) });
+            // Replace the deleted call op with the new one in the `calls` vector.
+            *raw_call = rewritten_call;
+        }
     }
 
     // Second pass: set `templateParams` on circom function calls whose callee template has more
-    // `poly.param` ops than the default (#args + #results). In the normal case the first pass
+    // `poly.param` ops than the default (#args + #results). In the normal case, the first pass
     // above removes all temporary tvar params (e.g. `$t_0`) from every callee template, leaving
     // the count equal to the default and making this pass a no-op. This pass exists as a safety
     // net for any edge case where extra params survive. Only `function.call` ops with exactly one
     // nested callee reference are considered — the `@f::@f` style used for circom function calls,
     // as opposed to struct method calls like `@T::@T::@compute` which have two nested refs.
-    let mut circom_func_calls = Vec::new();
-    walk_from_block(
-        codegen.module.body(),
-        WalkCallbacks::for_ops(|op| {
-            if let Ok(callee) = CallOpRef::try_from(op).and_then(|c| c.callee()) {
-                if callee.nested().len() == 1 {
-                    circom_func_calls.push(op.to_raw());
-                }
-            }
-        }),
-    );
-
-    for raw_call in circom_func_calls {
+    for raw_call in calls {
         let call_op = unsafe { CallOpRef::from_raw(raw_call) };
-        let callee = call_op.callee()?;
-        // For `@f::@f`, `nested()[0]` is the function/template name within the module.
-        let func_name = callee.nested()[0].value();
+        let callee_path = call_op.callee()?.nested();
+        if callee_path.len() != 1 {
+            continue;
+        }
+        // For `@f::@f`, `callee_path[0]` is the function/template name within the module.
+        let func_name = callee_path[0].value();
         if let Some(param_count) = count_poly_params_in_callee_template(codegen, func_name) {
             // When the verifier sees a `function.call` without an explicit `templateParams`
             // attribute it assumes the callee has exactly (#args + #results) params. Only set
