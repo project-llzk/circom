@@ -8,10 +8,12 @@ use crate::function_ext::FunctionLike;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::map_name_to_arg_value;
-use crate::shared::ArrayDimensionResult;
-use crate::shared::DimExprConverter;
+use crate::shared::ArrayDimExprKind;
+use crate::shared::ExprToPolyBinding;
+use crate::shared::ExprToPolyBindingOutput;
 use crate::shared::LlzkCodegen;
 use crate::shared::PendingPolyBindings;
+use crate::shared::StructTemplateParamExprKind;
 use crate::shared::TmplParamsInstance;
 use crate::subcmp::unique_instance_types;
 use crate::subcmp::MixedSubcmpEntry;
@@ -256,7 +258,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     /// Recursively descends into all nested statements so that declarations inside `if/else`
     /// branches and loops are discovered. The [`LlzkCodegen::statement_trace`] (pushed via
     /// [`LlzkCodegen::trace_statement`] at the top of each call) records the nesting context so
-    /// that [`DimExprConverter::gen_template_poly_expr`] can correctly scope the dimension
+    /// that [`ExprToPolyBinding::gen_template_poly_expr`] can correctly scope the dimension
     /// expressions for those declarations.
     fn visit(
         &mut self,
@@ -317,7 +319,8 @@ impl<'ctx> DeclarationInfo<'ctx> {
                     VariableType::Var => {
                         // Create `llzk.nondet` of the appropriate type. When the actual assignment
                         // is processed later, this is replaced with the appropriate value.
-                        let dimensions = self.get_dim_exprs(codegen, dimensions)?;
+                        let dimensions =
+                            self.get_poly_bindings::<ArrayDimExprKind>(codegen, dimensions)?;
                         let var_type =
                             dimensions.type_from_dimension_exprs(codegen.felt_type().into());
                         // Key by source position so the same name in different scopes
@@ -366,8 +369,8 @@ impl<'ctx> DeclarationInfo<'ctx> {
     ) -> Result<StructType<'ctx>> {
         match expression {
             Expression::Call { meta, id, args, .. } if meta.get_type_knowledge().is_component() => {
-                let dims = self.get_dim_exprs(codegen, args)?;
-                Ok(dims.struct_type_with_concrete_dimensions(codegen, id))
+                let dims = self.get_poly_bindings::<StructTemplateParamExprKind>(codegen, args)?;
+                Ok(dims.struct_type_with_concrete_params(codegen, id))
             }
             Expression::ParallelOp { rhe, .. } => {
                 // `parallel` is a tag used to generate parallelized code for the C++
@@ -388,7 +391,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
         dimensions: &[Expression],
     ) -> Result<()> {
         let location = codegen.location_from_meta(meta);
-        let dims = self.get_dim_exprs(codegen, dimensions)?;
+        let dims = self.get_poly_bindings::<ArrayDimExprKind>(codegen, dimensions)?;
         if self
             .subcmp_decls
             .insert(name.to_owned(), SubcmpDeclInfo::new(dims.attrs(), location))
@@ -411,7 +414,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
         base_type: Type<'ctx>,
     ) -> Result<()> {
         let location = codegen.location_from_meta(meta);
-        let dims = self.get_dim_exprs(codegen, dimensions)?;
+        let dims = self.get_poly_bindings::<ArrayDimExprKind>(codegen, dimensions)?;
         let decl_type = dims.type_from_dimension_exprs(base_type);
         self.visit_signal_or_bus_impl(codegen, signal_type, name, location, decl_type)
     }
@@ -502,7 +505,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     }
 }
 
-impl<'ctx, 'val> DimExprConverter<'ctx, 'val> for DeclarationInfo<'ctx>
+impl<'ctx, 'val> ExprToPolyBinding<'ctx, 'val> for DeclarationInfo<'ctx>
 where
     'ctx: 'val,
 {
@@ -516,28 +519,28 @@ where
         self.template_params.iter().map(|name| (name.clone(), None))
     }
 
-    fn get_dim_expr(
+    fn get_poly_binding<K: crate::shared::ExprToPolyBindingKind<'ctx, 'val>>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         expr: &Expression,
-    ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
+    ) -> Result<ExprToPolyBindingOutput<'ctx, 'val, K>> {
         // First try to compute statically, falling back to literal computation if all values are
         // not compile-time constants or if the final result does not properly convert to i64.
         if let Some(integer) = shared::try_compute_as_i64(expr, codegen.prime())? {
-            ArrayDimensionResult::new(codegen.index_attr(integer).into(), &[])
+            ExprToPolyBindingOutput::<K>::new(codegen.index_attr(integer).into(), &[])
         } else {
             match expr {
                 Expression::Variable { name, access, .. } if access.is_empty() => {
                     if self.template_params.contains(name) {
-                        ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
+                        ExprToPolyBindingOutput::<K>::new(codegen.flat_sym(name).into(), &[])
                     } else if codegen.binding_insert_strategy().unwrap().contains_name(name) {
                         // This is a `Statement::Declaration` with `VariableType::Var` that was
                         // previously encountered and converted into a `poly.expr`.
-                        ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
+                        ExprToPolyBindingOutput::<K>::new(codegen.flat_sym(name).into(), &[])
                     } else if self.declared_var_names.contains(name) {
                         // This is a `Statement::Declaration` with `VariableType::Var` that is
                         // encountered for the first time and must have a `poly.expr` generated.
-                        self.gen_template_poly_expr(codegen, expr)
+                        self.gen_template_poly_expr::<K>(codegen, expr)
                     } else {
                         unreachable!("[DeclarationInfo::visit] traversed all statements")
                     }
@@ -548,7 +551,7 @@ where
                 | Expression::InlineSwitchOp { .. }
                 | Expression::PrefixOp { .. }
                 | Expression::InfixOp { .. }
-                | Expression::Call { .. } => self.gen_template_poly_expr(codegen, expr),
+                | Expression::Call { .. } => self.gen_template_poly_expr::<K>(codegen, expr),
                 // The remaining cases do not produce a scalar value.
                 // i.e. ParallelOp, ArrayInLine, UniformArray, BusCall, AnonymousComp, Tuple
                 // Give the same error that the circom type checker gives. The type checker ran

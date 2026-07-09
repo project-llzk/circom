@@ -18,14 +18,15 @@ use crate::program_ext::ProgramInfo;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::comp_type;
-use crate::shared::dim_expr_name;
 use crate::shared::map_array_inner_type;
 use crate::shared::wrap_pod_records;
+use crate::shared::ArrayDimExprKind;
 use crate::shared::ArrayDimension;
-use crate::shared::ArrayDimensionResult;
-use crate::shared::ArrayDimensions;
-use crate::shared::DimExprConverter;
+use crate::shared::ExprToPolyBinding;
+use crate::shared::ExprToPolyBindingOutput;
 use crate::shared::LlzkCodegen;
+use crate::shared::StructTemplateParamExprKind;
+use crate::shared::StructTemplateParams;
 use crate::subcmp::names::COMP;
 use crate::subcmp::MixedSubcmpLayout;
 use crate::subcmp::SubcmpBinding;
@@ -847,7 +848,7 @@ where
     }
 }
 
-impl<'decls, 'ctx, 'func, 'blk, 'val, 'str> DimExprConverter<'ctx, 'val>
+impl<'decls, 'ctx, 'func, 'blk, 'val, 'str> ExprToPolyBinding<'ctx, 'val>
     for TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>
 where
     'ctx: 'str,
@@ -868,39 +869,42 @@ where
             .map(|binding| (binding.sym_name().to_owned(), binding.type_opt()))
     }
 
-    fn get_dim_expr(
+    fn get_poly_binding<K: crate::shared::ExprToPolyBindingKind<'ctx, 'val>>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         expr: &Expression,
-    ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
+    ) -> Result<ExprToPolyBindingOutput<'ctx, 'val, K>> {
         // First try to compute statically, falling back to literal computation if all values are
         // not compile-time constants or if the final result does not properly convert to i64.
         if let Some(integer) = shared::try_compute_as_i64(expr, codegen.prime())? {
-            ArrayDimensionResult::new(codegen.index_attr(integer).into(), &[])
+            ExprToPolyBindingOutput::<K>::new(codegen.index_attr(integer).into(), &[])
         } else {
             match expr {
                 Expression::Number(_, _) => {
-                    let expr_name = dim_expr_name(expr);
+                    let expr_name = K::expr_name(expr);
                     if self.template_def.has_const_expr_named(&expr_name) {
                         // Return the const expr representing the constant value.
-                        ArrayDimensionResult::new(codegen.flat_sym(expr_name).into(), &[])
+                        ExprToPolyBindingOutput::<K>::new(codegen.flat_sym(expr_name).into(), &[])
                     } else {
                         // Generate it otherwise.
-                        self.gen_template_poly_expr(codegen, expr)
+                        self.gen_template_poly_expr::<K>(codegen, expr)
                     }
                 }
                 Expression::Variable { meta, name, access } if access.is_empty() => {
                     // Grab the template symbol binding name if it exists (first try `poly.param`
                     // name then try `poly.expr` name). Otherwise, defer to `BlockGenContext`.
                     if self.template_def.has_const_param_named(name) {
-                        ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
+                        ExprToPolyBindingOutput::<K>::new(codegen.flat_sym(name).into(), &[])
                     } else {
-                        let expr_name = dim_expr_name(expr);
+                        let expr_name = K::expr_name(expr);
                         if self.template_def.has_const_expr_named(&expr_name) {
-                            ArrayDimensionResult::new(codegen.flat_sym(expr_name).into(), &[])
+                            ExprToPolyBindingOutput::<K>::new(
+                                codegen.flat_sym(expr_name).into(),
+                                &[],
+                            )
                         } else {
                             // Return an identity affine map instead.
-                            ArrayDimensionResult::new(
+                            ExprToPolyBindingOutput::<K>::new(
                                 AffineMapAttribute::identity(codegen.context, 1).into(),
                                 &[],
                             )
@@ -913,13 +917,13 @@ where
                 | Expression::PrefixOp { .. }
                 | Expression::InfixOp { .. }
                 | Expression::Call { .. } => {
-                    let expr_name = dim_expr_name(expr);
+                    let expr_name = K::expr_name(expr);
                     if self.template_def.has_const_expr_named(&expr_name) {
                         // Return the const expr representing the constant value.
-                        ArrayDimensionResult::new(codegen.flat_sym(expr_name).into(), &[])
+                        ExprToPolyBindingOutput::<K>::new(codegen.flat_sym(expr_name).into(), &[])
                     } else {
                         // Generate it otherwise.
-                        self.gen_template_poly_expr(codegen, expr)
+                        self.gen_template_poly_expr::<K>(codegen, expr)
                     }
                 }
 
@@ -1483,14 +1487,15 @@ where
             }
             Expression::UniformArray { meta, value, dimension } => {
                 let location = codegen.location_from_meta(meta);
-                let template_dim_res = template.get_dim_expr(codegen, dimension)?;
+                let template_dim_res =
+                    template.get_poly_binding::<ArrayDimExprKind>(codegen, dimension)?;
                 let value = value.gen_llzk_in_template(codegen, template)?;
                 value.and_then_same(|fc, value| {
                     // Try to convert in template first, defer to function context if unsuccessful.
                     let final_dim = match &template_dim_res {
-                        ArrayDimensionResult::Computed(array_dimension) => array_dimension,
-                        ArrayDimensionResult::InsufficientData => &fc
-                            .get_dim_expr(codegen, dimension)
+                        ExprToPolyBindingOutput::Computed(array_dimension) => array_dimension,
+                        ExprToPolyBindingOutput::InsufficientData => &fc
+                            .get_poly_binding::<ArrayDimExprKind>(codegen, dimension)
                             .and_then(ArrayDimension::try_from)?,
                     };
                     fc.generate_uniform_array(codegen, location, value, final_dim)
@@ -1506,15 +1511,15 @@ where
 
 /// Groups the related data for emitting IR for subcomponent constructor calls.
 ///
-/// Exposes helper functions for emitting the common parts of the IR between the `compute` and
-/// `constrain` functions.
-struct CtorCallScope<'ast, 'ctx, 'val, 'info> {
+/// Exposes helper functions for emitting the common parts of the IR between the
+/// `compute` and `constrain` functions.
+struct CtorCallScope<'ast, 'ctx, 'info> {
     /// Name of the subcomponent's template
     id: &'ast str,
     /// Source location.
     location: Location<'ctx>,
-    /// Dimensions derived from the template parameters.
-    dimensions: ArrayDimensions<'ctx, 'val>,
+    /// Struct template parameters derived from the constructor arguments.
+    params: StructTemplateParams<'ctx>,
     /// Type of the subcomponent.
     subcmp_type: SubcmpType<'ctx>,
     /// Subcomponent memory pod type.
@@ -1525,7 +1530,7 @@ struct CtorCallScope<'ast, 'ctx, 'val, 'info> {
     info: InfoProviders<'info, 'ctx>,
 }
 
-impl<'ast, 'ctx, 'val, 'info> CtorCallScope<'ast, 'ctx, 'val, 'info> {
+impl<'ast, 'ctx, 'val, 'info> CtorCallScope<'ast, 'ctx, 'info> {
     /// Creates a new scope.
     fn new(
         meta: &'ast Meta,
@@ -1535,13 +1540,13 @@ impl<'ast, 'ctx, 'val, 'info> CtorCallScope<'ast, 'ctx, 'val, 'info> {
         template: &'info TemplateContext<'_, 'ctx, '_, '_, '_, 'val>,
     ) -> Result<Self> {
         let location = codegen.location_from_meta(meta);
-        let dimensions = template.get_dim_exprs(codegen, args)?;
-        let subcmp_struct_type = dimensions.struct_type_with_concrete_dimensions(codegen, id);
+        let params = template.get_poly_bindings::<StructTemplateParamExprKind>(codegen, args)?;
+        let subcmp_struct_type = params.struct_type_with_concrete_params(codegen, id);
         let subcmp_type = SubcmpType::new(subcmp_struct_type.into(), id.to_owned());
 
         let records = subcmp_type.comp_pod_records(codegen);
         let pod_type = codegen.pod_type(&records);
-        Ok(Self { id, location, dimensions, subcmp_type, pod_type, args, info: template.into() })
+        Ok(Self { id, location, params, subcmp_type, pod_type, args, info: template.into() })
     }
 
     /// Returns the list of names associated to the template parameters.
@@ -1588,15 +1593,12 @@ impl<'ast, 'ctx, 'val, 'info> CtorCallScope<'ast, 'ctx, 'val, 'info> {
         fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
         map_operands: &mut Vec<OwningValueRange<'ctx, 'val>>,
     ) -> Result<Vec<RecordValue<'ctx, 'val>>> {
-        std::iter::zip(
-            self.params_formals(codegen),
-            std::iter::zip(self.dimensions.attrs(), self.args),
-        )
-        .map(|(formal, (attr, expr))| {
-            let value = self.emit_param_op(attr, expr, codegen, fc, map_operands)?;
-            Ok(RecordValue::new(StringRef::new(formal), value))
-        })
-        .collect()
+        std::iter::zip(self.params_formals(codegen), std::iter::zip(self.params.attrs(), self.args))
+            .map(|(formal, (attr, expr))| {
+                let value = self.emit_param_op(attr, expr, codegen, fc, map_operands)?;
+                Ok(RecordValue::new(StringRef::new(formal), value))
+            })
+            .collect()
     }
 
     /// Shared parts between the constraint and compute functions when emitting IR for subcomponent

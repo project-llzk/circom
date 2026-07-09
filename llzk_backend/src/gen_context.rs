@@ -7,7 +7,6 @@ use crate::lvalue::Root;
 use crate::program_ext::ProgramLike;
 use crate::shared;
 use crate::shared::append_tail;
-use crate::shared::dim_expr_name;
 use crate::shared::is_bool;
 use crate::shared::is_index;
 use crate::shared::new_array_type;
@@ -15,9 +14,10 @@ use crate::shared::new_region_and_block;
 use crate::shared::no_results;
 use crate::shared::replace_uses_with_new_block_argument;
 use crate::shared::single_result_as_value;
+use crate::shared::ArrayDimExprKind;
 use crate::shared::ArrayDimension;
-use crate::shared::ArrayDimensionResult;
-use crate::shared::DimExprConverter;
+use crate::shared::ExprToPolyBinding;
+use crate::shared::ExprToPolyBindingOutput;
 use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COUNT;
 use anyhow::anyhow;
@@ -2404,7 +2404,7 @@ where
         let dims = if mk.has_concrete_dimensions() {
             (mk.get_concrete_dimensions(), codegen).try_into()?
         } else {
-            self.get_dim_exprs(codegen, dimensions)?
+            self.get_poly_bindings::<ArrayDimExprKind>(codegen, dimensions)?
         };
         if codegen.config.verbose {
             println!("Declaring variable '{name}' with dimensions {dims:?}");
@@ -2414,7 +2414,7 @@ where
     }
 
     /// Add a new polymorphic parameter with `poly.tvar` type via
-    /// [`DimExprConverter::record_new_sym_binding`] and return the uniqued symbol name.
+    /// [`ExprToPolyBinding::record_new_sym_binding`] and return the uniqued symbol name.
     pub fn add_new_tvar_poly_param(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
@@ -2436,7 +2436,7 @@ where
     }
 }
 
-impl<'ctx, 'blk, 'val> DimExprConverter<'ctx, 'val> for BlockGenContext<'_, 'ctx, 'blk, 'val>
+impl<'ctx, 'blk, 'val> ExprToPolyBinding<'ctx, 'val> for BlockGenContext<'_, 'ctx, 'blk, 'val>
 where
     'ctx: 'blk,
     'blk: 'val,
@@ -2453,31 +2453,31 @@ where
     ) -> StringAttribute<'ctx> {
         let type_opt = op.type_opt();
         let name = codegen.binding_insert_strategy().unwrap().store(codegen, op, on_insert);
-        // Record the name+type so future calls to `get_dim_expr` can resolve it as a known
+        // Record the name+type so future calls to `get_poly_binding` can resolve it as a known
         // poly binding (rather than trying to look it up as a runtime SSA value).
         self.poly_template_binding_names.borrow_mut().insert(name.value().to_string(), type_opt);
         name
     }
 
-    fn get_dim_expr(
+    fn get_poly_binding<K: crate::shared::ExprToPolyBindingKind<'ctx, 'val>>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         expr: &Expression,
-    ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
+    ) -> Result<ExprToPolyBindingOutput<'ctx, 'val, K>> {
         // First try to compute statically, falling back to literal computation if all values are
         // not compile-time constants or if the final result does not properly convert to i64.
         if let Some(integer) = shared::try_compute_as_i64(expr, codegen.prime())? {
-            ArrayDimensionResult::new(codegen.index_attr(integer).into(), &[])
+            ExprToPolyBindingOutput::<K>::new(codegen.index_attr(integer).into(), &[])
         } else {
             match expr {
                 Expression::Number(_, _) => {
-                    let expr_name = dim_expr_name(expr);
+                    let expr_name = K::expr_name(expr);
                     if self.poly_template_binding_names.borrow().contains_key(&expr_name) {
                         // Return the const expr representing the constant value.
-                        ArrayDimensionResult::new(codegen.flat_sym(expr_name).into(), &[])
+                        ExprToPolyBindingOutput::<K>::new(codegen.flat_sym(expr_name).into(), &[])
                     } else {
                         // Generate it otherwise.
-                        self.gen_template_poly_expr(codegen, expr)
+                        self.gen_template_poly_expr::<K>(codegen, expr)
                     }
                 }
                 Expression::Variable { meta, name, access } if access.is_empty() => {
@@ -2485,13 +2485,16 @@ where
                     // name then try `poly.expr` name). Otherwise, use `affine_map` to convert Value
                     // to Attribute.
                     if self.poly_template_binding_names.borrow().contains_key(name) {
-                        ArrayDimensionResult::new(codegen.flat_sym(name).into(), &[])
+                        ExprToPolyBindingOutput::<K>::new(codegen.flat_sym(name).into(), &[])
                     } else {
-                        let expr_name = dim_expr_name(expr);
+                        let expr_name = K::expr_name(expr);
                         if self.poly_template_binding_names.borrow().contains_key(&expr_name) {
-                            ArrayDimensionResult::new(codegen.flat_sym(expr_name).into(), &[])
+                            ExprToPolyBindingOutput::<K>::new(
+                                codegen.flat_sym(expr_name).into(),
+                                &[],
+                            )
                         } else if let Ok(v) = self.block_ctx.get_named_value(name) {
-                            ArrayDimensionResult::new(
+                            ExprToPolyBindingOutput::<K>::new(
                                 AffineMapAttribute::identity(codegen.context, 1).into(),
                                 &[*v],
                             )
@@ -2506,13 +2509,13 @@ where
                 | Expression::PrefixOp { .. }
                 | Expression::InfixOp { .. }
                 | Expression::Call { .. } => {
-                    let expr_name = dim_expr_name(expr);
+                    let expr_name = K::expr_name(expr);
                     if self.poly_template_binding_names.borrow().contains_key(&expr_name) {
                         // Return the const expr representing the constant value.
-                        ArrayDimensionResult::new(codegen.flat_sym(expr_name).into(), &[])
+                        ExprToPolyBindingOutput::<K>::new(codegen.flat_sym(expr_name).into(), &[])
                     } else {
                         // Generate it otherwise.
-                        self.gen_template_poly_expr(codegen, expr)
+                        self.gen_template_poly_expr::<K>(codegen, expr)
                     }
                 }
                 // The remaining cases do not produce a scalar value.
@@ -2697,7 +2700,7 @@ where
                 // Multi-dimensional arrays are made up of array values as their elements
                 let value = value.gen_llzk_in_block(codegen, block_gen, info)?;
                 let dim = block_gen
-                    .get_dim_expr(codegen, dimension)
+                    .get_poly_binding::<ArrayDimExprKind>(codegen, dimension)
                     .and_then(ArrayDimension::try_from)?;
                 block_gen.generate_uniform_array(codegen, location, value, &dim)
             }
