@@ -77,7 +77,8 @@ component main {public [in]} = MultiplierN(3);
 // CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.sub %[[VAL_10]], %[[VAL_9]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:        poly.yield %[[VAL_11]] : !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_X:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_11]] : !felt.type<"bn128">
+// CHECK-NEXT:        poly.yield %[[VAL_X]] : index
 // CHECK-NEXT:      }
 // CHECK-NEXT:      struct.def @MultiplierN {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
@@ -86,11 +87,10 @@ component main {public [in]} = MultiplierN(3);
 // CHECK-NEXT:        function.def @compute(%[[VAL_12:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type<"bn128">> {function.arg_name = "in", llzk.pub}) -> !struct.type<@MultiplierN::@MultiplierN<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.new : <@MultiplierN::@MultiplierN<[@N]>>
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Sub_1@859" : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Sub_1@859" : index
 // CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = array.new  : <@"N_Sub_1@859" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>
 // CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Sub_1@859" : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_18]] : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Sub_1@859" : index
 // CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:          scf.for %[[VAL_22:[0-9a-zA-Z_\.]+]] = %[[VAL_20]] to %[[VAL_19]] step %[[VAL_21]] {
@@ -277,8 +277,7 @@ component main {public [in]} = MultiplierN(3);
 // CHECK-NEXT:          struct.writem %[[VAL_13]][@out] = %[[VAL_167]] : <@MultiplierN::@MultiplierN<[@N]>>, !felt.type<"bn128">
 // CHECK-NEXT:          struct.writem %[[VAL_13]][@comp$inputs] = %[[VAL_90]]#0 : <@MultiplierN::@MultiplierN<[@N]>>, !array.type<@"N_Sub_1@859" x !pod.type<[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>>
 // CHECK-NEXT:          %[[VAL_168:[0-9a-zA-Z_\.]+]] = array.new  : <@"N_Sub_1@859" x !struct.type<@Multiplier2::@Multiplier2<[]>>>
-// CHECK-NEXT:          %[[VAL_169:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Sub_1@859" : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_170:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_169]] : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_170:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Sub_1@859" : index
 // CHECK-NEXT:          %[[VAL_171:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:          %[[VAL_172:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:          scf.for %[[VAL_173:[0-9a-zA-Z_\.]+]] = %[[VAL_171]] to %[[VAL_170]] step %[[VAL_172]] {
@@ -291,7 +290,7 @@ component main {public [in]} = MultiplierN(3);
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_176:[0-9a-zA-Z_\.]+]]: !struct.type<@MultiplierN::@MultiplierN<[@N]>>, %[[VAL_177:[0-9a-zA-Z_\.]+]]: !array.type<@N x !felt.type<"bn128">> {function.arg_name = "in", llzk.pub}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_178:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_179:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Sub_1@859" : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_179:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Sub_1@859" : index
 // CHECK-NEXT:          %[[VAL_180:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_176]][@out] : <@MultiplierN::@MultiplierN<[@N]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_181:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_176]][@comp] : <@MultiplierN::@MultiplierN<[@N]>>, !array.type<@"N_Sub_1@859" x !struct.type<@Multiplier2::@Multiplier2<[]>>>
 // CHECK-NEXT:          %[[VAL_182:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_176]][@comp$inputs] : <@MultiplierN::@MultiplierN<[@N]>>, !array.type<@"N_Sub_1@859" x !pod.type<[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>>
@@ -362,8 +361,7 @@ component main {public [in]} = MultiplierN(3);
 // CHECK-NEXT:          %[[VAL_237:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_181]]{{\[}}%[[VAL_236]]] : <@"N_Sub_1@859" x !struct.type<@Multiplier2::@Multiplier2<[]>>>, !struct.type<@Multiplier2::@Multiplier2<[]>>
 // CHECK-NEXT:          %[[VAL_238:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_237]][@out] : <@Multiplier2::@Multiplier2<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_180]], %[[VAL_238]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_239:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Sub_1@859" : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_240:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_239]] : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_240:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Sub_1@859" : index
 // CHECK-NEXT:          %[[VAL_241:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:          %[[VAL_242:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:          scf.for %[[VAL_243:[0-9a-zA-Z_\.]+]] = %[[VAL_241]] to %[[VAL_240]] step %[[VAL_242]] {

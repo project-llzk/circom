@@ -283,7 +283,7 @@ pub struct LlzkCodegen<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> {
     /// Body of the circom function or template currently being processed.
     current_body: Cell<Option<&'ast [Statement]>>,
     /// Current [`Statement`] (or stack thereof when within an `IfThenElse` or `While`) being
-    /// visited and/or translated. Used by [`DimExprConverter::gen_template_poly_expr`] to
+    /// visited and/or translated. Used by [`ExprToPolyBinding::gen_template_poly_expr`] to
     /// replicate the body into the `poly.expr` initializer up to the current position so all
     /// variable assignments that contribute to the target expression will be computed.
     ///
@@ -657,8 +657,8 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     /// Push `stmt` onto the statement trace and return a guard that pops it on drop.
     ///
     /// Call this at the top of every `gen_llzk_in_template`, `gen_llzk_in_function`, etc.
-    /// that traverses all body [Statement] and may end up calling the [`DimExprConverter`] so
-    /// that its [`DimExprConverter::gen_template_poly_expr`] can observe the exact path of
+    /// that traverses all body [Statement] and may end up calling the [`ExprToPolyBinding`] so
+    /// that its [`ExprToPolyBinding::gen_template_poly_expr`] can observe the exact path of
     /// statements surrounding the target expression.
     pub fn trace_statement<'a>(&'a self, stmt: &Statement) -> StatementTraceGuard<'a> {
         self.statement_trace.borrow_mut().push(stmt as *const Statement);
@@ -1554,6 +1554,83 @@ pub fn remove_from_parent<'c: 'a, 'a>(op: &mut impl OperationMutLike<'c, 'a>) ->
     unsafe { Operation::from_raw(op.to_raw()) }
 }
 
+/// Selects how `get_poly_binding*` converts Circom expressions.
+pub trait ExprToPolyBindingKind<'ctx, 'val>
+where
+    'ctx: 'val,
+{
+    /// The per-expression result type.
+    type Single;
+    /// The aggregate type returned by `get_poly_bindings*`.
+    type Multiple;
+
+    /// Build a single converted expression.
+    fn build_single(
+        attr: Attribute<'ctx>,
+        symbol_vals: &[Value<'ctx, 'val>],
+    ) -> Result<Self::Single>;
+
+    /// Build the aggregate result from successfully converted elements.
+    fn build_multiple(values: Vec<Self::Single>) -> Self::Multiple;
+
+    /// Return a stable `poly.expr` name for this kind of expression.
+    fn expr_name(expr: &Expression) -> String;
+
+    /// Finalize the value yielded from a generated `poly.expr`.
+    fn finalize_poly_expr_value<'blk>(
+        gen_ctx: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        location: Location<'ctx>,
+        value: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>>
+    where
+        'ctx: 'blk,
+        'blk: 'val;
+}
+
+#[derive(Debug, Clone)]
+/// Conveys information about expression to poly-binding computation.
+pub enum ExprToPolyBindingOutput<'ctx, 'val, K>
+where
+    'ctx: 'val,
+    K: ExprToPolyBindingKind<'ctx, 'val>,
+{
+    /// Indicates that the computing context had sufficient information to compute the
+    /// expression and computed it successfully.
+    Computed(K::Single),
+    /// Indicates that the computing context was missing information (e.g., variables
+    /// defined within the function not accessible at template level).
+    InsufficientData,
+}
+
+impl<'ctx, 'val, K> ExprToPolyBindingOutput<'ctx, 'val, K>
+where
+    'ctx: 'val,
+    K: ExprToPolyBindingKind<'ctx, 'val>,
+{
+    /// Construct a [`ExprToPolyBindingOutput::Computed`].
+    pub fn new(attr: Attribute<'ctx>, symbol_vals: &[Value<'ctx, 'val>]) -> Result<Self> {
+        Ok(Self::Computed(K::build_single(attr, symbol_vals)?))
+    }
+
+    /// Construct a [`ExprToPolyBindingOutput::InsufficientData`].
+    /// A convenience method for cases needing a return value of
+    /// [`Result<ExprToPolyBindingOutput<...>>`].
+    pub fn insufficient_data_result() -> Result<Self> {
+        Ok(Self::InsufficientData)
+    }
+
+    /// Extract the computed value, or return an error if the computation lacked enough data.
+    pub fn into_computed(self) -> Result<K::Single> {
+        match self {
+            Self::Computed(value) => Ok(value),
+            Self::InsufficientData => {
+                Err(anyhow!("insufficient data to convert dimension expression"))
+            }
+        }
+    }
+}
+
 /// Information needed to create a new LLZK array type with the given dimension
 /// and to instantiate that array if the dimension attribute is an affine_map
 /// with symbols.
@@ -1578,14 +1655,17 @@ impl<'ctx, 'val> ArrayDimension<'ctx, 'val> {
             symbols: (!symbol_vals.is_empty()).then(|| OwningValueRange::from(symbol_vals)),
         })
     }
+
     /// Access the inner attribute.
     pub fn attr(&self) -> &Attribute<'ctx> {
         &self.attr
     }
+
     /// Access the inner symbols, if present, as a [ValueRange].
     pub fn value_range(&self) -> Result<Option<ValueRange<'ctx, '_, 'val>>> {
         self.symbols.as_ref().map(|s| ValueRange::try_from(s).map_err(Into::into)).transpose()
     }
+
     /// Create a new [ArrayType] with the given dimension.
     pub fn new_array_type(&self, element_type: &Type<'ctx>) -> ArrayType<'ctx> {
         if let Ok(subarr_ty) = ArrayType::try_from(*element_type) {
@@ -1594,6 +1674,7 @@ impl<'ctx, 'val> ArrayDimension<'ctx, 'val> {
             ArrayType::new(*element_type, &[self.attr])
         }
     }
+
     /// Transform the array dimension using the given function that converts
     /// values into new values (e.g., casting operations to index).
     pub fn transform(
@@ -1617,39 +1698,13 @@ impl<'ctx, 'val> ArrayDimension<'ctx, 'val> {
     }
 }
 
-#[derive(Debug, Clone)]
-/// Conveys information about array dimension computation.
-pub enum ArrayDimensionResult<'ctx, 'val> {
-    /// Indicates that the computing context had sufficient information to compute the array and
-    /// computed it successfully.
-    Computed(ArrayDimension<'ctx, 'val>),
-    /// Indicates that the computing context was missing information (e.g., variables defined
-    /// within the function not accessible at template level).
-    InsufficientData,
-}
-
-impl<'ctx, 'val> ArrayDimensionResult<'ctx, 'val> {
-    /// Construct a new [ArrayDimensionResult::Computed].
-    pub fn new(attr: Attribute<'ctx>, symbol_vals: &[Value<'ctx, 'val>]) -> Result<Self> {
-        Ok(Self::Computed(ArrayDimension::new(attr, symbol_vals)?))
-    }
-    /// Construct a [ArrayDimensionResult::InsufficientData].
-    /// A convenience method for cases needing a return value of [Result<ArrayDimensionResult>]
-    pub fn insufficient_data_result() -> Result<Self> {
-        Ok(Self::InsufficientData)
-    }
-}
-
-impl<'ctx, 'val> TryFrom<ArrayDimensionResult<'ctx, 'val>> for ArrayDimension<'ctx, 'val> {
+impl<'ctx, 'val> TryFrom<ExprToPolyBindingOutput<'ctx, 'val, ArrayDimExprKind>>
+    for ArrayDimension<'ctx, 'val>
+{
     type Error = anyhow::Error;
 
-    fn try_from(value: ArrayDimensionResult<'ctx, 'val>) -> Result<Self> {
-        match value {
-            ArrayDimensionResult::Computed(array_dimension) => Ok(array_dimension),
-            ArrayDimensionResult::InsufficientData => {
-                Err(anyhow!("insufficient data to convert dimension expression"))
-            }
-        }
+    fn try_from(value: ExprToPolyBindingOutput<'ctx, 'val, ArrayDimExprKind>) -> Result<Self> {
+        value.into_computed()
     }
 }
 
@@ -1715,7 +1770,7 @@ impl<'ctx, 'val> ArrayDimensions<'ctx, 'val> {
     }
 
     /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
-    /// `dimensions` (non-array scalar if empty).
+    /// array `dimensions` (non-array scalar if empty).
     #[inline]
     pub fn new_nondet_felt_of_dimensions(
         &self,
@@ -1724,20 +1779,11 @@ impl<'ctx, 'val> ArrayDimensions<'ctx, 'val> {
     ) -> Result<Operation<'ctx>> {
         self.new_nondet_felt_of_dimensions_at_location(codegen, codegen.location_from_meta(meta))
     }
+}
 
-    /// If `dimensions` is empty, returns a [`StructType`] with just the name. Otherwise,
-    /// returns a [`StructType`] with parameters by converting the
-    /// dimension circom Expressions to LLZK Attributes.
-    pub fn struct_type_with_concrete_dimensions(
-        &self,
-        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
-        name: &str,
-    ) -> StructType<'ctx> {
-        if self.is_empty() {
-            codegen.struct_type(name)
-        } else {
-            codegen.struct_type_with_params(name, &self.attrs())
-        }
+impl<'ctx, 'val> From<Vec<ArrayDimension<'ctx, 'val>>> for ArrayDimensions<'ctx, 'val> {
+    fn from(value: Vec<ArrayDimension<'ctx, 'val>>) -> Self {
+        Self(value)
     }
 }
 
@@ -1748,20 +1794,6 @@ impl<'ctx> IntoIterator for &ArrayDimensions<'ctx, '_> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.attrs().into_iter()
-    }
-}
-
-/// Constructs a new [ArrayDimensions] if all input [ArrayDimensionResult] are
-/// [ArrayDimensionResult::Computed], returns [Err] otherwise.
-impl<'ctx, 'val> TryFrom<Vec<ArrayDimensionResult<'ctx, 'val>>> for ArrayDimensions<'ctx, 'val> {
-    type Error = anyhow::Error;
-
-    fn try_from(dim_results: Vec<ArrayDimensionResult<'ctx, 'val>>) -> Result<Self, Self::Error> {
-        dim_results
-            .into_iter()
-            .map(ArrayDimension::try_from)
-            .collect::<Result<Vec<_>>>()
-            .map(ArrayDimensions)
     }
 }
 
@@ -1778,6 +1810,146 @@ impl<'ctx, 'val, P: ProgramLike> TryFrom<(&[usize], &LlzkCodegen<'_, 'ctx, '_, P
             .map(|size| ArrayDimension::new(codegen.index_attr(i64::try_from(*size)?).into(), &[]))
             .collect::<Result<Vec<_>>>()
             .map(ArrayDimensions)
+    }
+}
+
+/// Marker for the true array-dimension conversion path.
+#[derive(Debug, Clone, Copy)]
+pub struct ArrayDimExprKind;
+
+impl<'ctx, 'val> ExprToPolyBindingKind<'ctx, 'val> for ArrayDimExprKind
+where
+    'ctx: 'val,
+{
+    type Single = ArrayDimension<'ctx, 'val>;
+    type Multiple = ArrayDimensions<'ctx, 'val>;
+
+    fn build_single(
+        attr: Attribute<'ctx>,
+        symbol_vals: &[Value<'ctx, 'val>],
+    ) -> Result<Self::Single> {
+        ArrayDimension::new(attr, symbol_vals)
+    }
+
+    fn build_multiple(values: Vec<Self::Single>) -> Self::Multiple {
+        values.into()
+    }
+
+    fn expr_name(expr: &Expression) -> String {
+        gen_poly_expr_name(expr)
+    }
+
+    fn finalize_poly_expr_value<'blk>(
+        gen_ctx: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        location: Location<'ctx>,
+        value: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>>
+    where
+        'ctx: 'blk,
+        'blk: 'val,
+    {
+        gen_ctx.cast_to_index_if_needed(codegen, location, value)
+    }
+}
+
+/// Information needed to instantiate a [`StructType`] template parameter.
+#[derive(Debug, Clone)]
+pub struct StructTemplateParam<'ctx> {
+    /// The attribute to use as the struct template parameter.
+    attr: Attribute<'ctx>,
+}
+
+impl<'ctx> StructTemplateParam<'ctx> {
+    /// Construct a new struct template parameter.
+    pub fn new(attr: Attribute<'ctx>) -> Self {
+        Self { attr }
+    }
+
+    /// Access the inner attribute.
+    pub fn attr(&self) -> &Attribute<'ctx> {
+        &self.attr
+    }
+}
+
+/// Information needed to instantiate a [`StructType`] with concrete template parameters.
+#[derive(Debug, Default)]
+pub struct StructTemplateParams<'ctx>(Vec<StructTemplateParam<'ctx>>);
+
+impl<'ctx> StructTemplateParams<'ctx> {
+    /// Check if the number of parameters is zero.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Get all contained attributes.
+    pub fn attrs(&self) -> Vec<Attribute<'ctx>> {
+        self.0.iter().map(|param| *param.attr()).collect()
+    }
+
+    /// If `self` is empty, returns a [`StructType`] with just the name. Otherwise, returns a
+    /// [`StructType`] with parameters by converting the dimension circom Expressions to LLZK
+    /// Attributes.
+    pub fn struct_type_with_concrete_params(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        name: &str,
+    ) -> StructType<'ctx> {
+        if self.is_empty() {
+            codegen.struct_type(name)
+        } else {
+            codegen.struct_type_with_params(name, &self.attrs())
+        }
+    }
+}
+
+impl<'ctx> From<Vec<StructTemplateParam<'ctx>>> for StructTemplateParams<'ctx> {
+    fn from(value: Vec<StructTemplateParam<'ctx>>) -> Self {
+        Self(value)
+    }
+}
+
+/// Marker for the struct-template-parameter conversion path.
+#[derive(Debug, Clone, Copy)]
+pub struct StructTemplateParamExprKind;
+
+impl<'ctx, 'val> ExprToPolyBindingKind<'ctx, 'val> for StructTemplateParamExprKind
+where
+    'ctx: 'val,
+{
+    type Single = StructTemplateParam<'ctx>;
+    type Multiple = StructTemplateParams<'ctx>;
+
+    fn build_single(
+        attr: Attribute<'ctx>,
+        symbol_vals: &[Value<'ctx, 'val>],
+    ) -> Result<Self::Single> {
+        ensure!(
+            symbol_vals.is_empty(),
+            "struct template parameters should not carry affine-map symbol operands"
+        );
+        Ok(StructTemplateParam::new(attr))
+    }
+
+    fn build_multiple(values: Vec<Self::Single>) -> Self::Multiple {
+        values.into()
+    }
+
+    fn expr_name(expr: &Expression) -> String {
+        gen_poly_expr_name(expr)
+    }
+
+    fn finalize_poly_expr_value<'blk>(
+        _: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
+        _: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        _: Location<'ctx>,
+        value: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>>
+    where
+        'ctx: 'blk,
+        'blk: 'val,
+    {
+        Ok(value)
     }
 }
 
@@ -1888,49 +2060,56 @@ impl<'ctx, P: ProgramLike> PolyBindingStorageStrategy<'ctx, P> for TemplateOpRef
     }
 }
 
-/// A trait to generate array dimensions from the given dimension expressions.
-pub trait DimExprConverter<'ctx, 'val>
+/// A trait to generate array dimensions or struct template parameters from dimension expressions.
+pub trait ExprToPolyBinding<'ctx, 'val>
 where
     'ctx: 'val,
 {
-    /// Convert a circom [Expression] used as an array dimension to an LLZK Attribute.
+    /// Convert a circom [Expression] used as a dimension-like construct to an LLZK Attribute.
     ///
-    /// Returns an error if there was an error converting a dimension that should be convertible.
-    /// Returns [ArrayDimensionResult::InsufficientData] if a dimension is not convertible due to
-    /// lack of information in the implementer. Users can then attempt to resolve the dimension in a
-    /// different context, or throw an error if all available contexts are unable to convert the
-    /// dimension.
-    fn get_dim_expr(
+    /// Returns an error if there was an error converting an expression that should be
+    /// convertible. Returns [`ExprToPolyBindingOutput::InsufficientData`] if an expression is not
+    /// convertible due to lack of information in the implementer. Users can then attempt to
+    /// resolve the dimension in a different context, or throw an error if all available contexts
+    /// are unable to convert it.
+    fn get_poly_binding<K: ExprToPolyBindingKind<'ctx, 'val>>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         expr: &Expression,
-    ) -> Result<ArrayDimensionResult<'ctx, 'val>>;
+    ) -> Result<ExprToPolyBindingOutput<'ctx, 'val, K>>;
 
-    /// Computes the [ArrayDimensions] from the given `dimension_exprs`, returning:
+    /// Computes the converted dimensions from the given `dimension_exprs`, returning:
     /// - An error if one of the underlying [Expression]s generated an error,
-    /// - [None] if one generates [ArrayDimensionResult::InsufficientData],
+    /// - [None] if one generates [`ExprToPolyBindingOutput::InsufficientData`],
     /// - [Some] otherwise
-    fn get_dim_exprs_if_able(
+    fn get_poly_bindings_if_able<K: ExprToPolyBindingKind<'ctx, 'val>>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         dimension_exprs: &[Expression],
-    ) -> Result<Option<ArrayDimensions<'ctx, 'val>>> {
+    ) -> Result<Option<K::Multiple>> {
         let dim_result_vec = dimension_exprs
             .iter()
-            .map(|e| self.get_dim_expr(codegen, e))
+            .map(|e| self.get_poly_binding::<K>(codegen, e))
             .collect::<Result<Vec<_>>>()?; // propagate error
-        Ok(ArrayDimensions::try_from(dim_result_vec).ok()) // insufficient -> None
+        let mut dimensions = Vec::with_capacity(dim_result_vec.len());
+        for dim_result in dim_result_vec {
+            match dim_result {
+                ExprToPolyBindingOutput::Computed(dimension) => dimensions.push(dimension),
+                ExprToPolyBindingOutput::InsufficientData => return Ok(None),
+            }
+        }
+        Ok(Some(K::build_multiple(dimensions)))
     }
 
-    /// Same as [DimExprConverter::get_dim_exprs_if_able], but converts [None] into an error.
-    /// For cases where [ArrayDimensions] are expected to be generated and there are no fallback
-    /// contexts to try.
-    fn get_dim_exprs(
+    /// Same as [ExprToPolyBinding::get_poly_bindings_if_able], but converts [None] into an error.
+    /// For cases where converted dimensions are expected and there are no fallback contexts to
+    /// try.
+    fn get_poly_bindings<K: ExprToPolyBindingKind<'ctx, 'val>>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         dimension_exprs: &[Expression],
-    ) -> Result<ArrayDimensions<'ctx, 'val>> {
-        self.get_dim_exprs_if_able(codegen, dimension_exprs)?.ok_or_else(|| {
+    ) -> Result<K::Multiple> {
+        self.get_poly_bindings_if_able::<K>(codegen, dimension_exprs)?.ok_or_else(|| {
             anyhow!("unexpected lack of data needed to convert dimension expressions")
         })
     }
@@ -1957,12 +2136,12 @@ where
     /// Get the mapping of `var` name to declared LLZK type.
     fn get_var_decl_types(&self) -> &HashMap<String, Type<'ctx>>;
 
-    /// Generate a new `poly.expr` operation for the given array dimension [Expression].
-    fn gen_template_poly_expr(
+    /// Generate a new `poly.expr` operation for the given dimension [Expression].
+    fn gen_template_poly_expr<K: ExprToPolyBindingKind<'ctx, 'val>>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         target_expr: &Expression, // the result that should yield from the `poly.expr`
-    ) -> Result<ArrayDimensionResult<'ctx, 'val>> {
+    ) -> Result<ExprToPolyBindingOutput<'ctx, 'val, K>> {
         if codegen.config.verbose {
             println!("[gen_template_poly_expr] {target_expr:?}");
         }
@@ -2270,7 +2449,7 @@ where
 
         //////////////////////////////////////////////////////////////////////////////////////////
         // Generate `poly.expr` and fill its initializer region.
-        let name = dim_expr_name(target_expr);
+        let name = K::expr_name(target_expr);
         let location = codegen.location_from_meta(target_expr.get_meta());
         let expr_op = poly::expr(location, &name, std::iter::empty())?;
         let mut expr_gen_ctx = BlockGenContext::new(
@@ -2290,11 +2469,12 @@ where
             // If `gen_up_to_target` returns `None` that means that we don't have enough
             // information for creating the poly expression, so we give up here by returning an
             // identity affine map.
-            return ArrayDimensionResult::new(
+            return ExprToPolyBindingOutput::<K>::new(
                 AffineMapAttribute::identity(codegen.context, 1).into(),
                 &[],
             );
         };
+        let val = K::finalize_poly_expr_value(&mut expr_gen_ctx, codegen, location, val)?;
         expr_gen_ctx.append_op_no_result(poly::r#yield(location, val)?.into())?;
 
         // Run cleanup passes to simplify and normalize the generated code a bit:
@@ -2319,7 +2499,7 @@ where
                 std::any::type_name_of_val(self)
             );
         }
-        ArrayDimensionResult::new(codegen.flat_sym(uniqued_name.value()).into(), &[])
+        ExprToPolyBindingOutput::<K>::new(codegen.flat_sym(uniqued_name.value()).into(), &[])
     }
 }
 
@@ -2365,7 +2545,7 @@ pub fn comp_type<'ctx>(pod: PodType<'ctx>) -> Result<Type<'ctx>> {
 ///
 /// The generated name uniquely represents the expression structure so that the same expression
 /// always maps to the same name, enabling deduplication of `poly.expr` ops.
-pub fn dim_expr_name(expr: &Expression) -> String {
+pub fn gen_poly_expr_name(expr: &Expression) -> String {
     fn visit(expr: &Expression) -> String {
         match expr {
             Expression::Number(_, n) => n.to_string(),
