@@ -110,7 +110,8 @@ component main = B(2);
 // CHECK-NEXT:        %[[VAL_42:[0-9a-zA-Z_\.]+]] = felt.const  4 : <"bn128">
 // CHECK-NEXT:        %[[VAL_43:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_44:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_43]], %[[VAL_42]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:        poly.yield %[[VAL_44]] : !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_Y:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_44]] : !felt.type<"bn128">
+// CHECK-NEXT:        poly.yield %[[VAL_Y]] : index
 // CHECK-NEXT:      }
 // CHECK-NEXT:      struct.def @B {
 // CHECK-NEXT:        struct.member @b : !array.type<@n x !felt.type<"bn128">> {llzk.pub}
@@ -120,7 +121,7 @@ component main = B(2);
 // CHECK-NEXT:          %[[VAL_46:[0-9a-zA-Z_\.]+]] = struct.new : <@B::@B<[@n]>>
 // CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = poly.read_const @"n_Mul_2@469" : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = poly.read_const @"n_Mul_4@409" : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = poly.read_const @"n_Mul_4@409" : index
 // CHECK-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<@n x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = array.new  : <2 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>
 // CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = array.new  : <2 x !pod.type<[@a: !array.type<#[[$ATTR_0]] x !felt.type<"bn128">>, @b: !array.type<#[[$ATTR_0]] x !felt.type<"bn128">>]>>
@@ -373,7 +374,7 @@ component main = B(2);
 // CHECK-NEXT:        function.def @constrain(%[[VAL_252:[0-9a-zA-Z_\.]+]]: !struct.type<@B::@B<[@n]>>, %[[VAL_253:[0-9a-zA-Z_\.]+]]: !array.type<@"n_Mul_4@409" x !felt.type<"bn128">> {function.arg_name = "a"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_254:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_255:[0-9a-zA-Z_\.]+]] = poly.read_const @"n_Mul_2@469" : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_256:[0-9a-zA-Z_\.]+]] = poly.read_const @"n_Mul_4@409" : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_256:[0-9a-zA-Z_\.]+]] = poly.read_const @"n_Mul_4@409" : index
 // CHECK-NEXT:          %[[VAL_257:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_252]][@b] : <@B::@B<[@n]>>, !array.type<@n x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_258:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_252]][@as] : <@B::@B<[@n]>>, !array.type<2 x !struct.type<@A::@A<[#[[$ATTR_0]]]>>>
 // CHECK-NEXT:          %[[VAL_259:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_252]][@as$inputs] : <@B::@B<[@n]>>, !array.type<2 x !pod.type<[@a: !array.type<#[[$ATTR_0]] x !felt.type<"bn128">>, @b: !array.type<#[[$ATTR_0]] x !felt.type<"bn128">>]>>
