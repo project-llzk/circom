@@ -41,6 +41,7 @@ use anyhow::anyhow;
 use anyhow::Result;
 use llzk::attributes::array::AffineMapAttribute;
 use llzk::dialect::array::ArrayCtor;
+use llzk::dialect::global;
 use llzk::dialect::pod;
 use llzk::dialect::poly;
 use llzk::dialect::r#struct;
@@ -57,6 +58,7 @@ use llzk::prelude::RecordValue;
 use llzk::prelude::StringRef;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRefMut;
+use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::TemplateOpLike;
 use llzk::prelude::TemplateOpRefMut;
 use llzk::prelude::TemplateSymbolBindingOpLike;
@@ -213,6 +215,30 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
     /// Marks the given signal as written.
     pub fn mark_signal_as_written(&self, name: String) {
         self.written_signals.borrow_mut().insert(name);
+    }
+
+    /// Declares a local name in the generated compute/constrain functions by reading a module
+    /// global. Used by concrete VCP preamble generation for deduplicated array constants.
+    pub(crate) fn declare_name_from_global_read(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        name: &str,
+        global_name: &str,
+        ty: Type<'ctx>,
+        location: Location<'ctx>,
+    ) -> Result<()> {
+        let global_ref = || SymbolRefAttribute::new_from_str(codegen.context, global_name, &[]);
+        if let Some(fc) = self.compute.as_ref() {
+            fc.borrow_mut().block_ctx.declare_name_if_not_present(name, || {
+                Ok(global::read(location, global_ref(), ty))
+            })?;
+        }
+        if let Some(fc) = self.constrain.as_ref() {
+            fc.borrow_mut().block_ctx.declare_name_if_not_present(name, || {
+                Ok(global::read(location, global_ref(), ty))
+            })?;
+        }
+        Ok(())
     }
 
     /// Get the type of the struct field with the given name.
