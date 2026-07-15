@@ -21,11 +21,13 @@ use anyhow::ensure;
 use anyhow::Context as _;
 use anyhow::Result;
 use llzk::attributes::array::AffineMapAttribute;
+use llzk::attributes::array::ArrayAttribute;
 use llzk::builder::OpBuilder;
 use llzk::dialect;
 use llzk::dialect::array;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::felt;
+use llzk::dialect::global;
 use llzk::dialect::pod;
 use llzk::dialect::poly;
 use llzk::prelude::is_felt_type;
@@ -292,8 +294,24 @@ pub struct LlzkCodegen<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> {
     /// on-the-fly and translated. These pointers must only be used for pointer equality
     /// comparisons to avoid unsafe behavior.
     statement_trace: RefCell<Vec<*const Statement>>,
+    /// Deduplicated global constants for concrete VCP array arguments.
+    vcp_array_const_globals: RefCell<HashMap<VcpArrayConstKey, String>>,
     /// Operation builder
     builder: OpBuilder<'ctx, 'static>,
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+struct VcpArrayConstKey {
+    /// Concrete dimensions of the array type, ordered outermost to innermost.
+    ///
+    /// These are part of the key because the same flattened value list can represent different
+    /// array shapes, such as `[2, 3]` versus `[3, 2]`.
+    dimensions: Vec<usize>,
+    /// Flattened array element values in VCP storage order.
+    ///
+    /// Values are stored as source-level field constants rather than LLZK attributes so the key
+    /// remains independent of the MLIR context and can be used in a normal Rust `HashMap`.
+    values: Vec<BigInt>,
 }
 
 /// RAII guard that pops one entry from the statement trace on drop.
@@ -602,6 +620,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
             binding_insert_strategy: RefCell::new(None),
             current_body: Cell::new(None),
             statement_trace: RefCell::new(Vec::new()),
+            vcp_array_const_globals: RefCell::new(Default::default()),
             builder,
         }
     }
@@ -615,6 +634,65 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     /// Returns a reference to the operation builder.
     pub fn op_builder(&self) -> &OpBuilder<'ctx, 'static> {
         &self.builder
+    }
+
+    /// Builds the `initial_value` attribute for a VCP array `global.def`.
+    ///
+    /// LLZK verifies array globals against the flattened element count of their declared
+    /// `!array.type`, even for multidimensional arrays. For example, a `2 x 2` array expects a
+    /// single builtin array attribute containing four felt attributes, not a nested two-by-two
+    /// attribute tree.
+    fn build_vcp_array_const_attr(&self, values: &[BigInt]) -> Attribute<'ctx> {
+        let attrs = values
+            .iter()
+            .map(|value| {
+                assert_ne!(
+                    value.sign(),
+                    num_bigint_dig::Sign::Minus,
+                    "Felt constants must be non-negative"
+                );
+                let bitlen = value.bits() + 1;
+                self.context
+                    .felt_attr_from_str(bitlen.try_into().unwrap(), value.to_string())
+                    .into()
+            })
+            .collect::<Vec<_>>();
+        ArrayAttribute::new(self.context, &attrs).into()
+    }
+
+    /// Returns the symbol and type for a deduplicated module-level global const containing the
+    /// given concrete VCP array argument.
+    pub(crate) fn get_or_create_vcp_array_const_global(
+        &self,
+        location: Location<'ctx>,
+        dimensions: &[usize],
+        values: &[BigInt],
+    ) -> Result<(String, Type<'ctx>)> {
+        ensure!(!dimensions.is_empty(), "VCP array constants must have at least one dimension");
+        let expected_len = dimensions.iter().try_fold(1usize, |acc, dim| {
+            acc.checked_mul(*dim).ok_or_else(|| anyhow!("array constant dimensions overflow"))
+        })?;
+        ensure!(
+            expected_len == values.len(),
+            "array constant has {} values, expected {expected_len} from dimensions {:?}",
+            values.len(),
+            dimensions
+        );
+
+        let array_type = self.type_from_dimension_consts(self.felt_type().into(), dimensions)?;
+        let key = VcpArrayConstKey { dimensions: dimensions.to_vec(), values: values.to_vec() };
+        if let Some(name) = self.vcp_array_const_globals.borrow().get(&key) {
+            return Ok((name.clone(), array_type));
+        }
+
+        let name = format!("vcp_array_const_{}", self.vcp_array_const_globals.borrow().len());
+        let initial_value = self.build_vcp_array_const_attr(values);
+
+        self.module.body().append_operation(
+            global::def(location, &name, array_type, true, Some(initial_value)).into(),
+        );
+        self.vcp_array_const_globals.borrow_mut().insert(key, name.clone());
+        Ok((name, array_type))
     }
 
     /// Set the body of the function or template currently being processed.

@@ -27,20 +27,8 @@ component main = Template([[0, 1], [2, 3]], [1, 0], 2);
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Template_0::@Template_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Template_0::@Template_0<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_3]], %[[VAL_4]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
-// CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_6]], %[[VAL_7]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = array.new  : <2,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:          array.insert %[[VAL_9]]{{\[}}%[[VAL_10]]] = %[[VAL_5]] : <2,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:          array.insert %[[VAL_9]]{{\[}}%[[VAL_11]]] = %[[VAL_8]] : <2,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_12]], %[[VAL_13]] : <2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = global.read @vcp_array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = global.read @vcp_array_const_1 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -87,20 +75,8 @@ component main = Template([[0, 1], [2, 3]], [1, 0], 2);
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_47:[0-9a-zA-Z_\.]+]]: !struct.type<@Template_0::@Template_0<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_49]], %[[VAL_50]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
-// CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_52]], %[[VAL_53]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_55:[0-9a-zA-Z_\.]+]] = array.new  : <2,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:          array.insert %[[VAL_55]]{{\[}}%[[VAL_56]]] = %[[VAL_51]] : <2,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:          array.insert %[[VAL_55]]{{\[}}%[[VAL_57]]] = %[[VAL_54]] : <2,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_58:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_59:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_60:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_58]], %[[VAL_59]] : <2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_55:[0-9a-zA-Z_\.]+]] = global.read @vcp_array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_60:[0-9a-zA-Z_\.]+]] = global.read @vcp_array_const_1 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_61:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_62:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_63:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -147,4 +123,12 @@ component main = Template([[0, 1], [2, 3]], [1, 0], 2);
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
+// CHECK-NEXT:    global.def const @vcp_array_const_0 : !array.type<2,2 x !felt.type<"bn128">> = [
+// CHECK-SAME:      #felt<const 0 : <"bn128">> : !felt.type<"bn128">,
+// CHECK-SAME:      #felt<const 1 : <"bn128">> : !felt.type<"bn128">,
+// CHECK-SAME:      #felt<const 2 : <"bn128">> : !felt.type<"bn128">,
+// CHECK-SAME:      #felt<const 3 : <"bn128">> : !felt.type<"bn128">]
+// CHECK-NEXT:    global.def const @vcp_array_const_1 : !array.type<2 x !felt.type<"bn128">> = [
+// CHECK-SAME:      #felt<const 1 : <"bn128">> : !felt.type<"bn128">,
+// CHECK-SAME:      #felt<const 0 : <"bn128">> : !felt.type<"bn128">]
 // CHECK-NEXT:  }

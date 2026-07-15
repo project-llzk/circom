@@ -357,6 +357,23 @@ impl TemplateLike for TemplateInstance {
         // variable to equal an array Argument).
         for arg in &self.header {
             let meta = Meta::new(0, 0);
+            if !arg.lengths.is_empty() {
+                let location = self.get_location(codegen);
+                let (global_name, global_type) = codegen.get_or_create_vcp_array_const_global(
+                    location,
+                    &arg.lengths,
+                    &arg.values,
+                )?;
+                template.declare_name_from_global_read(
+                    codegen,
+                    &arg.name,
+                    &global_name,
+                    global_type,
+                    location,
+                )?;
+                continue;
+            }
+
             let declaration = Statement::Declaration {
                 meta: meta.clone(),
                 xtype: VariableType::Var,
