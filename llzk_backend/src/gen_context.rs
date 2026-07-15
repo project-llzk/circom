@@ -1949,7 +1949,6 @@ where
     pub fn gen_decompose_pod(
         &mut self,
         pod: Value<'ctx, 'val>,
-        _codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Vec<Value<'ctx, 'val>>> {
         PodType::try_from(pod.r#type())?
@@ -2016,7 +2015,7 @@ where
         location: Location<'ctx>,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<Value<'ctx, 'val>> {
-        let input_values = self.gen_decompose_pod(inputs, codegen, location)?;
+        let input_values = self.gen_decompose_pod(inputs, location)?;
         let func_name = append_tail(&struct_type.name(), FUNC_NAME_COMPUTE.as_ref());
         let params = self.read_required_params(struct_type, params, codegen, location)?;
         let mut map_operands = MapOperandsBuilder::new();
@@ -2046,7 +2045,7 @@ where
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<()> {
         let mut call_args = vec![subcmp];
-        call_args.extend(self.gen_decompose_pod(inputs, codegen, location)?);
+        call_args.extend(self.gen_decompose_pod(inputs, location)?);
         let func_name = append_tail(
             &StructType::try_from(subcmp.r#type())?.name(),
             FUNC_NAME_CONSTRAIN.as_ref(),

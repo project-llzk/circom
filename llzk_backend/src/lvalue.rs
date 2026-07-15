@@ -222,7 +222,6 @@ impl<'ast> Lvalue<'ast> {
                 let (info, yield_value) = self.emit_mixed_subcmp_if_body(
                     prev,
                     entry_indices,
-                    codegen,
                     block_gen,
                     location,
                     prev_pod_type,
@@ -247,7 +246,6 @@ impl<'ast> Lvalue<'ast> {
         &self,
         prev: Value<'ctx, 'val>,
         entry_indices: &[usize],
-        _codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut C,
         location: Location<'ctx>,
         prev_pod_type: PodType<'ctx>,
@@ -330,7 +328,6 @@ impl<'ast> Lvalue<'ast> {
         &self,
         signal_name: &str,
         subcmp_value: Value<'ctx, 'val>,
-        _codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
@@ -446,7 +443,6 @@ impl<'ast> Lvalue<'ast> {
                             self.get_subcmp_input(
                                 signal_name,
                                 subcmp_value,
-                                codegen,
                                 block_gen.as_mut(),
                                 location,
                             )
