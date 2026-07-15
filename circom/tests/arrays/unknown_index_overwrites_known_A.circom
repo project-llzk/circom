@@ -29,7 +29,7 @@ component main = UnknownIndexOverwriteKnown();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@UnknownIndexOverwriteKnown::@UnknownIndexOverwriteKnown<[]>>} {
 // CHECK-NEXT:    poly.template @UnknownIndexOverwriteKnown {
 // CHECK-NEXT:      struct.def @UnknownIndexOverwriteKnown {
-// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@UnknownIndexOverwriteKnown::@UnknownIndexOverwriteKnown<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@UnknownIndexOverwriteKnown::@UnknownIndexOverwriteKnown<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  0

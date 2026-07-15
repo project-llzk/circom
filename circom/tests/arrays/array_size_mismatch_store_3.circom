@@ -28,7 +28,7 @@ component main = SmallToLarge();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@SmallToLarge::@SmallToLarge<[]>>} {
 // CHECK-NEXT:    poly.template @SmallToLarge {
 // CHECK-NEXT:      struct.def @SmallToLarge {
-// CHECK-NEXT:        struct.member @out : !array.type<10 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !array.type<10 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@SmallToLarge::@SmallToLarge<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@SmallToLarge::@SmallToLarge<[]>>
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<10 x !felt.type<"bn128">>

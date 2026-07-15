@@ -16,7 +16,7 @@ component main = BoolAnd();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@BoolAnd::@BoolAnd<[]>>} {
 // CHECK-NEXT:    poly.template @BoolAnd {
 // CHECK-NEXT:      struct.def @BoolAnd {
-// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a"}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "b"}) -> !struct.type<@BoolAnd::@BoolAnd<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@BoolAnd::@BoolAnd<[]>>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  0

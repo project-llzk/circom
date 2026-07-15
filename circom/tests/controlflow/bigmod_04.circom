@@ -101,33 +101,40 @@ component main = BigModOld(8, 2);
 // CHECK-NEXT:      poly.param @"$e_0" : !poly.tvar<@"$e_0">
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @BigModOld {
-// CHECK-NEXT:      poly.param @n
-// CHECK-NEXT:      poly.param @k
+// CHECK-NEXT:      poly.param @n : index
+// CHECK-NEXT:      poly.param @k : index
 // CHECK-NEXT:      poly.expr @"2_Mul_k@670" {
 // CHECK-NEXT:        %[[VAL_48:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:        %[[VAL_49:[0-9a-zA-Z_\.]+]] = poly.read_const @k : !felt.type<"bn128">
-// CHECK-NEXT:        %[[VAL_50:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_49]], %[[VAL_48]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:        %[[VAL_X:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_50]] : !felt.type<"bn128">
-// CHECK-NEXT:        poly.yield %[[VAL_X]] : index
+// CHECK-NEXT:        %[[VAL_49:[0-9a-zA-Z_\.]+]] = poly.read_const @k : index
+// CHECK-NEXT:        %[[VAL_50:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_49]] : index, !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_51:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_50]], %[[VAL_48]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_52:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_51]] : !felt.type<"bn128">
+// CHECK-NEXT:        poly.yield %[[VAL_52]] : index
 // CHECK-NEXT:      }
 // CHECK-NEXT:      struct.def @BigModOld {
-// CHECK-NEXT:        function.def @compute(%[[VAL_51:[0-9a-zA-Z_\.]+]]: !array.type<@"2_Mul_k@670" x !felt.type<"bn128">> {function.arg_name = "a"}) -> !struct.type<@BigModOld::@BigModOld<[@n, @k]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = struct.new : <@BigModOld::@BigModOld<[@n, @k]>>
-// CHECK-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = poly.read_const @"2_Mul_k@670" : index
-// CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = poly.read_const @k : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_55:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_56]], %[[VAL_56]], %[[VAL_56]], %[[VAL_56]], %[[VAL_56]] : <5 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_58:[0-9a-zA-Z_\.]+]] = function.call @long_div2::@long_div2<[?, ?, ?, ?, ?, ?, ?]>(%[[VAL_55]], %[[VAL_54]], %[[VAL_54]], %[[VAL_51]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !array.type<@"2_Mul_k@670" x !felt.type<"bn128">>) -> !array.type<5 x !felt.type<"bn128">>
-// CHECK-NEXT:          function.return %[[VAL_52]] : !struct.type<@BigModOld::@BigModOld<[@n, @k]>>
+// CHECK-NEXT:        function.def @compute(%[[VAL_53:[0-9a-zA-Z_\.]+]]: !array.type<@"2_Mul_k@670" x !felt.type<"bn128">> {function.arg_name = "a"}) -> !struct.type<@BigModOld::@BigModOld<[@n, @k]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = struct.new : <@BigModOld::@BigModOld<[@n, @k]>>
+// CHECK-NEXT:          %[[VAL_55:[0-9a-zA-Z_\.]+]] = poly.read_const @"2_Mul_k@670" : index
+// CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_55]] : index, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = poly.read_const @k : index
+// CHECK-NEXT:          %[[VAL_58:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_57]] : index, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_59:[0-9a-zA-Z_\.]+]] = poly.read_const @n : index
+// CHECK-NEXT:          %[[VAL_60:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_59]] : index, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_61:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_62:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_61]], %[[VAL_61]], %[[VAL_61]], %[[VAL_61]], %[[VAL_61]] : <5 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_63:[0-9a-zA-Z_\.]+]] = function.call @long_div2::@long_div2<[?, ?, ?, ?, ?, ?, ?]>(%[[VAL_60]], %[[VAL_58]], %[[VAL_58]], %[[VAL_53]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !array.type<@"2_Mul_k@670" x !felt.type<"bn128">>) -> !array.type<5 x !felt.type<"bn128">>
+// CHECK-NEXT:          function.return %[[VAL_54]] : !struct.type<@BigModOld::@BigModOld<[@n, @k]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_59:[0-9a-zA-Z_\.]+]]: !struct.type<@BigModOld::@BigModOld<[@n, @k]>>, %[[VAL_60:[0-9a-zA-Z_\.]+]]: !array.type<@"2_Mul_k@670" x !felt.type<"bn128">> {function.arg_name = "a"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_61:[0-9a-zA-Z_\.]+]] = poly.read_const @"2_Mul_k@670" : index
-// CHECK-NEXT:          %[[VAL_62:[0-9a-zA-Z_\.]+]] = poly.read_const @k : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_63:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_64:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_65:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_64]], %[[VAL_64]], %[[VAL_64]], %[[VAL_64]], %[[VAL_64]] : <5 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_66:[0-9a-zA-Z_\.]+]] = function.call @long_div2::@long_div2<[?, ?, ?, ?, ?, ?, ?]>(%[[VAL_63]], %[[VAL_62]], %[[VAL_62]], %[[VAL_60]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !array.type<@"2_Mul_k@670" x !felt.type<"bn128">>) -> !array.type<5 x !felt.type<"bn128">>
+// CHECK-NEXT:        function.def @constrain(%[[VAL_64:[0-9a-zA-Z_\.]+]]: !struct.type<@BigModOld::@BigModOld<[@n, @k]>>, %[[VAL_65:[0-9a-zA-Z_\.]+]]: !array.type<@"2_Mul_k@670" x !felt.type<"bn128">> {function.arg_name = "a"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_66:[0-9a-zA-Z_\.]+]] = poly.read_const @"2_Mul_k@670" : index
+// CHECK-NEXT:          %[[VAL_67:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_66]] : index, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_68:[0-9a-zA-Z_\.]+]] = poly.read_const @k : index
+// CHECK-NEXT:          %[[VAL_69:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_68]] : index, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_70:[0-9a-zA-Z_\.]+]] = poly.read_const @n : index
+// CHECK-NEXT:          %[[VAL_71:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_70]] : index, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_72:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_73:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_72]], %[[VAL_72]], %[[VAL_72]], %[[VAL_72]], %[[VAL_72]] : <5 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_74:[0-9a-zA-Z_\.]+]] = function.call @long_div2::@long_div2<[?, ?, ?, ?, ?, ?, ?]>(%[[VAL_71]], %[[VAL_69]], %[[VAL_69]], %[[VAL_65]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !array.type<@"2_Mul_k@670" x !felt.type<"bn128">>) -> !array.type<5 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

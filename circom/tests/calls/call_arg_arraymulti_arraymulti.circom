@@ -73,7 +73,7 @@ component main = CallArgTest();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @CallArgTest {
 // CHECK-NEXT:      struct.def @CallArgTest {
-// CHECK-NEXT:        struct.member @a : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @a : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_36:[0-9a-zA-Z_\.]+]]: !array.type<3,2 x !felt.type<"bn128">> {function.arg_name = "x"}, %[[VAL_37:[0-9a-zA-Z_\.]+]]: !array.type<3,2 x !felt.type<"bn128">> {function.arg_name = "y"}) -> !struct.type<@CallArgTest::@CallArgTest<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_38:[0-9a-zA-Z_\.]+]] = struct.new : <@CallArgTest::@CallArgTest<[]>>
 // CHECK-NEXT:          %[[VAL_39:[0-9a-zA-Z_\.]+]] = function.call @sum::@sum<[?, ?, ?, ?, ?]>(%[[VAL_36]], %[[VAL_37]]) : (!array.type<3,2 x !felt.type<"bn128">>, !array.type<3,2 x !felt.type<"bn128">>) -> !felt.type<"bn128">

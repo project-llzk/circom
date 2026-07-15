@@ -29,7 +29,7 @@ component main = Call1();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Call1::@Call1<[]>>} {
 // CHECK-NEXT:    poly.template @B {
 // CHECK-NEXT:      struct.def @B {
-// CHECK-NEXT:        struct.member @x : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @x : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a"}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "b"}) -> !struct.type<@B::@B<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@B::@B<[]>>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_0]], %[[VAL_1]] : !felt.type<"bn128">, !felt.type<"bn128">
@@ -46,9 +46,9 @@ component main = Call1();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Call1 {
 // CHECK-NEXT:      struct.def @Call1 {
-// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        struct.member @a : !struct.type<@B::@B<[]>>
-// CHECK-NEXT:        struct.member @a$inputs : !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
+// CHECK-NEXT:        struct.member @a$inputs : !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "m"}, %[[VAL_10:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "n"}) -> !struct.type<@Call1::@Call1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = struct.new : <@Call1::@Call1<[]>>
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = pod.new : <[]>

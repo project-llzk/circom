@@ -191,7 +191,7 @@ impl<'ast> Lvalue<'ast> {
                 let read_value = block_gen.as_mut().append_op_unnamed_result(pod::read(
                     location,
                     prev,
-                    codegen.flat_sym(record_name),
+                    record_name,
                     record_type,
                 ))?;
                 return cont.cont(read_value, block_gen);
@@ -247,7 +247,7 @@ impl<'ast> Lvalue<'ast> {
         &self,
         prev: Value<'ctx, 'val>,
         entry_indices: &[usize],
-        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        _codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut C,
         location: Location<'ctx>,
         prev_pod_type: PodType<'ctx>,
@@ -276,7 +276,7 @@ impl<'ast> Lvalue<'ast> {
             let read_value = block_gen.as_mut().append_op_unnamed_result(pod::read(
                 location,
                 prev,
-                codegen.flat_sym(record_name),
+                record_name,
                 record_type,
             ))?;
 
@@ -299,7 +299,7 @@ impl<'ast> Lvalue<'ast> {
                 block_gen.append_op_unnamed_result(pod::read(
                     location,
                     subcmp_value,
-                    codegen.flat_sym(COMP),
+                    COMP,
                     ty
                         .record_type(COMP)
                         .ok_or_else(|| {
@@ -330,14 +330,14 @@ impl<'ast> Lvalue<'ast> {
         &self,
         signal_name: &str,
         subcmp_value: Value<'ctx, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        _codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
         block_gen.append_op_unnamed_result(pod::read(
             location,
             subcmp_value,
-            codegen.flat_sym(signal_name),
+            signal_name,
             PodType::try_from(subcmp_value.r#type())
                 .map_err(|e| anyhow::anyhow!("not a pod type '{e}' coming from {subcmp_value}"))?
                 .record_type(signal_name)

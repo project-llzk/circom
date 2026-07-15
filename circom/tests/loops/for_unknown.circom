@@ -21,7 +21,7 @@ component main = ForUnknown();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ForUnknown::@ForUnknown<[]>>} {
 // CHECK-NEXT:    poly.template @ForUnknown {
 // CHECK-NEXT:      struct.def @ForUnknown {
-// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@ForUnknown::@ForUnknown<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@ForUnknown::@ForUnknown<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  0

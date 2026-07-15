@@ -15,7 +15,7 @@ component main = Template();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Template::@Template<[]>>} {
 // CHECK-NEXT:    poly.template @Template {
 // CHECK-NEXT:      struct.def @Template {
-// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Template::@Template<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@Template::@Template<[]>>
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  7

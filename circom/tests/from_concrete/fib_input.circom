@@ -29,7 +29,7 @@ component main = Fibonacci();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Fibonacci_0::@Fibonacci_0<[]>>} {
 // CHECK-NEXT:    poly.template @Fibonacci_0 {
 // CHECK-NEXT:      struct.def @Fibonacci_0 {
-// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "nth_fib"}) -> !struct.type<@Fibonacci_0::@Fibonacci_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Fibonacci_0::@Fibonacci_0<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  0

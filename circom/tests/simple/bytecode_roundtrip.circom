@@ -17,7 +17,7 @@ component main = BytecodeOutput();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@BytecodeOutput::@BytecodeOutput<[]>>} {
 // CHECK-NEXT:    poly.template @BytecodeOutput {
 // CHECK-NEXT:      struct.def @BytecodeOutput {
-// CHECK-NEXT:        struct.member @b : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @b : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a"}) -> !struct.type<@BytecodeOutput::@BytecodeOutput<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@BytecodeOutput::@BytecodeOutput<[]>>
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@b] = %[[VAL_0]] : <@BytecodeOutput::@BytecodeOutput<[]>>, !felt.type<"bn128">

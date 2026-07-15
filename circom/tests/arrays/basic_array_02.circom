@@ -43,11 +43,11 @@ component main = A();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@A::@A<[]>>} {
 // CHECK-NEXT:    poly.template @A {
 // CHECK-NEXT:      struct.def @A {
-// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        struct.member @bs : !array.type<3 x !struct.type<@B::@B<[]>>>
-// CHECK-NEXT:        struct.member @bs$inputs : !array.type<3 x !pod.type<[@x: !felt.type<"bn128">]>>
+// CHECK-NEXT:        struct.member @bs$inputs : !array.type<3 x !pod.type<[@x: !felt.type<"bn128">]>> {signal}
 // CHECK-NEXT:        struct.member @c : !struct.type<@C::@C<[]>>
-// CHECK-NEXT:        struct.member @c$inputs : !pod.type<[@x: !felt.type<"bn128">]>
+// CHECK-NEXT:        struct.member @c$inputs : !pod.type<[@x: !felt.type<"bn128">]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "x"}) -> !struct.type<@A::@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@A::@A<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = array.new  : <3 x !pod.type<[@count: index, @comp: !struct.type<@B::@B<[]>>, @params: !pod.type<[]>]>>
@@ -285,7 +285,7 @@ component main = A();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @B {
 // CHECK-NEXT:      struct.def @B {
-// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_184:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "x"}) -> !struct.type<@B::@B<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_185:[0-9a-zA-Z_\.]+]] = struct.new : <@B::@B<[]>>
 // CHECK-NEXT:          %[[VAL_186:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_184]], %[[VAL_184]] : !felt.type<"bn128">, !felt.type<"bn128">
@@ -302,7 +302,7 @@ component main = A();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @C {
 // CHECK-NEXT:      struct.def @C {
-// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_191:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "x"}) -> !struct.type<@C::@C<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_192:[0-9a-zA-Z_\.]+]] = struct.new : <@C::@C<[]>>
 // CHECK-NEXT:          %[[VAL_193:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_191]], %[[VAL_191]] : !felt.type<"bn128">, !felt.type<"bn128">

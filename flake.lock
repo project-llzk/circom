@@ -32,18 +32,14 @@
           "llzk-pkgs",
           "nixpkgs"
         ],
-        "pcl-mlir-pkg": [
-          "llzk-rs-pkgs",
-          "pcl-mlir-pkg"
-        ],
         "release-helpers": "release-helpers"
       },
       "locked": {
-        "lastModified": 1780446648,
-        "narHash": "sha256-MmIXr09dXi0XCCW47bQnbioUyZrwXpsU3ZLRAYl+1+Q=",
+        "lastModified": 1784128226,
+        "narHash": "sha256-mZ+mQiSt/yD6zqlhrdWc8MlbOu9YT4ud+WI+RsDNtXg=",
         "owner": "project-llzk",
         "repo": "llzk-lib",
-        "rev": "9d2433abed7c54f6e3effac5508d89a371a27696",
+        "rev": "0fab8754a75fdcafe2c4a102a83b9715f590c476",
         "type": "github"
       },
       "original": {
@@ -85,7 +81,6 @@
           "llzk-pkgs",
           "nixpkgs"
         ],
-        "pcl-mlir-pkg": "pcl-mlir-pkg",
         "release-helpers": [
           "llzk-rs-pkgs",
           "llzk-lib",
@@ -94,11 +89,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1780447302,
-        "narHash": "sha256-dcnTndUh/OXur2CCB4CVf3O/5EupahnJMa7jEu/vWl0=",
+        "lastModified": 1784130923,
+        "narHash": "sha256-CgllW2VYnKCRXgumn5kfSxbFpufto3CqWrmroWECW1E=",
         "ref": "refs/heads/main",
-        "rev": "0a320c48d96ff2352af598407e476056021e60fe",
-        "revCount": 452,
+        "rev": "2d741d34c870353559bf600aa93f68596039a068",
+        "revCount": 519,
         "type": "git",
         "url": "https://github.com/project-llzk/llzk-rs"
       },
@@ -123,41 +118,6 @@
         "type": "github"
       }
     },
-    "pcl-mlir-pkg": {
-      "inputs": {
-        "flake-utils": [
-          "llzk-rs-pkgs",
-          "llzk-pkgs",
-          "flake-utils"
-        ],
-        "nixpkgs": [
-          "llzk-rs-pkgs",
-          "llzk-pkgs",
-          "nixpkgs"
-        ],
-        "release-helpers": [
-          "llzk-rs-pkgs",
-          "release-helpers"
-        ],
-        "shared-pkgs": [
-          "llzk-rs-pkgs",
-          "llzk-pkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1762544039,
-        "narHash": "sha256-Esd4SAzUt5G3esTa6fTmivKpRScEROwSME4nN/SAU4w=",
-        "owner": "Veridise",
-        "repo": "pcl-mlir",
-        "rev": "55cf619b032314198aacafc305871fb66b12b70e",
-        "type": "github"
-      },
-      "original": {
-        "owner": "Veridise",
-        "repo": "pcl-mlir",
-        "type": "github"
-      }
-    },
     "release-helpers": {
       "inputs": {
         "flake-utils": [
@@ -174,11 +134,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1778643558,
-        "narHash": "sha256-4MknVcVcEO3E1dySon+fqGY2QBzYkDJvHuqmzpW9E0A=",
+        "lastModified": 1780590591,
+        "narHash": "sha256-nvEp8MipNTJbXjy7enB51FryvJln1Dnwg7Gydkli2ds=",
         "owner": "project-llzk",
         "repo": "open-source-release-helpers",
-        "rev": "95f3c06bf208c68a99a0590b60f77df89e237ee4",
+        "rev": "b25a037ac3f7ae824b4cd403d651e6c3878d03cf",
         "type": "github"
       },
       "original": {
@@ -223,11 +183,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1773630837,
-        "narHash": "sha256-zJhgAGnbVKeBMJOb9ctZm4BGS/Rnrz+5lfSXTVah4HQ=",
+        "lastModified": 1782962170,
+        "narHash": "sha256-HsaK9yDDypMB2TPxAYz0mPKtmYhgNwFQa72b3Ko6kRE=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "f600ea449c7b5bb596fa1cf21c871cc5b9e31316",
+        "rev": "e3fa5cf86b93914b8f312b2a1ca14fbb139c655c",
         "type": "github"
       },
       "original": {

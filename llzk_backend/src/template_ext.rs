@@ -272,6 +272,7 @@ impl TemplateLike for TemplateInstance {
                     location,
                     codegen
                         .type_from_dimension_consts(codegen.felt_type().into(), &signal.lengths)?,
+                    true,
                 )?,
                 Wire::TBus(bus) => declarations.visit_signal_or_bus_impl(
                     codegen,
@@ -282,6 +283,7 @@ impl TemplateLike for TemplateInstance {
                         codegen.struct_type(&bus.name).into(),
                         &bus.lengths,
                     )?,
+                    false,
                 )?,
             }
         }

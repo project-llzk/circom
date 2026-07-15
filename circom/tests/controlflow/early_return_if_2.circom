@@ -69,7 +69,7 @@ component main = EarlyReturn();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @EarlyReturn {
 // CHECK-NEXT:      struct.def @EarlyReturn {
-// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_17:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "inp"}, %[[VAL_18:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">> {function.arg_name = "a"}) -> !struct.type<@EarlyReturn::@EarlyReturn<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = struct.new : <@EarlyReturn::@EarlyReturn<[]>>
 // CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">

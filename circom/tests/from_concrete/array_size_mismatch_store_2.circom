@@ -112,7 +112,7 @@ component main = ArrayShenanigans();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @ArrayShenanigans_0 {
 // CHECK-NEXT:      struct.def @ArrayShenanigans_0 {
-// CHECK-NEXT:        struct.member @outp : !array.type<2,2,2 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @outp : !array.type<2,2,2 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@ArrayShenanigans_0::@ArrayShenanigans_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_64:[0-9a-zA-Z_\.]+]] = struct.new : <@ArrayShenanigans_0::@ArrayShenanigans_0<[]>>
 // CHECK-NEXT:          %[[VAL_65:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2,2,2 x !felt.type<"bn128">>

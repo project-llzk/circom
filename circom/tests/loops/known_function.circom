@@ -51,7 +51,7 @@ component main = KnownFunctionArgs();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @KnownFunctionArgs {
 // CHECK-NEXT:      struct.def @KnownFunctionArgs {
-// CHECK-NEXT:        struct.member @out : !array.type<3 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !array.type<3 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@KnownFunctionArgs::@KnownFunctionArgs<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.new : <@KnownFunctionArgs::@KnownFunctionArgs<[]>>
 // CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type<"bn128">>

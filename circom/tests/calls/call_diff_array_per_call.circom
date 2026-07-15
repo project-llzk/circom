@@ -40,8 +40,8 @@ component main = CallDiffTypeTest();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @CallDiffTypeTest {
 // CHECK-NEXT:      struct.def @CallDiffTypeTest {
-// CHECK-NEXT:        struct.member @outA : !array.type<5 x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        struct.member @outB : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @outA : !array.type<5 x !felt.type<"bn128">> {llzk.pub, signal}
+// CHECK-NEXT:        struct.member @outB : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !array.type<10,5,5 x !felt.type<"bn128">> {function.arg_name = "inA"}, %[[VAL_9:[0-9a-zA-Z_\.]+]]: !array.type<10,5 x !felt.type<"bn128">> {function.arg_name = "inB"}) -> !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = struct.new : <@CallDiffTypeTest::@CallDiffTypeTest<[]>>
 // CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = function.call @f::@f<[?, ?, ?]>(%[[VAL_8]]) : (!array.type<10,5,5 x !felt.type<"bn128">>) -> !array.type<5 x !felt.type<"bn128">>

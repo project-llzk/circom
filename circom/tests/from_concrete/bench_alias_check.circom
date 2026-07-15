@@ -86,7 +86,7 @@ component main = AliasCheck();
 // CHECK-NEXT:    poly.template @AliasCheck_2 {
 // CHECK-NEXT:      struct.def @AliasCheck_2 {
 // CHECK-NEXT:        struct.member @compConstant : !struct.type<@CompConstant_1::@CompConstant_1<[]>>
-// CHECK-NEXT:        struct.member @compConstant$inputs : !pod.type<[@in: !array.type<254 x !felt.type<"bn128">>]>
+// CHECK-NEXT:        struct.member @compConstant$inputs : !pod.type<[@in: !array.type<254 x !felt.type<"bn128">>]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@AliasCheck_2::@AliasCheck_2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@AliasCheck_2::@AliasCheck_2<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
@@ -158,11 +158,11 @@ component main = AliasCheck();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @CompConstant_1 {
 // CHECK-NEXT:      struct.def @CompConstant_1 {
-// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        struct.member @parts : !array.type<127 x !felt.type<"bn128">>
-// CHECK-NEXT:        struct.member @sout : !felt.type<"bn128">
+// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
+// CHECK-NEXT:        struct.member @parts : !array.type<127 x !felt.type<"bn128">> {signal}
+// CHECK-NEXT:        struct.member @sout : !felt.type<"bn128"> {signal}
 // CHECK-NEXT:        struct.member @num2bits : !struct.type<@Num2Bits_0::@Num2Bits_0<[]>>
-// CHECK-NEXT:        struct.member @num2bits$inputs : !pod.type<[@in: !felt.type<"bn128">]>
+// CHECK-NEXT:        struct.member @num2bits$inputs : !pod.type<[@in: !felt.type<"bn128">]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_49:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@CompConstant_1::@CompConstant_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = struct.new : <@CompConstant_1::@CompConstant_1<[]>>
 // CHECK-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<127 x !felt.type<"bn128">>
@@ -442,7 +442,7 @@ component main = AliasCheck();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Num2Bits_0 {
 // CHECK-NEXT:      struct.def @Num2Bits_0 {
-// CHECK-NEXT:        struct.member @out : !array.type<135 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !array.type<135 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_307:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@Num2Bits_0::@Num2Bits_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_308:[0-9a-zA-Z_\.]+]] = struct.new : <@Num2Bits_0::@Num2Bits_0<[]>>
 // CHECK-NEXT:          %[[VAL_309:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<135 x !felt.type<"bn128">>

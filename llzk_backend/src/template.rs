@@ -42,7 +42,6 @@ use anyhow::Result;
 use llzk::attributes::array::AffineMapAttribute;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::pod;
-use llzk::dialect::poly;
 use llzk::dialect::r#struct;
 use llzk::map_operands::MapOperandsBuilder;
 use llzk::prelude::ArrayType;
@@ -67,7 +66,6 @@ use llzk::value_ext::OwningValueRange;
 use llzk::value_ext::ValueRange;
 use melior::ir::Attribute;
 use melior::ir::Location;
-use num_bigint_dig::BigInt;
 use program_structure::ast::AssignOp;
 use program_structure::ast::Expression;
 use program_structure::ast::Meta;
@@ -254,7 +252,7 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
             subcmps.sort_by(Ord::cmp);
         }
         let location = codegen.location_unknown();
-        let comp_sym = codegen.flat_sym(COMP);
+        let comp_sym = COMP;
 
         self.and_then::<_, _, GenResultUnit>(|fc, _| {
                 // Write the subcomponent declarations to self.
@@ -326,7 +324,7 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
                                 let comp_memory = fc.append_op_unnamed_result(pod::read(
                                     location,
                                     mem,
-                                    codegen.flat_sym(entry.record_name()),
+                                    entry.record_name(),
                                     entry.memory_type().into(),
                                 ))?;
                                 let comp_instance = fc.append_op_unnamed_result(pod::read(
@@ -405,13 +403,13 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
                                 let subcmp_instance = fc.append_op_unnamed_result(pod::read(
                                     location,
                                     subcmp,
-                                    codegen.flat_sym(entry.record_name()),
+                                    entry.record_name(),
                                     entry.struct_type().into(),
                                 ))?;
                                 let subcmp_inputs = fc.append_op_unnamed_result(pod::read(
                                     location,
                                     inputs,
-                                    codegen.flat_sym(entry.record_name()),
+                                    entry.record_name(),
                                     entry.inputs_type().into(),
                                 ))?;
                                 fc.gen_constrain_call(
@@ -1569,19 +1567,22 @@ impl<'ast, 'ctx, 'val, 'info> CtorCallScope<'ast, 'ctx, 'info> {
         type_switch! { attr,
             IntegerAttribute as int => {
                 fc.append_op_unnamed_result(
-                    codegen.new_felt_const_op(&BigInt::from(int.value()), self.location)?
+                    codegen.new_index_const_op(int.value(), self.location)
                 )
             }
             FlatSymbolRefAttribute as sym => {
-                fc.append_op_unnamed_result(
-                    poly::read_const(self.location, sym.value(), self.subcmp_type.param_type(codegen))
-                )
+                let value = fc.read_poly_template_binding(
+                    self.location,
+                    sym.value(),
+                    self.subcmp_type.param_type(codegen),
+                )?;
+                fc.cast_to_index_if_needed(codegen, self.location, value)
             }
             else => {
                 let value = expr.gen_llzk_in_block(codegen, fc, self.info)?;
                 let casted = fc.cast_to_index_if_needed(codegen, self.location, value)?;
                 map_operands.push(OwningValueRange::from([casted].as_slice()));
-                Ok(value)
+                Ok(casted)
             }
         }
     }

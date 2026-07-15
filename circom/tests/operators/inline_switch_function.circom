@@ -35,7 +35,7 @@ component main = CallInlineSwitch();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @CallInlineSwitch {
 // CHECK-NEXT:      struct.def @CallInlineSwitch {
-// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_7:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@CallInlineSwitch::@CallInlineSwitch<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.new : <@CallInlineSwitch::@CallInlineSwitch<[]>>
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">

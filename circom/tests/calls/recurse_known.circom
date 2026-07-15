@@ -53,7 +53,7 @@ component main = FnAssign();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @FnAssign {
 // CHECK-NEXT:      struct.def @FnAssign {
-// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "inp"}) -> !struct.type<@FnAssign::@FnAssign<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = struct.new : <@FnAssign::@FnAssign<[]>>
 // CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = felt.const  20 : <"bn128">

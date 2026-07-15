@@ -32,10 +32,10 @@ component main {public [a, b]} = A();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@A::@A<[]>>} {
 // CHECK-NEXT:    poly.template @A {
 // CHECK-NEXT:      struct.def @A {
-// CHECK-NEXT:        struct.member @c : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        struct.member @x : !felt.type<"bn128">
+// CHECK-NEXT:        struct.member @c : !felt.type<"bn128"> {llzk.pub, signal}
+// CHECK-NEXT:        struct.member @x : !felt.type<"bn128"> {signal}
 // CHECK-NEXT:        struct.member @cb : !struct.type<@B::@B<[]>>
-// CHECK-NEXT:        struct.member @cb$inputs : !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
+// CHECK-NEXT:        struct.member @cb$inputs : !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a", llzk.pub}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "b", llzk.pub}, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "d"}) -> !struct.type<@A::@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = struct.new : <@A::@A<[]>>
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
@@ -107,7 +107,7 @@ component main {public [a, b]} = A();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @B {
 // CHECK-NEXT:      struct.def @B {
-// CHECK-NEXT:        struct.member @c : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @c : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_49:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a", llzk.pub}, %[[VAL_50:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "b", llzk.pub}) -> !struct.type<@B::@B<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = struct.new : <@B::@B<[]>>
 // CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_49]], %[[VAL_50]] : !felt.type<"bn128">, !felt.type<"bn128">

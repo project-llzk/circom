@@ -23,9 +23,9 @@ component main = Simple5();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Simple5::@Simple5<[]>>} {
 // CHECK-NEXT:    poly.template @Simple5 {
 // CHECK-NEXT:      struct.def @Simple5 {
-// CHECK-NEXT:        struct.member @x : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        struct.member @z : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @x : !felt.type<"bn128"> {llzk.pub, signal}
+// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub, signal}
+// CHECK-NEXT:        struct.member @z : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a"}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "b"}, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "c"}) -> !struct.type<@Simple5::@Simple5<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = struct.new : <@Simple5::@Simple5<[]>>
 // CHECK-NEXT:          struct.writem %[[VAL_3]][@x] = %[[VAL_0]] : <@Simple5::@Simple5<[]>>, !felt.type<"bn128">

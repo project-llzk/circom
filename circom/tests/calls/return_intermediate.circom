@@ -33,7 +33,7 @@ component main = Foo();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Foo {
 // CHECK-NEXT:      struct.def @Foo {
-// CHECK-NEXT:        struct.member @outp : !array.type<1 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @outp : !array.type<1 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_6:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@Foo::@Foo<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = struct.new : <@Foo::@Foo<[]>>
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1 x !felt.type<"bn128">>

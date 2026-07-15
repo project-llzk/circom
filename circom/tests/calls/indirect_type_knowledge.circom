@@ -35,7 +35,7 @@ component main = T();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Producer {
 // CHECK-NEXT:      struct.def @Producer {
-// CHECK-NEXT:        struct.member @out : !array.type<4,4 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !array.type<4,4 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Producer::@Producer<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = struct.new : <@Producer::@Producer<[]>>
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<4,4 x !felt.type<"bn128">>
@@ -63,7 +63,7 @@ component main = T();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @T {
 // CHECK-NEXT:      struct.def @T {
-// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        struct.member @p : !struct.type<@Producer::@Producer<[]>>
 // CHECK-NEXT:        struct.member @p$inputs : !pod.type<[]>
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@T::@T<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

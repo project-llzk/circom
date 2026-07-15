@@ -461,7 +461,7 @@ impl<'ctx> SubcmpType<'ctx> {
 
     /// Type used to represent template parameters.
     pub fn param_type(&self, codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>) -> Type<'ctx> {
-        codegen.felt_type().into()
+        codegen.index_type()
     }
 
     /// Returns the pod type for the template parameters.
@@ -655,7 +655,7 @@ impl SubcmpPrologueLayout<'_> {
     fn is_very_concrete(&self) -> bool {
         match &self {
             SubcmpPrologueLayout::Uniform(subcmp_type) => {
-                subcmp_type.struct_type().params().is_empty()
+                subcmp_type.struct_type().params_vec().is_empty()
             }
             _ => true,
         }

@@ -28,18 +28,18 @@ use anyhow::Result;
 use llzk::attributes::array::AffineMapAttribute;
 use llzk::attributes::NamedAttribute;
 use llzk::dialect::function;
-use llzk::dialect::poly;
 use llzk::dialect::r#struct;
 use llzk::dialect::r#struct::helpers::compute_fn;
 use llzk::dialect::r#struct::helpers::constrain_fn;
 use llzk::error::Error;
+use llzk::prelude::ArrayType;
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
+use llzk::prelude::FeltType;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::FuncDefOpRef;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::FunctionType;
-use llzk::prelude::LlzkError;
 use llzk::prelude::Location;
 use llzk::prelude::MemberDefOpLike as _;
 use llzk::prelude::Operation;
@@ -93,14 +93,23 @@ struct MemberInfo<'ctx> {
     location: Location<'ctx>,
     /// Whether it's a publicly facing member of the struct
     public: bool,
+    /// Whether the member originates from a Circom signal declaration.
+    signal: bool,
 }
 
 impl<'ctx> TryFrom<MemberInfo<'ctx>> for Operation<'ctx> {
     type Error = Error;
 
     fn try_from(value: MemberInfo<'ctx>) -> std::result::Result<Self, Self::Error> {
-        r#struct::member(value.location, &value.name, value.decl_type, false, value.public)
-            .map(Into::into)
+        r#struct::member(
+            value.location,
+            &value.name,
+            value.decl_type,
+            value.signal,
+            false,
+            value.public,
+        )
+        .map(Into::into)
     }
 }
 
@@ -130,6 +139,8 @@ pub struct DeclarationInfo<'ctx> {
     /// The template params that may be used to instantiate array dimensions.
     /// Note: this is set on construction and not modified.
     template_params: HashSet<String>,
+    /// LLZK type restriction shared by Circom template parameters.
+    template_param_type: Option<Type<'ctx>>,
     /// Pending `poly.expr` / `poly.param` symbol bindings generated while visiting declarations,
     /// to be inserted into the template once it is created.
     ///
@@ -235,6 +246,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     ) -> Result<DeclarationInfo<'ctx>> {
         let mut declarations = DeclarationInfo {
             template_params: template.get_name_of_params().iter().cloned().collect(),
+            template_param_type: Some(Type::index(codegen.context)),
             subcmp_decls: template.get_init_subcmp_decls(codegen)?,
             ..DeclarationInfo::default()
         };
@@ -307,6 +319,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         meta,
                         dimensions,
                         codegen.felt_type().into(),
+                        true,
                     ),
                     VariableType::Bus(bus_name, signal_type, ..) => self.visit_signal_or_bus(
                         codegen,
@@ -315,6 +328,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         meta,
                         dimensions,
                         codegen.struct_type(bus_name).into(),
+                        false,
                     ),
                     VariableType::Var => {
                         // Create `llzk.nondet` of the appropriate type. When the actual assignment
@@ -412,11 +426,12 @@ impl<'ctx> DeclarationInfo<'ctx> {
         meta: &Meta,
         dimensions: &[Expression],
         base_type: Type<'ctx>,
+        is_signal: bool,
     ) -> Result<()> {
         let location = codegen.location_from_meta(meta);
         let dims = self.get_poly_bindings::<ArrayDimExprKind>(codegen, dimensions)?;
         let decl_type = dims.type_from_dimension_exprs(base_type);
-        self.visit_signal_or_bus_impl(codegen, signal_type, name, location, decl_type)
+        self.visit_signal_or_bus_impl(codegen, signal_type, name, location, decl_type, is_signal)
     }
 
     /// `visit()` helper for Signal and Bus VariableType.
@@ -427,6 +442,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
         name: &String,
         location: Location<'ctx>,
         decl_type: Type<'ctx>,
+        is_signal: bool,
     ) -> Result<()> {
         if SignalType::Input == *signal_type {
             let mut attrs: Vec<NamedAttribute<'_>> = Vec::new();
@@ -445,6 +461,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 decl_type,
                 location,
                 public: SignalType::Output == *signal_type,
+                signal: is_signal,
             });
         }
         // Create `llzk.nondet` of the appropriate type. When the actual assignment
@@ -516,7 +533,8 @@ where
     fn poly_template_binding_names(
         &self,
     ) -> impl IntoIterator<Item = (String, Option<Type<'ctx>>)> {
-        self.template_params.iter().map(|name| (name.clone(), None))
+        let template_param_type = self.template_param_type;
+        self.template_params.iter().map(move |name| (name.clone(), template_param_type))
     }
 
     fn get_poly_binding<K: crate::shared::ExprToPolyBindingKind<'ctx, 'val>>(
@@ -594,15 +612,15 @@ where
         })?;
     func_def.set_allow_non_native_field_ops_attr(true);
 
-    let template_region_ops = func_like
+    let template_params = func_like
         .initial_poly_param_names()
-        .map(|name| poly::param(location, &name, Some(codegen.tvar_type(&name))).map(Into::into))
+        .map(|name| {
+            let ty = codegen.tvar_type(&name);
+            (name, Some(ty))
+        })
         .collect::<Vec<_>>();
-    let (new_template, _guard) = codegen.create_and_set_current_template(
-        location,
-        func_like.get_name(),
-        template_region_ops,
-    )?;
+    let (new_template, _guard) =
+        codegen.create_and_set_current_template(location, func_like.get_name(), template_params)?;
 
     // Store function inside the `poly.template` so its type variables can resolve to the params.
     let func = FuncDefOpRefMut::from(FuncDefOpRef::try_from(
@@ -644,15 +662,15 @@ where
     let location = template_like.get_location(codegen);
 
     // Generate list of template params for the LLZK template body.
-    let template_region_ops = template_like
+    let template_params = template_like
         .get_name_of_params()
         .iter()
-        .map(|name| poly::param(location, name, None).map(Into::into))
-        .collect::<Vec<Result<Operation, LlzkError>>>();
+        .map(|name| (name.clone(), Some(Type::index(codegen.context))))
+        .collect::<Vec<_>>();
     let (new_template, _guard) = codegen.create_and_set_current_template(
         location,
         template_like.get_name(),
-        template_region_ops,
+        template_params,
     )?;
 
     // Insert the declarations from `declarations.new_sym_bindings`.
@@ -717,7 +735,7 @@ where
         template_like
             .get_name_of_params()
             .iter()
-            .map(|name| (name.clone(), None))
+            .map(|name| (name.clone(), Some(Type::index(codegen.context))))
             .chain(poly_binding_names.iter().map(|(name, ty)| (name.clone(), *ty))),
     )?;
     let mut arg_names = arg_names;
@@ -731,12 +749,12 @@ where
         template_like
             .get_name_of_params()
             .iter()
-            .map(|name| (name.clone(), None))
+            .map(|name| (name.clone(), Some(Type::index(codegen.context))))
             .chain(poly_binding_names.iter().map(|(name, ty)| (name.clone(), *ty))),
     )?;
 
-    // Insert read operations for struct fields into constrain functions.
     let location = codegen.location_unknown();
+    // Insert read operations for struct fields into constrain functions.
     for member in new_struct.member_defs() {
         let member_name = member.member_name();
         constrain_ctx.block_ctx.declare_name_if_not_present(member_name, || {
@@ -889,6 +907,22 @@ fn collect_inputs<'ast, 'ctx>(
     Ok(PodType::new(codegen.context, &inputs).into())
 }
 
+/// Returns whether a type can represent signal storage. PODs and arrays are eligible only when
+/// all of their nested leaves are felts; structs (including bus inputs) are never signals.
+fn is_signal_storage_type(r#type: Type<'_>) -> bool {
+    if FeltType::try_from(r#type).is_ok() {
+        true
+    } else if let Ok(array) = ArrayType::try_from(r#type) {
+        is_signal_storage_type(array.element_type())
+    } else if let Ok(pod) = PodType::try_from(r#type) {
+        let records = pod.records();
+        !records.is_empty()
+            && records.into_iter().all(|record| is_signal_storage_type(record.r#type()))
+    } else {
+        false
+    }
+}
+
 /// Fills out the declaration information for a subcomponent using the given type.
 #[inline]
 fn record_subcmp_decl<'ctx, 'ast>(
@@ -909,12 +943,14 @@ fn record_subcmp_decl<'ctx, 'ast>(
         decl_type: member_type,
         location: info.location(),
         public: false,
+        signal: false,
     });
     struct_fields.push(MemberInfo {
         name: crate::subcmp::names::inputs(&name),
         decl_type: inputs,
         location: info.location(),
         public: false,
+        signal: is_signal_storage_type(inputs),
     });
     ops.push(SubcmpPrologueData::new(name, template_name.to_owned(), member_type, inputs));
     Ok(())
@@ -964,12 +1000,14 @@ fn record_mixed_subcmp_decl<'ctx, 'ast>(
         decl_type: component_type.into(),
         location: info.location(),
         public: false,
+        signal: false,
     });
     struct_fields.push(MemberInfo {
         name: crate::subcmp::names::inputs(&name),
         decl_type: inputs_type.into(),
         location: info.location(),
         public: false,
+        signal: is_signal_storage_type(inputs_type.into()),
     });
     ops.push(SubcmpPrologueData::new_mixed(name, template_name, layout));
     Ok(())
@@ -989,10 +1027,10 @@ fn record_mixed_subcmp_decl<'ctx, 'ast>(
 fn ensure_same_template<'ctx>(types: &[StructType<'ctx>], subcmp: &str) -> StructType<'ctx> {
     debug_assert!(!types.is_empty());
     let name = types[0].name();
-    let params_len = types[0].params().len();
+    let params_len = types[0].params_vec().len();
     for t in &types[1..] {
         debug_assert!(t.name() == name, "Unexpected type for subcomponent instantation of '{subcmp}'. Was expecting {name} but got {}", t.name());
-        debug_assert!(t.params().len() == params_len, "Unexpected parameter count for subcomponent instantation of '{subcmp}'. Was expecting {params_len} but got {}", t.params().len());
+        debug_assert!(t.params_vec().len() == params_len, "Unexpected parameter count for subcomponent instantation of '{subcmp}'. Was expecting {params_len} but got {}", t.params_vec().len());
     }
 
     types[0]
@@ -1000,12 +1038,12 @@ fn ensure_same_template<'ctx>(types: &[StructType<'ctx>], subcmp: &str) -> Struc
 
 /// Groups the template parameters of the given structs by their declaration order.
 fn zip_struct_params<'ctx>(types: &[StructType<'ctx>]) -> Vec<Vec<Attribute<'ctx>>> {
-    let params_len = types[0].params().len();
+    let params_len = types[0].params_vec().len();
     let mut outer = Vec::with_capacity(params_len);
     for param_idx in 0..params_len {
         let mut inner = Vec::with_capacity(types.len());
         for t in types {
-            inner.push(t.params().get(param_idx).unwrap());
+            inner.push(t.params_vec()[param_idx]);
         }
         outer.push(inner);
     }

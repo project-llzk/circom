@@ -24,7 +24,7 @@ component main = Foo(2);
 // CHECK-NEXT:    poly.template @Foo_1 {
 // CHECK-NEXT:      struct.def @Foo_1 {
 // CHECK-NEXT:        struct.member @c : !struct.type<@Sum_0::@Sum_0<[]>>
-// CHECK-NEXT:        struct.member @c$inputs : !pod.type<[@inp: !array.type<2 x !felt.type<"bn128">>]>
+// CHECK-NEXT:        struct.member @c$inputs : !pod.type<[@inp: !array.type<2 x !felt.type<"bn128">>]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "inp"}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "out"}) -> !struct.type<@Foo_1::@Foo_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@Foo_1::@Foo_1<[]>>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = pod.new : <[]>

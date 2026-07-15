@@ -94,7 +94,7 @@ component main = A();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @A_0 {
 // CHECK-NEXT:      struct.def @A_0 {
-// CHECK-NEXT:        struct.member @out : !array.type<10 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !array.type<10 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_52:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">> {function.arg_name = "in1"}, %[[VAL_53:[0-9a-zA-Z_\.]+]]: !array.type<10 x !felt.type<"bn128">> {function.arg_name = "in2"}) -> !struct.type<@A_0::@A_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = struct.new : <@A_0::@A_0<[]>>
 // CHECK-NEXT:          %[[VAL_55:[0-9a-zA-Z_\.]+]] = function.call @binop_bool_array_0::@binop_bool_array_0(%[[VAL_52]], %[[VAL_53]]) : (!array.type<10 x !felt.type<"bn128">>, !array.type<10 x !felt.type<"bn128">>) -> !array.type<10 x !felt.type<"bn128">>

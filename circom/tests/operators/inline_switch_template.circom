@@ -25,8 +25,8 @@ component main = MultByInv();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@MultByInv::@MultByInv<[]>>} {
 // CHECK-NEXT:    poly.template @MultByInv {
 // CHECK-NEXT:      struct.def @MultByInv {
-// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        struct.member @inv : !felt.type<"bn128">
+// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
+// CHECK-NEXT:        struct.member @inv : !felt.type<"bn128"> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@MultByInv::@MultByInv<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@MultByInv::@MultByInv<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  0

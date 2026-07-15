@@ -42,7 +42,7 @@ component main = Outer();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Outer_2::@Outer_2<[]>>} {
 // CHECK-NEXT:    poly.template @Inner_0 {
 // CHECK-NEXT:      struct.def @Inner_0 {
-// CHECK-NEXT:        struct.member @out : !array.type<4 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !array.type<4 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<4 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@Inner_0::@Inner_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Inner_0::@Inner_0<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<4 x !felt.type<"bn128">>
@@ -94,7 +94,7 @@ component main = Outer();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Inner_1 {
 // CHECK-NEXT:      struct.def @Inner_1 {
-// CHECK-NEXT:        struct.member @out : !array.type<4 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !array.type<4 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_35:[0-9a-zA-Z_\.]+]]: !array.type<4 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@Inner_1::@Inner_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = struct.new : <@Inner_1::@Inner_1<[]>>
 // CHECK-NEXT:          %[[VAL_37:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<4 x !felt.type<"bn128">>
@@ -146,10 +146,10 @@ component main = Outer();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Outer_2 {
 // CHECK-NEXT:      struct.def @Outer_2 {
-// CHECK-NEXT:        struct.member @out : !array.type<8 x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        struct.member @mid : !array.type<8 x !felt.type<"bn128">>
+// CHECK-NEXT:        struct.member @out : !array.type<8 x !felt.type<"bn128">> {llzk.pub, signal}
+// CHECK-NEXT:        struct.member @mid : !array.type<8 x !felt.type<"bn128">> {signal}
 // CHECK-NEXT:        struct.member @inner : !pod.type<[@idx_0: !struct.type<@Inner_0::@Inner_0<[]>>, @idx_1: !struct.type<@Inner_1::@Inner_1<[]>>]>
-// CHECK-NEXT:        struct.member @inner$inputs : !pod.type<[@idx_0: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>]>
+// CHECK-NEXT:        struct.member @inner$inputs : !pod.type<[@idx_0: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_70:[0-9a-zA-Z_\.]+]]: !array.type<8 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@Outer_2::@Outer_2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_71:[0-9a-zA-Z_\.]+]] = struct.new : <@Outer_2::@Outer_2<[]>>
 // CHECK-NEXT:          %[[VAL_72:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<8 x !felt.type<"bn128">>
