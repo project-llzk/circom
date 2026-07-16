@@ -99,10 +99,10 @@ fn build_clusters(linear: LinkedList<C>, no_vars: usize) -> Vec<Cluster> {
 }
 
 fn rebuild_witness(
-    max_signal: usize,
-    deleted: &mut HashSet<usize>,
-    forbidden: &HashSet<usize>,
-    non_linear_map: SignalToConstraints,
+    max_signal: usize, 
+    deleted: &mut HashSet<usize>, 
+    forbidden: &HashSet<usize>, 
+    non_linear_map: SignalToConstraints, 
     remove_unused: bool,
 ) -> SignalMap {
     let mut map = SignalMap::with_capacity(max_signal);
@@ -446,10 +446,10 @@ pub fn simplification(smp: &mut Simplifier) -> (ConstraintStorage, SignalMap, us
     use std::time::SystemTime;
 
     let mut substitution_log =
-        if smp.port_substitution {
-            Some(SubstitutionJSON::new(&smp.json_substitutions).unwrap())
+        if smp.port_substitution { 
+            Some(SubstitutionJSON::new(&smp.json_substitutions).unwrap()) 
         } else {
-             None
+             None 
         };
     let apply_linear = !smp.flag_s;
     let use_old_heuristics = smp.flag_old_heuristics;
@@ -596,8 +596,8 @@ pub fn simplification(smp: &mut Simplifier) -> (ConstraintStorage, SignalMap, us
         (with_linear, storage)
     };
 
-    // let mut round_id = 0;
-    // let _ = round_id;
+    let mut round_id = 0;
+    let _ = round_id;
     let mut linear = with_linear;
     let mut apply_round = apply_linear && no_rounds > 0 && !linear.is_empty();
     let mut non_linear_map = if apply_round || remove_unused {
@@ -638,7 +638,7 @@ pub fn simplification(smp: &mut Simplifier) -> (ConstraintStorage, SignalMap, us
             &substitutions,
             &field,
         );
-        // round_id += 1;
+        round_id += 1;
         no_rounds -= 1;
         apply_round = !linear.is_empty() && no_rounds > 0;
         let _dur = now.elapsed().unwrap().as_millis();
@@ -701,10 +701,10 @@ pub fn simplification(smp: &mut Simplifier) -> (ConstraintStorage, SignalMap, us
         // println!("Rebuild witness");
         let now = SystemTime::now();
         let signal_map= rebuild_witness(
-            max_signal,
-            &mut deleted,
-            &forbidden,
-            non_linear_map,
+            max_signal, 
+            &mut deleted, 
+            &forbidden, 
+            non_linear_map, 
             remove_unused
         );
         let _dur = now.elapsed().unwrap().as_millis();
