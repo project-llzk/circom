@@ -772,7 +772,7 @@ where
             ensure!(!self.block_ctx.is_name_present(name), "name {name} is already present");
             self.block_ctx.top_mut().scope_local_name_to_value.insert(name.clone(), value);
         }
-        drop(map);
+        drop(map); // drop the borrow before moving out of `self` for the return
         Ok(self)
     }
 
@@ -1959,12 +1959,10 @@ where
             .records()
             .into_iter()
             .map(|record| {
-                let name = record.name();
-                let record_name = name.as_string_ref().as_str()?;
                 self.append_op_unnamed_result(pod::read(
                     location,
                     pod,
-                    record_name,
+                    record.name().as_string_ref().as_str()?,
                     record.r#type(),
                 ))
             })
