@@ -104,6 +104,7 @@ use std::cell::Cell;
 use std::cell::Ref;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::convert::TryInto as _;
 use std::fs;
@@ -280,6 +281,8 @@ pub struct LlzkCodegen<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> {
     pub config: LlzkConfig,
     /// Declaration info pre-computed for all templates.
     template_decls: RefCell<HashMap<String, DeclInfo<'ctx>>>,
+    /// Index restrictions inferred by the preliminary declaration pass.
+    template_param_requirements: RefCell<HashMap<String, HashSet<String>>>,
     /// Strategy used to store `poly.expr` / `poly.param` symbol bindings as they are generated.
     pub(crate) binding_insert_strategy:
         RefCell<Option<Box<dyn PolyBindingStorageStrategy<'ctx, P> + 'r>>>,
@@ -617,6 +620,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
             module,
             config,
             template_decls: RefCell::new(Default::default()),
+            template_param_requirements: RefCell::new(Default::default()),
             binding_insert_strategy: RefCell::new(None),
             current_body: Cell::new(None),
             statement_trace: RefCell::new(Vec::new()),
@@ -762,6 +766,64 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         self.template_decls
             .borrow_mut()
             .insert(name.to_string(), DeclInfo::Full(Box::new(decl_info)));
+    }
+
+    /// Propagate `index` restrictions through direct template-parameter arguments until reaching
+    /// a fixed point.
+    pub fn propagate_template_param_types(&self) -> Result<()> {
+        let params_by_template = self
+            .program
+            .get_templates(false)
+            .into_iter()
+            .map(|template| {
+                (template.get_name().to_owned(), template.get_name_of_params().to_vec())
+            })
+            .collect::<HashMap<_, _>>();
+
+        loop {
+            let required_by_template = self
+                .template_decls
+                .borrow()
+                .iter()
+                .filter_map(|(name, info)| match info {
+                    DeclInfo::Full(info) => Some((name.clone(), info.index_template_params())),
+                    DeclInfo::Remnant { .. } => None,
+                })
+                .collect::<HashMap<String, HashSet<String>>>();
+
+            let mut changed = false;
+            for info in self.template_decls.borrow_mut().values_mut() {
+                if let DeclInfo::Full(info) = info {
+                    changed |= info.propagate_index_template_params(
+                        &required_by_template,
+                        &params_by_template,
+                        self.index_type(),
+                    )?;
+                }
+            }
+            if !changed {
+                return Ok(());
+            }
+        }
+    }
+
+    /// Save the inferred index restrictions and clear the preliminary declaration pass.
+    pub fn prepare_second_declaration_pass(&self) {
+        let requirements = self
+            .template_decls
+            .borrow_mut()
+            .drain()
+            .filter_map(|(name, info)| match info {
+                DeclInfo::Full(info) => Some((name, info.index_template_params())),
+                DeclInfo::Remnant { .. } => None,
+            })
+            .collect();
+        self.template_param_requirements.replace(requirements);
+    }
+
+    /// Return the inferred index restrictions for one template.
+    pub fn index_template_params_for(&self, name: &str) -> HashSet<String> {
+        self.template_param_requirements.borrow().get(name).cloned().unwrap_or_default()
     }
 
     /// Remove and return the full [DeclarationInfo] for the template with the given name and leave

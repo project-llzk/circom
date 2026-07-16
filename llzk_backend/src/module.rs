@@ -36,6 +36,7 @@ use llzk::prelude::ArrayType;
 use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::FeltType;
+use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::FuncDefOpRef;
 use llzk::prelude::FuncDefOpRefMut;
@@ -136,11 +137,9 @@ pub struct DeclarationInfo<'ctx> {
     declared_var_names: HashSet<String>,
     /// Map `component` name to its declaration information.
     subcmp_decls: HashMap<String, SubcmpDeclInfo<'ctx>>,
-    /// The template params that may be used to instantiate array dimensions.
-    /// Note: this is set on construction and not modified.
-    template_params: HashSet<String>,
-    /// LLZK type restriction shared by Circom template parameters.
-    template_param_type: Option<Type<'ctx>>,
+    /// Template parameters and their LLZK type restrictions. Parameters referenced directly by
+    /// array types must be index-typed; all others remain unrestricted.
+    template_params: HashMap<String, Option<Type<'ctx>>>,
     /// Pending `poly.expr` / `poly.param` symbol bindings generated while visiting declarations,
     /// to be inserted into the template once it is created.
     ///
@@ -154,6 +153,55 @@ pub struct DeclarationInfo<'ctx> {
 }
 
 impl<'ctx> DeclarationInfo<'ctx> {
+    /// Returns the template parameters currently restricted to `index`.
+    pub(crate) fn index_template_params(&self) -> HashSet<String> {
+        self.template_params
+            .iter()
+            .filter_map(|(name, ty)| ty.is_some().then_some(name.clone()))
+            .collect()
+    }
+
+    /// Propagate index restrictions from callee template parameters to caller parameters used as
+    /// their direct arguments.
+    pub(crate) fn propagate_index_template_params(
+        &mut self,
+        required_by_template: &HashMap<String, HashSet<String>>,
+        params_by_template: &HashMap<String, Vec<String>>,
+        index_type: Type<'ctx>,
+    ) -> Result<bool> {
+        let mut newly_required = HashSet::new();
+        for subcmp in self.subcmp_decls.values() {
+            for instance in subcmp.instances() {
+                let callee = instance.name().root().as_str()?;
+                let Some(required_params) = required_by_template.get(callee) else {
+                    continue;
+                };
+                let formal_params = params_by_template
+                    .get(callee)
+                    .ok_or_else(|| anyhow::anyhow!("template '{callee}' not found"))?;
+                for (formal, actual) in formal_params.iter().zip(instance.params_vec()) {
+                    if !required_params.contains(formal) {
+                        continue;
+                    }
+                    if let Ok(symbol) = FlatSymbolRefAttribute::try_from(actual) {
+                        if self.template_params.contains_key(symbol.value()) {
+                            newly_required.insert(symbol.value().to_owned());
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut changed = false;
+        for name in newly_required {
+            if self.template_params.get(&name) == Some(&None) {
+                self.template_params.insert(name, Some(index_type));
+                changed = true;
+            }
+        }
+        Ok(changed)
+    }
+
     /// Returns a mapping of input signal names to their types.
     pub(crate) fn build_input_name_to_type_map(&self) -> HashMap<String, Type<'ctx>> {
         self.inputs.iter().map(|i| (i.name.clone(), i.type_and_loc.0)).collect()
@@ -244,9 +292,24 @@ impl<'ctx> DeclarationInfo<'ctx> {
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         template: &impl TemplateLike,
     ) -> Result<DeclarationInfo<'ctx>> {
+        let index_params = codegen.index_template_params_for(template.get_name());
+        Self::from_template_with_index_params(codegen, template, &index_params)
+    }
+
+    /// Collect declarations with the given template parameters already known to require `index`.
+    pub(crate) fn from_template_with_index_params(
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        template: &impl TemplateLike,
+        index_params: &HashSet<String>,
+    ) -> Result<DeclarationInfo<'ctx>> {
         let mut declarations = DeclarationInfo {
-            template_params: template.get_name_of_params().iter().cloned().collect(),
-            template_param_type: Some(Type::index(codegen.context)),
+            template_params: template
+                .get_name_of_params()
+                .iter()
+                .map(|name| {
+                    (name.clone(), index_params.contains(name).then(|| codegen.index_type()))
+                })
+                .collect(),
             subcmp_decls: template.get_init_subcmp_decls(codegen)?,
             ..DeclarationInfo::default()
         };
@@ -335,6 +398,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         // is processed later, this is replaced with the appropriate value.
                         let dimensions =
                             self.get_poly_bindings::<ArrayDimExprKind>(codegen, dimensions)?;
+                        self.record_direct_dimension_params(codegen, &dimensions);
                         let var_type =
                             dimensions.type_from_dimension_exprs(codegen.felt_type().into());
                         // Key by source position so the same name in different scopes
@@ -406,6 +470,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     ) -> Result<()> {
         let location = codegen.location_from_meta(meta);
         let dims = self.get_poly_bindings::<ArrayDimExprKind>(codegen, dimensions)?;
+        self.record_direct_dimension_params(codegen, &dims);
         if self
             .subcmp_decls
             .insert(name.to_owned(), SubcmpDeclInfo::new(dims.attrs(), location))
@@ -430,8 +495,26 @@ impl<'ctx> DeclarationInfo<'ctx> {
     ) -> Result<()> {
         let location = codegen.location_from_meta(meta);
         let dims = self.get_poly_bindings::<ArrayDimExprKind>(codegen, dimensions)?;
+        self.record_direct_dimension_params(codegen, &dims);
         let decl_type = dims.type_from_dimension_exprs(base_type);
         self.visit_signal_or_bus_impl(codegen, signal_type, name, location, decl_type, is_signal)
+    }
+
+    /// Restrict template parameters used directly as array dimensions to `index`. Composite
+    /// dimension expressions are represented by their own index-typed `poly.expr`, so their
+    /// parameter operands remain unrestricted field values.
+    fn record_direct_dimension_params(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        dimensions: &shared::ArrayDimensions<'ctx, '_>,
+    ) {
+        for attr in dimensions.attrs() {
+            if let Ok(symbol) = FlatSymbolRefAttribute::try_from(attr) {
+                if let Some(type_restriction) = self.template_params.get_mut(symbol.value()) {
+                    *type_restriction = Some(codegen.index_type());
+                }
+            }
+        }
     }
 
     /// `visit()` helper for Signal and Bus VariableType.
@@ -533,8 +616,7 @@ where
     fn poly_template_binding_names(
         &self,
     ) -> impl IntoIterator<Item = (String, Option<Type<'ctx>>)> {
-        let template_param_type = self.template_param_type;
-        self.template_params.iter().map(move |name| (name.clone(), template_param_type))
+        self.template_params.iter().map(|(name, ty)| (name.clone(), *ty))
     }
 
     fn get_poly_binding<K: crate::shared::ExprToPolyBindingKind<'ctx, 'val>>(
@@ -549,7 +631,7 @@ where
         } else {
             match expr {
                 Expression::Variable { name, access, .. } if access.is_empty() => {
-                    if self.template_params.contains(name) {
+                    if self.template_params.contains_key(name) {
                         ExprToPolyBindingOutput::<K>::new(codegen.flat_sym(name).into(), &[])
                     } else if codegen.binding_insert_strategy().unwrap().contains_name(name) {
                         // This is a `Statement::Declaration` with `VariableType::Var` that was
@@ -665,12 +747,20 @@ where
     let template_params = template_like
         .get_name_of_params()
         .iter()
-        .map(|name| (name.clone(), Some(Type::index(codegen.context))))
+        .map(|name| {
+            (
+                name.clone(),
+                *declarations
+                    .template_params
+                    .get(name)
+                    .expect("template parameter was collected with declarations"),
+            )
+        })
         .collect::<Vec<_>>();
     let (new_template, _guard) = codegen.create_and_set_current_template(
         location,
         template_like.get_name(),
-        template_params,
+        template_params.clone(),
     )?;
 
     // Insert the declarations from `declarations.new_sym_bindings`.
@@ -732,10 +822,9 @@ where
         map_name_to_arg_value(compute_func, arg_names.clone())?,
         &declarations.var_decl_types,
         // concatenate circom template parameter names with `poly_expr_names`
-        template_like
-            .get_name_of_params()
+        template_params
             .iter()
-            .map(|name| (name.clone(), Some(Type::index(codegen.context))))
+            .cloned()
             .chain(poly_binding_names.iter().map(|(name, ty)| (name.clone(), *ty))),
     )?;
     let mut arg_names = arg_names;
@@ -746,10 +835,9 @@ where
         map_name_to_arg_value(constrain_func, arg_names)?,
         &declarations.var_decl_types,
         // concatenate circom template parameter names with `poly_expr_names`
-        template_like
-            .get_name_of_params()
+        template_params
             .iter()
-            .map(|name| (name.clone(), Some(Type::index(codegen.context))))
+            .cloned()
             .chain(poly_binding_names.iter().map(|(name, ty)| (name.clone(), *ty))),
     )?;
 
@@ -867,6 +955,12 @@ impl<'ctx, P: ProgramLike> GenerateLLZKInModule<'ctx, P> for P {
             gen_function_llzk(f, codegen)?;
         }
         // Collect declaration information for all templates first to avoid duplicating work.
+        for t in self.get_templates(false) {
+            codegen.set_current_body(t.get_body());
+            codegen.put_template_decl(t.get_name(), t.get_declarations(codegen)?);
+        }
+        codegen.propagate_template_param_types()?;
+        codegen.prepare_second_declaration_pass();
         for t in self.get_templates(false) {
             codegen.set_current_body(t.get_body());
             codegen.put_template_decl(t.get_name(), t.get_declarations(codegen)?);

@@ -755,8 +755,8 @@ where
         for (name, ty) in sorted {
             let ty = ty.unwrap_or_else(|| codegen.felt_type().into());
             let value = self.append_op_unnamed_result(poly::read_const(location, &name, ty))?;
-            // Array dimensions require index-typed `poly.param`s in LLZK, while Circom template
-            // parameters otherwise behave as field elements inside generated functions.
+            // Array-dimension `poly.expr`s yield index values, while Circom template parameters
+            // and expressions otherwise behave as field elements inside generated functions.
             let value = if is_index(ty) {
                 self.append_op_unnamed_result(cast::tofelt(
                     location,
@@ -2500,7 +2500,7 @@ where
                         self.gen_template_poly_expr::<K>(codegen, expr)
                     }
                 }
-                Expression::Variable { meta, name, access } if access.is_empty() => {
+                Expression::Variable { name, access, .. } if access.is_empty() => {
                     // Grab the template symbol binding name if it exists (first try `poly.param`
                     // name then try `poly.expr` name). Otherwise, use `affine_map` to convert Value
                     // to Attribute.
