@@ -27,9 +27,9 @@ component main = KnownLoopViaSignal();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@KnownLoopViaSignal::@KnownLoopViaSignal<[]>>} {
 // CHECK-NEXT:    poly.template @KnownLoopViaSignal {
 // CHECK-NEXT:      struct.def @KnownLoopViaSignal {
-// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        struct.member @a : !struct.type<@accumulate::@accumulate<[]>>
-// CHECK-NEXT:        struct.member @a$inputs : !pod.type<[@i: !felt.type<"bn128">]>
+// CHECK-NEXT:        struct.member @a$inputs : !pod.type<[@i: !felt.type<"bn128">]> {signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@KnownLoopViaSignal::@KnownLoopViaSignal<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@KnownLoopViaSignal::@KnownLoopViaSignal<[]>>
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
@@ -75,7 +75,7 @@ component main = KnownLoopViaSignal();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @accumulate {
 // CHECK-NEXT:      struct.def @accumulate {
-// CHECK-NEXT:        struct.member @o : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @o : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_27:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "i"}) -> !struct.type<@accumulate::@accumulate<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.new : <@accumulate::@accumulate<[]>>
 // CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">

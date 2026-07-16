@@ -23,11 +23,11 @@ component main = ComputeValue();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ComputeValue::@ComputeValue<[]>>} {
 // CHECK-NEXT:    poly.template @ComputeValue {
 // CHECK-NEXT:      struct.def @ComputeValue {
-// CHECK-NEXT:        struct.member @ret : !array.type<2 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @ret : !array.type<2 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        struct.member @GetWeight_17_409 : !struct.type<@GetWeight::@GetWeight<[99]>>
-// CHECK-NEXT:        struct.member @GetWeight_17_409$inputs : !pod.type<[@inp: !felt.type<"bn128">]>
+// CHECK-NEXT:        struct.member @GetWeight_17_409$inputs : !pod.type<[@inp: !felt.type<"bn128">]> {signal}
 // CHECK-NEXT:        struct.member @GetWeight_18_446 : !struct.type<@GetWeight::@GetWeight<[88]>>
-// CHECK-NEXT:        struct.member @GetWeight_18_446$inputs : !pod.type<[@inp: !felt.type<"bn128">]>
+// CHECK-NEXT:        struct.member @GetWeight_18_446$inputs : !pod.type<[@inp: !felt.type<"bn128">]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@ComputeValue::@ComputeValue<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@ComputeValue::@ComputeValue<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type<"bn128">>
@@ -135,7 +135,7 @@ component main = ComputeValue();
 // CHECK-NEXT:    poly.template @GetWeight {
 // CHECK-NEXT:      poly.param @A
 // CHECK-NEXT:      struct.def @GetWeight {
-// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_76:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "inp"}) -> !struct.type<@GetWeight::@GetWeight<[@A]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_77:[0-9a-zA-Z_\.]+]] = struct.new : <@GetWeight::@GetWeight<[@A]>>
 // CHECK-NEXT:          %[[VAL_78:[0-9a-zA-Z_\.]+]] = poly.read_const @A : !felt.type<"bn128">

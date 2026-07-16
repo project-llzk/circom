@@ -44,7 +44,7 @@ component main = CallInFnTest();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @CallInFnTest {
 // CHECK-NEXT:      struct.def @CallInFnTest {
-// CHECK-NEXT:        struct.member @z : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @z : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_8:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "x"}, %[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "y"}) -> !struct.type<@CallInFnTest::@CallInFnTest<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = struct.new : <@CallInFnTest::@CallInFnTest<[]>>
 // CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = function.call @sum::@sum(%[[VAL_8]], %[[VAL_9]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> !felt.type<"bn128">

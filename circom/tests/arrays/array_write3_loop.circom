@@ -27,9 +27,9 @@ component main = Array1();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Array1::@Array1<[]>>} {
 // CHECK-NEXT:    poly.template @Array1 {
 // CHECK-NEXT:      struct.def @Array1 {
-// CHECK-NEXT:        struct.member @out : !array.type<5 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !array.type<5 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        struct.member @foo : !array.type<5 x !struct.type<@Foo::@Foo<[]>>>
-// CHECK-NEXT:        struct.member @foo$inputs : !array.type<5 x !pod.type<[@a: !felt.type<"bn128">]>>
+// CHECK-NEXT:        struct.member @foo$inputs : !array.type<5 x !pod.type<[@a: !felt.type<"bn128">]>> {signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Array1::@Array1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@Array1::@Array1<[]>>
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<5 x !felt.type<"bn128">>
@@ -145,7 +145,7 @@ component main = Array1();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Foo {
 // CHECK-NEXT:      struct.def @Foo {
-// CHECK-NEXT:        struct.member @b : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @b : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_82:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a"}) -> !struct.type<@Foo::@Foo<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_83:[0-9a-zA-Z_\.]+]] = struct.new : <@Foo::@Foo<[]>>
 // CHECK-NEXT:          struct.writem %[[VAL_83]][@b] = %[[VAL_82]] : <@Foo::@Foo<[]>>, !felt.type<"bn128">

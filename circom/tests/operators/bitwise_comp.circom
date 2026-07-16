@@ -17,8 +17,8 @@ component main = BitwiseComplement();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@BitwiseComplement::@BitwiseComplement<[]>>} {
 // CHECK-NEXT:    poly.template @BitwiseComplement {
 // CHECK-NEXT:      struct.def @BitwiseComplement {
-// CHECK-NEXT:        struct.member @type : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        struct.member @check_v : !felt.type<"bn128">
+// CHECK-NEXT:        struct.member @type : !felt.type<"bn128"> {llzk.pub, signal}
+// CHECK-NEXT:        struct.member @check_v : !felt.type<"bn128"> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "v"}) -> !struct.type<@BitwiseComplement::@BitwiseComplement<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@BitwiseComplement::@BitwiseComplement<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.bit_not %[[VAL_0]] : !felt.type<"bn128">

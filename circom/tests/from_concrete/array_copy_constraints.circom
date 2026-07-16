@@ -31,9 +31,9 @@ component main = Caller(5);
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Caller_1::@Caller_1<[]>>} {
 // CHECK-NEXT:    poly.template @Caller_1 {
 // CHECK-NEXT:      struct.def @Caller_1 {
-// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128">
+// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {signal}
 // CHECK-NEXT:        struct.member @op : !struct.type<@Sum_0::@Sum_0<[]>>
-// CHECK-NEXT:        struct.member @op$inputs : !pod.type<[@inp: !array.type<5 x !felt.type<"bn128">>]>
+// CHECK-NEXT:        struct.member @op$inputs : !pod.type<[@inp: !array.type<5 x !felt.type<"bn128">>]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@Caller_1::@Caller_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Caller_1::@Caller_1<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
@@ -79,7 +79,7 @@ component main = Caller(5);
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Sum_0 {
 // CHECK-NEXT:      struct.def @Sum_0 {
-// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_27:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@Sum_0::@Sum_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.new : <@Sum_0::@Sum_0<[]>>
 // CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = felt.const  5 : <"bn128">

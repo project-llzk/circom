@@ -25,7 +25,7 @@ component main = NonZeroInit();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@NonZeroInit::@NonZeroInit<[]>>} {
 // CHECK-NEXT:    poly.template @NonZeroInit {
 // CHECK-NEXT:      struct.def @NonZeroInit {
-// CHECK-NEXT:        struct.member @b : !array.type<9 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @b : !array.type<9 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<9 x !felt.type<"bn128">> {function.arg_name = "a"}) -> !struct.type<@NonZeroInit::@NonZeroInit<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@NonZeroInit::@NonZeroInit<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<9 x !felt.type<"bn128">>

@@ -17,7 +17,7 @@ component main = ArithSubtract();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ArithSubtract::@ArithSubtract<[]>>} {
 // CHECK-NEXT:    poly.template @ArithSubtract {
 // CHECK-NEXT:      struct.def @ArithSubtract {
-// CHECK-NEXT:        struct.member @x : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @x : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a"}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "b"}, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "c"}) -> !struct.type<@ArithSubtract::@ArithSubtract<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = struct.new : <@ArithSubtract::@ArithSubtract<[]>>
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  10

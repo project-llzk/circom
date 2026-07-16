@@ -29,9 +29,9 @@ component main = UnknownLoopOOB();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@UnknownLoopOOB::@UnknownLoopOOB<[]>>} {
 // CHECK-NEXT:    poly.template @UnknownLoopOOB {
 // CHECK-NEXT:      struct.def @UnknownLoopOOB {
-// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        struct.member @a : !struct.type<@accumulate::@accumulate<[]>>
-// CHECK-NEXT:        struct.member @a$inputs : !pod.type<[@i: !felt.type<"bn128">]>
+// CHECK-NEXT:        struct.member @a$inputs : !pod.type<[@i: !felt.type<"bn128">]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "m"}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "n"}) -> !struct.type<@UnknownLoopOOB::@UnknownLoopOOB<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@UnknownLoopOOB::@UnknownLoopOOB<[]>>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
@@ -78,7 +78,7 @@ component main = UnknownLoopOOB();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @accumulate {
 // CHECK-NEXT:      struct.def @accumulate {
-// CHECK-NEXT:        struct.member @o : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @o : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_32:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "i"}) -> !struct.type<@accumulate::@accumulate<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = struct.new : <@accumulate::@accumulate<[]>>
 // CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">

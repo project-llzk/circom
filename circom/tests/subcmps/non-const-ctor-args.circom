@@ -44,7 +44,7 @@ component main = Outer();
 // CHECK-NEXT:    poly.template @Inner {
 // CHECK-NEXT:      poly.param @P
 // CHECK-NEXT:      struct.def @Inner {
-// CHECK-NEXT:        struct.member @out : !array.type<4 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !array.type<4 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<4 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@Inner::@Inner<[@P]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Inner::@Inner<[@P]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @P : !felt.type<"bn128">
@@ -94,10 +94,10 @@ component main = Outer();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Outer {
 // CHECK-NEXT:      struct.def @Outer {
-// CHECK-NEXT:        struct.member @out : !array.type<8 x !felt.type<"bn128">> {llzk.pub}
-// CHECK-NEXT:        struct.member @mid : !array.type<8 x !felt.type<"bn128">>
+// CHECK-NEXT:        struct.member @out : !array.type<8 x !felt.type<"bn128">> {llzk.pub, signal}
+// CHECK-NEXT:        struct.member @mid : !array.type<8 x !felt.type<"bn128">> {signal}
 // CHECK-NEXT:        struct.member @inner : !array.type<2 x !struct.type<@Inner::@Inner<[#[[$ATTR_0]]]>>>
-// CHECK-NEXT:        struct.member @inner$inputs : !array.type<2 x !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>>
+// CHECK-NEXT:        struct.member @inner$inputs : !array.type<2 x !pod.type<[@in: !array.type<4 x !felt.type<"bn128">>]>> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_33:[0-9a-zA-Z_\.]+]]: !array.type<8 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@Outer::@Outer<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = struct.new : <@Outer::@Outer<[]>>
 // CHECK-NEXT:          %[[VAL_35:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<8 x !felt.type<"bn128">>

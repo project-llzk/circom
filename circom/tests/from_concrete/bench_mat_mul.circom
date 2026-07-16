@@ -68,7 +68,7 @@ component main = matMul(2,3,2);
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@matMul_2::@matMul_2<[]>>} {
 // CHECK-NEXT:    poly.template @matElemMul_0 {
 // CHECK-NEXT:      struct.def @matElemMul_0 {
-// CHECK-NEXT:        struct.member @out : !array.type<1,3 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !array.type<1,3 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">> {function.arg_name = "a"}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">> {function.arg_name = "b"}) -> !struct.type<@matElemMul_0::@matElemMul_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@matElemMul_0::@matElemMul_0<[]>>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1,3 x !felt.type<"bn128">>
@@ -156,8 +156,8 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @matElemSum_1 {
 // CHECK-NEXT:      struct.def @matElemSum_1 {
-// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        struct.member @sum : !array.type<3 x !felt.type<"bn128">>
+// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
+// CHECK-NEXT:        struct.member @sum : !array.type<3 x !felt.type<"bn128">> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_67:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">> {function.arg_name = "a"}) -> !struct.type<@matElemSum_1::@matElemSum_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_68:[0-9a-zA-Z_\.]+]] = struct.new : <@matElemSum_1::@matElemSum_1<[]>>
 // CHECK-NEXT:          %[[VAL_69:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type<"bn128">>
@@ -283,11 +283,11 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @matMul_2 {
 // CHECK-NEXT:      struct.def @matMul_2 {
-// CHECK-NEXT:        struct.member @out : !array.type<2,2 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !array.type<2,2 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        struct.member @matElemMulComp : !array.type<2,2 x !struct.type<@matElemMul_0::@matElemMul_0<[]>>>
-// CHECK-NEXT:        struct.member @matElemMulComp$inputs : !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type<"bn128">>, @b: !array.type<1,3 x !felt.type<"bn128">>]>>
+// CHECK-NEXT:        struct.member @matElemMulComp$inputs : !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type<"bn128">>, @b: !array.type<1,3 x !felt.type<"bn128">>]>> {signal}
 // CHECK-NEXT:        struct.member @matElemSumComp : !array.type<2,2 x !struct.type<@matElemSum_1::@matElemSum_1<[]>>>
-// CHECK-NEXT:        struct.member @matElemSumComp$inputs : !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type<"bn128">>]>>
+// CHECK-NEXT:        struct.member @matElemSumComp$inputs : !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type<"bn128">>]>> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_168:[0-9a-zA-Z_\.]+]]: !array.type<2,3 x !felt.type<"bn128">> {function.arg_name = "a"}, %[[VAL_169:[0-9a-zA-Z_\.]+]]: !array.type<3,2 x !felt.type<"bn128">> {function.arg_name = "b"}) -> !struct.type<@matMul_2::@matMul_2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_170:[0-9a-zA-Z_\.]+]] = struct.new : <@matMul_2::@matMul_2<[]>>
 // CHECK-NEXT:          %[[VAL_171:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2,2 x !felt.type<"bn128">>

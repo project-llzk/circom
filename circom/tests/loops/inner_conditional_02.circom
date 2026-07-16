@@ -35,7 +35,7 @@ component main = runner();
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      poly.param @T
 // CHECK-NEXT:      struct.def @InnerConditional2 {
-// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@InnerConditional2::@InnerConditional2<[@N, @T]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@InnerConditional2::@InnerConditional2<[@N, @T]>>
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
@@ -93,7 +93,7 @@ component main = runner();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @runner {
 // CHECK-NEXT:      struct.def @runner {
-// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        struct.member @a : !struct.type<@InnerConditional2::@InnerConditional2<[4, 0]>>
 // CHECK-NEXT:        struct.member @a$inputs : !pod.type<[]>
 // CHECK-NEXT:        struct.member @b : !struct.type<@InnerConditional2::@InnerConditional2<[5, 1]>>

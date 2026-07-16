@@ -27,7 +27,7 @@ component main = SubCmp();
 // CHECK-NEXT:    poly.template @Nop {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @Nop {
-// CHECK-NEXT:        struct.member @o : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @o : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "i"}) -> !struct.type<@Nop::@Nop<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Nop::@Nop<[@n]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
@@ -42,9 +42,9 @@ component main = SubCmp();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @SubCmp {
 // CHECK-NEXT:      struct.def @SubCmp {
-// CHECK-NEXT:        struct.member @o : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @o : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        struct.member @n : !array.type<2 x !struct.type<@Nop::@Nop<[1]>>>
-// CHECK-NEXT:        struct.member @n$inputs : !array.type<2 x !pod.type<[@i: !felt.type<"bn128">]>>
+// CHECK-NEXT:        struct.member @n$inputs : !array.type<2 x !pod.type<[@i: !felt.type<"bn128">]>> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_7:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "i"}) -> !struct.type<@SubCmp::@SubCmp<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = struct.new : <@SubCmp::@SubCmp<[]>>
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = array.new  : <2 x !pod.type<[@count: index, @comp: !struct.type<@Nop::@Nop<[1]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>

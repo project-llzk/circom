@@ -13,6 +13,7 @@ use crate::traversal::WalkCallbacks;
 use anyhow::bail;
 use anyhow::Result;
 use llzk::attributes::array::ArrayAttribute;
+use llzk::builder::OpBuilder;
 use llzk::dialect::function;
 use llzk::dialect::poly;
 use llzk::prelude::Block;
@@ -148,17 +149,23 @@ fn wrap_call_in_synthetic_template<'ctx>(
         inner_call.to_raw()
     }; // block and block_args dropped here, releasing the borrow on func_def
 
-    // Build poly.param @T_return : !poly.tvar<@T_return>.
-    let param_op = poly::param(location, function_return_type_param(), Some(synthetic_tvar_type))?;
-
     // Build poly.template @synthetic { poly.param; function.def }.
-    let template_op = poly::template(
-        location,
-        UNUSED_CALL_RESULT_WRAPPER_NAME,
-        [Ok(param_op.into()), Ok(func_def.into())],
-    )?;
+    let scratch = Block::new(&[]);
+    let builder = OpBuilder::at_block_end(codegen.context, &scratch);
+    let template_op =
+        poly::template(&builder, location, UNUSED_CALL_RESULT_WRAPPER_NAME, |builder| {
+            poly::param(
+                builder,
+                location,
+                function_return_type_param(),
+                Some(synthetic_tvar_type),
+            )?;
+            Ok(())
+        })?;
+    template_op.body().append_operation(func_def.into());
 
     // Insert the template into the module, uniquing the name to avoid collisions.
+    let template_op = shared::detach_owned_operation(&template_op);
     let op_ref = shared::insert_unique_symbol_op(&codegen.module.as_operation(), template_op);
     let template_name = shared::get_sym_name_attr(&op_ref)
         .expect("`poly.template` must have `sym_name` attribute per ODS");

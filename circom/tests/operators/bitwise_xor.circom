@@ -17,8 +17,8 @@ component main = BitwiseXOR();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@BitwiseXOR::@BitwiseXOR<[]>>} {
 // CHECK-NEXT:    poly.template @BitwiseXOR {
 // CHECK-NEXT:      struct.def @BitwiseXOR {
-// CHECK-NEXT:        struct.member @type : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        struct.member @check_v : !felt.type<"bn128">
+// CHECK-NEXT:        struct.member @type : !felt.type<"bn128"> {llzk.pub, signal}
+// CHECK-NEXT:        struct.member @check_v : !felt.type<"bn128"> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "v"}) -> !struct.type<@BitwiseXOR::@BitwiseXOR<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@BitwiseXOR::@BitwiseXOR<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  5

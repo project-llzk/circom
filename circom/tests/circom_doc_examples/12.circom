@@ -20,7 +20,7 @@ component main = T16();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@T16::@T16<[]>>} {
 // CHECK-NEXT:    poly.template @T16 {
 // CHECK-NEXT:      struct.def @T16 {
-// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@T16::@T16<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@T16::@T16<[]>>
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0

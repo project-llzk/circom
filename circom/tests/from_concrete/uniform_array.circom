@@ -37,12 +37,12 @@ component main = Caller(5, 3);
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Caller_2::@Caller_2<[]>>} {
 // CHECK-NEXT:    poly.template @Caller_2 {
 // CHECK-NEXT:      struct.def @Caller_2 {
-// CHECK-NEXT:        struct.member @inter : !array.type<3 x !felt.type<"bn128">>
-// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128">
+// CHECK-NEXT:        struct.member @inter : !array.type<3 x !felt.type<"bn128">> {signal}
+// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {signal}
 // CHECK-NEXT:        struct.member @step1 : !array.type<3 x !struct.type<@Sum_0::@Sum_0<[]>>>
-// CHECK-NEXT:        struct.member @step1$inputs : !array.type<3 x !pod.type<[@inp: !array.type<5 x !felt.type<"bn128">>]>>
+// CHECK-NEXT:        struct.member @step1$inputs : !array.type<3 x !pod.type<[@inp: !array.type<5 x !felt.type<"bn128">>]>> {signal}
 // CHECK-NEXT:        struct.member @step2 : !struct.type<@Sum_1::@Sum_1<[]>>
-// CHECK-NEXT:        struct.member @step2$inputs : !pod.type<[@inp: !array.type<3 x !felt.type<"bn128">>]>
+// CHECK-NEXT:        struct.member @step2$inputs : !pod.type<[@inp: !array.type<3 x !felt.type<"bn128">>]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<3,5 x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@Caller_2::@Caller_2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Caller_2::@Caller_2<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type<"bn128">>
@@ -191,7 +191,7 @@ component main = Caller(5, 3);
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Sum_0 {
 // CHECK-NEXT:      struct.def @Sum_0 {
-// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_107:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@Sum_0::@Sum_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_108:[0-9a-zA-Z_\.]+]] = struct.new : <@Sum_0::@Sum_0<[]>>
 // CHECK-NEXT:          %[[VAL_109:[0-9a-zA-Z_\.]+]] = felt.const  5 : <"bn128">
@@ -238,7 +238,7 @@ component main = Caller(5, 3);
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Sum_1 {
 // CHECK-NEXT:      struct.def @Sum_1 {
-// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_142:[0-9a-zA-Z_\.]+]]: !array.type<3 x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@Sum_1::@Sum_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_143:[0-9a-zA-Z_\.]+]] = struct.new : <@Sum_1::@Sum_1<[]>>
 // CHECK-NEXT:          %[[VAL_144:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">

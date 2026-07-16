@@ -15,7 +15,7 @@ component main = BitwiseShiftRight();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@BitwiseShiftRight::@BitwiseShiftRight<[]>>} {
 // CHECK-NEXT:    poly.template @BitwiseShiftRight {
 // CHECK-NEXT:      struct.def @BitwiseShiftRight {
-// CHECK-NEXT:        struct.member @type : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @type : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "v"}) -> !struct.type<@BitwiseShiftRight::@BitwiseShiftRight<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@BitwiseShiftRight::@BitwiseShiftRight<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  5

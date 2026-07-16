@@ -133,7 +133,7 @@ component main = BigMod();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @BigMod {
 // CHECK-NEXT:      struct.def @BigMod {
-// CHECK-NEXT:        struct.member @out : !array.type<9 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !array.type<9 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_66:[0-9a-zA-Z_\.]+]]: !array.type<9 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@BigMod::@BigMod<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_67:[0-9a-zA-Z_\.]+]] = struct.new : <@BigMod::@BigMod<[]>>
 // CHECK-NEXT:          %[[VAL_68:[0-9a-zA-Z_\.]+]] = felt.const  4 : <"bn128">

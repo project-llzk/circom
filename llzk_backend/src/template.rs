@@ -43,7 +43,6 @@ use llzk::attributes::array::AffineMapAttribute;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::global;
 use llzk::dialect::pod;
-use llzk::dialect::poly;
 use llzk::dialect::r#struct;
 use llzk::map_operands::MapOperandsBuilder;
 use llzk::prelude::ArrayType;
@@ -280,8 +279,6 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
             subcmps.sort_by(Ord::cmp);
         }
         let location = codegen.location_unknown();
-        let comp_sym = codegen.flat_sym(COMP);
-
         self.and_then::<_, _, GenResultUnit>(|fc, _| {
                 // Write the subcomponent declarations to self.
                 let self_value = fc.func.self_value_of_compute()?;
@@ -323,7 +320,7 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
                                     let comp_instance = fc.append_op_unnamed_result(pod::read(
                                         location,
                                         comp_memory,
-                                        comp_sym,
+                                        COMP,
                                         struct_type
                                     ))?;
                                     fc.append_array_write(
@@ -342,7 +339,7 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
                                 fc.append_op_unnamed_result(pod::read(
                                     location,
                                     mem,
-                                    comp_sym,
+                                    COMP,
                                     comp_type(ty)?
                                 ))?
                             }
@@ -352,13 +349,13 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
                                 let comp_memory = fc.append_op_unnamed_result(pod::read(
                                     location,
                                     mem,
-                                    codegen.flat_sym(entry.record_name()),
+                                    entry.record_name(),
                                     entry.memory_type().into(),
                                 ))?;
                                 let comp_instance = fc.append_op_unnamed_result(pod::read(
                                     location,
                                     comp_memory,
-                                    comp_sym,
+                                    COMP,
                                     entry.struct_type().into(),
                                 ))?;
                                 Ok(RecordValue::new(
@@ -431,13 +428,13 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
                                 let subcmp_instance = fc.append_op_unnamed_result(pod::read(
                                     location,
                                     subcmp,
-                                    codegen.flat_sym(entry.record_name()),
+                                    entry.record_name(),
                                     entry.struct_type().into(),
                                 ))?;
                                 let subcmp_inputs = fc.append_op_unnamed_result(pod::read(
                                     location,
                                     inputs,
-                                    codegen.flat_sym(entry.record_name()),
+                                    entry.record_name(),
                                     entry.inputs_type().into(),
                                 ))?;
                                 fc.gen_constrain_call(
@@ -916,7 +913,7 @@ where
                         self.gen_template_poly_expr::<K>(codegen, expr)
                     }
                 }
-                Expression::Variable { meta, name, access } if access.is_empty() => {
+                Expression::Variable { name, access, .. } if access.is_empty() => {
                     // Grab the template symbol binding name if it exists (first try `poly.param`
                     // name then try `poly.expr` name). Otherwise, defer to `BlockGenContext`.
                     if self.template_def.has_const_param_named(name) {
@@ -1599,15 +1596,18 @@ impl<'ast, 'ctx, 'val, 'info> CtorCallScope<'ast, 'ctx, 'info> {
                 )
             }
             FlatSymbolRefAttribute as sym => {
-                fc.append_op_unnamed_result(
-                    poly::read_const(self.location, sym.value(), self.subcmp_type.param_type(codegen))
-                )
+                let value = fc.read_poly_template_binding(
+                    self.location,
+                    sym.value(),
+                    self.subcmp_type.param_type(codegen),
+                )?;
+                fc.cast_to_felt_if_needed(codegen, self.location, value)
             }
             else => {
                 let value = expr.gen_llzk_in_block(codegen, fc, self.info)?;
                 let casted = fc.cast_to_index_if_needed(codegen, self.location, value)?;
                 map_operands.push(OwningValueRange::from([casted].as_slice()));
-                Ok(value)
+                fc.cast_to_felt_if_needed(codegen, self.location, value)
             }
         }
     }

@@ -18,7 +18,7 @@ component main = T15();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@T15::@T15<[]>>} {
 // CHECK-NEXT:    poly.template @T15 {
 // CHECK-NEXT:      struct.def @T15 {
-// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@T15::@T15<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@T15::@T15<[]>>
 // CHECK-NEXT:          %[[VAL_y_1:[0-9a-zA-Z_\.]+]] = felt.const  0

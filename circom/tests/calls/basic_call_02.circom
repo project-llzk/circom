@@ -50,7 +50,7 @@ component main = Call2();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Call2 {
 // CHECK-NEXT:      struct.def @Call2 {
-// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_17:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "m"}) -> !struct.type<@Call2::@Call2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = struct.new : <@Call2::@Call2<[]>>
 // CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = function.call @nbits::@nbits(%[[VAL_17]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">

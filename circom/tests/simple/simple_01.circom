@@ -18,8 +18,8 @@ component main = Simple3();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Simple3::@Simple3<[]>>} {
 // CHECK-NEXT:    poly.template @Simple3 {
 // CHECK-NEXT:      struct.def @Simple3 {
-// CHECK-NEXT:        struct.member @b : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        struct.member @c : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @b : !felt.type<"bn128"> {llzk.pub, signal}
+// CHECK-NEXT:        struct.member @c : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a"}) -> !struct.type<@Simple3::@Simple3<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Simple3::@Simple3<[]>>
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@b] = %[[VAL_0]] : <@Simple3::@Simple3<[]>>, !felt.type<"bn128">

@@ -20,7 +20,7 @@ component main = B();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@B_2::@B_2<[]>>} {
 // CHECK-NEXT:    poly.template @A_0 {
 // CHECK-NEXT:      struct.def @A_0 {
-// CHECK-NEXT:        struct.member @x : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @x : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@A_0::@A_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@A_0::@A_0<[]>>
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
@@ -39,7 +39,7 @@ component main = B();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @A_1 {
 // CHECK-NEXT:      struct.def @A_1 {
-// CHECK-NEXT:        struct.member @x : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @x : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@A_1::@A_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = struct.new : <@A_1::@A_1<[]>>
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">

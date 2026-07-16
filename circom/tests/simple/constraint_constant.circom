@@ -16,7 +16,7 @@ component main = Simple2(10);
 // CHECK-NEXT:    poly.template @Simple2 {
 // CHECK-NEXT:      poly.param @a
 // CHECK-NEXT:      struct.def @Simple2 {
-// CHECK-NEXT:        struct.member @b : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @b : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Simple2::@Simple2<[@a]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@Simple2::@Simple2<[@a]>>
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = poly.read_const @a : !felt.type<"bn128">

@@ -46,7 +46,7 @@ component main = CallRetTest();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @CallRetTest {
 // CHECK-NEXT:      struct.def @CallRetTest {
-// CHECK-NEXT:        struct.member @y : !array.type<2,4,3 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @y : !array.type<2,4,3 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_13:[0-9a-zA-Z_\.]+]]: !array.type<2,4,3 x !felt.type<"bn128">> {function.arg_name = "x"}) -> !struct.type<@CallRetTest::@CallRetTest<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.new : <@CallRetTest::@CallRetTest<[]>>
 // CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = function.call @sum::@sum(%[[VAL_13]]) : (!array.type<2,4,3 x !felt.type<"bn128">>) -> !array.type<2,4,3 x !felt.type<"bn128">>

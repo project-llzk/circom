@@ -23,7 +23,7 @@ component main = Caller(5);
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Caller_1::@Caller_1<[]>>} {
 // CHECK-NEXT:    poly.template @C_0 {
 // CHECK-NEXT:      struct.def @C_0 {
-// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@C_0::@C_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@C_0::@C_0<[]>>
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  5 : <"bn128">
@@ -42,7 +42,7 @@ component main = Caller(5);
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Caller_1 {
 // CHECK-NEXT:      struct.def @Caller_1 {
-// CHECK-NEXT:        struct.member @outp : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:        struct.member @outp : !array.type<2 x !felt.type<"bn128">> {signal}
 // CHECK-NEXT:        struct.member @c : !array.type<2 x !struct.type<@C_0::@C_0<[]>>>
 // CHECK-NEXT:        struct.member @c$inputs : !array.type<2 x !pod.type<[]>>
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Caller_1::@Caller_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

@@ -25,7 +25,7 @@ component main = ComputeValue();
 // CHECK-NEXT:    poly.template @ComputeValue {
 // CHECK-NEXT:      struct.def @ComputeValue {
 // CHECK-NEXT:        struct.member @getWeights : !array.type<2 x !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>>
-// CHECK-NEXT:        struct.member @getWeights$inputs : !array.type<2 x !pod.type<[@inp: !felt.type<"bn128">]>>
+// CHECK-NEXT:        struct.member @getWeights$inputs : !array.type<2 x !pod.type<[@inp: !felt.type<"bn128">]>> {signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@ComputeValue::@ComputeValue<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@ComputeValue::@ComputeValue<[]>>
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = array.new  : <2 x !pod.type<[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>>

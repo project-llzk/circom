@@ -16,7 +16,7 @@ component main = Array00();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Array00::@Array00<[]>>} {
 // CHECK-NEXT:    poly.template @Array00 {
 // CHECK-NEXT:      struct.def @Array00 {
-// CHECK-NEXT:        struct.member @b : !array.type<1 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @b : !array.type<1 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<1 x !felt.type<"bn128">> {function.arg_name = "a"}) -> !struct.type<@Array00::@Array00<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Array00::@Array00<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1 x !felt.type<"bn128">>

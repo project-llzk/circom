@@ -49,7 +49,7 @@ component main = LoopMultiIV();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @LoopMultiIV {
 // CHECK-NEXT:      struct.def @LoopMultiIV {
-// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_21:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "inp"}) -> !struct.type<@LoopMultiIV::@LoopMultiIV<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = struct.new : <@LoopMultiIV::@LoopMultiIV<[]>>
 // CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = function.call @complicatedLoopFn::@complicatedLoopFn(%[[VAL_21]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">

@@ -263,7 +263,7 @@ component main = Main();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Main_0 {
 // CHECK-NEXT:      struct.def @Main_0 {
-// CHECK-NEXT:        struct.member @out : !array.type<16,2 x !felt.type<"bn128">> {llzk.pub}
+// CHECK-NEXT:        struct.member @out : !array.type<16,2 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Main_0::@Main_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_173:[0-9a-zA-Z_\.]+]] = struct.new : <@Main_0::@Main_0<[]>>
 // CHECK-NEXT:          %[[VAL_174:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<16,2 x !felt.type<"bn128">>

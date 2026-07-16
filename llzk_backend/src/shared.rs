@@ -57,6 +57,7 @@ use llzk::prelude::Operation;
 use llzk::prelude::OperationLike;
 use llzk::prelude::OperationMutLike;
 use llzk::prelude::OperationRef;
+use llzk::prelude::OperationRefMut;
 use llzk::prelude::PassManager;
 use llzk::prelude::PodType;
 use llzk::prelude::RecordValue;
@@ -66,9 +67,9 @@ use llzk::prelude::StringAttribute;
 use llzk::prelude::StringRef;
 use llzk::prelude::StructType;
 use llzk::prelude::SymbolRefAttribute;
+use llzk::prelude::TemplateExprOp;
 use llzk::prelude::TemplateExprOpLike;
 use llzk::prelude::TemplateOpLike;
-use llzk::prelude::TemplateOpRef;
 use llzk::prelude::TemplateOpRefMut;
 use llzk::prelude::TemplateSymbolBindingOp;
 use llzk::prelude::TemplateSymbolBindingOpLike;
@@ -103,6 +104,7 @@ use std::cell::Cell;
 use std::cell::Ref;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::convert::TryInto as _;
 use std::fs;
@@ -279,6 +281,8 @@ pub struct LlzkCodegen<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> {
     pub config: LlzkConfig,
     /// Declaration info pre-computed for all templates.
     template_decls: RefCell<HashMap<String, DeclInfo<'ctx>>>,
+    /// Index restrictions inferred by the preliminary declaration pass.
+    template_param_requirements: RefCell<HashMap<String, HashSet<String>>>,
     /// Strategy used to store `poly.expr` / `poly.param` symbol bindings as they are generated.
     pub(crate) binding_insert_strategy:
         RefCell<Option<Box<dyn PolyBindingStorageStrategy<'ctx, P> + 'r>>>,
@@ -296,7 +300,7 @@ pub struct LlzkCodegen<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> {
     /// Deduplicated global constants for concrete VCP array arguments.
     vcp_array_const_globals: RefCell<HashMap<VcpArrayConstKey, String>>,
     /// Operation builder
-    builder: OpBuilder<'ctx>,
+    builder: OpBuilder<'ctx, 'static>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -609,17 +613,19 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         module: Module<'ctx>,
         config: LlzkConfig,
     ) -> Self {
+        let builder = OpBuilder::at_block_end(context, module.body());
         LlzkCodegen {
             program,
             context,
             module,
             config,
             template_decls: RefCell::new(Default::default()),
+            template_param_requirements: RefCell::new(Default::default()),
             binding_insert_strategy: RefCell::new(None),
             current_body: Cell::new(None),
             statement_trace: RefCell::new(Vec::new()),
             vcp_array_const_globals: RefCell::new(Default::default()),
-            builder: OpBuilder::new(context),
+            builder,
         }
     }
 
@@ -630,7 +636,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     }
 
     /// Returns a reference to the operation builder.
-    pub fn op_builder(&self) -> &OpBuilder<'ctx> {
+    pub fn op_builder(&self) -> &OpBuilder<'ctx, 'static> {
         &self.builder
     }
 
@@ -705,17 +711,21 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
 
     /// Create a `poly.template` from the given parameters, add it to the module, set it as
     /// the current template being generated, and return a mutable reference to it.
-    pub fn create_and_set_current_template<'s>(
+    pub fn create_and_set_current_template<'s, N: AsRef<str>>(
         &'s self,
         location: Location<'ctx>,
         name: &str,
-        template_region_ops: impl IntoIterator<Item = Result<Operation<'ctx>, LlzkError>>,
+        template_params: impl IntoIterator<Item = (N, Option<Type<'ctx>>)>,
     ) -> Result<(TemplateOpRefMut<'ctx, 'r>, CurrentTemplateAutoReset<'s, 'ctx, 'r, P>)> {
-        let template_op = poly::template(location, name, template_region_ops)?;
-        let block = self.module.body();
-        let op_ref = block.append_operation(template_op.into());
-        let template_ref = TemplateOpRefMut::from(TemplateOpRef::try_from(op_ref)?);
-        // SAFETY: The operation is appended to `self.module` which has lifetime `'ctx`.
+        let template_params = template_params.into_iter().collect::<Vec<_>>();
+        let template_ref =
+            TemplateOpRefMut::from(poly::template(&self.builder, location, name, |builder| {
+                for (name, type_opt) in template_params {
+                    poly::param(builder, location, name.as_ref(), type_opt)?;
+                }
+                Ok(())
+            })?);
+        // SAFETY: The operation is inserted into `self.module` which has lifetime `'ctx`.
         // Since `'ctx: 'r` is a bound on `LlzkCodegen`, the operation is valid for `'r`.
         // We extend the borrow lifetime from the anonymous `&self` lifetime to `'r`.
         let template_ref: TemplateOpRefMut<'ctx, 'r> =
@@ -756,6 +766,65 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         self.template_decls
             .borrow_mut()
             .insert(name.to_string(), DeclInfo::Full(Box::new(decl_info)));
+    }
+
+    /// Propagate `index` restrictions through direct template-parameter arguments until reaching
+    /// a fixed point.
+    pub fn propagate_template_param_types(&self) -> Result<()> {
+        let params_by_template = self
+            .program
+            .get_templates(false)
+            .into_iter()
+            .map(|template| (template.get_name(), template.get_name_of_params()))
+            .collect::<HashMap<_, _>>();
+
+        loop {
+            let required_by_template = self
+                .template_decls
+                .borrow()
+                .iter()
+                .filter_map(|(name, info)| match info {
+                    DeclInfo::Full(info) => Some((name.clone(), info.index_template_params())),
+                    DeclInfo::Remnant { .. } => None,
+                })
+                .collect::<HashMap<String, HashSet<String>>>();
+
+            let changed = self.template_decls.borrow_mut().values_mut().try_fold(
+                false,
+                |changed, info| match info {
+                    DeclInfo::Full(info) => info
+                        .propagate_index_template_params(
+                            &required_by_template,
+                            &params_by_template,
+                            self.index_type(),
+                        )
+                        .map(|updated| changed | updated),
+                    DeclInfo::Remnant { .. } => Ok(changed),
+                },
+            )?;
+            if !changed {
+                return Ok(());
+            }
+        }
+    }
+
+    /// Save the inferred index restrictions and clear the preliminary declaration pass.
+    pub fn prepare_second_declaration_pass(&self) {
+        let requirements = self
+            .template_decls
+            .borrow_mut()
+            .drain()
+            .filter_map(|(name, info)| match info {
+                DeclInfo::Full(info) => Some((name, info.index_template_params())),
+                DeclInfo::Remnant { .. } => None,
+            })
+            .collect();
+        self.template_param_requirements.replace(requirements);
+    }
+
+    /// Remove and return the inferred index restrictions for one template.
+    pub fn take_index_template_params_for(&self, name: &str) -> HashSet<String> {
+        self.template_param_requirements.borrow_mut().remove(name).unwrap_or_default()
     }
 
     /// Remove and return the full [DeclarationInfo] for the template with the given name and leave
@@ -1002,7 +1071,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         let record_type = pod_type
             .record_type(name)
             .ok_or_else(|| anyhow!("record '{}' not found for pod {pod_type}", name))?;
-        Ok(pod::read(location, pod, self.flat_sym(name), record_type))
+        Ok(pod::read(location, pod, name, record_type))
     }
 
     /// Creates a `pod.write` operation.
@@ -1014,7 +1083,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         name: impl AsRef<str>,
         src: Value<'ctx, '_>,
     ) -> Operation<'ctx> {
-        pod::write(location, pod, self.flat_sym(name), src)
+        pod::write(location, pod, name.as_ref(), src)
     }
 
     /// Create an LLZK operation that produces a boolean constant value.
@@ -2529,7 +2598,9 @@ where
         // Generate `poly.expr` and fill its initializer region.
         let name = K::expr_name(target_expr);
         let location = codegen.location_from_meta(target_expr.get_meta());
-        let expr_op = poly::expr(location, &name, std::iter::empty())?;
+        let scratch = Block::new(&[]);
+        let scratch_builder = OpBuilder::at_block_end(codegen.context, &scratch);
+        let expr_op = poly::expr(&scratch_builder, location, &name, |_| Ok(()))?;
         let mut expr_gen_ctx = BlockGenContext::new(
             BlockContextStack::new(
                 expr_op.initializer_region().first_block().expect("block should have been added"),
@@ -2553,7 +2624,11 @@ where
             );
         };
         let val = K::finalize_poly_expr_value(&mut expr_gen_ctx, codegen, location, val)?;
-        expr_gen_ctx.append_op_no_result(poly::r#yield(location, val)?.into())?;
+        let yield_builder = OpBuilder::at_block_end(
+            codegen.context,
+            expr_op.initializer_region().first_block().expect("block should have been added"),
+        );
+        poly::r#yield(&yield_builder, location, val)?;
 
         // Run cleanup passes to simplify and normalize the generated code a bit:
         // - remove-dead-values: drop ops whose results are not used
@@ -2569,6 +2644,7 @@ where
             &expr_op,
         )?;
 
+        let expr_op = TemplateExprOp::try_from(detach_owned_operation(&expr_op))?;
         let uniqued_name = self.record_new_sym_binding(codegen, expr_op.into(), &|_| {});
 
         if codegen.config.verbose {
@@ -2677,6 +2753,22 @@ pub fn insert_unique_symbol_op<'c: 'a, 'a>(
     new_symbol_op: impl Into<Operation<'c>>,
 ) -> OperationRef<'c, 'a> {
     symbol_table::insert(sym_table_op, new_symbol_op.into())
+}
+
+/// Detach a builder-created operation from its temporary block and return ownership of it.
+///
+/// LLZK's builder APIs insert operations immediately. Declaration collection still needs to hold
+/// some symbol operations until their containing template is created, so those operations are
+/// initially built in a scratch block and transferred into owned form here.
+pub fn detach_owned_operation<'c: 'a, 'a>(op: &impl OperationLike<'c, 'a>) -> Operation<'c> {
+    let raw = op.to_raw();
+    // SAFETY: `raw` is a valid operation inserted in a scratch block. Removing it transfers
+    // responsibility for destroying it to the owned `Operation` constructed below.
+    unsafe {
+        let mut op_ref = OperationRefMut::from_raw(raw);
+        op_ref.remove_from_parent();
+        Operation::from_raw(raw)
+    }
 }
 
 /// Wraps the given pod record tuples into instances of [`RecordValue`].

@@ -25,6 +25,7 @@ use anyhow::ensure;
 use anyhow::Context as _;
 use anyhow::Result;
 use llzk::attributes::array::AffineMapAttribute;
+use llzk::builder::OpBuilder;
 use llzk::dialect::array;
 use llzk::dialect::array::ArrayCtor;
 use llzk::dialect::bool;
@@ -43,6 +44,7 @@ use llzk::prelude::melior_dialects::scf;
 use llzk::prelude::replace_uses_of_with;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
+use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FlatSymbolRefAttribute;
@@ -61,6 +63,7 @@ use llzk::prelude::StringAttribute;
 use llzk::prelude::StringRef;
 use llzk::prelude::StructType;
 use llzk::prelude::TVarType;
+use llzk::prelude::TemplateParamOp;
 use llzk::prelude::TemplateParamOpLike;
 use llzk::prelude::TemplateSymbolBindingOp;
 use llzk::prelude::TemplateSymbolBindingOpLike;
@@ -748,12 +751,27 @@ where
         if codegen.config.stabilize {
             sorted.sort_by(|(a, _), (b, _)| a.cmp(b));
         }
+        // Keep the binding map borrowed so sorting can use references; only the disjoint block
+        // context is mutated below. Names are copied only when inserted into its owning map.
         for (name, ty) in sorted {
             // If there is no type restriction use `felt` since it's circom's basic type.
-            self.block_ctx.declare_name_ensure_not_present(
-                name,
-                poly::read_const(location, name, ty.unwrap_or_else(|| codegen.felt_type().into())),
+            let ty = (*ty).unwrap_or_else(|| codegen.felt_type().into());
+            let value = single_result_as_value(
+                self.block_ctx.append_current_block(poly::read_const(location, name, ty)),
             )?;
+            // Array-dimension `poly.expr`s yield index values, while Circom template parameters
+            // and expressions otherwise behave as field elements inside generated functions.
+            let value = if is_index(ty) {
+                single_result_as_value(self.block_ctx.append_current_block(cast::tofelt(
+                    location,
+                    value,
+                    Some(codegen.felt_type()),
+                )))?
+            } else {
+                value
+            };
+            ensure!(!self.block_ctx.is_name_present(name), "name {name} is already present");
+            self.block_ctx.top_mut().scope_local_name_to_value.insert(name.clone(), value);
         }
         drop(map); // drop the borrow before moving out of `self` for the return
         Ok(self)
@@ -773,6 +791,24 @@ where
     /// name in the circom code.
     pub fn append_op_unnamed_result(&mut self, op: Operation<'ctx>) -> Result<Value<'ctx, 'val>> {
         single_result_as_value(self.append_op(op))
+    }
+
+    /// Read a visible `poly.param` or `poly.expr` using its declared type restriction.
+    /// Unrestricted bindings are read using `fallback_type`.
+    pub(crate) fn read_poly_template_binding(
+        &mut self,
+        location: Location<'ctx>,
+        name: &str,
+        fallback_type: Type<'ctx>,
+    ) -> Result<Value<'ctx, 'val>> {
+        let type_restriction = self
+            .poly_template_binding_names
+            .borrow()
+            .get(name)
+            .copied()
+            .ok_or_else(|| anyhow!("unknown polymorphic binding '{name}'"))?;
+        let ty = type_restriction.unwrap_or(fallback_type);
+        self.append_op_unnamed_result(poly::read_const(location, name, ty))
     }
 
     /// Append an operation that must produce one or more results and is NOT associated with a
@@ -1918,18 +1954,16 @@ where
     pub fn gen_decompose_pod(
         &mut self,
         pod: Value<'ctx, 'val>,
-        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<Vec<Value<'ctx, 'val>>> {
         PodType::try_from(pod.r#type())?
             .records()
             .into_iter()
             .map(|record| {
-                let record_name = codegen.flat_sym(record.name().as_string_ref().as_str()?);
                 self.append_op_unnamed_result(pod::read(
                     location,
                     pod,
-                    record_name,
+                    record.name().as_string_ref().as_str()?,
                     record.r#type(),
                 ))
             })
@@ -1984,7 +2018,7 @@ where
         location: Location<'ctx>,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<Value<'ctx, 'val>> {
-        let input_values = self.gen_decompose_pod(inputs, codegen, location)?;
+        let input_values = self.gen_decompose_pod(inputs, location)?;
         let func_name = append_tail(&struct_type.name(), FUNC_NAME_COMPUTE.as_ref());
         let params = self.read_required_params(struct_type, params, codegen, location)?;
         let mut map_operands = MapOperandsBuilder::new();
@@ -2014,7 +2048,7 @@ where
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<()> {
         let mut call_args = vec![subcmp];
-        call_args.extend(self.gen_decompose_pod(inputs, codegen, location)?);
+        call_args.extend(self.gen_decompose_pod(inputs, location)?);
         let func_name = append_tail(
             &StructType::try_from(subcmp.r#type())?.name(),
             FUNC_NAME_CONSTRAIN.as_ref(),
@@ -2044,24 +2078,10 @@ where
             return self.append_op_unnamed_result(arith::constant(codegen.context, dim, location));
         }
         if let Ok(sym_ref) = FlatSymbolRefAttribute::try_from(dim) {
-            // Check if this is a template binding reference
             let sym_name = sym_ref.value();
-            let type_restriction = self.poly_template_binding_names.borrow().get(sym_name).copied();
-            if let Some(opt_ty) = type_restriction {
-                if let Some(ty) = opt_ty {
-                    // Read as the restricted type and then cast to index.
-                    let op =
-                        self.append_op_unnamed_result(poly::read_const(location, sym_name, ty))?;
-                    return self.cast_to_index_if_needed(codegen, location, op);
-                } else {
-                    // If there is no type restriction just use `index`.
-                    return self.append_op_unnamed_result(poly::read_const(
-                        location,
-                        sym_name,
-                        codegen.index_type(),
-                    ));
-                }
-            }
+            let value =
+                self.read_poly_template_binding(location, sym_name, codegen.index_type())?;
+            return self.cast_to_index_if_needed(codegen, location, value);
         }
         unreachable!("Unhandled attribute in array dimensions {}", dim)
     }
@@ -2421,7 +2441,10 @@ where
         location: Location<'ctx>,
         name: &str,
     ) -> Result<StringAttribute<'ctx>> {
-        poly::param(location, name, None)
+        let scratch = Block::new(&[]);
+        let builder = OpBuilder::at_block_end(codegen.context, &scratch);
+        poly::param(&builder, location, name, None)
+            .and_then(|op| TemplateParamOp::try_from(shared::detach_owned_operation(&op)))
             .map(|op| {
                 self.record_new_sym_binding(codegen, op.into(), &|op_ref| match op_ref {
                     TemplateSymbolBindingOpRef::Param(op_ref) => {
@@ -2480,7 +2503,7 @@ where
                         self.gen_template_poly_expr::<K>(codegen, expr)
                     }
                 }
-                Expression::Variable { meta, name, access } if access.is_empty() => {
+                Expression::Variable { name, access, .. } if access.is_empty() => {
                     // Grab the template symbol binding name if it exists (first try `poly.param`
                     // name then try `poly.expr` name). Otherwise, use `affine_map` to convert Value
                     // to Attribute.
@@ -2769,7 +2792,7 @@ where
 /// Returns the indices of the struct parameters that require affine map operands.
 fn params_requiring_map_operands(struct_type: StructType) -> Vec<usize> {
     struct_type
-        .params()
+        .params_vec()
         .into_iter()
         .enumerate()
         .filter_map(|(n, attr)| attr.is_affine_map().then_some(n))

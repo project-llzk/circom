@@ -27,7 +27,7 @@ component main = ComputeValue();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ComputeValue::@ComputeValue<[]>>} {
 // CHECK-NEXT:    poly.template @ComputeValue {
 // CHECK-NEXT:      struct.def @ComputeValue {
-// CHECK-NEXT:        struct.member @ret : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:        struct.member @ret : !array.type<2 x !felt.type<"bn128">> {signal}
 // CHECK-NEXT:        struct.member @ws : !array.type<2 x !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]], #[[$ATTR_0]]]>>>
 // CHECK-NEXT:        struct.member @ws$inputs : !array.type<2 x !pod.type<[]>>
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@ComputeValue::@ComputeValue<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
@@ -129,9 +129,9 @@ component main = ComputeValue();
 // CHECK-NEXT:      poly.param @A
 // CHECK-NEXT:      poly.param @B
 // CHECK-NEXT:      struct.def @GetWeight {
-// CHECK-NEXT:        struct.member @x : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @x : !felt.type<"bn128"> {llzk.pub, signal}
+// CHECK-NEXT:        struct.member @y : !felt.type<"bn128"> {llzk.pub, signal}
+// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@GetWeight::@GetWeight<[@A, @B]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_75:[0-9a-zA-Z_\.]+]] = struct.new : <@GetWeight::@GetWeight<[@A, @B]>>
 // CHECK-NEXT:          %[[VAL_76:[0-9a-zA-Z_\.]+]] = poly.read_const @A : !felt.type<"bn128">

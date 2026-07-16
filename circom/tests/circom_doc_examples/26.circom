@@ -22,9 +22,9 @@ component main = B(3);
 // CHECK-NEXT:    poly.template @A {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @A {
-// CHECK-NEXT:        struct.member @b : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        struct.member @c : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        struct.member @d : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @b : !felt.type<"bn128"> {llzk.pub, signal}
+// CHECK-NEXT:        struct.member @c : !felt.type<"bn128"> {llzk.pub, signal}
+// CHECK-NEXT:        struct.member @d : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "a"}) -> !struct.type<@A::@A<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@A::@A<[@n]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
@@ -60,9 +60,9 @@ component main = B(3);
 // CHECK-NEXT:    poly.template @B {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @B {
-// CHECK-NEXT:        struct.member @out1 : !felt.type<"bn128"> {llzk.pub}
+// CHECK-NEXT:        struct.member @out1 : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        struct.member @A_17_424 : !struct.type<@A::@A<[@n]>>
-// CHECK-NEXT:        struct.member @A_17_424$inputs : !pod.type<[@a: !felt.type<"bn128">]>
+// CHECK-NEXT:        struct.member @A_17_424$inputs : !pod.type<[@a: !felt.type<"bn128">]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_21:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@B::@B<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = struct.new : <@B::@B<[@n]>>
 // CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">

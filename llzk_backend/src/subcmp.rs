@@ -655,7 +655,7 @@ impl SubcmpPrologueLayout<'_> {
     fn is_very_concrete(&self) -> bool {
         match &self {
             SubcmpPrologueLayout::Uniform(subcmp_type) => {
-                subcmp_type.struct_type().params().is_empty()
+                subcmp_type.struct_type().params_vec().is_empty()
             }
             _ => true,
         }

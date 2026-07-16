@@ -21,8 +21,8 @@ component main = A(5);
 // CHECK-NEXT:    poly.template @A {
 // CHECK-NEXT:      poly.param @n
 // CHECK-NEXT:      struct.def @A {
-// CHECK-NEXT:        struct.member @outA : !felt.type<"bn128"> {llzk.pub}
-// CHECK-NEXT:        struct.member @out : !felt.type<"bn128">
+// CHECK-NEXT:        struct.member @outA : !felt.type<"bn128"> {llzk.pub, signal}
+// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@A::@A<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@A::@A<[@n]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
