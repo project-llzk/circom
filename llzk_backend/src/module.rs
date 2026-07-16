@@ -137,8 +137,14 @@ pub struct DeclarationInfo<'ctx> {
     declared_var_names: HashSet<String>,
     /// Map `component` name to its declaration information.
     subcmp_decls: HashMap<String, SubcmpDeclInfo<'ctx>>,
-    /// Template parameters and their LLZK type restrictions. Parameters referenced directly by
-    /// array types must be index-typed; all others remain unrestricted.
+    /// Template parameters and their LLZK type restrictions.
+    ///
+    /// Parameters used directly as array dimensions, including parameters forwarded to an
+    /// array-dimension parameter of a subcomponent, are restricted to LLZK's target-width
+    /// `index` type. An out-of-range Circom field value may therefore be truncated when converted
+    /// to `index` (for example, on a target with 32-bit indices). Composite dimension expressions
+    /// use a separate index-typed `poly.expr`; all other parameters remain unrestricted and
+    /// index-restricted parameters are cast back to field elements for Circom arithmetic.
     template_params: HashMap<String, Option<Type<'ctx>>>,
     /// Pending `poly.expr` / `poly.param` symbol bindings generated while visiting declarations,
     /// to be inserted into the template once it is created.
