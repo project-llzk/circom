@@ -711,17 +711,17 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
 
     /// Create a `poly.template` from the given parameters, add it to the module, set it as
     /// the current template being generated, and return a mutable reference to it.
-    pub fn create_and_set_current_template<'s>(
+    pub fn create_and_set_current_template<'s, N: AsRef<str>>(
         &'s self,
         location: Location<'ctx>,
         name: &str,
-        template_params: impl IntoIterator<Item = (String, Option<Type<'ctx>>)>,
+        template_params: impl IntoIterator<Item = (N, Option<Type<'ctx>>)>,
     ) -> Result<(TemplateOpRefMut<'ctx, 'r>, CurrentTemplateAutoReset<'s, 'ctx, 'r, P>)> {
         let template_params = template_params.into_iter().collect::<Vec<_>>();
         let template_ref =
             TemplateOpRefMut::from(poly::template(&self.builder, location, name, |builder| {
                 for (name, type_opt) in template_params {
-                    poly::param(builder, location, &name, type_opt)?;
+                    poly::param(builder, location, name.as_ref(), type_opt)?;
                 }
                 Ok(())
             })?);
@@ -775,9 +775,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
             .program
             .get_templates(false)
             .into_iter()
-            .map(|template| {
-                (template.get_name().to_owned(), template.get_name_of_params().to_vec())
-            })
+            .map(|template| (template.get_name(), template.get_name_of_params()))
             .collect::<HashMap<_, _>>();
 
         loop {

@@ -166,7 +166,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
     pub(crate) fn propagate_index_template_params(
         &mut self,
         required_by_template: &HashMap<String, HashSet<String>>,
-        params_by_template: &HashMap<String, Vec<String>>,
+        params_by_template: &HashMap<&str, &[String]>,
         index_type: Type<'ctx>,
     ) -> Result<bool> {
         let mut newly_required = HashSet::new();
@@ -185,7 +185,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                     }
                     if let Ok(symbol) = FlatSymbolRefAttribute::try_from(actual) {
                         if self.template_params.contains_key(symbol.value()) {
-                            newly_required.insert(symbol.value().to_owned());
+                            newly_required.insert(symbol.value());
                         }
                     }
                 }
@@ -193,7 +193,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
         }
 
         let changed = newly_required.into_iter().fold(false, |changed, name| {
-            match self.template_params.get_mut(&name) {
+            match self.template_params.get_mut(name) {
                 Some(restriction @ None) => {
                     *restriction = Some(index_type);
                     true
@@ -751,19 +751,16 @@ where
         .get_name_of_params()
         .iter()
         .map(|name| {
-            (
-                name.clone(),
-                *declarations
-                    .template_params
-                    .get(name)
-                    .expect("template parameter was collected with declarations"),
-            )
+            declarations
+                .template_params
+                .remove_entry(name)
+                .expect("template parameter was collected with declarations")
         })
         .collect::<Vec<_>>();
     let (new_template, _guard) = codegen.create_and_set_current_template(
         location,
         template_like.get_name(),
-        template_params.clone(),
+        template_params.iter().map(|(name, ty)| (name, *ty)),
     )?;
 
     // Insert the declarations from `declarations.new_sym_bindings`.
@@ -838,10 +835,7 @@ where
         map_name_to_arg_value(constrain_func, arg_names)?,
         &declarations.var_decl_types,
         // concatenate circom template parameter names with `poly_expr_names`
-        template_params
-            .iter()
-            .cloned()
-            .chain(poly_binding_names.iter().map(|(name, ty)| (name.clone(), *ty))),
+        template_params.into_iter().chain(poly_binding_names),
     )?;
 
     let location = codegen.location_unknown();
