@@ -747,28 +747,32 @@ where
         location: Location<'ctx>,
     ) -> Result<Self> {
         let map = self.poly_template_binding_names.borrow();
-        let mut sorted: Vec<_> = map.iter().map(|(name, ty)| (name.clone(), *ty)).collect();
-        drop(map);
+        let mut sorted: Vec<_> = map.iter().collect();
         if codegen.config.stabilize {
             sorted.sort_by(|(a, _), (b, _)| a.cmp(b));
         }
+        // Keep the binding map borrowed so sorting can use references; only the disjoint block
+        // context is mutated below. Names are copied only when inserted into its owning map.
         for (name, ty) in sorted {
-            let ty = ty.unwrap_or_else(|| codegen.felt_type().into());
-            let value = self.append_op_unnamed_result(poly::read_const(location, &name, ty))?;
+            let ty = (*ty).unwrap_or_else(|| codegen.felt_type().into());
+            let value = single_result_as_value(
+                self.block_ctx.append_current_block(poly::read_const(location, name, ty)),
+            )?;
             // Array-dimension `poly.expr`s yield index values, while Circom template parameters
             // and expressions otherwise behave as field elements inside generated functions.
             let value = if is_index(ty) {
-                self.append_op_unnamed_result(cast::tofelt(
+                single_result_as_value(self.block_ctx.append_current_block(cast::tofelt(
                     location,
                     value,
                     Some(codegen.felt_type()),
-                ))?
+                )))?
             } else {
                 value
             };
-            ensure!(!self.block_ctx.is_name_present(&name), "name {name} is already present");
-            self.block_ctx.top_mut().scope_local_name_to_value.insert(name, value);
+            ensure!(!self.block_ctx.is_name_present(name), "name {name} is already present");
+            self.block_ctx.top_mut().scope_local_name_to_value.insert(name.clone(), value);
         }
+        drop(map);
         Ok(self)
     }
 
