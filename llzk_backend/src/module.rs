@@ -192,13 +192,15 @@ impl<'ctx> DeclarationInfo<'ctx> {
             }
         }
 
-        let mut changed = false;
-        for name in newly_required {
-            if self.template_params.get(&name) == Some(&None) {
-                self.template_params.insert(name, Some(index_type));
-                changed = true;
+        let changed = newly_required.into_iter().fold(false, |changed, name| {
+            match self.template_params.get_mut(&name) {
+                Some(restriction @ None) => {
+                    *restriction = Some(index_type);
+                    true
+                }
+                _ => changed,
             }
-        }
+        });
         Ok(changed)
     }
 
@@ -292,22 +294,23 @@ impl<'ctx> DeclarationInfo<'ctx> {
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         template: &impl TemplateLike,
     ) -> Result<DeclarationInfo<'ctx>> {
-        let index_params = codegen.index_template_params_for(template.get_name());
-        Self::from_template_with_index_params(codegen, template, &index_params)
+        let index_params = codegen.take_index_template_params_for(template.get_name());
+        Self::from_template_with_index_params(codegen, template, index_params)
     }
 
     /// Collect declarations with the given template parameters already known to require `index`.
     pub(crate) fn from_template_with_index_params(
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         template: &impl TemplateLike,
-        index_params: &HashSet<String>,
+        mut index_params: HashSet<String>,
     ) -> Result<DeclarationInfo<'ctx>> {
         let mut declarations = DeclarationInfo {
             template_params: template
                 .get_name_of_params()
                 .iter()
-                .map(|name| {
-                    (name.clone(), index_params.contains(name).then(|| codegen.index_type()))
+                .map(|name| match index_params.take(name) {
+                    Some(name) => (name, Some(codegen.index_type())),
+                    None => (name.clone(), None),
                 })
                 .collect(),
             subcmp_decls: template.get_init_subcmp_decls(codegen)?,

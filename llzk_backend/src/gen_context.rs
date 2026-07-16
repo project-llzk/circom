@@ -754,6 +754,7 @@ where
         // Keep the binding map borrowed so sorting can use references; only the disjoint block
         // context is mutated below. Names are copied only when inserted into its owning map.
         for (name, ty) in sorted {
+            // If there is no type restriction use `felt` since it's circom's basic type.
             let ty = (*ty).unwrap_or_else(|| codegen.felt_type().into());
             let value = single_result_as_value(
                 self.block_ctx.append_current_block(poly::read_const(location, name, ty)),

@@ -791,16 +791,19 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
                 })
                 .collect::<HashMap<String, HashSet<String>>>();
 
-            let mut changed = false;
-            for info in self.template_decls.borrow_mut().values_mut() {
-                if let DeclInfo::Full(info) = info {
-                    changed |= info.propagate_index_template_params(
-                        &required_by_template,
-                        &params_by_template,
-                        self.index_type(),
-                    )?;
-                }
-            }
+            let changed = self.template_decls.borrow_mut().values_mut().try_fold(
+                false,
+                |changed, info| match info {
+                    DeclInfo::Full(info) => info
+                        .propagate_index_template_params(
+                            &required_by_template,
+                            &params_by_template,
+                            self.index_type(),
+                        )
+                        .map(|updated| changed | updated),
+                    DeclInfo::Remnant { .. } => Ok(changed),
+                },
+            )?;
             if !changed {
                 return Ok(());
             }
@@ -821,9 +824,9 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         self.template_param_requirements.replace(requirements);
     }
 
-    /// Return the inferred index restrictions for one template.
-    pub fn index_template_params_for(&self, name: &str) -> HashSet<String> {
-        self.template_param_requirements.borrow().get(name).cloned().unwrap_or_default()
+    /// Remove and return the inferred index restrictions for one template.
+    pub fn take_index_template_params_for(&self, name: &str) -> HashSet<String> {
+        self.template_param_requirements.borrow_mut().remove(name).unwrap_or_default()
     }
 
     /// Remove and return the full [DeclarationInfo] for the template with the given name and leave
