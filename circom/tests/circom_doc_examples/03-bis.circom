@@ -43,6 +43,7 @@ template D() {
 
 component main = D();
 
+// CHECK:       #[[$ATTR_0:[0-9a-zA-Z_\.]+]] = affine_map<(d0) -> (d0)>
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@D::@D<[]>>} {
 // CHECK-NEXT:    poly.template @A {
 // CHECK-NEXT:      poly.param @N
@@ -95,7 +96,7 @@ component main = D();
 // CHECK-NEXT:      struct.def @B {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        struct.member @branch : !felt.type<"bn128"> {llzk.pub, signal}
-// CHECK-NEXT:        struct.member @a : !struct.type<@A::@A<[#map]>>
+// CHECK-NEXT:        struct.member @a : !struct.type<@A::@A<[#[[$ATTR_0]]]>>
 // CHECK-NEXT:        struct.member @a$inputs : !pod.type<[@in: !felt.type<"bn128">]> {signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@B::@B<[@N]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = struct.new : <@B::@B<[@N]>>
@@ -105,47 +106,47 @@ component main = D();
 // CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = pod.new : <[@in: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = bool.cmp gt(%[[VAL_22]], %[[VAL_26]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]]:2 = scf.if %[[VAL_27]] -> (!pod.type<[@count: index, @comp: !struct.type<@A::@A<[#map]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, !felt.type<"bn128">) {
+// CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]]:2 = scf.if %[[VAL_27]] -> (!pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, !felt.type<"bn128">) {
 // CHECK-NEXT:            %[[VAL_29:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Add_2@461" : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_30:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_29]] }  : <[@N: !felt.type<"bn128">]>
 // CHECK-NEXT:            %[[VAL_31:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:            %[[VAL_32:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_31]], @params = %[[VAL_30]] }  : <[@count: index, @comp: !struct.type<@A::@A<[@"N_Add_2@461"]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
-// CHECK-NEXT:            %[[VAL_33:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_32]] : (!pod.type<[@count: index, @comp: !struct.type<@A::@A<[@"N_Add_2@461"]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>) -> !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#map]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
+// CHECK-NEXT:            %[[VAL_33:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_32]] : (!pod.type<[@count: index, @comp: !struct.type<@A::@A<[@"N_Add_2@461"]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>) -> !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
 // CHECK-NEXT:            %[[VAL_34:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            struct.writem %[[VAL_21]][@branch] = %[[VAL_34]] : <@B::@B<[@N]>>, !felt.type<"bn128">
-// CHECK-NEXT:            scf.yield %[[VAL_33]], %[[VAL_34]] : !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#map]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, !felt.type<"bn128">
+// CHECK-NEXT:            scf.yield %[[VAL_33]], %[[VAL_34]] : !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, !felt.type<"bn128">
 // CHECK-NEXT:          } else {
 // CHECK-NEXT:            %[[VAL_35:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Add_1@509" : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_36:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_35]] }  : <[@N: !felt.type<"bn128">]>
 // CHECK-NEXT:            %[[VAL_37:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:            %[[VAL_38:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_37]], @params = %[[VAL_36]] }  : <[@count: index, @comp: !struct.type<@A::@A<[@"N_Add_1@509"]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
-// CHECK-NEXT:            %[[VAL_39:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_38]] : (!pod.type<[@count: index, @comp: !struct.type<@A::@A<[@"N_Add_1@509"]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>) -> !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#map]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
+// CHECK-NEXT:            %[[VAL_39:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_38]] : (!pod.type<[@count: index, @comp: !struct.type<@A::@A<[@"N_Add_1@509"]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>) -> !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
 // CHECK-NEXT:            %[[VAL_40:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:            struct.writem %[[VAL_21]][@branch] = %[[VAL_40]] : <@B::@B<[@N]>>, !felt.type<"bn128">
-// CHECK-NEXT:            scf.yield %[[VAL_39]], %[[VAL_40]] : !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#map]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, !felt.type<"bn128">
+// CHECK-NEXT:            scf.yield %[[VAL_39]], %[[VAL_40]] : !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, !felt.type<"bn128">
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_41:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          pod.write %[[VAL_25]][@in] = %[[VAL_41]] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_42:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_28]]#0[@count] : <[@count: index, @comp: !struct.type<@A::@A<[#map]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, index
+// CHECK-NEXT:          %[[VAL_42:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_28]]#0[@count] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, index
 // CHECK-NEXT:          %[[VAL_43:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:          %[[VAL_44:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_42]], %[[VAL_43]] : index
-// CHECK-NEXT:          pod.write %[[VAL_28]]#0[@count] = %[[VAL_44]] : <[@count: index, @comp: !struct.type<@A::@A<[#map]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, index
+// CHECK-NEXT:          pod.write %[[VAL_28]]#0[@count] = %[[VAL_44]] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, index
 // CHECK-NEXT:          %[[VAL_45:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:          %[[VAL_46:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_44]], %[[VAL_45]] : index
 // CHECK-NEXT:          scf.if %[[VAL_46]] {
-// CHECK-NEXT:            %[[VAL_47:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_28]]#0[@params] : <[@count: index, @comp: !struct.type<@A::@A<[#map]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, !pod.type<[@N: !felt.type<"bn128">]>
+// CHECK-NEXT:            %[[VAL_47:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_28]]#0[@params] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, !pod.type<[@N: !felt.type<"bn128">]>
 // CHECK-NEXT:            %[[VAL_48:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_25]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_49:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_47]][@N] : <[@N: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_50:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_49]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_51:[0-9a-zA-Z_\.]+]] = function.call @A::@A::@compute(%[[VAL_48]]) {(%[[VAL_50]])} : (!felt.type<"bn128">) -> !struct.type<@A::@A<[#map]>>
-// CHECK-NEXT:            pod.write %[[VAL_28]]#0[@comp] = %[[VAL_51]] : <[@count: index, @comp: !struct.type<@A::@A<[#map]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, !struct.type<@A::@A<[#map]>>
+// CHECK-NEXT:            %[[VAL_51:[0-9a-zA-Z_\.]+]] = function.call @A::@A::@compute(%[[VAL_48]]) {(%[[VAL_50]])} : (!felt.type<"bn128">) -> !struct.type<@A::@A<[#[[$ATTR_0]]]>>
+// CHECK-NEXT:            pod.write %[[VAL_28]]#0[@comp] = %[[VAL_51]] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, !struct.type<@A::@A<[#[[$ATTR_0]]]>>
 // CHECK-NEXT:          }
-// CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_28]]#0[@comp] : <[@count: index, @comp: !struct.type<@A::@A<[#map]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, !struct.type<@A::@A<[#map]>>
-// CHECK-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_52]][@out] : <@A::@A<[#map]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_28]]#0[@comp] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, !struct.type<@A::@A<[#[[$ATTR_0]]]>>
+// CHECK-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_52]][@out] : <@A::@A<[#[[$ATTR_0]]]>>, !felt.type<"bn128">
 // CHECK-NEXT:          struct.writem %[[VAL_21]][@out] = %[[VAL_53]] : <@B::@B<[@N]>>, !felt.type<"bn128">
 // CHECK-NEXT:          struct.writem %[[VAL_21]][@a$inputs] = %[[VAL_25]] : <@B::@B<[@N]>>, !pod.type<[@in: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_28]]#0[@comp] : <[@count: index, @comp: !struct.type<@A::@A<[#map]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, !struct.type<@A::@A<[#map]>>
-// CHECK-NEXT:          struct.writem %[[VAL_21]][@a] = %[[VAL_54]] : <@B::@B<[@N]>>, !struct.type<@A::@A<[#map]>>
+// CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_28]]#0[@comp] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, !struct.type<@A::@A<[#[[$ATTR_0]]]>>
+// CHECK-NEXT:          struct.writem %[[VAL_21]][@a] = %[[VAL_54]] : <@B::@B<[@N]>>, !struct.type<@A::@A<[#[[$ATTR_0]]]>>
 // CHECK-NEXT:          function.return %[[VAL_21]] : !struct.type<@B::@B<[@N]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_55:[0-9a-zA-Z_\.]+]]: !struct.type<@B::@B<[@N]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
@@ -154,7 +155,7 @@ component main = D();
 // CHECK-NEXT:          %[[VAL_58:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Add_2@461" : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_59:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_55]][@out] : <@B::@B<[@N]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_60:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_55]][@branch] : <@B::@B<[@N]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_61:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_55]][@a] : <@B::@B<[@N]>>, !struct.type<@A::@A<[#map]>>
+// CHECK-NEXT:          %[[VAL_61:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_55]][@a] : <@B::@B<[@N]>>, !struct.type<@A::@A<[#[[$ATTR_0]]]>>
 // CHECK-NEXT:          %[[VAL_62:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_55]][@a$inputs] : <@B::@B<[@N]>>, !pod.type<[@in: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_63:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_64:[0-9a-zA-Z_\.]+]] = bool.cmp gt(%[[VAL_56]], %[[VAL_63]]) : !felt.type<"bn128">, !felt.type<"bn128">
@@ -174,10 +175,10 @@ component main = D();
 // CHECK-NEXT:          %[[VAL_73:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_74:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_62]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_74]], %[[VAL_73]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_75:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_61]][@out] : <@A::@A<[#map]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_75:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_61]][@out] : <@A::@A<[#[[$ATTR_0]]]>>, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_59]], %[[VAL_75]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_76:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_62]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CHECK-NEXT:          function.call @A::@A::@constrain(%[[VAL_61]], %[[VAL_76]]) : (!struct.type<@A::@A<[#map]>>, !felt.type<"bn128">) -> ()
+// CHECK-NEXT:          function.call @A::@A::@constrain(%[[VAL_61]], %[[VAL_76]]) : (!struct.type<@A::@A<[#[[$ATTR_0]]]>>, !felt.type<"bn128">) -> ()
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

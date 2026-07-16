@@ -582,22 +582,22 @@ component main = IsNegative();
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Sign {
-// CHECK-NEXT:      poly.expr @"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328" {
+// CHECK-NEXT:      poly.expr @"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID:[0-9]+]]" {
 // CHECK-NEXT:        %[[VAL_402:[0-9a-zA-Z_\.]+]] = felt.const  10944121435919637611123202872628637544274182200208017171849102093287904247808 : <"bn128">
 // CHECK-NEXT:        poly.yield %[[VAL_402]] : !felt.type<"bn128">
 // CHECK-NEXT:      }
 // CHECK-NEXT:      struct.def @Sign {
 // CHECK-NEXT:        struct.member @sign : !felt.type<"bn128"> {llzk.pub, signal}
-// CHECK-NEXT:        struct.member @comp : !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>
+// CHECK-NEXT:        struct.member @comp : !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>
 // CHECK-NEXT:        struct.member @comp$inputs : !pod.type<[@in: !array.type<254 x !felt.type<"bn128">>]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_403:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@Sign::@Sign<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_404:[0-9a-zA-Z_\.]+]] = struct.new : <@Sign::@Sign<[]>>
-// CHECK-NEXT:          %[[VAL_405:[0-9a-zA-Z_\.]+]] = poly.read_const @"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328" : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_405:[0-9a-zA-Z_\.]+]] = poly.read_const @"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]" : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_406:[0-9a-zA-Z_\.]+]] = pod.new : <[@in: !array.type<254 x !felt.type<"bn128">>]>
-// CHECK-NEXT:          %[[VAL_407:[0-9a-zA-Z_\.]+]] = poly.read_const @"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328" : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_407:[0-9a-zA-Z_\.]+]] = poly.read_const @"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]" : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_408:[0-9a-zA-Z_\.]+]] = pod.new { @ct = %[[VAL_407]] }  : <[@ct: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_409:[0-9a-zA-Z_\.]+]] = arith.constant 254 : index
-// CHECK-NEXT:          %[[VAL_410:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_409]], @params = %[[VAL_408]] }  : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>
+// CHECK-NEXT:          %[[VAL_410:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_409]], @params = %[[VAL_408]] }  : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_411:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_412:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_413:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_414:[0-9a-zA-Z_\.]+]] = %[[VAL_406]], %[[VAL_415:[0-9a-zA-Z_\.]+]] = %[[VAL_412]]) : (!pod.type<[@in: !array.type<254 x !felt.type<"bn128">>]>, !felt.type<"bn128">) -> (!pod.type<[@in: !array.type<254 x !felt.type<"bn128">>]>, !felt.type<"bn128">) {
@@ -612,38 +612,38 @@ component main = IsNegative();
 // CHECK-NEXT:            %[[VAL_423:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_419]] : !felt.type<"bn128">
 // CHECK-NEXT:            array.write %[[VAL_422]]{{\[}}%[[VAL_423]]] = %[[VAL_421]] : <254 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:            pod.write %[[VAL_418]][@in] = %[[VAL_422]] : <[@in: !array.type<254 x !felt.type<"bn128">>]>, !array.type<254 x !felt.type<"bn128">>
-// CHECK-NEXT:            %[[VAL_424:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_410]][@count] : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>, index
+// CHECK-NEXT:            %[[VAL_424:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_410]][@count] : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>, index
 // CHECK-NEXT:            %[[VAL_425:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:            %[[VAL_426:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_424]], %[[VAL_425]] : index
-// CHECK-NEXT:            pod.write %[[VAL_410]][@count] = %[[VAL_426]] : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>, index
+// CHECK-NEXT:            pod.write %[[VAL_410]][@count] = %[[VAL_426]] : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>, index
 // CHECK-NEXT:            %[[VAL_427:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:            %[[VAL_428:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_426]], %[[VAL_427]] : index
 // CHECK-NEXT:            scf.if %[[VAL_428]] {
-// CHECK-NEXT:              %[[VAL_429:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_410]][@params] : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>, !pod.type<[@ct: !felt.type<"bn128">]>
+// CHECK-NEXT:              %[[VAL_429:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_410]][@params] : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>, !pod.type<[@ct: !felt.type<"bn128">]>
 // CHECK-NEXT:              %[[VAL_430:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_418]][@in] : <[@in: !array.type<254 x !felt.type<"bn128">>]>, !array.type<254 x !felt.type<"bn128">>
-// CHECK-NEXT:              %[[VAL_431:[0-9a-zA-Z_\.]+]] = function.call @CompConstant::@CompConstant::@compute(%[[VAL_430]]) : (!array.type<254 x !felt.type<"bn128">>) -> !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>
-// CHECK-NEXT:              pod.write %[[VAL_410]][@comp] = %[[VAL_431]] : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>, !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>
+// CHECK-NEXT:              %[[VAL_431:[0-9a-zA-Z_\.]+]] = function.call @CompConstant::@CompConstant::@compute(%[[VAL_430]]) : (!array.type<254 x !felt.type<"bn128">>) -> !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>
+// CHECK-NEXT:              pod.write %[[VAL_410]][@comp] = %[[VAL_431]] : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>, !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>
 // CHECK-NEXT:            }
 // CHECK-NEXT:            %[[VAL_432:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_433:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_419]], %[[VAL_432]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            scf.yield %[[VAL_418]], %[[VAL_433]] : !pod.type<[@in: !array.type<254 x !felt.type<"bn128">>]>, !felt.type<"bn128">
 // CHECK-NEXT:          }
-// CHECK-NEXT:          %[[VAL_434:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_410]][@comp] : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>, !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>
-// CHECK-NEXT:          %[[VAL_435:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_434]][@out] : <@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_434:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_410]][@comp] : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>, !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>
+// CHECK-NEXT:          %[[VAL_435:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_434]][@out] : <@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>, !felt.type<"bn128">
 // CHECK-NEXT:          struct.writem %[[VAL_404]][@sign] = %[[VAL_435]] : <@Sign::@Sign<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          struct.writem %[[VAL_404]][@comp$inputs] = %[[VAL_413]]#0 : <@Sign::@Sign<[]>>, !pod.type<[@in: !array.type<254 x !felt.type<"bn128">>]>
-// CHECK-NEXT:          %[[VAL_436:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_410]][@comp] : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>, !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>
-// CHECK-NEXT:          struct.writem %[[VAL_404]][@comp] = %[[VAL_436]] : <@Sign::@Sign<[]>>, !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>
+// CHECK-NEXT:          %[[VAL_436:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_410]][@comp] : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>, !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>
+// CHECK-NEXT:          struct.writem %[[VAL_404]][@comp] = %[[VAL_436]] : <@Sign::@Sign<[]>>, !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>
 // CHECK-NEXT:          function.return %[[VAL_404]] : !struct.type<@Sign::@Sign<[]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_437:[0-9a-zA-Z_\.]+]]: !struct.type<@Sign::@Sign<[]>>, %[[VAL_438:[0-9a-zA-Z_\.]+]]: !array.type<254 x !felt.type<"bn128">> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_439:[0-9a-zA-Z_\.]+]] = poly.read_const @"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328" : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_439:[0-9a-zA-Z_\.]+]] = poly.read_const @"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]" : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_440:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_437]][@sign] : <@Sign::@Sign<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_441:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_437]][@comp] : <@Sign::@Sign<[]>>, !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>
+// CHECK-NEXT:          %[[VAL_441:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_437]][@comp] : <@Sign::@Sign<[]>>, !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>
 // CHECK-NEXT:          %[[VAL_442:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_437]][@comp$inputs] : <@Sign::@Sign<[]>>, !pod.type<[@in: !array.type<254 x !felt.type<"bn128">>]>
-// CHECK-NEXT:          %[[VAL_443:[0-9a-zA-Z_\.]+]] = poly.read_const @"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328" : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_443:[0-9a-zA-Z_\.]+]] = poly.read_const @"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]" : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_444:[0-9a-zA-Z_\.]+]] = pod.new { @ct = %[[VAL_443]] }  : <[@ct: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_445:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>
+// CHECK-NEXT:          %[[VAL_445:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_446:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_447:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_448:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_449:[0-9a-zA-Z_\.]+]] = %[[VAL_447]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
@@ -662,10 +662,10 @@ component main = IsNegative();
 // CHECK-NEXT:            %[[VAL_459:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_452]], %[[VAL_458]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            scf.yield %[[VAL_459]] : !felt.type<"bn128">
 // CHECK-NEXT:          }
-// CHECK-NEXT:          %[[VAL_460:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_441]][@out] : <@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_460:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_441]][@out] : <@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_440]], %[[VAL_460]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_461:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_442]][@in] : <[@in: !array.type<254 x !felt.type<"bn128">>]>, !array.type<254 x !felt.type<"bn128">>
-// CHECK-NEXT:          function.call @CompConstant::@CompConstant::@constrain(%[[VAL_441]], %[[VAL_461]]) : (!struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@1328"]>>, !array.type<254 x !felt.type<"bn128">>) -> ()
+// CHECK-NEXT:          function.call @CompConstant::@CompConstant::@constrain(%[[VAL_441]], %[[VAL_461]]) : (!struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>, !array.type<254 x !felt.type<"bn128">>) -> ()
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
