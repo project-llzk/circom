@@ -9,7 +9,6 @@ use crate::shared::LlzkCodegen;
 use crate::subcmp::names::COMP;
 use crate::subcmp::SubcmpInfo;
 use anyhow::Result;
-use llzk::dialect::llzk::nondet;
 use llzk::dialect::pod;
 use llzk::dialect::r#struct;
 use llzk::prelude::Location;
@@ -188,12 +187,12 @@ impl<'ast> Lvalue<'ast> {
                         prev
                     )
                 })?;
-                let read_value = block_gen.as_mut().append_op_unnamed_result(pod::read(
-                    location,
-                    prev,
-                    record_name,
-                    record_type,
-                ))?;
+                let read_value = {
+                    let block_gen = block_gen.as_mut();
+                    let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                    let read = pod::read(&builder, location, prev, record_name, record_type);
+                    block_gen.append_op_ref_unnamed_result(read)?
+                };
                 return cont.cont(read_value, block_gen);
             }
         }
@@ -223,6 +222,7 @@ impl<'ast> Lvalue<'ast> {
                     prev,
                     entry_indices,
                     block_gen,
+                    codegen,
                     location,
                     prev_pod_type,
                     info,
@@ -247,6 +247,7 @@ impl<'ast> Lvalue<'ast> {
         prev: Value<'ctx, 'val>,
         entry_indices: &[usize],
         block_gen: &mut C,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         prev_pod_type: PodType<'ctx>,
         info: InfoProviders<'_, 'ctx>,
@@ -258,7 +259,7 @@ impl<'ast> Lvalue<'ast> {
         'val: 'cont,
         'blk: 'val,
     {
-        NestedBlockInfo::with_scope(block_gen, |block_gen| {
+        NestedBlockInfo::with_scope(codegen.context, block_gen, |block_gen| {
             let record_name = info
                 .subcmp_info
                 .mixed_subcmp_record_for_indices(self.root_var(), entry_indices)
@@ -271,12 +272,12 @@ impl<'ast> Lvalue<'ast> {
             let record_type = prev_pod_type.record_type(record_name).ok_or_else(|| {
                 anyhow::anyhow!("record {record_name} not found in mixed subcomponent pod: {prev}")
             })?;
-            let read_value = block_gen.as_mut().append_op_unnamed_result(pod::read(
-                location,
-                prev,
-                record_name,
-                record_type,
-            ))?;
+            let read_value = {
+                let block_gen = block_gen.as_mut();
+                let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                let read = pod::read(&builder, location, prev, record_name, record_type);
+                block_gen.append_op_ref_unnamed_result(read)?
+            };
 
             cont.cont(read_value, block_gen)
         })
@@ -294,7 +295,9 @@ impl<'ast> Lvalue<'ast> {
     ) -> Result<Value<'ctx, 'val>> {
         let comp_value = type_switch! { let ty = subcmp_value.r#type();
             PodType => {
-                block_gen.append_op_unnamed_result(pod::read(
+                let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                let read = pod::read(
+                    &builder,
                     location,
                     subcmp_value,
                     COMP,
@@ -305,7 +308,8 @@ impl<'ast> Lvalue<'ast> {
                                 "record {COMP} not found in subcomponent memory pod: {subcmp_value}"
                             )
                         })?,
-                ))?
+                );
+                block_gen.append_op_ref_unnamed_result(read)?
             }
             StructType as _ => subcmp_value,
         };
@@ -313,13 +317,9 @@ impl<'ast> Lvalue<'ast> {
         let field_ty = codegen
             .get_output_signal_type(shared::get_name_tail(&comp_value_type)?, signal_name)?;
 
-        block_gen.append_op_unnamed_result(r#struct::readm(
-            codegen.op_builder(),
-            location,
-            field_ty,
-            comp_value,
-            signal_name,
-        )?)
+        let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+        let read = r#struct::readm(&builder, location, field_ty, comp_value, signal_name)?;
+        block_gen.append_op_ref_unnamed_result(read)
     }
 
     /// Handle [Lvalue::Subcmp]  in [`Lvalue::get_value`] when the signal is an input of the
@@ -328,10 +328,13 @@ impl<'ast> Lvalue<'ast> {
         &self,
         signal_name: &str,
         subcmp_value: Value<'ctx, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
-        block_gen.append_op_unnamed_result(pod::read(
+        let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+        let read = pod::read(
+            &builder,
             location,
             subcmp_value,
             signal_name,
@@ -343,7 +346,8 @@ impl<'ast> Lvalue<'ast> {
                         "subcomponent input signal {signal_name} not found: {subcmp_value}"
                     )
                 })?,
-        ))
+        );
+        block_gen.append_op_ref_unnamed_result(read)
     }
 
     /// Returns the SSA [`Value`] representing the op.
@@ -443,6 +447,7 @@ impl<'ast> Lvalue<'ast> {
                             self.get_subcmp_input(
                                 signal_name,
                                 subcmp_value,
+                                codegen,
                                 block_gen.as_mut(),
                                 location,
                             )
@@ -706,7 +711,9 @@ pub(crate) fn emit_condition<'ctx, 'val>(
         })
         .collect::<Result<Vec<_>>>()?;
     eqs.into_iter().try_fold(true_value, |acc, cmp| {
-        block_gen.append_op_unnamed_result(llzk::dialect::bool::and(location, acc, cmp)?)
+        let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+        let op = llzk::dialect::bool::and(&builder, location, acc, cmp)?;
+        block_gen.append_op_ref_unnamed_result(op)
     })
 }
 
@@ -791,6 +798,7 @@ pub trait Combine<'ctx, 'val>: sealed::CombineSealed + Sized + Copy {
                     &mut tail,
                     &mut overwrites,
                     block_gen,
+                    codegen,
                     location,
                 )?;
 
@@ -818,27 +826,28 @@ pub trait Combine<'ctx, 'val>: sealed::CombineSealed + Sized + Copy {
                 }
 
                 // Create the yield ops for the branches
-                info.enter_scope(block_gen, |block_gen| {
+                info.enter_scope(codegen.context, block_gen, |block_gen| {
                     block_gen.append_op_no_result(scf::r#yield(&then_values, location))
                 })?;
-                tail.enter_scope(block_gen, |block_gen| {
+                tail.enter_scope(codegen.context, block_gen, |block_gen| {
                     block_gen.append_op_no_result(scf::r#yield(&else_values, location))
                 })?;
 
                 let then_region = info.region;
                 let else_region = tail.region;
-                let (mut new_info, values) = NestedBlockInfo::with_scope(block_gen, |block_gen| {
-                    block_gen.gen_safe_scf_if_multi(
-                        codegen,
-                        location,
-                        condition,
-                        then_region,
-                        Some(&then_values),
-                        else_region,
-                        Some(&else_values),
-                        None,
-                    )
-                })?;
+                let (mut new_info, values) =
+                    NestedBlockInfo::with_scope(codegen.context, block_gen, |block_gen| {
+                        block_gen.gen_safe_scf_if_multi(
+                            codegen,
+                            location,
+                            condition,
+                            then_region,
+                            Some(&then_values),
+                            else_region,
+                            Some(&else_values),
+                            None,
+                        )
+                    })?;
                 let overwrites = &values[overwrites_offset..];
                 assert_eq!(vars.len(), overwrites.len());
                 new_info.var_overwrites = OverwriteMap::from_iter(
@@ -856,7 +865,7 @@ pub trait Combine<'ctx, 'val>: sealed::CombineSealed + Sized + Copy {
         // Wrap the region in a `scf.execute_region`. It's easier to add ops than to steal the ops
         // inside the region and the canonicalizer will get rid of it.
         // Create an empty scf.yield op to satisfy scf.execute_region's requirements.
-        info.enter_scope(block_gen, |block_gen| {
+        info.enter_scope(codegen.context, block_gen, |block_gen| {
             block_gen.append_op_no_result(scf::r#yield(&values, location))
         })?;
         let types = values.iter().map(|v| v.r#type()).collect::<Vec<_>>();
@@ -951,6 +960,7 @@ fn fill_missing_overwrites<'ctx, 'blk, 'val>(
     else_info: &mut NestedBlockInfo<'ctx, 'blk, 'val>,
     overwrites: &mut [Overwrite<'ctx, 'val>],
     block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     location: Location<'ctx>,
 ) -> Result<()> {
     let (mut missing_in_then, mut missing_in_else): (Vec<_>, Vec<_>) = overwrites
@@ -958,12 +968,14 @@ fn fill_missing_overwrites<'ctx, 'blk, 'val>(
         .filter(|o| !matches!(o, Overwrite::Both { .. }))
         .partition(|o| matches!(o, Overwrite::Else { .. }));
 
-    then_info.enter_scope(block_gen, |block_gen| {
+    then_info.enter_scope(codegen.context, block_gen, |block_gen| {
         for overwrite in &mut missing_in_then {
             match overwrite {
                 Overwrite::Else { var, value } => {
-                    let other =
-                        block_gen.append_op_unnamed_result(nondet(location, value.r#type()))?;
+                    let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                    let other = block_gen.append_op_ref_unnamed_result(
+                        codegen.new_nondet_at_location(&builder, location, value.r#type()),
+                    )?;
                     **overwrite = Overwrite::Both { var: var.clone(), then: other, r#else: *value };
                 }
                 _ => unreachable!(),
@@ -972,12 +984,14 @@ fn fill_missing_overwrites<'ctx, 'blk, 'val>(
         Ok(())
     })?;
 
-    else_info.enter_scope(block_gen, |block_gen| {
+    else_info.enter_scope(codegen.context, block_gen, |block_gen| {
         for overwrite in &mut missing_in_else {
             match overwrite {
                 Overwrite::Then { var, value } => {
-                    let other =
-                        block_gen.append_op_unnamed_result(nondet(location, value.r#type()))?;
+                    let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                    let other = block_gen.append_op_ref_unnamed_result(
+                        codegen.new_nondet_at_location(&builder, location, value.r#type()),
+                    )?;
                     **overwrite = Overwrite::Both { var: var.clone(), r#else: other, then: *value };
                 }
                 _ => unreachable!(),
@@ -1008,11 +1022,16 @@ impl<'ctx, 'val> Combine<'ctx, 'val> for Value<'ctx, 'val> {
     fn make_tail<'blk>(
         entries: &[CombineEntry<'ctx, 'blk, 'val, Self>],
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
-        _: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
     ) -> Result<(NestedBlockInfo<'ctx, 'blk, 'val>, Self)> {
-        NestedBlockInfo::with_scope(block_gen, |block_gen| {
-            block_gen.append_op_unnamed_result(nondet(location, entries[0].data.r#type()))
+        NestedBlockInfo::with_scope(codegen.context, block_gen, |block_gen| {
+            let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+            block_gen.append_op_ref_unnamed_result(codegen.new_nondet_at_location(
+                &builder,
+                location,
+                entries[0].data.r#type(),
+            ))
         })
     }
 

@@ -23,6 +23,7 @@ use anyhow::Result;
 use llzk::attributes::array::AffineMapAttribute;
 use llzk::attributes::array::ArrayAttribute;
 use llzk::builder::OpBuilder;
+use llzk::builder::OpBuilderLike;
 use llzk::dialect;
 use llzk::dialect::array;
 use llzk::dialect::array::ArrayCtor;
@@ -38,7 +39,7 @@ use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::AttributeLike as _;
 use llzk::prelude::Block;
-use llzk::prelude::BlockLike;
+use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
 use llzk::prelude::BoolAttribute;
 use llzk::prelude::FeltType;
@@ -62,22 +63,22 @@ use llzk::prelude::PassManager;
 use llzk::prelude::PodType;
 use llzk::prelude::RecordValue;
 use llzk::prelude::Region;
-use llzk::prelude::RegionLike;
+use llzk::prelude::RegionLike as _;
 use llzk::prelude::StringAttribute;
 use llzk::prelude::StringRef;
 use llzk::prelude::StructType;
 use llzk::prelude::SymbolRefAttribute;
 use llzk::prelude::TemplateExprOp;
-use llzk::prelude::TemplateExprOpLike;
-use llzk::prelude::TemplateOpLike;
+use llzk::prelude::TemplateExprOpLike as _;
+use llzk::prelude::TemplateOpLike as _;
 use llzk::prelude::TemplateOpRefMut;
 use llzk::prelude::TemplateSymbolBindingOp;
-use llzk::prelude::TemplateSymbolBindingOpLike;
+use llzk::prelude::TemplateSymbolBindingOpLike as _;
 use llzk::prelude::TemplateSymbolBindingOpRef;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
 use llzk::prelude::Value;
-use llzk::prelude::ValueLike;
+use llzk::prelude::ValueLike as _;
 use llzk::symbol_table;
 use llzk::value_ext::OwningValueRange;
 use llzk::value_ext::ValueRange;
@@ -692,9 +693,8 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         let name = format!("vcp_array_const_{}", self.vcp_array_const_globals.borrow().len());
         let initial_value = self.build_vcp_array_const_attr(values);
 
-        self.module.body().append_operation(
-            global::def(location, &name, array_type, true, Some(initial_value)).into(),
-        );
+        let builder = OpBuilder::at_block_end(self.context, self.module.body());
+        global::def(&builder, location, &name, array_type, true, Some(initial_value));
         self.vcp_array_const_globals.borrow_mut().insert(key, name.clone());
         Ok((name, array_type))
     }
@@ -973,12 +973,13 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     }
 
     /// Create an LLZK operation that produces a nondeterministic value of the given type.
-    pub fn new_nondet_at_location(
+    pub fn new_nondet_at_location<'a>(
         &self,
+        builder: &impl OpBuilderLike<'ctx>,
         location: Location<'ctx>,
         result_type: Type<'ctx>,
-    ) -> Result<Operation<'ctx>> {
-        Ok(dialect::llzk::nondet(location, result_type))
+    ) -> OperationRef<'ctx, 'a> {
+        dialect::llzk::nondet(builder, location, result_type)
     }
 
     /// Get the boolean type (`i1`).
@@ -1060,30 +1061,32 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     ///
     /// Fails if the type of the value is not [`PodType`] or if the given name does not correspond
     /// with a record in the pod.
-    pub fn new_pod_read_op(
+    pub fn new_pod_read_op<'a>(
         &self,
+        builder: &impl OpBuilderLike<'ctx>,
         pod: Value<'ctx, '_>,
         name: impl AsRef<str>,
         location: Location<'ctx>,
-    ) -> Result<Operation<'ctx>> {
+    ) -> Result<OperationRef<'ctx, 'a>> {
         let name = name.as_ref();
         let pod_type = PodType::try_from(pod.r#type())?;
         let record_type = pod_type
             .record_type(name)
             .ok_or_else(|| anyhow!("record '{}' not found for pod {pod_type}", name))?;
-        Ok(pod::read(location, pod, name, record_type))
+        Ok(pod::read(builder, location, pod, name, record_type))
     }
 
     /// Creates a `pod.write` operation.
     #[inline]
-    pub fn new_pod_write_op(
+    pub fn new_pod_write_op<'a>(
         &self,
+        builder: &impl OpBuilderLike<'ctx>,
         location: Location<'ctx>,
         pod: Value<'ctx, '_>,
         name: impl AsRef<str>,
         src: Value<'ctx, '_>,
-    ) -> Operation<'ctx> {
-        pod::write(location, pod, name.as_ref(), src)
+    ) -> OperationRef<'ctx, 'a> {
+        pod::write(builder, location, pod, name.as_ref(), src)
     }
 
     /// Create an LLZK operation that produces a boolean constant value.
@@ -1103,29 +1106,31 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
 
     /// Create an LLZK `array.new` operation with the given type and constructor info.
     #[inline]
-    pub fn new_array_new_op(
+    pub fn new_array_new_op<'a>(
         &self,
+        builder: &impl OpBuilderLike<'ctx>,
         location: Location<'ctx>,
         r#type: ArrayType<'ctx>,
         ctor: ArrayCtor<'ctx, '_, '_, '_>,
-    ) -> Operation<'ctx> {
-        array::new(&self.builder, location, r#type, ctor)
+    ) -> OperationRef<'ctx, 'a> {
+        array::new(builder, location, r#type, ctor)
     }
 
     /// Generate a `felt.const` operation from a BigInt. Returns an `Err` result if unsuccessful
     /// or if the number of bits required to represent the BigInt does not fit in 32 bits.
-    pub fn new_felt_const_op(
+    pub fn new_felt_const_op<'a>(
         &self,
+        builder: &impl OpBuilderLike<'ctx>,
         val: &BigInt,
         location: Location<'ctx>,
-    ) -> Result<Operation<'ctx>> {
+    ) -> Result<OperationRef<'ctx, 'a>> {
         // ASSERT: The circom parser always produces non-negative constants. These can be negated
         // via PrefixOp but negative BigInt constants are never created directly.
         assert_ne!(val.sign(), num_bigint_dig::Sign::Minus, "Felt constants must be non-negative");
         // Increase by one to ensure the value is kept unsigned.
         let bitlen = val.bits() + 1;
         let attr = self.context.felt_attr_from_str(bitlen.try_into().unwrap(), val.to_string());
-        felt::constant(location, attr).map_err(Into::into)
+        felt::constant(builder, location, attr).map_err(Into::into)
     }
 
     /// Run the given pass pipeline on the given operation.
@@ -1905,12 +1910,14 @@ impl<'ctx, 'val> ArrayDimensions<'ctx, 'val> {
     /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
     /// `dimensions` (non-array scalar if empty).
     #[inline]
-    pub fn new_nondet_felt_of_dimensions_at_location(
+    pub fn new_nondet_felt_of_dimensions_at_location<'a>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        builder: &impl OpBuilderLike<'ctx>,
         location: Location<'ctx>,
-    ) -> Result<Operation<'ctx>> {
+    ) -> OperationRef<'ctx, 'a> {
         codegen.new_nondet_at_location(
+            builder,
             location,
             self.type_from_dimension_exprs(codegen.felt_type().into()),
         )
@@ -1919,12 +1926,17 @@ impl<'ctx, 'val> ArrayDimensions<'ctx, 'val> {
     /// Create an LLZK operation that produces a nondeterministic `felt.type` value of the given
     /// array `dimensions` (non-array scalar if empty).
     #[inline]
-    pub fn new_nondet_felt_of_dimensions(
+    pub fn new_nondet_felt_of_dimensions<'a>(
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        builder: &impl OpBuilderLike<'ctx>,
         meta: &Meta,
-    ) -> Result<Operation<'ctx>> {
-        self.new_nondet_felt_of_dimensions_at_location(codegen, codegen.location_from_meta(meta))
+    ) -> OperationRef<'ctx, 'a> {
+        self.new_nondet_felt_of_dimensions_at_location(
+            codegen,
+            builder,
+            codegen.location_from_meta(meta),
+        )
     }
 }
 
@@ -2312,6 +2324,7 @@ where
                     }
                     let top = *gen_ctx.block_ctx.top_block();
                     gen_ctx.gen_in_given_block_with_new_circom_scope_and_merge_overwrites(
+                        codegen.context,
                         top,
                         |gen_ctx| {
                             stmts.iter().try_for_each(|stmt| gen_stmt_fully(stmt, codegen, gen_ctx))
@@ -2345,15 +2358,20 @@ where
                         // gen_template_poly_expr calls for non-constant dimension expressions.
                         let qualified_key = format!("{}@{}", name, meta.start);
                         if let Some(ty) = gen_ctx.get_var_decl_types().get(&qualified_key) {
-                            let op = codegen
-                                .new_nondet_at_location(codegen.location_from_meta(meta), *ty)?;
+                            let builder =
+                                gen_ctx.builder_at_current_insertion_point(codegen.context);
+                            let value = single_result_as_value(codegen.new_nondet_at_location(
+                                &builder,
+                                codegen.location_from_meta(meta),
+                                *ty,
+                            ))?;
                             if codegen.config.verbose {
                                 println!(
                                     "Declaring '{name}' @ {}",
                                     codegen.location_from_meta(meta)
                                 );
                             }
-                            gen_ctx.block_ctx.declare_name_ensure_not_present(name, op)?;
+                            gen_ctx.block_ctx.declare_value_ensure_not_present(name, value)?;
                         } else {
                             gen_ctx.gen_declaration(codegen, meta, name, dimensions)?;
                         }
@@ -2381,14 +2399,14 @@ where
                     let mut then_info = NestedBlockInfo::default();
                     gen_ctx.block_ctx.push(then_info.block);
                     gen_stmt_fully(if_case, codegen, gen_ctx)?;
-                    then_info.var_overwrites = gen_ctx.block_ctx.pop();
+                    then_info.var_overwrites = gen_ctx.block_ctx.pop(codegen.context)?;
                     // Build else-branch NestedBlockInfo.
                     let mut else_info = NestedBlockInfo::default();
                     gen_ctx.block_ctx.push(else_info.block);
                     if let Some(ec) = else_case {
                         gen_stmt_fully(ec, codegen, gen_ctx)?;
                     }
-                    else_info.var_overwrites = gen_ctx.block_ctx.pop();
+                    else_info.var_overwrites = gen_ctx.block_ctx.pop(codegen.context)?;
                     gen_ctx.gen_scf_if_with_var_overwrites(
                         codegen, location, cond_bool, then_info, else_info,
                     )?;
@@ -2402,11 +2420,12 @@ where
                         );
                     }
                     let location = codegen.location_from_meta(meta);
-                    let (cond_info, cond_bool) = NestedBlockInfo::with_scope(gen_ctx, |gen_ctx| {
-                        let cond_val =
-                            cond.gen_llzk_in_block(codegen, gen_ctx, Default::default())?;
-                        gen_ctx.cast_to_bool_if_needed(codegen, location, cond_val)
-                    })?;
+                    let (cond_info, cond_bool) =
+                        NestedBlockInfo::with_scope(codegen.context, gen_ctx, |gen_ctx| {
+                            let cond_val =
+                                cond.gen_llzk_in_block(codegen, gen_ctx, Default::default())?;
+                            gen_ctx.cast_to_bool_if_needed(codegen, location, cond_val)
+                        })?;
                     if codegen.config.verbose {
                         println!(
                             "[While] Popping cond scope @ {}",
@@ -2417,9 +2436,10 @@ where
                             codegen.location_from_meta(meta)
                         );
                     }
-                    let (body_info, _) = NestedBlockInfo::with_scope(gen_ctx, |gen_ctx| {
-                        gen_stmt_fully(stmt, codegen, gen_ctx)
-                    })?;
+                    let (body_info, _) =
+                        NestedBlockInfo::with_scope(codegen.context, gen_ctx, |gen_ctx| {
+                            gen_stmt_fully(stmt, codegen, gen_ctx)
+                        })?;
                     if codegen.config.verbose {
                         println!(
                             "[While] Popping body scope @ {}",
@@ -2492,23 +2512,30 @@ where
 
             // Generate the branch that contains the target, then a nondet placeholder for the
             // other branch (using the result type from the containing branch).
-            let containing_arm_info = gen_ctx.gen_scf_if_arm_no_var_overwrites(location, |gc| {
-                gen_up_to_target(
-                    codegen,
-                    gc,
-                    target_expr,
-                    std::slice::from_ref(containing_stmt),
-                    trace,
-                )
-            })?;
+            let containing_arm_info =
+                gen_ctx.gen_scf_if_arm_no_var_overwrites(codegen.context, location, |gc| {
+                    gen_up_to_target(
+                        codegen,
+                        gc,
+                        target_expr,
+                        std::slice::from_ref(containing_stmt),
+                        trace,
+                    )
+                })?;
             if containing_arm_info.1.is_none() {
                 return Ok(None);
             }
             let containing_arm_info = (containing_arm_info.0, containing_arm_info.1.unwrap());
             let result_type = containing_arm_info.1.r#type();
-            let other_arm_info = gen_ctx.gen_scf_if_arm_no_var_overwrites(location, |gc| {
-                gc.append_op_unnamed_result(codegen.new_nondet_at_location(location, result_type)?)
-            })?;
+            let other_arm_info =
+                gen_ctx.gen_scf_if_arm_no_var_overwrites(codegen.context, location, |gc| {
+                    let builder = gc.builder_at_current_insertion_point(codegen.context);
+                    gc.append_op_ref_unnamed_result(codegen.new_nondet_at_location(
+                        &builder,
+                        location,
+                        result_type,
+                    ))
+                })?;
 
             // Assemble the scf.if with regions in the correct order.
             let (then_arm_info, else_arm_info) = if target_in_then {
@@ -2757,9 +2784,7 @@ pub fn insert_unique_symbol_op<'c: 'a, 'a>(
 
 /// Detach a builder-created operation from its temporary block and return ownership of it.
 ///
-/// LLZK's builder APIs insert operations immediately. Declaration collection still needs to hold
-/// some symbol operations until their containing template is created, so those operations are
-/// initially built in a scratch block and transferred into owned form here.
+/// TODO: move to `llzk-rs`
 pub fn detach_owned_operation<'c: 'a, 'a>(op: &impl OperationLike<'c, 'a>) -> Operation<'c> {
     let raw = op.to_raw();
     // SAFETY: `raw` is a valid operation inserted in a scratch block. Removing it transfers

@@ -31,9 +31,7 @@ use llzk::dialect::function;
 use llzk::dialect::r#struct;
 use llzk::dialect::r#struct::helpers::compute_fn;
 use llzk::dialect::r#struct::helpers::constrain_fn;
-use llzk::error::Error;
 use llzk::prelude::ArrayType;
-use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::FeltType;
 use llzk::prelude::FlatSymbolRefAttribute;
@@ -43,17 +41,14 @@ use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::FunctionType;
 use llzk::prelude::Location;
 use llzk::prelude::MemberDefOpLike as _;
-use llzk::prelude::Operation;
-use llzk::prelude::OperationLike as _;
 use llzk::prelude::PodRecordAttribute;
 use llzk::prelude::PodType;
 use llzk::prelude::PublicAttribute;
-use llzk::prelude::RegionLike as _;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRef;
 use llzk::prelude::StructType;
-use llzk::prelude::TemplateOpLike;
-use llzk::prelude::TemplateSymbolBindingOpLike;
+use llzk::prelude::TemplateOpLike as _;
+use llzk::prelude::TemplateSymbolBindingOpLike as _;
 use llzk::prelude::Type;
 use melior::ir::Attribute;
 use melior::ir::AttributeLike as _;
@@ -98,22 +93,6 @@ struct MemberInfo<'ctx> {
     signal: bool,
 }
 
-impl<'ctx> TryFrom<MemberInfo<'ctx>> for Operation<'ctx> {
-    type Error = Error;
-
-    fn try_from(value: MemberInfo<'ctx>) -> std::result::Result<Self, Self::Error> {
-        r#struct::member(
-            value.location,
-            &value.name,
-            value.decl_type,
-            value.signal,
-            false,
-            value.public,
-        )
-        .map(Into::into)
-    }
-}
-
 /// Information collected from Declaration statements within a template that is used to setup LLZK
 /// struct fields and parameters to the functions with the struct.
 ///
@@ -124,11 +103,11 @@ pub struct DeclarationInfo<'ctx> {
     inputs: Vec<InputSignalInfo<'ctx>>,
     /// Output and Intermediate declarations to use as LLZK struct fields.
     struct_fields: Vec<MemberInfo<'ctx>>,
-    /// Map source-position-qualified key (`name@meta_start`) to its LLZK declaration Operation
-    /// (usually `llzk.nondet` initially). Using a source-position-qualified key allows the same
-    /// circom variable name to appear in multiple scopes without collision (e.g., an outer scope
-    /// followed by an inner scope or both branches of an if/else).
-    decl_inits: HashMap<String, Operation<'ctx>>,
+    /// Map source-position-qualified key (`name@meta_start`) to its LLZK declaration type. Using
+    /// a source-position-qualified key allows the same circom variable name to appear in multiple
+    /// scopes without collision (e.g., an outer scope followed by an inner scope or both branches
+    /// of an if/else).
+    decl_inits: HashMap<String, Type<'ctx>>,
     /// Maps each qualified key in `decl_inits` back to the plain circom variable name, so that
     /// function contexts can declare the value under its original name.
     decl_key_to_name: HashMap<String, String>,
@@ -415,13 +394,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         let qualified_key = format!("{}@{}", name, meta.start);
                         self.var_decl_types.insert(qualified_key.clone(), var_type);
                         self.declared_var_names.insert(name.clone());
-                        let old = self.decl_inits.insert(
-                            qualified_key.clone(),
-                            codegen.new_nondet_at_location(
-                                codegen.location_from_meta(meta),
-                                var_type,
-                            )?,
-                        );
+                        let old = self.decl_inits.insert(qualified_key.clone(), var_type);
                         assert!(
                             old.is_none(),
                             "multiple declarations for qualified key {}",
@@ -556,16 +529,15 @@ impl<'ctx> DeclarationInfo<'ctx> {
                 signal: is_signal,
             });
         }
-        // Create `llzk.nondet` of the appropriate type. When the actual assignment
-        // is processed later, this is replaced with the appropriate value.
+        // Record the type for the `llzk.nondet` initializer. When the actual assignment is
+        // processed later, this is replaced with the appropriate value.
         // Signals are uniquely named within a template (the circom type checker enforces this),
         // so use the plain name as the qualified key.
-        codegen.new_nondet_at_location(location, decl_type).map(|op| {
-            self.declared_var_names.insert(name.clone());
-            let old = self.decl_inits.insert(name.clone(), op);
-            assert!(old.is_none(), "multiple declarations for {}", name);
-            self.decl_key_to_name.insert(name.clone(), name.clone());
-        })
+        self.declared_var_names.insert(name.clone());
+        let old = self.decl_inits.insert(name.clone(), decl_type);
+        assert!(old.is_none(), "multiple declarations for {}", name);
+        self.decl_key_to_name.insert(name.clone(), name.clone());
+        Ok(())
     }
 
     /// Traverses the AST looking for assigments of subcomponents and collects the instances used
@@ -694,15 +666,6 @@ where
         .collect::<Vec<_>>();
     let result = func_like.get_type_of_return(codegen);
     let func_type = FunctionType::new(codegen.context, &inputs, &[result]);
-    let func_def = function::def(location, func_like.get_name(), func_type, &[], Some(&arg_attrs))
-        .and_then(|f| {
-            let arguments: Vec<(Type, Location)> =
-                inputs.into_iter().map(|t| (t, location)).collect();
-            f.region(0)?.append_block(Block::new(&arguments));
-            Ok(f)
-        })?;
-    func_def.set_allow_non_native_field_ops_attr(true);
-
     let template_params = func_like
         .initial_poly_param_names()
         .map(|name| {
@@ -714,9 +677,19 @@ where
         codegen.create_and_set_current_template(location, func_like.get_name(), template_params)?;
 
     // Store function inside the `poly.template` so its type variables can resolve to the params.
-    let func = FuncDefOpRefMut::from(FuncDefOpRef::try_from(
-        new_template.body().append_operation(func_def.into()),
-    )?);
+    let template_builder =
+        llzk::builder::OpBuilder::at_block_end(codegen.context, new_template.body());
+    let func_def = function::def(
+        &template_builder,
+        location,
+        func_like.get_name(),
+        func_type,
+        &[],
+        Some(&arg_attrs),
+        llzk::dialect::empty_region,
+    )?;
+    func_def.set_allow_non_native_field_ops_attr(true);
+    let func = FuncDefOpRefMut::from(FuncDefOpRef::try_from(func_def)?);
 
     // Generate mapping from parameter names to SSA Values.
     let name_to_value = map_name_to_arg_value(func, func_like.get_name_of_params())?;
@@ -786,16 +759,25 @@ where
     }
 
     // Add the struct definition, prepopulated with fields, to the template body.
-    let new_struct = StructDefOpRef::try_from(
-        new_template.body().append_operation(
-            r#struct::def(
-                location,
-                template_like.get_name(),
-                declarations.struct_fields.into_iter().map(MemberInfo::try_into),
-            )?
-            .into(),
-        ),
-    )?;
+    let struct_fields = declarations.struct_fields;
+    let template_builder =
+        llzk::builder::OpBuilder::at_block_end(codegen.context, new_template.body());
+    let new_struct_ref =
+        r#struct::def(&template_builder, location, template_like.get_name(), |builder| {
+            for field in struct_fields {
+                r#struct::member(
+                    builder,
+                    field.location,
+                    &field.name,
+                    field.decl_type,
+                    field.signal,
+                    false,
+                    field.public,
+                )?;
+            }
+            Ok(())
+        })?;
+    let new_struct = StructDefOpRef::try_from(new_struct_ref)?;
 
     // Consume and separate 'declarations.inputs' (to avoid cloning 'attrs' and 'name').
     let (inputs, arg_attrs, arg_names) = declarations.inputs.into_iter().fold(
@@ -810,13 +792,22 @@ where
     // Generate the compute and constrain functions.
     let new_struct_type = new_struct.r#type();
     let struct_body = new_struct.body();
-    let compute_func = FuncDefOpRef::try_from(struct_body.append_operation(
-        compute_fn(location, new_struct_type, &inputs, Some(&arg_attrs))?.into(),
-    ))?
+    let struct_builder = llzk::builder::OpBuilder::at_block_end(codegen.context, struct_body);
+    let compute_func = FuncDefOpRef::try_from(compute_fn(
+        &struct_builder,
+        location,
+        new_struct_type,
+        &inputs,
+        Some(&arg_attrs),
+    )?)?
     .into();
-    let constrain_func = FuncDefOpRef::try_from(struct_body.append_operation(
-        constrain_fn(location, new_struct_type, &inputs, Some(&arg_attrs))?.into(),
-    ))?
+    let constrain_func = FuncDefOpRef::try_from(constrain_fn(
+        &struct_builder,
+        location,
+        new_struct_type,
+        &inputs,
+        Some(&arg_attrs),
+    )?)?
     .into();
 
     // Map parameter Values of each LLZK function to the corresponding circom variable names and
@@ -848,22 +839,25 @@ where
     // Insert read operations for struct fields into constrain functions.
     for member in new_struct.member_defs() {
         let member_name = member.member_name();
-        constrain_ctx.block_ctx.declare_name_if_not_present(member_name, || {
-            r#struct::readm(
-                codegen.op_builder(),
-                location,
-                member.member_type(),
-                constrain_func.self_value_of_constrain()?,
-                member_name,
-            )
-            .map_err(Into::into)
-        })?;
+        constrain_ctx.block_ctx.declare_value_if_not_present(
+            member_name,
+            |builder| {
+                shared::single_result_as_value(r#struct::readm(
+                    builder,
+                    location,
+                    member.member_type(),
+                    constrain_func.self_value_of_constrain()?,
+                    member_name,
+                )?)
+            },
+            codegen.context,
+        )?;
     }
 
     fn decl_inits<'ctx>(
-        decl_inits: HashMap<String, Operation<'ctx>>,
+        decl_inits: HashMap<String, Type<'ctx>>,
         sort: bool,
-    ) -> Vec<(String, Operation<'ctx>)> {
+    ) -> Vec<(String, Type<'ctx>)> {
         let mut v: Vec<_> = decl_inits.into_iter().collect();
         if sort {
             v.sort_by(|(lhs, _), (rhs, _)| lhs.cmp(rhs));
@@ -871,15 +865,35 @@ where
         v
     }
 
-    // Insert the Operations created from variable Declaration statements and map the circom
-    // variable name to LLZK op result Value (do this in each function).
+    // Insert initializers for variable Declaration statements and map the circom variable name to
+    // LLZK op result Value (do this in each function).
     let decl_key_to_name = declarations.decl_key_to_name;
-    for (key, op) in decl_inits(declarations.decl_inits, codegen.config.stabilize) {
+    for (key, ty) in decl_inits(declarations.decl_inits, codegen.config.stabilize) {
         let name = decl_key_to_name.get(&key).expect("every decl_inits key has a name entry");
-        // Insert (a clone of) the declaration into the compute function.
-        compute_ctx.block_ctx.declare_name_if_not_present(name, || Ok(op.clone()))?;
+        // Insert the declaration into the compute function.
+        compute_ctx.block_ctx.declare_value_if_not_present(
+            name,
+            |builder| {
+                shared::single_result_as_value(codegen.new_nondet_at_location(
+                    builder,
+                    codegen.location_unknown(),
+                    ty,
+                ))
+            },
+            codegen.context,
+        )?;
         // Insert the declaration into the constrain function.
-        constrain_ctx.block_ctx.declare_name_if_not_present(name, || Ok(op))?;
+        constrain_ctx.block_ctx.declare_value_if_not_present(
+            name,
+            |builder| {
+                shared::single_result_as_value(codegen.new_nondet_at_location(
+                    builder,
+                    codegen.location_unknown(),
+                    ty,
+                ))
+            },
+            codegen.context,
+        )?;
     }
     let subcmp_decls = declarations.subcmp_decls;
     let subcmp_names = subcmps

@@ -31,6 +31,7 @@ use crate::write_chain::NoSignalsInfo;
 use crate::write_chain::SignalWriteInfo;
 use anyhow::Context as _;
 use anyhow::Result;
+use llzk::builder::OpBuilder;
 use llzk::dialect;
 use llzk::dialect::array;
 use llzk::dialect::array::ArrayCtor;
@@ -51,6 +52,7 @@ use llzk::prelude::BlockRef;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::FuncDefOpRefMut;
 use llzk::prelude::IntegerAttribute;
+use llzk::prelude::LlzkContext;
 use llzk::prelude::Location;
 use llzk::prelude::LoopBoundsAttribute;
 use llzk::prelude::Operation;
@@ -244,16 +246,31 @@ where
         let mut block_ctx = BlockContextStack::from_function(func.deref(), param_name_to_value)?;
         if FREE_FUNC {
             // Ensure the specially-named values are declared in free functions.
-            block_ctx.declare_name_if_not_present(VAR_NAME_RETURN_VAL, || {
-                // Get the result type from the free function. It supports exactly 1.
-                let ty = func.function_type()?;
-                assert_eq!(ty.result_count(), 1);
-                codegen.new_nondet_at_location(codegen.location_unknown(), ty.result(0)?)
-            })?;
-            block_ctx.declare_name_if_not_present(VAR_NAME_HAD_RETURN, || {
-                codegen
-                    .new_nondet_at_location(codegen.location_unknown(), codegen.bool_type().into())
-            })?;
+            block_ctx.declare_value_if_not_present(
+                VAR_NAME_RETURN_VAL,
+                |builder| {
+                    // Get the result type from the free function. It supports exactly 1.
+                    let ty = func.function_type()?;
+                    assert_eq!(ty.result_count(), 1);
+                    single_result_as_value(codegen.new_nondet_at_location(
+                        builder,
+                        codegen.location_unknown(),
+                        ty.result(0)?,
+                    ))
+                },
+                codegen.context,
+            )?;
+            block_ctx.declare_value_if_not_present(
+                VAR_NAME_HAD_RETURN,
+                |builder| {
+                    single_result_as_value(codegen.new_nondet_at_location(
+                        builder,
+                        codegen.location_unknown(),
+                        codegen.bool_type().into(),
+                    ))
+                },
+                codegen.context,
+            )?;
         }
         Ok(Self {
             func,
@@ -280,14 +297,18 @@ where
         location: Location<'ctx>,
         value: Value<'ctx, 'val>,
     ) -> Result<()> {
-        let mut op = if self.block_ctx.is_only_root() {
+        if self.block_ctx.is_only_root() {
             let value = self.cast_to_return_type_if_needed(codegen, location, value)?;
-            function::r#return(location, &[value])
+            let builder = self.builder_at_current_insertion_point(codegen.context);
+            let op = function::r#return(&builder, location, &[value]);
+            unsafe { OperationRefMut::from_raw(op.to_raw()) }
+                .set_attribute(CIRCOM_RETURN_MARKER_ATTR, Attribute::unit(codegen.context));
+            no_results(op)
         } else {
-            scf::r#yield(&[value], location)
-        };
-        op.set_attribute(CIRCOM_RETURN_MARKER_ATTR, Attribute::unit(codegen.context));
-        self.append_op_no_result(op)
+            let mut op = scf::r#yield(&[value], location);
+            op.set_attribute(CIRCOM_RETURN_MARKER_ATTR, Attribute::unit(codegen.context));
+            self.append_op_no_result(op)
+        }
     }
 
     /// Create an op to cast `val` to match the return type of the function.
@@ -323,7 +344,7 @@ where
         self.block_ctx.push(then_block);
         body(self)?;
         self.append_op_no_result(scf::r#yield(&[], location))?;
-        self.block_ctx.pop();
+        self.block_ctx.pop(codegen.context)?;
 
         // No need to use `gen_safe_scf_if()` here since there's no result value.
         self.append_op_no_result(scf::r#if(cmp, &[], then_region, new_region_empty(), location))
@@ -461,10 +482,9 @@ where
                         } else {
                             assert!(i <= result_types.len(), "more names than result types");
                             // Fill other positions with `llzk.nondet` values of the expected type.
+                            let builder = OpBuilder::at_block_end(codegen.context, new_then_block);
                             yield_values.push(single_result_as_value(
-                                new_then_block.append_operation(
-                                    codegen.new_nondet_at_location(location, result_types[i])?,
-                                ),
+                                codegen.new_nondet_at_location(&builder, location, result_types[i]),
                             )?);
                         }
                     }
@@ -495,12 +515,14 @@ where
 
         // Replace `parent_if_op` with the new `scf.if` and then append a return/yield with the new
         // `scf.if` results. If the destination block is the function body use return, else yield.
-        let op = if blk.parent_operation().is_some_and(|r| function::is_func_def(&r)) {
-            function::r#return(parent_if_op.location(), &result_values)
+        if blk.parent_operation().is_some_and(|r| function::is_func_def(&r)) {
+            let builder = OpBuilder::at_block_end(codegen.context, blk);
+            no_results(function::r#return(&builder, parent_if_op.location(), &result_values))?;
         } else {
-            new_else_result_info.gen_yield(&result_values, parent_if_op.location())
-        };
-        no_results(blk.append_operation(op))?;
+            no_results(blk.append_operation(
+                new_else_result_info.gen_yield(&result_values, parent_if_op.location()),
+            ))?;
+        }
 
         // Finally, remove and drop the original `parent_if_op`.
         let _drop = remove_from_parent(&mut parent_if_op);
@@ -530,6 +552,7 @@ where
 
     fn stack_pop<H>(
         &mut self,
+        context: &'ctx LlzkContext,
         overwrite_handler: H,
         overwrite_data: &mut Self::HandlerDataType,
     ) -> Result<()>
@@ -540,7 +563,7 @@ where
             HashMap<String, Value<'ctx, 'val>>,
         ) -> Result<()>,
     {
-        let popped = self.block_ctx.pop();
+        let popped = self.block_ctx.pop(context)?;
         overwrite_handler(&mut self.base, overwrite_data, popped)
     }
 }
@@ -631,11 +654,13 @@ where
     );
 
     // Allocate a new uninitialized array of the destination type.
-    let dst = single_result_as_value(block.append_operation(codegen.new_array_new_op(
+    let builder = OpBuilder::at_block_end(codegen.context, block);
+    let dst = single_result_as_value(codegen.new_array_new_op(
+        &builder,
         location,
         dst_ty,
         ArrayCtor::Empty,
-    )))?;
+    ))?;
 
     // Copy elements within the min bounds of each dimension pair.
     let min_dims: Vec<i64> = src_dims.iter().zip(&dst_dims).map(|(s, d)| *s.min(d)).collect();
@@ -648,13 +673,10 @@ where
                 )
             })
             .collect::<Result<_>>()?;
-        let elem = single_result_as_value(block.append_operation(array::read(
-            location,
-            src_ty.element_type(),
-            src,
-            &idx_vals,
-        )))?;
-        block.append_operation(array::write(location, dst, &idx_vals, elem));
+        let read = array::read(&builder, location, src_ty.element_type(), src, &idx_vals);
+        let elem = single_result_as_value(read)?;
+        let write = array::write(&builder, location, dst, &idx_vals, elem);
+        no_results(write)?;
     }
 
     Ok(dst)
@@ -663,6 +685,7 @@ where
 /// Append a `poly.unifiable_cast` to cast `value` to `target_ty` directly on `block` if the
 /// types differ. Returns `value` unchanged if the types are already equal.
 fn cast_to_type_in_block<'ctx, 'blk, 'val>(
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     location: Location<'ctx>,
     block: BlockRef<'ctx, 'blk>,
     value: Value<'ctx, 'val>,
@@ -675,7 +698,9 @@ where
     if value.r#type() == target_ty {
         return Ok(value);
     }
-    single_result_as_value(block.append_operation(poly::unifiable_cast(location, value, target_ty)))
+    let builder = OpBuilder::at_block_end(codegen.context, block);
+    let cast = poly::unifiable_cast(&builder, location, value, target_ty);
+    single_result_as_value(cast)
 }
 
 /// Within a nested (i.e. non-root) block, get the Value wrapped within an `scf.yield` op that was
@@ -745,11 +770,12 @@ where
     nonreturning_block_overwrites.insert(
         VAR_NAME_RETURN_VAL.to_string(),
         function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL).cloned().or_else(|_| {
-            single_result_as_value(
-                nonreturning_block.append_operation(
-                    codegen.new_nondet_at_location(location, return_val.r#type())?,
-                ),
-            )
+            let builder = OpBuilder::at_block_end(codegen.context, nonreturning_block);
+            single_result_as_value(codegen.new_nondet_at_location(
+                &builder,
+                location,
+                return_val.r#type(),
+            ))
         })?,
     );
     Ok(())
@@ -773,13 +799,19 @@ where
     'blk: 'val,
 {
     let (then_region, then_block) = new_region_and_block(&[]);
-    function.gen_in_given_block_with_new_circom_scope_and_merge_overwrites(then_block, |fc| {
-        let ret_val = fc.block_ctx.get_named_value(VAR_NAME_RETURN_VAL)?;
-        let value = fc.cast_to_return_type_if_needed(codegen, location, *ret_val)?;
-        let mut op = function::r#return(location, &[value]);
-        op.set_attribute(CIRCOM_RETURN_MARKER_ATTR, Attribute::unit(codegen.context));
-        fc.append_op_no_result(op)
-    })?;
+    function.gen_in_given_block_with_new_circom_scope_and_merge_overwrites(
+        codegen.context,
+        then_block,
+        |fc| {
+            let ret_val = fc.block_ctx.get_named_value(VAR_NAME_RETURN_VAL)?;
+            let value = fc.cast_to_return_type_if_needed(codegen, location, *ret_val)?;
+            let builder = fc.builder_at_current_insertion_point(codegen.context);
+            let op = function::r#return(&builder, location, &[value]);
+            unsafe { OperationRefMut::from_raw(op.to_raw()) }
+                .set_attribute(CIRCOM_RETURN_MARKER_ATTR, Attribute::unit(codegen.context));
+            no_results(op)
+        },
+    )?;
 
     let condition = *function.block_ctx.get_named_value(VAR_NAME_HAD_RETURN)?;
     // No need to use `gen_safe_scf_if()` here since there's no result value.
@@ -811,6 +843,7 @@ where
     // Initially, generate the blocks for the 'then' and 'else' cases naively.
     let mut then_info = NestedBlockInfo::default();
     function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        codegen.context,
         then_info.block,
         |function| if_case.gen_llzk_in_function(codegen, function, info),
         &mut then_info,
@@ -818,6 +851,7 @@ where
     let mut else_info = NestedBlockInfo::default();
     if let Some(else_case) = else_case {
         function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+            codegen.context,
             else_info.block,
             |function| else_case.gen_llzk_in_function(codegen, function, info),
             &mut else_info,
@@ -893,12 +927,14 @@ where
                         // use unifiable_cast to coerce each branch to the return type.
                         _ => (
                             cast_to_type_in_block(
+                                codegen,
                                 location,
                                 then_info.block,
                                 then_return,
                                 return_ty,
                             )?,
                             cast_to_type_in_block(
+                                codegen,
                                 location,
                                 else_info.block,
                                 else_return,
@@ -913,13 +949,25 @@ where
                     // unify_scf_branch_types.
                     (
                         then_return,
-                        cast_to_type_in_block(location, else_info.block, else_return, return_ty)?,
+                        cast_to_type_in_block(
+                            codegen,
+                            location,
+                            else_info.block,
+                            else_return,
+                            return_ty,
+                        )?,
                     )
                 } else if !then_is_tvar && else_is_tvar && else_ty == return_ty {
                     // Else branch already yields the function's T_return tvar; cast the
                     // concrete then branch to match for the same reason.
                     (
-                        cast_to_type_in_block(location, then_info.block, then_return, return_ty)?,
+                        cast_to_type_in_block(
+                            codegen,
+                            location,
+                            then_info.block,
+                            then_return,
+                            return_ty,
+                        )?,
                         else_return,
                     )
                 } else {
@@ -993,12 +1041,14 @@ where
     // Generate the loop condition (i.e. "before") and body (i.e. "after") blocks naively.
     let mut loop_cond_info = NestedBlockInfo::default();
     let cond_result = function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        codegen.context,
         loop_cond_info.block,
         |fc| cond.gen_llzk_in_block(codegen, fc, info),
         &mut loop_cond_info,
     )?;
     let mut loop_body_info = NestedBlockInfo::default();
     function.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        codegen.context,
         loop_body_info.block,
         |fc| body_stmt.gen_llzk_in_function(codegen, fc, info),
         &mut loop_body_info,
@@ -1032,10 +1082,13 @@ where
         loop_body_info.var_overwrites.insert(VAR_NAME_RETURN_VAL.to_string(), early_return);
         // In the current block, ensure the return value variable is initialized, default to nondet.
         if function.block_ctx.get_named_value(VAR_NAME_RETURN_VAL).is_err() {
-            function.append_op_named_result(
-                codegen.new_nondet_at_location(location, early_return.r#type())?,
-                VAR_NAME_RETURN_VAL.to_string(),
-            )?;
+            let builder = function.builder_at_current_insertion_point(codegen.context);
+            let value = function.append_op_ref_unnamed_result(codegen.new_nondet_at_location(
+                &builder,
+                location,
+                early_return.r#type(),
+            ))?;
+            function.block_ctx.set_named_value(VAR_NAME_RETURN_VAL.to_string(), value)?;
         }
     }
 
@@ -1109,6 +1162,7 @@ where
             }
             Statement::Block { meta, stmts } => {
                 function.gen_in_current_block_with_new_circom_scope_and_merge_overwrites(
+                    codegen.context,
                     |function| {
                         try_for_loop_heuristic!(codegen, function, meta, stmts, info);
                         // Fallback to standard block handling.

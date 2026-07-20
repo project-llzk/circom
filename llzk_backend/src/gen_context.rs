@@ -25,6 +25,7 @@ use anyhow::ensure;
 use anyhow::Context as _;
 use anyhow::Result;
 use llzk::attributes::array::AffineMapAttribute;
+use llzk::builder::EntryPoint;
 use llzk::builder::OpBuilder;
 use llzk::dialect::array;
 use llzk::dialect::array::ArrayCtor;
@@ -35,6 +36,7 @@ use llzk::dialect::felt;
 use llzk::dialect::function;
 use llzk::dialect::pod;
 use llzk::dialect::poly;
+use llzk::dialect::r#struct;
 use llzk::map_operands::MapOperandsBuilder;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::is_type_variable;
@@ -50,10 +52,11 @@ use llzk::prelude::BlockRef;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOp;
 use llzk::prelude::IntegerAttribute;
+use llzk::prelude::LlzkContext;
 use llzk::prelude::Location;
 use llzk::prelude::LoopBoundsAttribute;
 use llzk::prelude::Operation;
-use llzk::prelude::OperationLike as _;
+use llzk::prelude::OperationLike;
 use llzk::prelude::OperationMutLike as _;
 use llzk::prelude::OperationRef;
 use llzk::prelude::PodType;
@@ -64,9 +67,9 @@ use llzk::prelude::StringRef;
 use llzk::prelude::StructType;
 use llzk::prelude::TVarType;
 use llzk::prelude::TemplateParamOp;
-use llzk::prelude::TemplateParamOpLike;
+use llzk::prelude::TemplateParamOpLike as _;
 use llzk::prelude::TemplateSymbolBindingOp;
-use llzk::prelude::TemplateSymbolBindingOpLike;
+use llzk::prelude::TemplateSymbolBindingOpLike as _;
 use llzk::prelude::TemplateSymbolBindingOpRef;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
@@ -178,8 +181,17 @@ where
     /// Value stored for that variable. These are preserved when the block is popped because they
     /// overwrite the value of existing variables in outer scopes.
     overwriting_name_to_value: HashMap<String, Value<'ctx, 'val>>,
-    /// Queue of operations that need to be appended before the context goes out of scope.
-    op_queue: Vec<Operation<'ctx>>,
+    /// Queue of writes that need to be emitted before the context goes out of scope.
+    write_queue: Vec<QueuedStructWrite<'ctx, 'val>>,
+}
+
+/// Information needed to create a delayed `struct.writem` directly at its final insertion point.
+#[derive(Debug)]
+struct QueuedStructWrite<'ctx, 'val> {
+    location: Location<'ctx>,
+    target: Value<'ctx, 'val>,
+    field: String,
+    value: Value<'ctx, 'val>,
 }
 
 impl<'ctx, 'blk, 'val> BlockContext<'ctx, 'blk, 'val>
@@ -193,7 +205,7 @@ where
             block,
             scope_local_name_to_value: Default::default(),
             overwriting_name_to_value: Default::default(),
-            op_queue: Default::default(),
+            write_queue: Default::default(),
         }
     }
 
@@ -314,19 +326,31 @@ where
         }
     }
 
-    /// Queues an operation to the given block that will get appended before it goes out of scope.
+    /// Create an operation builder positioned at the current block insertion point.
+    pub fn builder_at_current_insertion_point(
+        &self,
+        context: &'ctx LlzkContext,
+    ) -> OpBuilder<'ctx, 'static> {
+        OpBuilder::at_block_end(context, *self.top_block())
+    }
+
+    /// Queues a `struct.writem` to the given block that will be created directly before the block
+    /// goes out of scope.
     ///
     /// If the block is scoped in multiple contexts picks the deepest one.
     ///
     /// Fails if the block is not part of the stack.
-    pub fn enqueue_in_block(
+    pub fn enqueue_struct_write_in_block(
         &mut self,
-        operation: Operation<'ctx>,
         block: BlockRef<'ctx, 'blk>,
+        location: Location<'ctx>,
+        target: Value<'ctx, 'val>,
+        field: String,
+        value: Value<'ctx, 'val>,
     ) -> Result<()> {
         let mut blocks = self.blocks_iter_mut_rev();
         let bc = blocks.find(|bc| bc.block == block).ok_or_else(|| block_not_in_stack(block))?;
-        bc.op_queue.push(operation);
+        bc.write_queue.push(QueuedStructWrite { location, target, field, value });
         Ok(())
     }
 
@@ -352,6 +376,18 @@ where
         Ok(())
     }
 
+    /// Ensure the given name is not already declared in the current scope, then bind it to a value
+    /// produced directly in the current block.
+    pub fn declare_value_ensure_not_present(
+        &mut self,
+        name: &str,
+        value: Value<'ctx, 'val>,
+    ) -> Result<()> {
+        ensure!(!self.is_name_present(name), format!("name {name} is already present"));
+        self.top_mut().scope_local_name_to_value.insert(name.to_string(), value);
+        Ok(())
+    }
+
     /// If the given name is not already declared in the current scope, declare it by producing an
     /// [Operation] via the callback, inserting that into the current block, and using its result.
     /// The only scenario where a declaration would already be present is when the same Declaration
@@ -366,6 +402,22 @@ where
         if !self.is_name_present(name) {
             let op = uninit_value()?;
             let value = single_result_as_value(self.append_current_block(op))?;
+            self.top_mut().scope_local_name_to_value.insert(name.to_string(), value);
+        }
+        Ok(())
+    }
+
+    /// If the given name is not already declared in the current scope, declare it from a value
+    /// produced directly in the current block.
+    pub fn declare_value_if_not_present(
+        &mut self,
+        name: &str,
+        uninit_value: impl FnOnce(&OpBuilder<'ctx, 'static>) -> Result<Value<'ctx, 'val>>,
+        context: &'ctx LlzkContext,
+    ) -> Result<()> {
+        if !self.is_name_present(name) {
+            let builder = self.builder_at_current_insertion_point(context);
+            let value = uninit_value(&builder)?;
             self.top_mut().scope_local_name_to_value.insert(name.to_string(), value);
         }
         Ok(())
@@ -447,17 +499,32 @@ where
 
     /// Pop the current block off the stack to return to the previous block. The vars declared in
     /// the popped frame are dropped and those which are overwrites are returned.
-    pub fn pop(&mut self) -> HashMap<String, Value<'ctx, 'val>> {
-        self.append_queue();
-        self.other_blocks.pop().expect("There is no block to pop!").overwriting_name_to_value
+    pub fn pop(
+        &mut self,
+        context: &'ctx LlzkContext,
+    ) -> Result<HashMap<String, Value<'ctx, 'val>>> {
+        self.append_queue(context)?;
+        Ok(self.other_blocks.pop().expect("There is no block to pop!").overwriting_name_to_value)
     }
 
-    /// Appends the queued operations in the top of the stack.
-    pub fn append_queue(&mut self) {
-        let queue = std::mem::take(&mut self.top_mut().op_queue);
-        for op in queue {
-            self.append_current_block(op);
+    /// Emits the queued writes in the top of the stack.
+    pub fn append_queue(&mut self, context: &'ctx LlzkContext) -> Result<()> {
+        let block = *self.top_block();
+        let queue = std::mem::take(&mut self.top_mut().write_queue);
+        for write in queue {
+            let builder = match block.terminator() {
+                Some(terminator) => OpBuilder::new(context, EntryPoint::Before(terminator)),
+                None => OpBuilder::at_block_end(context, block),
+            };
+            no_results(r#struct::writem(
+                &builder,
+                write.location,
+                write.target,
+                &write.field,
+                write.value,
+            )?)?;
         }
+        Ok(())
     }
 }
 
@@ -502,6 +569,7 @@ where
     /// Creates a new instance using the common pattern of pushing the block into the stack,
     /// emitting some IR, and then popping the block.
     pub fn with_scope<'decls, R, C>(
+        context: &'ctx LlzkContext,
         block_gen: &mut C,
         cb: impl FnOnce(&mut C) -> Result<R>,
     ) -> Result<(Self, R)>
@@ -510,7 +578,7 @@ where
         'ctx: 'decls,
     {
         let mut info = Self::new();
-        let r = info.enter_scope(block_gen, cb)?;
+        let r = info.enter_scope(context, block_gen, cb)?;
         Ok((info, r))
     }
 
@@ -520,6 +588,7 @@ where
     /// Handling the overwrites follows the rules of [`add_overwrites`].
     pub fn enter_scope<'decls, R, C>(
         &mut self,
+        context: &'ctx LlzkContext,
         block_gen: &mut C,
         cb: impl FnOnce(&mut C) -> Result<R>,
     ) -> Result<R>
@@ -529,7 +598,7 @@ where
     {
         block_gen.as_mut().block_ctx.push(self.block);
         let r = cb(block_gen)?;
-        let overwrites = block_gen.as_mut().block_ctx.pop();
+        let overwrites = block_gen.as_mut().block_ctx.pop(context)?;
         self.add_overwrites(&overwrites, block_gen.as_mut())?;
         Ok(r)
     }
@@ -588,6 +657,7 @@ where
     /// Pop the top `BlockType` from the [BlockContextStack].
     fn stack_pop<H>(
         &mut self,
+        context: &'ctx LlzkContext,
         overwrite_handler: H,
         overwrite_data: &mut Self::HandlerDataType,
     ) -> Result<()>
@@ -604,6 +674,7 @@ where
     /// variables that already exist prior to this new scope are passed to the overwrite handler.
     fn gen_in_given_block_with_new_circom_scope<H, R>(
         &mut self,
+        context: &'ctx LlzkContext,
         block: Self::BlockType,
         generator: impl FnOnce(&mut Self) -> Result<R>,
         overwrite_handler: H,
@@ -618,7 +689,7 @@ where
     {
         self.stack_push(block);
         let res = generator(self);
-        self.stack_pop(overwrite_handler, overwrite_data)?;
+        self.stack_pop(context, overwrite_handler, overwrite_data)?;
         res
     }
 
@@ -630,11 +701,13 @@ where
     #[inline]
     fn gen_in_given_block_with_new_circom_scope_and_cache_overwrites<R>(
         &mut self,
+        context: &'ctx LlzkContext,
         block: Self::BlockType,
         generator: impl FnOnce(&mut Self) -> Result<R>,
         overwrite_data: &mut Self::HandlerDataType,
     ) -> Result<R> {
         self.gen_in_given_block_with_new_circom_scope(
+            context,
             block,
             generator,
             |_, block_info, overwrites| {
@@ -653,10 +726,12 @@ where
     #[inline]
     fn gen_in_given_block_with_new_circom_scope_and_merge_overwrites<R>(
         &mut self,
+        context: &'ctx LlzkContext,
         block: Self::BlockType,
         generator: impl FnOnce(&mut Self) -> Result<R>,
     ) -> Result<R> {
         self.gen_in_given_block_with_new_circom_scope(
+            context,
             block,
             generator,
             |fc, _, overwrites| fc.block_ctx.set_named_values(overwrites),
@@ -672,9 +747,11 @@ where
     #[inline]
     fn gen_in_current_block_with_new_circom_scope_and_merge_overwrites<R>(
         &mut self,
+        context: &'ctx LlzkContext,
         generator: impl FnOnce(&mut Self) -> Result<R>,
     ) -> Result<R> {
         self.gen_in_given_block_with_new_circom_scope_and_merge_overwrites(
+            context,
             self.stack_top(),
             generator,
         )
@@ -756,17 +833,14 @@ where
         for (name, ty) in sorted {
             // If there is no type restriction use `felt` since it's circom's basic type.
             let ty = (*ty).unwrap_or_else(|| codegen.felt_type().into());
-            let value = single_result_as_value(
-                self.block_ctx.append_current_block(poly::read_const(location, name, ty)),
-            )?;
+            let builder = self.builder_at_current_insertion_point(codegen.context);
+            let read = poly::read_const(&builder, location, name, ty);
+            let value = single_result_as_value(read)?;
             // Array-dimension `poly.expr`s yield index values, while Circom template parameters
             // and expressions otherwise behave as field elements inside generated functions.
             let value = if is_index(ty) {
-                single_result_as_value(self.block_ctx.append_current_block(cast::tofelt(
-                    location,
-                    value,
-                    Some(codegen.felt_type()),
-                )))?
+                let cast = cast::tofelt(&builder, location, value, Some(codegen.felt_type()));
+                single_result_as_value(cast)?
             } else {
                 value
             };
@@ -782,9 +856,22 @@ where
         self.block_ctx.append_current_block(op)
     }
 
+    /// Create an operation builder positioned at this context's current insertion point.
+    pub fn builder_at_current_insertion_point(
+        &self,
+        context: &'ctx LlzkContext,
+    ) -> OpBuilder<'ctx, 'static> {
+        self.block_ctx.builder_at_current_insertion_point(context)
+    }
+
     /// Append an operation that must produce no results.
     pub fn append_op_no_result(&mut self, op: Operation<'ctx>) -> Result<()> {
         no_results(self.append_op(op))
+    }
+
+    /// Append a builder-created operation reference that must produce no results.
+    pub fn append_op_ref_no_result(&mut self, op: impl OperationLike<'ctx, 'val>) -> Result<()> {
+        no_results(op)
     }
 
     /// Append an operation that must produce a single result and is NOT associated with a variable
@@ -793,10 +880,19 @@ where
         single_result_as_value(self.append_op(op))
     }
 
+    /// Append a builder-created operation reference that must produce a single unnamed result.
+    pub fn append_op_ref_unnamed_result(
+        &mut self,
+        op: impl OperationLike<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        single_result_as_value(op)
+    }
+
     /// Read a visible `poly.param` or `poly.expr` using its declared type restriction.
     /// Unrestricted bindings are read using `fallback_type`.
     pub(crate) fn read_poly_template_binding(
         &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         name: &str,
         fallback_type: Type<'ctx>,
@@ -808,7 +904,9 @@ where
             .copied()
             .ok_or_else(|| anyhow!("unknown polymorphic binding '{name}'"))?;
         let ty = type_restriction.unwrap_or(fallback_type);
-        self.append_op_unnamed_result(poly::read_const(location, name, ty))
+        let builder = self.builder_at_current_insertion_point(codegen.context);
+        let read = poly::read_const(&builder, location, name, ty);
+        self.append_op_ref_unnamed_result(read)
     }
 
     /// Append an operation that must produce one or more results and is NOT associated with a
@@ -876,7 +974,9 @@ where
         rhs: Value<'ctx, 'val>,
     ) -> Result<()> {
         let (lhs, rhs) = self.unify_constrain_eq_types(codegen, location, lhs, rhs)?;
-        self.append_op_no_result(constrain::eq(location, lhs, rhs).into())
+        let builder = self.builder_at_current_insertion_point(codegen.context);
+        let op = constrain::eq(&builder, location, lhs, rhs);
+        self.append_op_ref_no_result(op)
     }
 
     /// Generate an `array.write` or `array.insert` operation appropriate for the number of indices
@@ -895,6 +995,7 @@ where
             format!("Conflicting types to write {v} at {location}")
         })?;
         let arr_ty_dims = arr_ty.dims();
+        let builder = self.builder_at_current_insertion_point(codegen.context);
         let write_op = match indices.len().cmp(&arr_ty_dims.len()) {
             std::cmp::Ordering::Equal => {
                 // Indexing all dimensions requires an `array.write`
@@ -904,18 +1005,18 @@ where
                     rvalue,
                     arr_ty.element_type(),
                 )?;
-                array::write(location, arr_ref, indices, rvalue)
+                array::write(&builder, location, arr_ref, indices, rvalue)
             }
             std::cmp::Ordering::Less => {
                 // Indexing a subset of dimensions requires an `array.insert`
-                array::insert(location, arr_ref, indices, rvalue)
+                array::insert(&builder, location, arr_ref, indices, rvalue)
             }
             std::cmp::Ordering::Greater => {
                 let v = var_name.map_or(String::from("array"), |s| format!("'{s}'"));
                 anyhow::bail!("Too many indices to write {v} at {location}");
             }
         };
-        self.append_op_no_result(write_op)
+        self.append_op_ref_no_result(write_op)
     }
 
     /// Generate an `array.read` or `array.extract` operation appropriate for the number of indices
@@ -937,13 +1038,10 @@ where
             let elem_ty_pname = self.add_new_tvar_poly_param(codegen, location, "$e")?;
             let arr_elem_ty = TVarType::new(codegen.context, StringRef::new(elem_ty_pname.value()));
             let arr_ty = ArrayType::new(arr_elem_ty.into(), &dims);
-            let arr_ref = self.unifiable_cast(location, arr_ref, arr_ty.into())?;
-            return self.append_op_unnamed_result(array::read(
-                location,
-                arr_elem_ty.into(),
-                arr_ref,
-                indices,
-            ));
+            let arr_ref = self.unifiable_cast(codegen, location, arr_ref, arr_ty.into())?;
+            let builder = self.builder_at_current_insertion_point(codegen.context);
+            let read = array::read(&builder, location, arr_elem_ty.into(), arr_ref, indices);
+            return self.append_op_ref_unnamed_result(read);
         }
         // Normal case
         let arr_ty = ArrayType::try_from(arr_ref.r#type()).with_context(|| {
@@ -951,24 +1049,25 @@ where
             format!("Conflicting types to read {v} at {location}")
         })?;
         let arr_ty_dims = arr_ty.dims();
+        let builder = self.builder_at_current_insertion_point(codegen.context);
         let array_get_op = match indices.len().cmp(&arr_ty_dims.len()) {
             std::cmp::Ordering::Equal => {
                 // Indexing all dimensions requires an `array.read`
-                array::read(location, arr_ty.element_type(), arr_ref, indices)
+                array::read(&builder, location, arr_ty.element_type(), arr_ref, indices)
             }
             std::cmp::Ordering::Less => {
                 // Indexing a subset of dimensions requires an `array.extract`
                 let reduced_dims: Vec<_> =
                     arr_ty_dims.iter().skip(indices.len()).copied().collect();
                 let reduced_type = ArrayType::new(arr_ty.element_type().into(), &reduced_dims);
-                array::extract(location, reduced_type.into(), arr_ref, indices)
+                array::extract(&builder, location, reduced_type.into(), arr_ref, indices)
             }
             std::cmp::Ordering::Greater => {
                 let v = var_name.map_or(String::from("array"), |s| format!("'{s}'"));
                 anyhow::bail!("Too many indices to read {v} at {location}");
             }
         };
-        self.append_op_unnamed_result(array_get_op)
+        self.append_op_ref_unnamed_result(array_get_op)
     }
 
     /// Cast `val` to bool and emit a `bool.assert` op.
@@ -980,7 +1079,9 @@ where
     ) -> Result<()> {
         let cond = self.cast_to_bool_if_needed(codegen, location, val)?;
         let msg = Some("assertion failed");
-        self.append_op_no_result(bool::assert(location, cond, msg)?.into())
+        let builder = self.builder_at_current_insertion_point(codegen.context);
+        let op = bool::assert(&builder, location, cond, msg)?;
+        self.append_op_ref_no_result(op)
     }
 
     /// Append a `unifiable_cast` operation to cast `val` to the `expected` type, unless it already
@@ -988,6 +1089,7 @@ where
     #[inline]
     pub fn unifiable_cast(
         &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
         expected: Type<'ctx>,
@@ -996,7 +1098,9 @@ where
         if current_type == expected {
             Ok(val)
         } else if types_unify(current_type, expected) {
-            self.append_op_unnamed_result(poly::unifiable_cast(location, val, expected))
+            let builder = self.builder_at_current_insertion_point(codegen.context);
+            let op = poly::unifiable_cast(&builder, location, val, expected);
+            self.append_op_ref_unnamed_result(op)
         } else {
             anyhow::bail!("Unsupported cast to '{expected}' from value type '{}'", current_type)
         }
@@ -1011,9 +1115,11 @@ where
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
         if is_type_variable(val.r#type()) {
-            self.unifiable_cast(location, val, codegen.felt_type().into())
+            self.unifiable_cast(codegen, location, val, codegen.felt_type().into())
         } else {
-            self.append_op_unnamed_result(cast::tofelt(location, val, Some(codegen.felt_type())))
+            let builder = self.builder_at_current_insertion_point(codegen.context);
+            let op = cast::tofelt(&builder, location, val, Some(codegen.felt_type()));
+            self.append_op_ref_unnamed_result(op)
         }
     }
 
@@ -1041,9 +1147,11 @@ where
         val: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>> {
         if is_type_variable(val.r#type()) {
-            self.unifiable_cast(location, val, codegen.index_type())
+            self.unifiable_cast(codegen, location, val, codegen.index_type())
         } else {
-            self.append_op_unnamed_result(cast::toindex(location, val).into())
+            let builder = self.builder_at_current_insertion_point(codegen.context);
+            let op = cast::toindex(&builder, location, val, None);
+            self.append_op_ref_unnamed_result(op)
         }
     }
 
@@ -1074,9 +1182,15 @@ where
         // `normalize()` in `modular_arithmetic.rs`.
         let val_type = val.r#type();
         if is_felt_type(val_type) {
-            let zero = self
-                .append_op_unnamed_result(codegen.new_felt_const_op(&BigInt::zero(), location)?)?;
-            self.append_op_unnamed_result(bool::ne(location, val, zero)?)
+            let builder = self.builder_at_current_insertion_point(codegen.context);
+            let zero = self.append_op_ref_unnamed_result(codegen.new_felt_const_op(
+                &builder,
+                &BigInt::zero(),
+                location,
+            )?)?;
+            let builder = self.builder_at_current_insertion_point(codegen.context);
+            let op = bool::ne(&builder, location, val, zero)?;
+            self.append_op_ref_unnamed_result(op)
         } else if is_index(val_type) {
             let zero = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
             self.append_op_unnamed_result(index::cmp(
@@ -1091,7 +1205,7 @@ where
             if val_type == bool_type {
                 Ok(val)
             } else {
-                self.unifiable_cast(location, val, bool_type)
+                self.unifiable_cast(codegen, location, val, bool_type)
             }
         }
     }
@@ -1108,7 +1222,7 @@ where
         if expected == val.r#type() {
             Ok(val)
         } else if types_unify(expected, val.r#type()) {
-            self.unifiable_cast(location, val, expected)
+            self.unifiable_cast(codegen, location, val, expected)
         } else if is_felt_type(expected) {
             self.cast_to_felt_if_needed(codegen, location, val)
         } else if is_index(expected) {
@@ -1193,12 +1307,15 @@ where
 
         let element_types_not_equal = src_elem_ty != dst_elem_ty;
         self.gen_loop_nest(codegen, location, &bounds, move |fc, indices| {
-            let mut val =
-                fc.append_op_unnamed_result(array::read(location, src_elem_ty, src, indices))?;
+            let builder = fc.builder_at_current_insertion_point(codegen.context);
+            let read = array::read(&builder, location, src_elem_ty, src, indices);
+            let mut val = fc.append_op_ref_unnamed_result(read)?;
             if element_types_not_equal {
-                val = fc.unifiable_cast(location, val, dst_elem_ty)?;
+                val = fc.unifiable_cast(codegen, location, val, dst_elem_ty)?;
             }
-            fc.append_op_no_result(array::write(location, dst, indices, val))
+            let builder = fc.builder_at_current_insertion_point(codegen.context);
+            let write = array::write(&builder, location, dst, indices, val);
+            fc.append_op_ref_no_result(write)
         })
     }
 
@@ -1253,7 +1370,7 @@ where
         }
         if types_unify(existing.r#type(), rvalue.r#type()) {
             let location = codegen.location_from_meta(meta);
-            let rvalue = self.unifiable_cast(location, rvalue, existing.r#type())?;
+            let rvalue = self.unifiable_cast(codegen, location, rvalue, existing.r#type())?;
             return self.block_ctx.set_named_value(var.clone(), rvalue);
         }
         anyhow::bail!(
@@ -1350,11 +1467,15 @@ where
                 }
                 // Otherwise, cast to felt and use felt negation.
                 let rhs_felt = self.cast_to_felt_if_needed(codegen, loc, rhs)?;
-                return self.append_op_unnamed_result(felt::neg(loc, rhs_felt)?);
+                let builder = self.builder_at_current_insertion_point(codegen.context);
+                let op = felt::neg(&builder, loc, rhs_felt)?;
+                self.append_op_ref_unnamed_result(op)
             }
             ExpressionPrefixOpcode::BoolNot => {
                 let rhs_bool = self.cast_to_bool_if_needed(codegen, loc, rhs)?;
-                return self.append_op_unnamed_result(bool::not(loc, rhs_bool)?);
+                let builder = self.builder_at_current_insertion_point(codegen.context);
+                let op = bool::not(&builder, loc, rhs_bool)?;
+                self.append_op_ref_unnamed_result(op)
             }
             ExpressionPrefixOpcode::Complement => {
                 // For index negation, we need to subtract one from the negative
@@ -1370,7 +1491,9 @@ where
                 }
                 // Otherwise, cast to felt and use felt bitwise NOT.
                 let rhs_felt = self.cast_to_felt_if_needed(codegen, loc, rhs)?;
-                return self.append_op_unnamed_result(felt::bit_not(loc, rhs_felt)?);
+                let builder = self.builder_at_current_insertion_point(codegen.context);
+                let op = felt::bit_not(&builder, loc, rhs_felt)?;
+                self.append_op_ref_unnamed_result(op)
             }
         }
     }
@@ -1384,11 +1507,10 @@ where
         rhs_type_filter: impl FnOnce(Type) -> bool,
         lhs: Value<'ctx, 'val>,
         rhs: Value<'ctx, 'val>,
-        op_gen_fn: impl FnOnce(&mut Self) -> Result<Operation<'ctx>>,
+        op_gen_fn: impl FnOnce(&mut Self) -> Result<Value<'ctx, 'val>>,
     ) -> Result<Option<Value<'ctx, 'val>>> {
         if lhs_type_filter(lhs.r#type()) && rhs_type_filter(rhs.r#type()) {
-            let op_res = op_gen_fn(self)?;
-            self.append_op_unnamed_result(op_res).map(Option::Some)
+            op_gen_fn(self).map(Option::Some)
         } else {
             Ok(None)
         }
@@ -1416,9 +1538,11 @@ where
 
         macro_rules! generic_op_callback {
             ($op_path:path) => {{
-                |_| {
+                |block_gen: &mut Self| {
                     let loc = codegen.location_from_meta(meta);
-                    $op_path(loc, lhs, rhs).map_err(Into::into)
+                    let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                    let op = $op_path(&builder, loc, lhs, rhs)?;
+                    block_gen.append_op_ref_unnamed_result(op)
                 }
             }};
         }
@@ -1434,7 +1558,9 @@ where
                 let loc = codegen.location_from_meta(meta);
                 let lhs = self.cast_to_bool_if_needed(codegen, loc, lhs)?;
                 let rhs = self.cast_to_bool_if_needed(codegen, loc, rhs)?;
-                return self.append_op_unnamed_result($op_path(loc, lhs, rhs)?);
+                let builder = self.builder_at_current_insertion_point(codegen.context);
+                let op = $op_path(&builder, loc, lhs, rhs)?;
+                return self.append_op_ref_unnamed_result(op);
             }};
         }
 
@@ -1445,26 +1571,33 @@ where
             ($op_path:path) => {{
                 let loc = codegen.location_from_meta(meta);
                 let felt_ty = codegen.felt_type().into();
-                let lhs = self.unifiable_cast(loc, lhs, felt_ty)?;
-                let rhs = self.unifiable_cast(loc, rhs, felt_ty)?;
-                return self.append_op_unnamed_result($op_path(loc, lhs, rhs)?);
+                let lhs = self.unifiable_cast(codegen, loc, lhs, felt_ty)?;
+                let rhs = self.unifiable_cast(codegen, loc, rhs, felt_ty)?;
+                let builder = self.builder_at_current_insertion_point(codegen.context);
+                let op = $op_path(&builder, loc, lhs, rhs)?;
+                return self.append_op_ref_unnamed_result(op);
             }};
         }
 
         macro_rules! try_index_op {
             ($op_path:path) => {{
-                try_callback_for_type!(shared::is_index, |_| {
+                try_callback_for_type!(shared::is_index, |block_gen: &mut Self| {
                     let loc = codegen.location_from_meta(meta);
-                    Ok($op_path(lhs, rhs, loc))
+                    block_gen.append_op_unnamed_result($op_path(lhs, rhs, loc))
                 });
             }};
         }
 
         macro_rules! try_math_op {
             ($op_path:path) => {{
-                try_callback_for_type!(shared::is_index, |_| {
+                try_callback_for_type!(shared::is_index, |block_gen: &mut Self| {
                     let loc = codegen.location_from_meta(meta);
-                    Ok(Operation::from($op_path(codegen.context, lhs, rhs, loc)))
+                    block_gen.append_op_unnamed_result(Operation::from($op_path(
+                        codegen.context,
+                        lhs,
+                        rhs,
+                        loc,
+                    )))
                 });
             }};
         }
@@ -1492,9 +1625,15 @@ where
         macro_rules! try_bool_cmp_op {
             ($bool_op:path, $cmp:ident) => {{
                 try_felt_op!($bool_op);
-                try_callback_for_type!(shared::is_index, |_| {
+                try_callback_for_type!(shared::is_index, |block_gen: &mut Self| {
                     let loc = codegen.location_from_meta(meta);
-                    Ok(index::cmp(codegen.context, arith::CmpiPredicate::$cmp, lhs, rhs, loc))
+                    block_gen.append_op_unnamed_result(index::cmp(
+                        codegen.context,
+                        arith::CmpiPredicate::$cmp,
+                        lhs,
+                        rhs,
+                        loc,
+                    ))
                 });
                 try_unifiable_felt_op!($bool_op);
             }};
@@ -1600,10 +1739,10 @@ where
         }
 
         if is_type_variable(else_ty) {
-            Self::insert_cast_before_yield(else_region, location, else_value, then_ty)
+            Self::insert_cast_before_yield(codegen, else_region, location, else_value, then_ty)
                 .map(|_| then_ty)
         } else {
-            Self::insert_cast_before_yield(then_region, location, then_value, else_ty)
+            Self::insert_cast_before_yield(codegen, then_region, location, then_value, else_ty)
                 .map(|_| else_ty)
         }
         .inspect_err(|_| {
@@ -1622,6 +1761,7 @@ where
     /// `value` to `target_ty` immediately before the single `scf.yield` terminator of
     /// `region`'s first block, and replace the yield's use of `value` with the cast result.
     fn insert_cast_before_yield(
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         region: &Region<'ctx>,
         location: Location<'ctx>,
         value: Value<'ctx, 'val>,
@@ -1638,10 +1778,8 @@ where
             let block = region.first_block().expect("region has a block");
             ensure!(block.next_in_region().is_none(), "region has more than one block");
             let terminator = block.terminator().expect("block has a terminator");
-            let new_cast = block.insert_operation_before(
-                terminator,
-                poly::unifiable_cast(location, value, target_ty),
-            );
+            let builder = OpBuilder::new(codegen.context, EntryPoint::Before(terminator));
+            let new_cast = poly::unifiable_cast(&builder, location, value, target_ty);
             replace_uses_of_with(&terminator, value, Value::from(new_cast.result(0)?));
         }
         Ok(())
@@ -1853,6 +1991,7 @@ where
     /// The `value_gen` function is called to generate the value to be yielded from the arm.
     pub fn gen_scf_if_arm_no_var_overwrites<F, Y>(
         &mut self,
+        context: &'ctx LlzkContext,
         location: Location<'ctx>,
         value_gen: F,
     ) -> Result<(Region<'ctx>, Y)>
@@ -1863,7 +2002,7 @@ where
         let (region, block) = new_region_and_block(&[]);
         self.block_ctx.push(block);
         let arm_val = value_gen(self)?;
-        let overwrites = self.block_ctx.pop();
+        let overwrites = self.block_ctx.pop(context)?;
         assert!(overwrites.is_empty(), "expected no variable overwrites");
         let yield_vals = arm_val.to_yield_values();
         no_results(block.append_operation(scf::r#yield(yield_vals.as_ref(), location)))?;
@@ -1885,8 +2024,10 @@ where
         F1: FnOnce(&mut Self) -> Result<Value<'ctx, 'val>>,
         F2: FnOnce(&mut Self) -> Result<Value<'ctx, 'val>>,
     {
-        let then_info = self.gen_scf_if_arm_no_var_overwrites(location, then_value_gen)?;
-        let else_info = self.gen_scf_if_arm_no_var_overwrites(location, else_value_gen)?;
+        let then_info =
+            self.gen_scf_if_arm_no_var_overwrites(codegen.context, location, then_value_gen)?;
+        let else_info =
+            self.gen_scf_if_arm_no_var_overwrites(codegen.context, location, else_value_gen)?;
         self.gen_safe_scf_if(codegen, location, condition, then_info, else_info, None)
     }
 
@@ -1934,14 +2075,18 @@ where
         subcmp_memory: Value<'ctx, 'val>,
         amount: u32,
     ) -> Result<Value<'ctx, 'val>> {
-        let counter = self.append_op_unnamed_result(codegen.new_pod_read_op(
+        let builder = self.builder_at_current_insertion_point(codegen.context);
+        let counter = self.append_op_ref_unnamed_result(codegen.new_pod_read_op(
+            &builder,
             subcmp_memory,
             COUNT,
             location,
         )?)?;
         let one = self.append_op_unnamed_result(codegen.new_index_const_op(amount, location))?;
         let counter = self.append_op_unnamed_result(arith::subi(counter, one, location))?;
-        self.append_op_no_result(codegen.new_pod_write_op(
+        let builder = self.builder_at_current_insertion_point(codegen.context);
+        self.append_op_ref_no_result(codegen.new_pod_write_op(
+            &builder,
             location,
             subcmp_memory,
             COUNT,
@@ -1953,19 +2098,23 @@ where
     /// Decomposes the given value of [`PodType`] into a sequence of values in declaration order.
     pub fn gen_decompose_pod(
         &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         pod: Value<'ctx, 'val>,
         location: Location<'ctx>,
     ) -> Result<Vec<Value<'ctx, 'val>>> {
+        let builder = self.builder_at_current_insertion_point(codegen.context);
         PodType::try_from(pod.r#type())?
             .records()
             .into_iter()
             .map(|record| {
-                self.append_op_unnamed_result(pod::read(
+                let read = pod::read(
+                    &builder,
                     location,
                     pod,
                     record.name().as_string_ref().as_str()?,
                     record.r#type(),
-                ))
+                );
+                self.append_op_ref_unnamed_result(read)
             })
             .collect()
     }
@@ -1994,7 +2143,9 @@ where
             .map(|idx| {
                 let record_name = params[idx].name();
                 let record_name = record_name.as_string_ref();
-                let value = self.append_op_unnamed_result(codegen.new_pod_read_op(
+                let builder = self.builder_at_current_insertion_point(codegen.context);
+                let value = self.append_op_ref_unnamed_result(codegen.new_pod_read_op(
+                    &builder,
                     params_value,
                     record_name.as_str()?,
                     location,
@@ -2018,22 +2169,21 @@ where
         location: Location<'ctx>,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<Value<'ctx, 'val>> {
-        let input_values = self.gen_decompose_pod(inputs, location)?;
+        let input_values = self.gen_decompose_pod(codegen, inputs, location)?;
         let func_name = append_tail(&struct_type.name(), FUNC_NAME_COMPUTE.as_ref());
         let params = self.read_required_params(struct_type, params, codegen, location)?;
         let mut map_operands = MapOperandsBuilder::new();
         fill_map_operands_for_subcmp_call(&params, &mut map_operands)?;
-        self.append_op_unnamed_result(
-            function::call_with_map_operands(
-                codegen.op_builder(),
-                location,
-                func_name,
-                &input_values,
-                &[struct_type],
-                map_operands,
-            )?
-            .into(),
-        )
+        let builder = self.builder_at_current_insertion_point(codegen.context);
+        let call = function::call_with_map_operands(
+            &builder,
+            location,
+            func_name,
+            &input_values,
+            &[struct_type],
+            map_operands,
+        )?;
+        self.append_op_ref_unnamed_result(call)
     }
 
     /// Generates a call to `@constrain` for the given struct type.
@@ -2048,16 +2198,15 @@ where
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<()> {
         let mut call_args = vec![subcmp];
-        call_args.extend(self.gen_decompose_pod(inputs, location)?);
+        call_args.extend(self.gen_decompose_pod(codegen, inputs, location)?);
         let func_name = append_tail(
             &StructType::try_from(subcmp.r#type())?.name(),
             FUNC_NAME_CONSTRAIN.as_ref(),
         );
         let return_types: [Type; 0] = [];
-        self.append_op_no_result(
-            function::call(codegen.op_builder(), location, func_name, &call_args, &return_types)?
-                .into(),
-        )
+        let builder = self.builder_at_current_insertion_point(codegen.context);
+        let call = function::call(&builder, location, func_name, &call_args, &return_types)?;
+        self.append_op_ref_no_result(call)
     }
 
     /// Convert a dimension [Attribute] from an [ArrayType] into a [`Value`] of index type,
@@ -2080,7 +2229,7 @@ where
         if let Ok(sym_ref) = FlatSymbolRefAttribute::try_from(dim) {
             let sym_name = sym_ref.value();
             let value =
-                self.read_poly_template_binding(location, sym_name, codegen.index_type())?;
+                self.read_poly_template_binding(codegen, location, sym_name, codegen.index_type())?;
             return self.cast_to_index_if_needed(codegen, location, value);
         }
         unreachable!("Unhandled attribute in array dimensions {}", dim)
@@ -2154,7 +2303,7 @@ where
         // to the right block.
         self.block_ctx.push(block);
         body(self, &loop_vars)?;
-        self.block_ctx.pop();
+        self.block_ctx.pop(codegen.context)?;
 
         // Traverse the stack of blocks until we reach the block where we inserted the whole nest.
         // For each block traversed this way add the scf terminator op.
@@ -2194,26 +2343,27 @@ where
             } else {
                 ArrayCtor::Empty
             };
-            let new_arr =
-                self.append_op_unnamed_result(codegen.new_array_new_op(location, arr_ty, ctor))?;
+            let builder = self.builder_at_current_insertion_point(codegen.context);
+            let new_arr = self.append_op_ref_unnamed_result(
+                codegen.new_array_new_op(&builder, location, arr_ty, ctor),
+            )?;
             if let Ok(const_dim) = const_dim {
                 for idx in 0..const_dim.value() {
                     let idx_val =
                         self.append_op_unnamed_result(codegen.new_index_const_op(idx, location))?;
-                    self.append_op_no_result(array::insert(location, new_arr, &[idx_val], value))?;
+                    let builder = self.builder_at_current_insertion_point(codegen.context);
+                    let insert = array::insert(&builder, location, new_arr, &[idx_val], value);
+                    self.append_op_ref_no_result(insert)?;
                 }
             } else {
                 let dim = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
-                let array_len =
-                    self.append_op_unnamed_result(array::len(location, new_arr, dim))?;
+                let builder = self.builder_at_current_insertion_point(codegen.context);
+                let len = array::len(&builder, location, new_arr, dim);
+                let array_len = self.append_op_ref_unnamed_result(len)?;
                 self.gen_normalized_scf_for(codegen, location, array_len, |b| {
                     let induction_var = b.argument(0)?;
-                    b.append_operation(array::insert(
-                        location,
-                        new_arr,
-                        &[induction_var.into()],
-                        value,
-                    ));
+                    let builder = OpBuilder::at_block_end(codegen.context, b);
+                    array::insert(&builder, location, new_arr, &[induction_var.into()], value);
                     b.append_operation(scf::r#yield(&[], location));
                     Ok(())
                 })?;
@@ -2224,7 +2374,9 @@ where
             let arr_ty = dimension.new_array_type(&value.r#type());
             if let Ok(const_dim) = const_dim {
                 let values = vec![value; usize::try_from(const_dim.value())?];
-                self.append_op_unnamed_result(codegen.new_array_new_op(
+                let builder = self.builder_at_current_insertion_point(codegen.context);
+                self.append_op_ref_unnamed_result(codegen.new_array_new_op(
+                    &builder,
                     location,
                     arr_ty,
                     ArrayCtor::Values(&values),
@@ -2238,19 +2390,18 @@ where
                 } else {
                     ArrayCtor::Empty
                 };
-                let array_ref = self
-                    .append_op_unnamed_result(codegen.new_array_new_op(location, arr_ty, ctor))?;
+                let builder = self.builder_at_current_insertion_point(codegen.context);
+                let array_ref = self.append_op_ref_unnamed_result(
+                    codegen.new_array_new_op(&builder, location, arr_ty, ctor),
+                )?;
                 let dim = self.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
-                let array_len =
-                    self.append_op_unnamed_result(array::len(location, array_ref, dim))?;
+                let builder = self.builder_at_current_insertion_point(codegen.context);
+                let len = array::len(&builder, location, array_ref, dim);
+                let array_len = self.append_op_ref_unnamed_result(len)?;
                 self.gen_normalized_scf_for(codegen, location, array_len, |b| {
                     let induction_var = b.argument(0)?;
-                    b.append_operation(array::write(
-                        location,
-                        array_ref,
-                        &[induction_var.into()],
-                        value,
-                    ));
+                    let builder = OpBuilder::at_block_end(codegen.context, b);
+                    array::write(&builder, location, array_ref, &[induction_var.into()], value);
                     b.append_operation(scf::r#yield(&[], location));
                     Ok(())
                 })?;
@@ -2312,10 +2463,8 @@ where
                 body_yield_values.iter().copied().zip(loop_carried_types.iter().copied())
             {
                 if val.r#type() != expected_ty && types_unify(val.r#type(), expected_ty) {
-                    let cast_op = loop_body_info.block.insert_operation_before(
-                        terminator,
-                        poly::unifiable_cast(location, val, expected_ty),
-                    );
+                    let builder = OpBuilder::new(codegen.context, EntryPoint::Before(terminator));
+                    let cast_op = poly::unifiable_cast(&builder, location, val, expected_ty);
                     replace_uses_of_with(&terminator, val, Value::from(cast_op.result(0)?));
                 }
             }
@@ -2343,13 +2492,11 @@ where
             // If there is a return within the loop, add prefix "!<VAR_NAME_HAD_RETURN> &&" to the
             // loop condition to ensure the loop terminates when the return occurs.
             if let Some(flag) = return_flag {
-                let not_return_flag = single_result_as_value(
-                    loop_cond_info.block.append_operation(bool::r#not(location, flag)?.into()),
-                )?;
-                condition =
-                    single_result_as_value(loop_cond_info.block.append_operation(
-                        bool::and(location, not_return_flag, condition)?.into(),
-                    ))?;
+                let builder = OpBuilder::at_block_end(codegen.context, loop_cond_info.block);
+                let not_return_flag =
+                    single_result_as_value(bool::r#not(&builder, location, flag)?)?;
+                let and = bool::and(&builder, location, not_return_flag, condition)?;
+                condition = single_result_as_value(and)?;
             }
             // Pass the block arguments as the initial values to the condition op.
             let block_arg_values = (0..loop_cond_info.block.argument_count())
@@ -2429,8 +2576,10 @@ where
         if codegen.config.verbose {
             println!("Declaring variable '{name}' with dimensions {dims:?}");
         }
-        let op = dims.new_nondet_felt_of_dimensions(codegen, meta)?;
-        self.block_ctx.declare_name_ensure_not_present(name, op)
+        let builder = self.builder_at_current_insertion_point(codegen.context);
+        let value =
+            single_result_as_value(dims.new_nondet_felt_of_dimensions(codegen, &builder, meta))?;
+        self.block_ctx.declare_value_ensure_not_present(name, value)
     }
 
     /// Add a new polymorphic parameter with `poly.tvar` type via
@@ -2573,6 +2722,7 @@ where
 
     fn stack_pop<H>(
         &mut self,
+        context: &'ctx LlzkContext,
         overwrite_handler: H,
         overwrite_data: &mut Self::HandlerDataType,
     ) -> Result<()>
@@ -2583,7 +2733,7 @@ where
             HashMap<String, Value<'ctx, 'val>>,
         ) -> Result<()>,
     {
-        let popped = self.block_ctx.pop();
+        let popped = self.block_ctx.pop(context)?;
         overwrite_handler(self, overwrite_data, popped)
     }
 }
@@ -2629,8 +2779,10 @@ where
             Expression::Number(meta, big_int) => {
                 // Convert the BigInt to an LLZK `felt.const` op. The user of the Expression is
                 // responsible for converting this `felt.type` value to another type if needed.
-                block_gen.append_op_unnamed_result(
-                    codegen.new_felt_const_op(big_int, codegen.location_from_meta(meta))?,
+                let location = codegen.location_from_meta(meta);
+                let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                block_gen.append_op_ref_unnamed_result(
+                    codegen.new_felt_const_op(&builder, big_int, location)?,
                 )
             }
             Expression::Variable { meta, name, access } => {
@@ -2664,12 +2816,14 @@ where
                 let condition = block_gen.cast_to_bool_if_needed(codegen, location, cond_val)?;
 
                 // Generate branch arms nested blocks so `gen_llzk_in_block` can use `block_gen`
-                let then_info = block_gen.gen_scf_if_arm_no_var_overwrites(location, |g| {
-                    if_true.gen_llzk_in_block(codegen, g, info)
-                })?;
-                let else_info = block_gen.gen_scf_if_arm_no_var_overwrites(location, |g| {
-                    if_false.gen_llzk_in_block(codegen, g, info)
-                })?;
+                let then_info =
+                    block_gen.gen_scf_if_arm_no_var_overwrites(codegen.context, location, |g| {
+                        if_true.gen_llzk_in_block(codegen, g, info)
+                    })?;
+                let else_info =
+                    block_gen.gen_scf_if_arm_no_var_overwrites(codegen.context, location, |g| {
+                        if_false.gen_llzk_in_block(codegen, g, info)
+                    })?;
                 block_gen.gen_safe_scf_if(codegen, location, condition, then_info, else_info, None)
             }
             Expression::ArrayInLine { meta, values } => {
@@ -2689,21 +2843,17 @@ where
                     // For subarrays, we need to create a new array then insert the values
                     let dim = codegen.index_attr(i64::try_from(values.len())?);
                     let arr_ty = new_array_type(dim.into(), &subarr_ty);
-                    let new_arr = block_gen.append_op_unnamed_result(codegen.new_array_new_op(
-                        location,
-                        arr_ty,
-                        ArrayCtor::Empty,
-                    ))?;
+                    let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                    let new_arr = block_gen.append_op_ref_unnamed_result(
+                        codegen.new_array_new_op(&builder, location, arr_ty, ArrayCtor::Empty),
+                    )?;
                     for (idx, val) in values.iter().enumerate() {
                         let idx_val = block_gen.append_op_unnamed_result(
                             codegen.new_index_const_op(i64::try_from(idx)?, location),
                         )?;
-                        block_gen.append_op_no_result(array::insert(
-                            location,
-                            new_arr,
-                            &[idx_val],
-                            *val,
-                        ))?;
+                        let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                        let insert = array::insert(&builder, location, new_arr, &[idx_val], *val);
+                        block_gen.append_op_ref_no_result(insert)?;
                     }
 
                     // Output value is still the newly created array
@@ -2711,7 +2861,9 @@ where
                 } else {
                     let dim = codegen.index_attr(i64::try_from(values.len())?);
                     let arr_ty = ArrayType::new(value_ty.into(), &[dim.into()]);
-                    block_gen.append_op_unnamed_result(codegen.new_array_new_op(
+                    let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                    block_gen.append_op_ref_unnamed_result(codegen.new_array_new_op(
+                        &builder,
                         location,
                         arr_ty,
                         ArrayCtor::Values(&values),
@@ -2765,16 +2917,14 @@ where
                 } else {
                     return_type
                 };
-                block_gen.append_op_unnamed_result(
-                    function::call(
-                        codegen.op_builder(),
-                        location,
-                        codegen.double_ref_sym(id),
-                        &call_operands,
-                        &[return_type],
-                    )?
-                    .into(),
-                )
+                let call = function::call(
+                    &block_gen.builder_at_current_insertion_point(codegen.context),
+                    location,
+                    codegen.double_ref_sym(id),
+                    &call_operands,
+                    &[return_type],
+                )?;
+                block_gen.append_op_ref_unnamed_result(call)
             }
             #[allow(unused_variables)] // TODO: TEMP
             Expression::BusCall { meta, id, args } => {
