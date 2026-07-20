@@ -1382,7 +1382,6 @@ where
 
     /// Handle [program_structure::ast::Statement::Substitution] when the operator is not a signal
     /// operator. Note: Do not use directly from `GenerateLLZKInTemplate`.
-    #[allow(clippy::too_many_arguments)]
     pub fn handle_substitution_stmt_nonsignal<'info>(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
@@ -1826,7 +1825,6 @@ where
     ///
     /// Each [Region] is assumed to contain a single block with an `scf.yield` terminator. If
     /// `then_values` or `else_values` is None, the Values are retrieved from the block terminator.
-    #[allow(clippy::too_many_arguments)]
     pub fn gen_safe_scf_if_multi(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,

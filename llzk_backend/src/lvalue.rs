@@ -138,7 +138,6 @@ impl<'ast> Lvalue<'ast> {
     /// actual LLZK array then the continuation is called only once. However, if the array
     /// is actually an array of mixed subcomponents, the continuation is called for each
     /// branch of the dispatch table.
-    #[allow(clippy::too_many_arguments)]
     fn get_array_value<'decls, 'ctx, 'blk, 'val, 'cont, R, C>(
         &self,
         indices: &[&Expression],
@@ -241,7 +240,6 @@ impl<'ast> Lvalue<'ast> {
     }
 
     /// Emits the IR for a conditional check for array indices in a mixed subcomponent.
-    #[allow(clippy::too_many_arguments)]
     fn emit_mixed_subcmp_if_body<'decls, 'ctx, 'blk, 'val, 'cont, R, C>(
         &self,
         prev: Value<'ctx, 'val>,

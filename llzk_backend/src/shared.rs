@@ -1673,7 +1673,6 @@ pub fn next_in_block_mut<'c: 'a, 'a>(
 ///
 /// This function provides an API fix that is added in a newer release of melior via
 /// [mlir-sys/melior#802](https://github.com/mlir-rs/melior/pull/802).
-#[allow(clippy::too_many_arguments)]
 pub fn enable_ir_printing(
     _self: &melior::pass::PassManager,
     before_all: bool,
@@ -2471,7 +2470,6 @@ where
         /// Generate the `scf.if` for a [Statement::IfThenElse] boundary encountered while
         /// walking toward `target_expr`. The branch containing the target recursively calls
         /// `gen_up_to_target`; the other branch yields a `nondet` placeholder of the same type.
-        #[allow(clippy::too_many_arguments)]
         fn gen_if_then_else_up_to_target<'ctx, 'blk, 'val>(
             codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
             gen_ctx: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,

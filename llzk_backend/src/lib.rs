@@ -7,6 +7,7 @@
 #![deny(unused_must_use)]
 #![warn(redundant_imports)]
 #![warn(clippy::cast_lossless)]
+#![allow(clippy::too_many_arguments)]
 #![allow(clippy::useless_conversion)]
 
 mod cleanup_return_tvar;

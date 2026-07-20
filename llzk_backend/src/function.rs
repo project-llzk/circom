@@ -734,7 +734,6 @@ where
 
 /// Helper for [gen_if_then_else] to mangage the special return-related variables needed
 /// when a circom [Statement::IfThenElse] contains a return statement.
-#[allow(clippy::too_many_arguments)]
 fn handle_unbalanced_return<'ctx, 'func, 'blk, 'val>(
     codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,

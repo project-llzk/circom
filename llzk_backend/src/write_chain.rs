@@ -158,7 +158,6 @@ impl<'ast> WriteChain<'ast> {
     }
 
     /// Writes a value into a field of a mixed subcomponent input pod.
-    #[allow(clippy::too_many_arguments)]
     fn write_mixed_input_tail<'ctx, 'val>(
         signal_name: &str,
         tail: &[AccessRef<'_, 'ast>],
@@ -217,7 +216,6 @@ impl<'ast> WriteChain<'ast> {
     /// The selected record has a concrete component type, but different records may have
     /// different input pod shapes. Keep those record-specific values inside the dispatch branch
     /// and only merge the uniform parent pods back into the surrounding block.
-    #[allow(clippy::too_many_arguments)]
     fn try_write_mixed_subcmp<'ctx, 'val>(
         &self,
         val: Value<'ctx, 'val>,
@@ -404,7 +402,6 @@ impl<'ast> WriteChain<'ast> {
     }
 
     /// Handle [Lvalue::Array] case of [`WriteChain::write`].
-    #[allow(clippy::too_many_arguments)]
     fn write_array<'ctx, 'val>(
         indices: Vec<&Expression>,
         prev: Self,
@@ -500,7 +497,6 @@ impl<'ast> WriteChain<'ast> {
     }
 
     /// Handle [Lvalue::Subcmp] case of [`WriteChain::write`].
-    #[allow(clippy::too_many_arguments)]
     fn write_subcmp<'ctx, 'val>(
         name: &str,
         prev: Self,
@@ -607,7 +603,6 @@ impl<'ast> WriteChain<'ast> {
         )
     }
 
-    #[allow(clippy::too_many_arguments)]
     /// Emits the write operations.
     pub fn write<'ctx, 'val>(
         self,
