@@ -17,7 +17,7 @@ use llzk::builder::EntryPoint;
 use llzk::builder::OpBuilder;
 use llzk::dialect::function;
 use llzk::dialect::poly;
-use llzk::prelude::Block;
+use llzk::operation::build_owned_operation;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::CallOpLike as _;
 use llzk::prelude::CallOpRef;
@@ -126,15 +126,11 @@ fn wrap_call_in_synthetic_template<'ctx>(
 
     let func_type = FunctionType::new(codegen.context, &operand_types, &[]);
 
-    // Use a temporary block to build the synthetic template because it will be detached and
-    // re-inserted to avoid naming collisions.
-    let scratch = Block::new(&[]);
-    let builder = OpBuilder::at_block_end(codegen.context, &scratch);
     let mut inner_call = None;
 
-    // Build poly.template @synthetic { poly.param; function.def }.
-    let template_op =
-        poly::template(&builder, location, UNUSED_CALL_RESULT_WRAPPER_NAME, |builder| {
+    // Build owned/detached poly.template @synthetic { poly.param; function.def }.
+    let template_op = build_owned_operation(codegen.context, |builder| {
+        poly::template(builder, location, UNUSED_CALL_RESULT_WRAPPER_NAME, |builder| {
             poly::param(
                 builder,
                 location,
@@ -172,11 +168,12 @@ fn wrap_call_in_synthetic_template<'ctx>(
             function::r#return(&inner_builder, location, &[]);
             inner_call = Some(call.to_raw());
             Ok(())
-        })?;
+        })
+        .map(Into::into)
+    })?;
     let inner_call = inner_call.expect("synthetic template callback must create inner call");
 
-    // Detach and re-insert the template into the module to unique the name and avoid collisions.
-    let template_op = shared::detach_owned_operation(&template_op);
+    // Insert the template into the module, uniquing the name to avoid collisions.
     let op_ref = shared::insert_unique_symbol_op(&codegen.module.as_operation(), template_op);
     let template_name = shared::get_sym_name_attr(&op_ref)
         .expect("`poly.template` must have `sym_name` attribute per ODS");

@@ -27,10 +27,12 @@ use llzk::builder::OpBuilderLike;
 use llzk::dialect;
 use llzk::dialect::array;
 use llzk::dialect::array::ArrayCtor;
+use llzk::dialect::empty_region;
 use llzk::dialect::felt;
 use llzk::dialect::global;
 use llzk::dialect::pod;
 use llzk::dialect::poly;
+use llzk::operation::build_owned_operation;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::replace_uses_of_with;
@@ -58,7 +60,6 @@ use llzk::prelude::Operation;
 use llzk::prelude::OperationLike;
 use llzk::prelude::OperationMutLike;
 use llzk::prelude::OperationRef;
-use llzk::prelude::OperationRefMut;
 use llzk::prelude::PassManager;
 use llzk::prelude::PodType;
 use llzk::prelude::RecordValue;
@@ -2623,23 +2624,58 @@ where
         // Generate `poly.expr` and fill its initializer region.
         let name = K::expr_name(target_expr);
         let location = codegen.location_from_meta(target_expr.get_meta());
-        let scratch = Block::new(&[]);
-        let scratch_builder = OpBuilder::at_block_end(codegen.context, &scratch);
-        let expr_op = poly::expr(&scratch_builder, location, &name, |_| Ok(()))?;
-        let mut expr_gen_ctx = BlockGenContext::new(
-            BlockContextStack::new(
+        let mut incomplete_poly_expr = false;
+        let expr_op = build_owned_operation(codegen.context, |builder| {
+            let expr_op = poly::expr(builder, location, &name, empty_region)?;
+            let mut expr_gen_ctx = BlockGenContext::new(
+                BlockContextStack::new(
+                    expr_op
+                        .initializer_region()
+                        .first_block()
+                        .expect("block should have been added"),
+                ),
+                self.get_var_decl_types(),
+                self.poly_template_binding_names(),
+            )
+            .with_poly_template_binding_locals(codegen, location)?;
+            let body_opt = codegen.current_body();
+            assert!(body_opt.is_some(), "should have been set at top level");
+            let trace = codegen.snapshot_statement_trace();
+            let Some(val) = gen_up_to_target(
+                codegen,
+                &mut expr_gen_ctx,
+                target_expr,
+                body_opt.unwrap(),
+                &trace,
+            )?
+            else {
+                incomplete_poly_expr = true;
+                return Ok::<OperationRef<'_, '_>, anyhow::Error>(expr_op.into());
+            };
+            let val = K::finalize_poly_expr_value(&mut expr_gen_ctx, codegen, location, val)?;
+            let yield_builder = OpBuilder::at_block_end(
+                codegen.context,
                 expr_op.initializer_region().first_block().expect("block should have been added"),
-            ),
-            self.get_var_decl_types(),
-            self.poly_template_binding_names(),
-        )
-        .with_poly_template_binding_locals(codegen, location)?;
-        let body_opt = codegen.current_body();
-        assert!(body_opt.is_some(), "should have been set at top level");
-        let trace = codegen.snapshot_statement_trace();
-        let Some(val) =
-            gen_up_to_target(codegen, &mut expr_gen_ctx, target_expr, body_opt.unwrap(), &trace)?
-        else {
+            );
+            poly::r#yield(&yield_builder, location, val)?;
+
+            // Run cleanup passes to simplify and normalize the generated code a bit:
+            // - remove-dead-values: drop ops whose results are not used
+            // - sccp: constant fold and propagate values
+            // - canonicalize: mainly to remove unused `llzk.nondet` (which `remove-dead-values`
+            //   cannot remove due to memory effects) but also folds felt constants, etc.
+            // This cleanup is not simply an optimization. In some cases, an `llzk.nondet` may be
+            // generated that references a symbol defined by a different `poly.expr` due to the way
+            // array declaration and initialization are split up in the circom AST. This is illegal
+            // in LLZK but that `llzk.nondet` result value is unused so it can be removed.
+            codegen.run_pass_pipeline_on(
+                "any(composite-fixed-point-pass{pipeline=\"canonicalize,sccp,remove-dead-values\"})",
+                &expr_op,
+            )?;
+
+            Ok(expr_op.into())
+        })?;
+        if incomplete_poly_expr {
             // If `gen_up_to_target` returns `None` that means that we don't have enough
             // information for creating the poly expression, so we give up here by returning an
             // identity affine map.
@@ -2647,29 +2683,8 @@ where
                 AffineMapAttribute::identity(codegen.context, 1).into(),
                 &[],
             );
-        };
-        let val = K::finalize_poly_expr_value(&mut expr_gen_ctx, codegen, location, val)?;
-        let yield_builder = OpBuilder::at_block_end(
-            codegen.context,
-            expr_op.initializer_region().first_block().expect("block should have been added"),
-        );
-        poly::r#yield(&yield_builder, location, val)?;
-
-        // Run cleanup passes to simplify and normalize the generated code a bit:
-        // - remove-dead-values: drop ops whose results are not used
-        // - sccp: constant fold and propagate values
-        // - canonicalize: mainly to remove unused `llzk.nondet` (which `remove-dead-values` cannot
-        //   remove due to memory effects) but also folds felt constants, etc.
-        // This cleanup is not simply an optimization. In some cases, an `llzk.nondet` may be
-        // generated that references a symbol defined by a different `poly.expr` due to the way
-        // array declaration and initialization are split up in the circom AST. This is illegal
-        // in LLZK but that `llzk.nondet` result value is unused so it can be removed.
-        codegen.run_pass_pipeline_on(
-            "any(composite-fixed-point-pass{pipeline=\"canonicalize,sccp,remove-dead-values\"})",
-            &expr_op,
-        )?;
-
-        let expr_op = TemplateExprOp::try_from(detach_owned_operation(&expr_op))?;
+        }
+        let expr_op = TemplateExprOp::try_from(expr_op)?;
         let uniqued_name = self.record_new_sym_binding(codegen, expr_op.into(), &|_| {});
 
         if codegen.config.verbose {
@@ -2778,20 +2793,6 @@ pub fn insert_unique_symbol_op<'c: 'a, 'a>(
     new_symbol_op: impl Into<Operation<'c>>,
 ) -> OperationRef<'c, 'a> {
     symbol_table::insert(sym_table_op, new_symbol_op.into())
-}
-
-/// Detach a builder-created operation from its temporary block and return ownership of it.
-///
-/// TODO: move to `llzk-rs`
-pub fn detach_owned_operation<'c: 'a, 'a>(op: &impl OperationLike<'c, 'a>) -> Operation<'c> {
-    let raw = op.to_raw();
-    // SAFETY: `raw` is a valid operation inserted in a scratch block. Removing it transfers
-    // responsibility for destroying it to the owned `Operation` constructed below.
-    unsafe {
-        let mut op_ref = OperationRefMut::from_raw(raw);
-        op_ref.remove_from_parent();
-        Operation::from_raw(raw)
-    }
 }
 
 /// Wraps the given pod record tuples into instances of [`RecordValue`].

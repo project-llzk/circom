@@ -38,6 +38,7 @@ use llzk::dialect::pod;
 use llzk::dialect::poly;
 use llzk::dialect::r#struct;
 use llzk::map_operands::MapOperandsBuilder;
+use llzk::operation::build_owned_operation;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::is_type_variable;
 use llzk::prelude::melior_dialects::arith;
@@ -46,7 +47,6 @@ use llzk::prelude::melior_dialects::scf;
 use llzk::prelude::replace_uses_of_with;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
-use llzk::prelude::Block;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::BlockRef;
 use llzk::prelude::FlatSymbolRefAttribute;
@@ -2588,21 +2588,21 @@ where
         location: Location<'ctx>,
         name: &str,
     ) -> Result<StringAttribute<'ctx>> {
-        let scratch = Block::new(&[]);
-        let builder = OpBuilder::at_block_end(codegen.context, &scratch);
-        poly::param(&builder, location, name, None)
-            .and_then(|op| TemplateParamOp::try_from(shared::detach_owned_operation(&op)))
-            .map(|op| {
-                self.record_new_sym_binding(codegen, op.into(), &|op_ref| match op_ref {
-                    TemplateSymbolBindingOpRef::Param(op_ref) => {
-                        // Once the final unique symbol name is known, update the
-                        // `poly.param` op with the correct type restriction.
-                        op_ref.set_type_restriction(Some(codegen.tvar_type(op_ref.sym_name())));
-                    }
-                    TemplateSymbolBindingOpRef::Expr(_) => unreachable!("just created poly::param"),
-                })
+        build_owned_operation(codegen.context, |builder| {
+            poly::param(builder, location, name, None).map(Into::into)
+        })
+        .and_then(TemplateParamOp::try_from)
+        .map(|op| {
+            self.record_new_sym_binding(codegen, op.into(), &|op_ref| match op_ref {
+                TemplateSymbolBindingOpRef::Param(op_ref) => {
+                    // Once the final unique symbol name is known, update the
+                    // `poly.param` op with the correct type restriction.
+                    op_ref.set_type_restriction(Some(codegen.tvar_type(op_ref.sym_name())));
+                }
+                TemplateSymbolBindingOpRef::Expr(_) => unreachable!("just created poly::param"),
             })
-            .map_err(Into::into)
+        })
+        .map_err(Into::into)
     }
 }
 
