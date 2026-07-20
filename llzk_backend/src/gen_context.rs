@@ -331,7 +331,11 @@ where
         &self,
         context: &'ctx LlzkContext,
     ) -> OpBuilder<'ctx, 'static> {
-        OpBuilder::at_block_end(context, *self.top_block())
+        let current = *self.top_block();
+        match current.terminator() {
+            Some(terminator) => OpBuilder::new(context, EntryPoint::Before(terminator)),
+            None => OpBuilder::at_block_end(context, current),
+        }
     }
 
     /// Queues a `struct.writem` to the given block that will be created directly before the block
