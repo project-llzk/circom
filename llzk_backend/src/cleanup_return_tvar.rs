@@ -283,7 +283,7 @@ pub(crate) fn specialize_tvar_function_calls<'ctx>(
     walk_from_block(
         codegen.module.body(),
         WalkCallbacks::for_ops(|op| {
-            if function::is_func_call(&op) {
+            if function::is_call_op(&op) {
                 calls.push(op.to_raw());
             }
         }),

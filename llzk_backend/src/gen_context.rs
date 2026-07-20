@@ -1845,7 +1845,7 @@ where
                     .terminator()
                     .with_context(|| format!("scf.if {branch_name} region has no terminator"))?;
                 ensure!(
-                    scf::is_scf_yield(&terminator),
+                    scf::is_yield_op(&terminator),
                     "scf.if {branch_name} block has terminator other than scf.yield"
                 );
                 Ok(terminator.operands().collect())

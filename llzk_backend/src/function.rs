@@ -43,8 +43,8 @@ use llzk::operation::WalkOperationMutLike as _;
 use llzk::prelude::is_type_variable;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::melior_dialects::scf;
-use llzk::prelude::melior_dialects::scf::is_scf_if;
-use llzk::prelude::melior_dialects::scf::is_scf_yield;
+use llzk::prelude::melior_dialects::scf::is_if_op;
+use llzk::prelude::melior_dialects::scf::is_yield_op;
 use llzk::prelude::ArrayType;
 use llzk::prelude::Attribute;
 use llzk::prelude::BlockLike as _;
@@ -359,7 +359,7 @@ where
             // Remove any `llzk.nondet` ops from the function whose result value is unused. These
             // were added, for example, when visiting [Statement::Declaration] but their uses were
             // later replaced with actual values when visiting [Statement::Substitution], etc.
-            if dialect::llzk::is_nondet(&op) && !has_uses(single_result_as_value(op).unwrap()) {
+            if dialect::llzk::is_nondet_op(&op) && !has_uses(single_result_as_value(op).unwrap()) {
                 OperationMutLike::remove_from_parent(op.deref_mut());
                 return WalkResult::Skip;
             }
@@ -372,9 +372,9 @@ where
         self.func.walk_rev_mut(WalkOrder::PostOrder, |mut op| {
             if op.has_attribute(CIRCOM_RETURN_MARKER_ATTR) {
                 // Perform replacement of "if(..) return" pattern.
-                if function::is_func_return(&op) {
+                if function::is_return_op(&op) {
                     if let Some(parent) = parent_operation_mut(&op) {
-                        if is_scf_if(&parent) {
+                        if is_if_op(&parent) {
                             // Cannot directly do the refactor here because it will invalidate the
                             // walk iterator. Instead, collect the pairs to process after the walk.
                             // But, must use raw objects since `op` is invalid outside this closure.
@@ -413,8 +413,8 @@ where
         ret_op: OperationRefMut<'ctx, '_>,
         mut parent_if_op: OperationRefMut<'ctx, '_>,
     ) -> Result<()> {
-        assert!(function::is_func_return(&ret_op)); // precondition
-        assert!(is_scf_if(&parent_if_op)); // precondition
+        assert!(function::is_return_op(&ret_op)); // precondition
+        assert!(is_if_op(&parent_if_op)); // precondition
 
         // Move all ops after the `scf.if` into a new block for "else" branch of new `scf.if`.
         let (new_else_region, new_else_block) = new_region_and_block(&[]);
@@ -433,14 +433,14 @@ where
             }
             // Special handling for the tail op: yield is just added, return is converted to yield.
             let tail = remove_from_parent(&mut tail);
-            if is_scf_yield(&tail) {
+            if is_yield_op(&tail) {
                 let result_types = tail.operands().map(|v| v.r#type()).collect();
                 let names = tail
                     .attribute(OPERAND_VAL_NAMES)
                     .expect("multi-value yield op must have names");
                 new_else_result_info = RefactoringBlockResultType::Multiple(result_types, names);
                 no_results(new_else_block.append_operation(tail))?;
-            } else if function::is_func_return(&tail) {
+            } else if function::is_return_op(&tail) {
                 assert_eq!(tail.operand_count(), 1, "circom functions must return a single value");
                 let ret_val = tail.operand(0).unwrap();
                 new_else_result_info = RefactoringBlockResultType::Single(ret_val.r#type());
@@ -515,7 +515,7 @@ where
 
         // Replace `parent_if_op` with the new `scf.if` and then append a return/yield with the new
         // `scf.if` results. If the destination block is the function body use return, else yield.
-        if blk.parent_operation().is_some_and(|r| function::is_func_def(&r)) {
+        if blk.parent_operation().is_some_and(|r| function::is_def_op(&r)) {
             let builder = OpBuilder::at_block_end(codegen.context, blk);
             no_results(function::r#return(&builder, parent_if_op.location(), &result_values))?;
         } else {
@@ -718,7 +718,7 @@ where
         if term.has_attribute(CIRCOM_RETURN_MARKER_ATTR) {
             // ASSERT: This must be a `yield` not a `return` since it's generated
             // within a nested block of an `if` or `while` statement.
-            assert!(is_scf_yield(&term));
+            assert!(is_yield_op(&term));
             // ASSERT: Per `append_circom_return()` it has exactly one operand.
             assert_eq!(term.operand_count(), 1);
             let result = term.operand(0).unwrap();
