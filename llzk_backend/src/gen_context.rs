@@ -826,7 +826,7 @@ where
         let map = self.poly_template_binding_names.borrow();
         let mut sorted: Vec<_> = map.iter().collect();
         if codegen.config.stabilize {
-            sorted.sort_by(|(a, _), (b, _)| a.cmp(b));
+            sorted.sort_by_key(|(a, _)| *a);
         }
         // Keep the binding map borrowed so sorting can use references; only the disjoint block
         // context is mutated below. Names are copied only when inserted into its owning map.
