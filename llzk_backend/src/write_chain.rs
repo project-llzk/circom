@@ -1,33 +1,26 @@
 //! Helper type for constructing operations that write using [`Access`].
 
-use crate::function::FunctionContext;
-use crate::function::InfoProviders;
-use crate::gen_context::NestedBlockInfo;
-use crate::lvalue::concrete_indices;
-use crate::lvalue::emit_condition;
-use crate::lvalue::Combine;
-use crate::lvalue::CombineEntry;
-use crate::lvalue::Lvalue;
-use crate::lvalue::OverrideVar;
-use crate::lvalue::Root;
-use crate::program_ext::ProgramLike;
-use crate::shared::comp_type;
-use crate::shared::LlzkCodegen;
-use crate::subcmp::names::COMP;
-use crate::subcmp::names::PARAMS;
-use crate::subcmp::SubcmpInfo;
-use crate::template::TemplateContext;
+use std::{
+    convert::{TryFrom as _, TryInto as _},
+    fmt,
+};
+
 use anyhow::Result;
-use llzk::prelude::FuncDefOpLike as _;
-use llzk::prelude::Location;
-use llzk::prelude::PodType;
-use llzk::prelude::Value;
-use llzk::prelude::ValueLike as _;
-use program_structure::ast::Access;
-use program_structure::ast::Expression;
-use std::convert::TryFrom as _;
-use std::convert::TryInto as _;
-use std::fmt;
+use llzk::prelude::{FuncDefOpLike as _, Location, PodType, Value, ValueLike as _};
+use program_structure::ast::{Access, Expression};
+
+use crate::{
+    function::{FunctionContext, InfoProviders},
+    gen_context::NestedBlockInfo,
+    lvalue::{concrete_indices, emit_condition, Combine, CombineEntry, Lvalue, OverrideVar, Root},
+    program_ext::ProgramLike,
+    shared::{comp_type, LlzkCodegen},
+    subcmp::{
+        names::{COMP, PARAMS},
+        SubcmpInfo,
+    },
+    template::TemplateContext,
+};
 
 /// Gives information about signals written into the component.
 pub trait SignalWriteInfo: std::fmt::Debug {

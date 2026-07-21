@@ -1,33 +1,29 @@
 //! Helper types for handling subcomponents.
 
-use crate::function::FunctionContext;
-use crate::gen_context::BlockGenContext;
-use crate::program_ext::ProgramInfo;
-use crate::program_ext::ProgramLike;
-use crate::shared::map_array_inner_type;
-use crate::shared::wrap_pod_records;
-use crate::shared::LlzkCodegen;
-use crate::shared::TmplParamsInstance;
-use crate::shared::TypeSizeExpr;
-use crate::template_ext::SignalDeclarations;
-use crate::template_ext::TemplateLike as _;
+use std::{
+    collections::{HashMap, HashSet},
+    convert::{TryFrom, TryInto},
+};
+
 use anyhow::Result;
-use llzk::dialect::array::ArrayCtor;
-use llzk::dialect::pod;
-use llzk::dialect::r#struct;
-use llzk::prelude::ArrayType;
-use llzk::prelude::Attribute;
-use llzk::prelude::FuncDefOpLike as _;
-use llzk::prelude::Location;
-use llzk::prelude::PodType;
-use llzk::prelude::StructType;
-use llzk::prelude::Type;
-use llzk::prelude::TypeLike as _;
+use llzk::{
+    dialect::{array::ArrayCtor, pod, r#struct},
+    prelude::{
+        ArrayType, Attribute, FuncDefOpLike as _, Location, PodType, StructType, Type,
+        TypeLike as _,
+    },
+};
 use melior::ir::Value;
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::convert::TryFrom;
-use std::convert::TryInto;
+
+use crate::{
+    function::FunctionContext,
+    gen_context::BlockGenContext,
+    program_ext::{ProgramInfo, ProgramLike},
+    shared::{
+        map_array_inner_type, wrap_pod_records, LlzkCodegen, TmplParamsInstance, TypeSizeExpr,
+    },
+    template_ext::{SignalDeclarations, TemplateLike as _},
+};
 
 /// Names used for `pod` records.
 pub mod names {

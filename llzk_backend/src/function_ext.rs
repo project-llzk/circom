@@ -1,14 +1,13 @@
 //! Extensions for the [`FunctionData`] and [`VCF`] types.
 
-use crate::program_ext::ProgramLike;
-use crate::shared::LlzkCodegen;
+use std::slice;
+
 use anyhow::Result;
 use compiler::hir::very_concrete_program::VCF;
-use llzk::prelude::Location;
-use llzk::prelude::Type;
-use program_structure::ast::Statement;
-use program_structure::function_data::FunctionData;
-use std::slice;
+use llzk::prelude::{Location, Type};
+use program_structure::{ast::Statement, function_data::FunctionData};
+
+use crate::{program_ext::ProgramLike, shared::LlzkCodegen};
 
 /// Return the LLZK polymorphic type parameter name for a function input by position.
 #[inline]

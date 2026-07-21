@@ -1,120 +1,65 @@
 //! Shared code generation utilities.
 
-use crate::function::InfoProviders;
-use crate::gen_context::BlockContextStack;
-use crate::gen_context::BlockGenContext;
-use crate::gen_context::GenWithCircomScopeHandling as _;
-use crate::gen_context::GenerateLLZKInAnyBlock;
-use crate::gen_context::NestedBlockInfo;
-use crate::lvalue::Lvalue;
-use crate::lvalue::Root;
-use crate::module::DeclarationInfo;
-use crate::program_ext::ProgramLike;
-use crate::subcmp::names::COMP;
-use crate::template_ext::TemplateLike;
-use crate::template_ext::WireLike as _;
-use crate::traversal::walk_from_block;
-use crate::traversal::WalkCallbacks;
+use std::{
+    cell::{Cell, Ref, RefCell},
+    collections::{HashMap, HashSet},
+    convert::{TryFrom, TryInto as _},
+    fs,
+    fs::File,
+    io::Write,
+    ops::Deref,
+    os::raw::c_void,
+    path::Path,
+};
+
 use ansi_term::Color;
-use anyhow::anyhow;
-use anyhow::ensure;
-use anyhow::Context as _;
-use anyhow::Result;
-use llzk::attributes::array::AffineMapAttribute;
-use llzk::attributes::array::ArrayAttribute;
-use llzk::builder::OpBuilder;
-use llzk::builder::OpBuilderLike;
-use llzk::dialect;
-use llzk::dialect::array;
-use llzk::dialect::array::ArrayCtor;
-use llzk::dialect::empty_region;
-use llzk::dialect::felt;
-use llzk::dialect::global;
-use llzk::dialect::pod;
-use llzk::dialect::poly;
-use llzk::operation::build_owned_operation;
-use llzk::prelude::is_felt_type;
-use llzk::prelude::melior_dialects::arith;
-use llzk::prelude::replace_uses_of_with;
-use llzk::prelude::verify_operation_with_diags;
-use llzk::prelude::ArrayType;
-use llzk::prelude::Attribute;
-use llzk::prelude::AttributeLike as _;
-use llzk::prelude::Block;
-use llzk::prelude::BlockLike as _;
-use llzk::prelude::BlockRef;
-use llzk::prelude::BoolAttribute;
-use llzk::prelude::FeltType;
-use llzk::prelude::FlatSymbolRefAttribute;
-use llzk::prelude::FuncDefOp;
-use llzk::prelude::FuncDefOpLike as _;
-use llzk::prelude::FuncDefOpRef;
-use llzk::prelude::FuncDefOpRefMut;
-use llzk::prelude::IntegerAttribute;
-use llzk::prelude::IntegerType;
-use llzk::prelude::LlzkContext;
-use llzk::prelude::LlzkError;
-use llzk::prelude::Location;
-use llzk::prelude::Module;
-use llzk::prelude::Operation;
-use llzk::prelude::OperationLike;
-use llzk::prelude::OperationMutLike;
-use llzk::prelude::OperationRef;
-use llzk::prelude::PassManager;
-use llzk::prelude::PodType;
-use llzk::prelude::RecordValue;
-use llzk::prelude::Region;
-use llzk::prelude::RegionLike as _;
-use llzk::prelude::StringAttribute;
-use llzk::prelude::StringRef;
-use llzk::prelude::StructType;
-use llzk::prelude::SymbolRefAttribute;
-use llzk::prelude::TemplateExprOp;
-use llzk::prelude::TemplateExprOpLike as _;
-use llzk::prelude::TemplateOpLike as _;
-use llzk::prelude::TemplateOpRefMut;
-use llzk::prelude::TemplateSymbolBindingOp;
-use llzk::prelude::TemplateSymbolBindingOpLike as _;
-use llzk::prelude::TemplateSymbolBindingOpRef;
-use llzk::prelude::Type;
-use llzk::prelude::TypeLike as _;
-use llzk::prelude::Value;
-use llzk::prelude::ValueLike as _;
-use llzk::symbol_table;
-use llzk::value_ext::OwningValueRange;
-use llzk::value_ext::ValueRange;
+use anyhow::{anyhow, ensure, Context as _, Result};
+use llzk::{
+    attributes::array::{AffineMapAttribute, ArrayAttribute},
+    builder::{OpBuilder, OpBuilderLike},
+    dialect,
+    dialect::{array, array::ArrayCtor, empty_region, felt, global, pod, poly},
+    operation::build_owned_operation,
+    prelude::{
+        is_felt_type, melior_dialects::arith, replace_uses_of_with, verify_operation_with_diags,
+        ArrayType, Attribute, AttributeLike as _, Block, BlockLike as _, BlockRef, BoolAttribute,
+        FeltType, FlatSymbolRefAttribute, FuncDefOp, FuncDefOpLike as _, FuncDefOpRef,
+        FuncDefOpRefMut, IntegerAttribute, IntegerType, LlzkContext, LlzkError, Location, Module,
+        Operation, OperationLike, OperationMutLike, OperationRef, PassManager, PodType,
+        RecordValue, Region, RegionLike as _, StringAttribute, StringRef, StructType,
+        SymbolRefAttribute, TemplateExprOp, TemplateExprOpLike as _, TemplateOpLike as _,
+        TemplateOpRefMut, TemplateSymbolBindingOp, TemplateSymbolBindingOpLike as _,
+        TemplateSymbolBindingOpRef, Type, TypeLike as _, Value, ValueLike as _,
+    },
+    symbol_table,
+    value_ext::{OwningValueRange, ValueRange},
+};
 use melior::utility;
-use num_bigint_dig::BigInt;
-use num_bigint_dig::BigUint;
-use num_bigint_dig::ModInverse;
-use num_bigint_dig::ToBigInt as _;
-use num_traits::cast::ToPrimitive;
-use num_traits::One;
-use num_traits::Zero;
-use program_structure::ast::Expression;
-use program_structure::ast::ExpressionInfixOpcode;
-use program_structure::ast::ExpressionPrefixOpcode;
-use program_structure::ast::Meta;
-use program_structure::ast::Statement;
-use program_structure::ast::VariableType;
-use program_structure::error_code::ReportCode;
-use program_structure::error_definition::Report;
-use program_structure::file_definition::FileID;
-use program_structure::file_definition::FileLocation;
-use program_structure::wire_data::WireType;
-use std::cell::Cell;
-use std::cell::Ref;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::convert::TryFrom;
-use std::convert::TryInto as _;
-use std::fs;
-use std::fs::File;
-use std::io::Write;
-use std::ops::Deref;
-use std::os::raw::c_void;
-use std::path::Path;
+use num_bigint_dig::{BigInt, BigUint, ModInverse, ToBigInt as _};
+use num_traits::{cast::ToPrimitive, One, Zero};
+use program_structure::{
+    ast::{
+        Expression, ExpressionInfixOpcode, ExpressionPrefixOpcode, Meta, Statement, VariableType,
+    },
+    error_code::ReportCode,
+    error_definition::Report,
+    file_definition::{FileID, FileLocation},
+    wire_data::WireType,
+};
+
+use crate::{
+    function::InfoProviders,
+    gen_context::{
+        BlockContextStack, BlockGenContext, GenWithCircomScopeHandling as _,
+        GenerateLLZKInAnyBlock, NestedBlockInfo,
+    },
+    lvalue::{Lvalue, Root},
+    module::DeclarationInfo,
+    program_ext::ProgramLike,
+    subcmp::names::COMP,
+    template_ext::{TemplateLike, WireLike as _},
+    traversal::{walk_from_block, WalkCallbacks},
+};
 
 /// This macro allows writing type switches with a syntax similar to match expressions.
 #[macro_export]

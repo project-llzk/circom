@@ -2,24 +2,18 @@
 
 use std::convert::TryInto as _;
 
-use crate::module::GenerateLLZKInModule;
-use crate::program_ext::ProgramLike;
-use crate::shared;
-use crate::shared::LlzkCodegen;
-pub use crate::shared::LlzkConfig;
 use ansi_term::Color;
-use anyhow::anyhow;
-use anyhow::Result;
-use llzk::prelude::LlzkContext;
-use llzk::prelude::Module;
-use llzk::prelude::OperationMutLike as _;
-use llzk::prelude::StructType;
-use llzk::prelude::TypeAttribute;
-use llzk::prelude::MAIN_ATTR_NAME;
+use anyhow::{anyhow, Result};
+use llzk::prelude::{
+    LlzkContext, Module, OperationMutLike as _, StructType, TypeAttribute, MAIN_ATTR_NAME,
+};
 use melior::ir::Attribute;
 use num_bigint_dig::BigUint;
 use num_traits::ToPrimitive;
 use program_structure::ast::Expression;
+
+pub use crate::shared::LlzkConfig;
+use crate::{module::GenerateLLZKInModule, program_ext::ProgramLike, shared, shared::LlzkCodegen};
 
 /// Converts the given big unsigned integer into parts of 64 bit long in least significant order.
 fn to_u64_digits(n: &BigUint) -> Vec<u64> {

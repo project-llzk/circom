@@ -1,67 +1,45 @@
 //! Handles the top-level constructs (i.e. circom templates and functions), by delegating
 //! to the [crate::function] and [crate::template] modules to generate the code for each.
 
-use crate::cleanup_return_tvar::specialize_tvar_function_calls;
-use crate::function::FunctionContext;
-use crate::function::GenerateLLZKInFunction as _;
-use crate::function_ext::FunctionLike;
-use crate::program_ext::ProgramLike;
-use crate::shared;
-use crate::shared::map_name_to_arg_value;
-use crate::shared::ArrayDimExprKind;
-use crate::shared::ExprToPolyBinding;
-use crate::shared::ExprToPolyBindingOutput;
-use crate::shared::LlzkCodegen;
-use crate::shared::PendingPolyBindings;
-use crate::shared::StructTemplateParamExprKind;
-use crate::shared::TmplParamsInstance;
-use crate::subcmp::unique_instance_types;
-use crate::subcmp::MixedSubcmpEntry;
-use crate::subcmp::MixedSubcmpLayout;
-use crate::subcmp::SubcmpDeclInfo;
-use crate::subcmp::SubcmpPrologueData;
-use crate::template::GenerateLLZKInTemplate as _;
-use crate::template::TemplateContext;
-use crate::template_ext::TemplateLike;
-use anyhow::bail;
-use anyhow::Result;
-use llzk::attributes::array::AffineMapAttribute;
-use llzk::attributes::NamedAttribute;
-use llzk::dialect::function;
-use llzk::dialect::r#struct;
-use llzk::dialect::r#struct::helpers::compute_fn;
-use llzk::dialect::r#struct::helpers::constrain_fn;
-use llzk::prelude::ArrayType;
-use llzk::prelude::BlockLike as _;
-use llzk::prelude::FeltType;
-use llzk::prelude::FlatSymbolRefAttribute;
-use llzk::prelude::FuncDefOpLike as _;
-use llzk::prelude::FuncDefOpRef;
-use llzk::prelude::FuncDefOpRefMut;
-use llzk::prelude::FunctionType;
-use llzk::prelude::Location;
-use llzk::prelude::MemberDefOpLike as _;
-use llzk::prelude::PodRecordAttribute;
-use llzk::prelude::PodType;
-use llzk::prelude::PublicAttribute;
-use llzk::prelude::StructDefOpLike as _;
-use llzk::prelude::StructDefOpRef;
-use llzk::prelude::StructType;
-use llzk::prelude::TemplateOpLike as _;
-use llzk::prelude::TemplateSymbolBindingOpLike as _;
-use llzk::prelude::Type;
-use melior::ir::Attribute;
-use melior::ir::AttributeLike as _;
-use program_structure::ast::AssignOp;
-use program_structure::ast::Expression;
-use program_structure::ast::Meta;
-use program_structure::ast::SignalType;
-use program_structure::ast::Statement;
-use program_structure::ast::VariableType;
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::convert::TryFrom;
-use std::convert::TryInto as _;
+use std::{
+    collections::{HashMap, HashSet},
+    convert::{TryFrom, TryInto as _},
+};
+
+use anyhow::{bail, Result};
+use llzk::{
+    attributes::{array::AffineMapAttribute, NamedAttribute},
+    dialect::{
+        function, r#struct,
+        r#struct::helpers::{compute_fn, constrain_fn},
+    },
+    prelude::{
+        ArrayType, BlockLike as _, FeltType, FlatSymbolRefAttribute, FuncDefOpLike as _,
+        FuncDefOpRef, FuncDefOpRefMut, FunctionType, Location, MemberDefOpLike as _,
+        PodRecordAttribute, PodType, PublicAttribute, StructDefOpLike as _, StructDefOpRef,
+        StructType, TemplateOpLike as _, TemplateSymbolBindingOpLike as _, Type,
+    },
+};
+use melior::ir::{Attribute, AttributeLike as _};
+use program_structure::ast::{AssignOp, Expression, Meta, SignalType, Statement, VariableType};
+
+use crate::{
+    cleanup_return_tvar::specialize_tvar_function_calls,
+    function::{FunctionContext, GenerateLLZKInFunction as _},
+    function_ext::FunctionLike,
+    program_ext::ProgramLike,
+    shared,
+    shared::{
+        map_name_to_arg_value, ArrayDimExprKind, ExprToPolyBinding, ExprToPolyBindingOutput,
+        LlzkCodegen, PendingPolyBindings, StructTemplateParamExprKind, TmplParamsInstance,
+    },
+    subcmp::{
+        unique_instance_types, MixedSubcmpEntry, MixedSubcmpLayout, SubcmpDeclInfo,
+        SubcmpPrologueData,
+    },
+    template::{GenerateLLZKInTemplate as _, TemplateContext},
+    template_ext::TemplateLike,
+};
 
 /// Information needed to create an LLZK struct function parameter collected from the input signal
 /// Declaration statements within a circom template.

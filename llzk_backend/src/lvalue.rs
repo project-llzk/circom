@@ -1,36 +1,33 @@
 //! Types for handling location values (a.k.a. lvalues).
 
-use crate::function::InfoProviders;
-use crate::gen_context::BlockGenContext;
-use crate::gen_context::NestedBlockInfo;
-use crate::program_ext::ProgramLike;
-use crate::shared;
-use crate::shared::LlzkCodegen;
-use crate::subcmp::names::COMP;
-use crate::subcmp::SubcmpInfo;
+use std::{
+    borrow::Cow,
+    cmp,
+    collections::{HashMap, HashSet},
+    convert::TryFrom as _,
+    fmt,
+    iter::FromIterator as _,
+};
+
 use anyhow::Result;
-use llzk::dialect::pod;
-use llzk::dialect::r#struct;
-use llzk::prelude::Location;
-use llzk::prelude::PodType;
-use llzk::prelude::StructType;
-use llzk::prelude::Value;
-use llzk::prelude::ValueLike as _;
-use melior::dialect::arith;
-use melior::dialect::scf;
+use llzk::{
+    dialect::{pod, r#struct},
+    prelude::{Location, PodType, StructType, Value, ValueLike as _},
+};
+use melior::dialect::{arith, scf};
 use num_traits::ToPrimitive;
-use program_structure::ast::Access;
-use program_structure::ast::AssignOp;
-use program_structure::ast::Expression;
-use program_structure::ast::ExpressionInfixOpcode;
-use program_structure::ast::ExpressionPrefixOpcode;
-use std::borrow::Cow;
-use std::cmp;
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::convert::TryFrom as _;
-use std::fmt;
-use std::iter::FromIterator as _;
+use program_structure::ast::{
+    Access, AssignOp, Expression, ExpressionInfixOpcode, ExpressionPrefixOpcode,
+};
+
+use crate::{
+    function::InfoProviders,
+    gen_context::{BlockGenContext, NestedBlockInfo},
+    program_ext::ProgramLike,
+    shared,
+    shared::LlzkCodegen,
+    subcmp::{names::COMP, SubcmpInfo},
+};
 
 /// Decorator trait that can modify the name of the root variable.
 pub trait OverrideVar {

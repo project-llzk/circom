@@ -1,35 +1,25 @@
 //! Extensions for the [`TemplateData`] and [`TemplateInstance`] types.
 
-use crate::module::DeclarationInfo;
-use crate::program_ext::ProgramLike;
-use crate::shared::LlzkCodegen;
-use crate::subcmp::MixedSubcmpInstance;
-use crate::subcmp::SubcmpDeclInfo;
-use crate::template::GenerateLLZKInTemplate;
-use crate::template::TemplateContext;
-use anyhow::anyhow;
-use anyhow::bail;
-use anyhow::Result;
-use compiler::hir::very_concrete_program::ClusterType;
-use compiler::hir::very_concrete_program::TemplateInstance;
-use compiler::hir::very_concrete_program::Wire;
-use llzk::prelude::Attribute;
-use llzk::prelude::Location;
+use std::{borrow::Cow, collections::HashMap, convert::TryFrom, slice};
+
+use anyhow::{anyhow, bail, Result};
+use compiler::hir::very_concrete_program::{ClusterType, TemplateInstance, Wire};
+use llzk::prelude::{Attribute, Location};
 use num_bigint_dig::BigInt;
 use num_traits::FromPrimitive;
-use program_structure::ast::AssignOp::AssignVar;
-use program_structure::ast::Expression;
-use program_structure::ast::Meta;
-use program_structure::ast::SignalType;
-use program_structure::ast::Statement;
-use program_structure::ast::VariableType;
-use program_structure::template_data::TemplateData;
-use program_structure::wire_data::WireData;
-use program_structure::wire_data::WireType;
-use std::borrow::Cow;
-use std::collections::HashMap;
-use std::convert::TryFrom;
-use std::slice;
+use program_structure::{
+    ast::{AssignOp::AssignVar, Expression, Meta, SignalType, Statement, VariableType},
+    template_data::TemplateData,
+    wire_data::{WireData, WireType},
+};
+
+use crate::{
+    module::DeclarationInfo,
+    program_ext::ProgramLike,
+    shared::LlzkCodegen,
+    subcmp::{MixedSubcmpInstance, SubcmpDeclInfo},
+    template::{GenerateLLZKInTemplate, TemplateContext},
+};
 
 /// Trait for IR objects that can have signal declarations on them.
 pub trait SignalDeclarations {

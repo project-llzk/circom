@@ -4,42 +4,31 @@
 //! to remove the `poly.param` that were added to support call result receiving type variables, but
 //! were not added to `struct.type` instances, causing a verification error.
 
-use crate::function_ext::function_return_type_param;
-use crate::program_ext::ProgramLike;
-use crate::shared;
-use crate::shared::LlzkCodegen;
-use crate::traversal::walk_from_block;
-use crate::traversal::WalkCallbacks;
-use anyhow::bail;
-use anyhow::Result;
-use llzk::attributes::array::ArrayAttribute;
-use llzk::builder::EntryPoint;
-use llzk::builder::OpBuilder;
-use llzk::dialect::function;
-use llzk::dialect::poly;
-use llzk::operation::build_owned_operation;
-use llzk::prelude::BlockLike as _;
-use llzk::prelude::CallOpLike as _;
-use llzk::prelude::CallOpRef;
-use llzk::prelude::FuncDefOpLike as _;
-use llzk::prelude::FunctionType;
-use llzk::prelude::LlzkError;
-use llzk::prelude::OperationLike;
-use llzk::prelude::OperationRefMut;
-use llzk::prelude::OperationResult;
-use llzk::prelude::RegionLike as _;
-use llzk::prelude::TemplateOpLike as _;
-use llzk::prelude::TemplateOpRef;
-use llzk::prelude::TemplateOpRefMut;
-use llzk::prelude::TemplateParamOpRefMut;
-use llzk::prelude::TemplateSymbolBindingOpLike as _;
-use llzk::prelude::Type;
-use llzk::prelude::Value;
-use llzk::prelude::ValueLike as _;
-use llzk::symbol_ref::SymbolRefAttribute;
-use llzk::value_ext::replace_all_uses;
-use llzk::value_ext::users_of;
 use std::convert::TryFrom;
+
+use anyhow::{bail, Result};
+use llzk::{
+    attributes::array::ArrayAttribute,
+    builder::{EntryPoint, OpBuilder},
+    dialect::{function, poly},
+    operation::build_owned_operation,
+    prelude::{
+        BlockLike as _, CallOpLike as _, CallOpRef, FuncDefOpLike as _, FunctionType, LlzkError,
+        OperationLike, OperationRefMut, OperationResult, RegionLike as _, TemplateOpLike as _,
+        TemplateOpRef, TemplateOpRefMut, TemplateParamOpRefMut, TemplateSymbolBindingOpLike as _,
+        Type, Value, ValueLike as _,
+    },
+    symbol_ref::SymbolRefAttribute,
+    value_ext::{replace_all_uses, users_of},
+};
+
+use crate::{
+    function_ext::function_return_type_param,
+    program_ext::ProgramLike,
+    shared,
+    shared::LlzkCodegen,
+    traversal::{walk_from_block, WalkCallbacks},
+};
 
 /// Base name for synthetic functions created to wrap `function.call` operations with
 /// unused result Values in order to resolve a type verification issue.

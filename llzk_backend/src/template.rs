@@ -6,81 +6,50 @@
 //! [GenResult] and [Chainable] that implement some boilerplate to make the actual code generation
 //! within [GenerateLLZKInTemplate] a lot simpler.
 
-use crate::function::FunctionContext;
-use crate::function::InfoProviders;
-use crate::gen_context::BlockGenContext;
-use crate::gen_context::GenWithCircomScopeHandling;
-use crate::gen_context::GenerateLLZKInAnyBlock;
-use crate::gen_context::NestedBlockInfo;
-use crate::lvalue::Lvalue;
-use crate::lvalue::Root;
-use crate::program_ext::ProgramInfo;
-use crate::program_ext::ProgramLike;
-use crate::shared;
-use crate::shared::comp_type;
-use crate::shared::map_array_inner_type;
-use crate::shared::wrap_pod_records;
-use crate::shared::ArrayDimExprKind;
-use crate::shared::ArrayDimension;
-use crate::shared::ExprToPolyBinding;
-use crate::shared::ExprToPolyBindingOutput;
-use crate::shared::LlzkCodegen;
-use crate::shared::StructTemplateParamExprKind;
-use crate::shared::StructTemplateParams;
-use crate::subcmp::names::COMP;
-use crate::subcmp::MixedSubcmpLayout;
-use crate::subcmp::SubcmpBinding;
-use crate::subcmp::SubcmpInfo;
-use crate::subcmp::SubcmpLayout;
-use crate::subcmp::SubcmpType;
-use crate::template_ext::SignalDeclarations;
-use crate::template_ext::TemplateLike as _;
-use crate::write_chain::WriteChain;
-use crate::write_chain::WriteTarget;
-use anyhow::anyhow;
-use anyhow::Result;
-use llzk::attributes::array::AffineMapAttribute;
-use llzk::dialect::array::ArrayCtor;
-use llzk::dialect::global;
-use llzk::dialect::pod;
-use llzk::dialect::r#struct;
-use llzk::map_operands::MapOperandsBuilder;
-use llzk::prelude::ArrayType;
-use llzk::prelude::BlockRef;
-use llzk::prelude::FlatSymbolRefAttribute;
-use llzk::prelude::FuncDefOpLike as _;
-use llzk::prelude::IntegerAttribute;
-use llzk::prelude::LlzkContext;
-use llzk::prelude::LoopBoundsAttribute;
-use llzk::prelude::MemberDefOpLike as _;
-use llzk::prelude::PodType;
-use llzk::prelude::RecordValue;
-use llzk::prelude::StringRef;
-use llzk::prelude::StructDefOpLike as _;
-use llzk::prelude::StructDefOpRefMut;
-use llzk::prelude::SymbolRefAttribute;
-use llzk::prelude::TemplateOpLike as _;
-use llzk::prelude::TemplateOpRefMut;
-use llzk::prelude::TemplateSymbolBindingOpLike as _;
-use llzk::prelude::Type;
-use llzk::prelude::Value;
-use llzk::prelude::ValueLike as _;
-use llzk::value_ext::OwningValueRange;
-use llzk::value_ext::ValueRange;
-use melior::ir::Attribute;
-use melior::ir::Location;
+use std::{
+    cell::RefCell,
+    collections::{HashMap, HashSet},
+    convert::{TryFrom, TryInto as _},
+    rc::Rc,
+};
+
+use anyhow::{anyhow, Result};
+use llzk::{
+    attributes::array::AffineMapAttribute,
+    dialect::{array::ArrayCtor, global, pod, r#struct},
+    map_operands::MapOperandsBuilder,
+    prelude::{
+        ArrayType, BlockRef, FlatSymbolRefAttribute, FuncDefOpLike as _, IntegerAttribute,
+        LlzkContext, LoopBoundsAttribute, MemberDefOpLike as _, PodType, RecordValue, StringRef,
+        StructDefOpLike as _, StructDefOpRefMut, SymbolRefAttribute, TemplateOpLike as _,
+        TemplateOpRefMut, TemplateSymbolBindingOpLike as _, Type, Value, ValueLike as _,
+    },
+    value_ext::{OwningValueRange, ValueRange},
+};
+use melior::ir::{Attribute, Location};
 use num_bigint_dig::BigInt;
-use program_structure::ast::AssignOp;
-use program_structure::ast::Expression;
-use program_structure::ast::Meta;
-use program_structure::ast::Statement;
-use program_structure::error_code::ReportCode;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::convert::TryFrom;
-use std::convert::TryInto as _;
-use std::rc::Rc;
+use program_structure::{
+    ast::{AssignOp, Expression, Meta, Statement},
+    error_code::ReportCode,
+};
+
+use crate::{
+    function::{FunctionContext, InfoProviders},
+    gen_context::{
+        BlockGenContext, GenWithCircomScopeHandling, GenerateLLZKInAnyBlock, NestedBlockInfo,
+    },
+    lvalue::{Lvalue, Root},
+    program_ext::{ProgramInfo, ProgramLike},
+    shared,
+    shared::{
+        comp_type, map_array_inner_type, wrap_pod_records, ArrayDimExprKind, ArrayDimension,
+        ExprToPolyBinding, ExprToPolyBindingOutput, LlzkCodegen, StructTemplateParamExprKind,
+        StructTemplateParams,
+    },
+    subcmp::{names::COMP, MixedSubcmpLayout, SubcmpBinding, SubcmpInfo, SubcmpLayout, SubcmpType},
+    template_ext::{SignalDeclarations, TemplateLike as _},
+    write_chain::{WriteChain, WriteTarget},
+};
 
 /// Alias for `Option<T>` to make it clear what the meaning of the option is within the
 /// [TemplateContext] below.

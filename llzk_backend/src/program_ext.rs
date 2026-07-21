@@ -1,18 +1,18 @@
 //! Extensions for the [`ProgramArchive`] and [`VCP`] types.
 
-use crate::function_ext::FunctionLike;
-use crate::shared::LlzkCodegen;
-use crate::template_ext::SignalDeclarations;
-use crate::template_ext::TemplateLike;
-use anyhow::anyhow;
-use anyhow::bail;
-use anyhow::Result;
+use anyhow::{anyhow, bail, Result};
 use compiler::compiler_interface::VCP;
-use program_structure::ast::Expression;
-use program_structure::file_definition::FileID;
-use program_structure::file_definition::FileLibrary;
-use program_structure::file_definition::FileLocation;
-use program_structure::program_archive::ProgramArchive;
+use program_structure::{
+    ast::Expression,
+    file_definition::{FileID, FileLibrary, FileLocation},
+    program_archive::ProgramArchive,
+};
+
+use crate::{
+    function_ext::FunctionLike,
+    shared::LlzkCodegen,
+    template_ext::{SignalDeclarations, TemplateLike},
+};
 
 /// A dyn-safe trait for obtaining information about the program.
 pub trait ProgramInfo {

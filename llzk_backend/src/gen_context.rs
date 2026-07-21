@@ -1,104 +1,60 @@
 //! Handles circom var scoping and LLZK blocks stack management.
 
-use crate::function::InfoProviders;
-use crate::function_ext::FunctionLike as _;
-use crate::lvalue::Lvalue;
-use crate::lvalue::Root;
-use crate::program_ext::ProgramLike;
-use crate::shared;
-use crate::shared::append_tail;
-use crate::shared::is_bool;
-use crate::shared::is_index;
-use crate::shared::new_array_type;
-use crate::shared::new_region_and_block;
-use crate::shared::no_results;
-use crate::shared::replace_uses_with_new_block_argument;
-use crate::shared::single_result_as_value;
-use crate::shared::ArrayDimExprKind;
-use crate::shared::ArrayDimension;
-use crate::shared::ExprToPolyBinding;
-use crate::shared::ExprToPolyBindingOutput;
-use crate::shared::LlzkCodegen;
-use crate::subcmp::names::COUNT;
-use anyhow::anyhow;
-use anyhow::ensure;
-use anyhow::Context as _;
-use anyhow::Result;
-use llzk::attributes::array::AffineMapAttribute;
-use llzk::builder::EntryPoint;
-use llzk::builder::OpBuilder;
-use llzk::dialect::array;
-use llzk::dialect::array::ArrayCtor;
-use llzk::dialect::bool;
-use llzk::dialect::cast;
-use llzk::dialect::constrain;
-use llzk::dialect::felt;
-use llzk::dialect::function;
-use llzk::dialect::pod;
-use llzk::dialect::poly;
-use llzk::dialect::r#struct;
-use llzk::map_operands::MapOperandsBuilder;
-use llzk::operation::build_owned_operation;
-use llzk::prelude::is_felt_type;
-use llzk::prelude::is_type_variable;
-use llzk::prelude::melior_dialects::arith;
-use llzk::prelude::melior_dialects::index;
-use llzk::prelude::melior_dialects::scf;
-use llzk::prelude::replace_uses_of_with;
-use llzk::prelude::ArrayType;
-use llzk::prelude::Attribute;
-use llzk::prelude::BlockLike as _;
-use llzk::prelude::BlockRef;
-use llzk::prelude::FlatSymbolRefAttribute;
-use llzk::prelude::FuncDefOp;
-use llzk::prelude::IntegerAttribute;
-use llzk::prelude::LlzkContext;
-use llzk::prelude::Location;
-use llzk::prelude::LoopBoundsAttribute;
-use llzk::prelude::Operation;
-use llzk::prelude::OperationLike;
-use llzk::prelude::OperationMutLike as _;
-use llzk::prelude::OperationRef;
-use llzk::prelude::PodType;
-use llzk::prelude::Region;
-use llzk::prelude::RegionLike as _;
-use llzk::prelude::StringAttribute;
-use llzk::prelude::StringRef;
-use llzk::prelude::StructType;
-use llzk::prelude::TVarType;
-use llzk::prelude::TemplateParamOp;
-use llzk::prelude::TemplateParamOpLike as _;
-use llzk::prelude::TemplateSymbolBindingOp;
-use llzk::prelude::TemplateSymbolBindingOpLike as _;
-use llzk::prelude::TemplateSymbolBindingOpRef;
-use llzk::prelude::Type;
-use llzk::prelude::Value;
-use llzk::prelude::ValueLike as _;
-use llzk::prelude::FUNC_NAME_COMPUTE;
-use llzk::prelude::FUNC_NAME_CONSTRAIN;
-use llzk::typing::types_unify;
-use llzk::utils::print_region;
-use llzk::utils::IsA as _;
-use llzk::value_ext::OwningValueRange;
-use llzk::value_ext::ValueRange;
-use melior::dialect::ods::math;
-use melior::ir::AttributeLike as _;
-use melior::ir::TypeLike as _;
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    convert::{TryFrom, TryInto},
+    fmt::Debug,
+    iter::{zip, FromIterator as _},
+};
+
+use anyhow::{anyhow, ensure, Context as _, Result};
+use llzk::{
+    attributes::array::AffineMapAttribute,
+    builder::{EntryPoint, OpBuilder},
+    dialect::{
+        array, array::ArrayCtor, bool, cast, constrain, felt, function, pod, poly, r#struct,
+    },
+    map_operands::MapOperandsBuilder,
+    operation::build_owned_operation,
+    prelude::{
+        is_felt_type, is_type_variable,
+        melior_dialects::{arith, index, scf},
+        replace_uses_of_with, ArrayType, Attribute, BlockLike as _, BlockRef,
+        FlatSymbolRefAttribute, FuncDefOp, IntegerAttribute, LlzkContext, Location,
+        LoopBoundsAttribute, Operation, OperationLike, OperationMutLike as _, OperationRef,
+        PodType, Region, RegionLike as _, StringAttribute, StringRef, StructType, TVarType,
+        TemplateParamOp, TemplateParamOpLike as _, TemplateSymbolBindingOp,
+        TemplateSymbolBindingOpLike as _, TemplateSymbolBindingOpRef, Type, Value, ValueLike as _,
+        FUNC_NAME_COMPUTE, FUNC_NAME_CONSTRAIN,
+    },
+    typing::types_unify,
+    utils::{print_region, IsA as _},
+    value_ext::{OwningValueRange, ValueRange},
+};
+use melior::{
+    dialect::ods::math,
+    ir::{AttributeLike as _, TypeLike as _},
+};
 use num_bigint_dig::BigInt;
 use num_traits::Zero;
-use program_structure::ast::Access;
-use program_structure::ast::AssignOp;
-use program_structure::ast::Expression;
-use program_structure::ast::ExpressionInfixOpcode;
-use program_structure::ast::ExpressionPrefixOpcode;
-use program_structure::ast::Meta;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::convert::TryFrom;
-use std::convert::TryInto;
-use std::fmt::Debug;
-use std::iter::zip;
-use std::iter::FromIterator as _;
+use program_structure::ast::{
+    Access, AssignOp, Expression, ExpressionInfixOpcode, ExpressionPrefixOpcode, Meta,
+};
+
+use crate::{
+    function::InfoProviders,
+    function_ext::FunctionLike as _,
+    lvalue::{Lvalue, Root},
+    program_ext::ProgramLike,
+    shared,
+    shared::{
+        append_tail, is_bool, is_index, new_array_type, new_region_and_block, no_results,
+        replace_uses_with_new_block_argument, single_result_as_value, ArrayDimExprKind,
+        ArrayDimension, ExprToPolyBinding, ExprToPolyBindingOutput, LlzkCodegen,
+    },
+    subcmp::names::COUNT,
+};
 
 /// Special variable name used to reference the return Value throughout the
 /// conversion of circom return locations to LLZK return locations.

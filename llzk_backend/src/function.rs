@@ -5,75 +5,52 @@
 //! [Expression](program_structure::ast::Expression) and
 //! [Statement](program_structure::ast::Statement) nodes.
 
-use crate::gen_context::BlockContextStack;
-use crate::gen_context::BlockGenContext;
-use crate::gen_context::GenWithCircomScopeHandling;
-use crate::gen_context::GenerateLLZKInAnyBlock;
-use crate::gen_context::NestedBlockInfo;
-use crate::gen_context::CIRCOM_RETURN_MARKER_ATTR;
-use crate::gen_context::OPERAND_VAL_NAMES;
-use crate::gen_context::VAR_NAME_HAD_RETURN;
-use crate::gen_context::VAR_NAME_RETURN_VAL;
-use crate::program_ext::ProgramLike;
-use crate::shared::new_region_and_block;
-use crate::shared::new_region_empty;
-use crate::shared::next_in_block_mut;
-use crate::shared::no_results;
-use crate::shared::parent_operation_mut;
-use crate::shared::remove_from_parent;
-use crate::shared::single_result_as_value;
-use crate::shared::LlzkCodegen;
-use crate::subcmp::NoSubcmps;
-use crate::subcmp::SubcmpInfo;
-use crate::template::TemplateContext;
-use crate::try_for_loop_heuristic;
-use crate::write_chain::NoSignalsInfo;
-use crate::write_chain::SignalWriteInfo;
-use anyhow::Context as _;
-use anyhow::Result;
-use llzk::builder::OpBuilder;
-use llzk::dialect;
-use llzk::dialect::array;
-use llzk::dialect::array::ArrayCtor;
-use llzk::dialect::bool;
-use llzk::dialect::function;
-use llzk::dialect::poly;
-use llzk::operation::erase_op;
-use llzk::operation::WalkOperationMutLike as _;
-use llzk::prelude::is_type_variable;
-use llzk::prelude::melior_dialects::arith;
-use llzk::prelude::melior_dialects::scf;
-use llzk::prelude::melior_dialects::scf::is_if_op;
-use llzk::prelude::melior_dialects::scf::is_yield_op;
-use llzk::prelude::ArrayType;
-use llzk::prelude::Attribute;
-use llzk::prelude::BlockLike as _;
-use llzk::prelude::BlockRef;
-use llzk::prelude::FuncDefOpLike as _;
-use llzk::prelude::FuncDefOpRefMut;
-use llzk::prelude::IntegerAttribute;
-use llzk::prelude::LlzkContext;
-use llzk::prelude::Location;
-use llzk::prelude::LoopBoundsAttribute;
-use llzk::prelude::Operation;
-use llzk::prelude::OperationLike as _;
-use llzk::prelude::OperationMutLike;
-use llzk::prelude::OperationRefMut;
-use llzk::prelude::Type;
-use llzk::prelude::Value;
-use llzk::prelude::ValueLike as _;
-use llzk::prelude::WalkOrder;
-use llzk::prelude::WalkResult;
-use llzk::value_ext::has_uses;
-use program_structure::ast::Expression;
-use program_structure::ast::Meta;
-use program_structure::ast::Statement;
-use program_structure::ast::VariableType;
-use program_structure::error_code::ReportCode;
-use std::collections::HashMap;
-use std::convert::TryFrom;
-use std::ops::Deref;
-use std::ops::DerefMut;
+use std::{
+    collections::HashMap,
+    convert::TryFrom,
+    ops::{Deref, DerefMut},
+};
+
+use anyhow::{Context as _, Result};
+use llzk::{
+    builder::OpBuilder,
+    dialect,
+    dialect::{array, array::ArrayCtor, bool, function, poly},
+    operation::{erase_op, WalkOperationMutLike as _},
+    prelude::{
+        is_type_variable,
+        melior_dialects::{
+            arith, scf,
+            scf::{is_if_op, is_yield_op},
+        },
+        ArrayType, Attribute, BlockLike as _, BlockRef, FuncDefOpLike as _, FuncDefOpRefMut,
+        IntegerAttribute, LlzkContext, Location, LoopBoundsAttribute, Operation,
+        OperationLike as _, OperationMutLike, OperationRefMut, Type, Value, ValueLike as _,
+        WalkOrder, WalkResult,
+    },
+    value_ext::has_uses,
+};
+use program_structure::{
+    ast::{Expression, Meta, Statement, VariableType},
+    error_code::ReportCode,
+};
+
+use crate::{
+    gen_context::{
+        BlockContextStack, BlockGenContext, GenWithCircomScopeHandling, GenerateLLZKInAnyBlock,
+        NestedBlockInfo, CIRCOM_RETURN_MARKER_ATTR, OPERAND_VAL_NAMES, VAR_NAME_HAD_RETURN,
+        VAR_NAME_RETURN_VAL,
+    },
+    program_ext::ProgramLike,
+    shared::{
+        new_region_and_block, new_region_empty, next_in_block_mut, no_results,
+        parent_operation_mut, remove_from_parent, single_result_as_value, LlzkCodegen,
+    },
+    subcmp::{NoSubcmps, SubcmpInfo},
+    template::TemplateContext,
+    try_for_loop_heuristic,
+    write_chain::{NoSignalsInfo, SignalWriteInfo},
+};
 
 /// Contains references to information providers.
 ///

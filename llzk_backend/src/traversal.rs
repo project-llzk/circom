@@ -1,11 +1,8 @@
 //! Shared LLZK structure traversal utilities.
 
-use llzk::prelude::BlockLike as _;
-use llzk::prelude::BlockRef;
-use llzk::prelude::OperationLike as _;
-use llzk::prelude::OperationRef;
-use llzk::prelude::RegionLike as _;
-use llzk::prelude::RegionRef;
+use llzk::prelude::{
+    BlockLike as _, BlockRef, OperationLike as _, OperationRef, RegionLike as _, RegionRef,
+};
 
 /// Callbacks for walking LLZK structures.
 #[derive(Default)]
