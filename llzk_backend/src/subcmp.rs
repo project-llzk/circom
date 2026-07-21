@@ -13,7 +13,6 @@ use crate::template_ext::SignalDeclarations;
 use crate::template_ext::TemplateLike as _;
 use anyhow::Result;
 use llzk::dialect::array::ArrayCtor;
-use llzk::dialect::llzk::nondet;
 use llzk::dialect::pod;
 use llzk::dialect::r#struct;
 use llzk::prelude::ArrayType;
@@ -24,7 +23,6 @@ use llzk::prelude::PodType;
 use llzk::prelude::StructType;
 use llzk::prelude::Type;
 use llzk::prelude::TypeLike as _;
-use melior::ir::Operation;
 use melior::ir::Value;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -325,14 +323,14 @@ impl<'ctx> MixedSubcmpLayout<'ctx> {
         &self.entries
     }
 
-    /// Generates the initialization operation for this mixed subcomponent.
-    fn generate_initialization_op<'val>(
+    /// Generates the initialization value for this mixed subcomponent.
+    fn generate_initialization_value<'val>(
         &self,
         empty_params: Value<'ctx, 'val>,
         block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
-    ) -> Result<Operation<'ctx>> {
+    ) -> Result<Value<'ctx, 'val>> {
         // Generate initialization ops for each entry as normal.
         // Then combine all of them into one `pod.new` operation passing all the entries.
         let entries = self
@@ -348,8 +346,9 @@ impl<'ctx> MixedSubcmpLayout<'ctx> {
                     location,
                     None,
                 )?;
-                let entry_init = block_gen.append_op_unnamed_result(pod::new(
-                    codegen.op_builder(),
+                let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                let entry_init = block_gen.append_op_ref_unnamed_result(pod::new(
+                    &builder,
                     location,
                     &wrap_pod_records(records),
                     Some(entry.memory_type),
@@ -358,8 +357,9 @@ impl<'ctx> MixedSubcmpLayout<'ctx> {
                 Ok((name, entry_init))
             })
             .collect::<Result<Vec<_>>>()?;
-        Ok(pod::new(
-            codegen.op_builder(),
+        let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+        block_gen.append_op_ref_unnamed_result(pod::new(
+            &builder,
             location,
             &wrap_pod_records(entries),
             Some(self.memory_type),
@@ -576,8 +576,9 @@ impl<'ctx> SubcmpType<'ctx> {
         // If the count == 0 means that the subcomponent has no inputs. In that
         // case we call `@compute` here directly and store it into COMP.
         if count.is_const_zero() {
-            let empty_inputs = block_gen.append_op_unnamed_result(pod::new(
-                codegen.op_builder(),
+            let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+            let empty_inputs = block_gen.append_op_ref_unnamed_result(pod::new(
+                &builder,
                 location,
                 &[],
                 Some(codegen.pod_type(&[])),
@@ -721,52 +722,65 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
     ) -> Result<()> {
         let decl = &subcmp_decls[self.name()];
         let self_ref = constrain_ctx.func.self_value_of_constrain()?;
-        constrain_ctx.block_ctx.declare_name_if_not_present(self.name(), || {
-            Ok(r#struct::readm(
-                codegen.op_builder(),
-                decl.location(),
-                self.component_type,
-                self_ref,
-                self.name(),
-            )?)
-        })?;
-        constrain_ctx.block_ctx.declare_name_if_not_present(self.name_inputs(), || {
-            Ok(r#struct::readm(
-                codegen.op_builder(),
-                decl.location(),
-                self.inputs,
-                self_ref,
-                self.name_inputs(),
-            )?)
-        })?;
+        constrain_ctx.block_ctx.declare_value_if_not_present(
+            self.name(),
+            |builder| {
+                crate::shared::single_result_as_value(r#struct::readm(
+                    builder,
+                    decl.location(),
+                    self.component_type,
+                    self_ref,
+                    self.name(),
+                )?)
+            },
+            codegen.context,
+        )?;
+        constrain_ctx.block_ctx.declare_value_if_not_present(
+            self.name_inputs(),
+            |builder| {
+                crate::shared::single_result_as_value(r#struct::readm(
+                    builder,
+                    decl.location(),
+                    self.inputs,
+                    self_ref,
+                    self.name_inputs(),
+                )?)
+            },
+            codegen.context,
+        )?;
         Ok(())
     }
 
     /// Generates the operation that initializes a subcomponent.
-    fn generate_initialization_op<'func, 'blk, 'val>(
+    fn generate_initialization_value<'func, 'blk, 'val>(
         &self,
         compute_ctx: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         decl: &SubcmpDeclInfo<'ctx>,
-    ) -> Result<Operation<'ctx>>
+    ) -> Result<Value<'ctx, 'val>>
     where
         'val: 'blk,
     {
         use SubcmpPrologueLayout::*;
         let memory_type = self.memory_type(codegen);
         if let Ok(comp_pod) = ArrayType::try_from(memory_type) {
-            let array = codegen.new_array_new_op(decl.location(), comp_pod, ArrayCtor::Empty);
-            return Ok(array);
+            let builder = compute_ctx.builder_at_current_insertion_point(codegen.context);
+            let array =
+                codegen.new_array_new_op(&builder, decl.location(), comp_pod, ArrayCtor::Empty);
+            return compute_ctx.append_op_ref_unnamed_result(array);
         }
 
         if !self.layout.is_very_concrete() {
             // If the subcomponent has parameters we defer initialization to
             // the constructor call.
-            return Ok(nondet(decl.location(), memory_type));
+            let builder = compute_ctx.builder_at_current_insertion_point(codegen.context);
+            let nondet = codegen.new_nondet_at_location(&builder, decl.location(), memory_type);
+            return compute_ctx.append_op_ref_unnamed_result(nondet);
         }
 
-        let empty_params = compute_ctx.append_op_unnamed_result(pod::new(
-            codegen.op_builder(),
+        let builder = compute_ctx.builder_at_current_insertion_point(codegen.context);
+        let empty_params = compute_ctx.append_op_ref_unnamed_result(pod::new(
+            &builder,
             decl.location(),
             &[],
             Some(codegen.pod_type(&[])),
@@ -775,14 +789,14 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
         // initialized twice, once here and another in the constructor callsite.
         // In concrete mode the initialization should happen only here.
         match &self.layout {
-            Uniform(subcmp_type) => self.generate_initialization_op_with_subcmp_type(
+            Uniform(subcmp_type) => self.generate_initialization_value_with_subcmp_type(
                 subcmp_type,
                 empty_params,
                 compute_ctx,
                 codegen,
                 decl.location(),
             ),
-            Mixed(mixed_subcmp_layout) => mixed_subcmp_layout.generate_initialization_op(
+            Mixed(mixed_subcmp_layout) => mixed_subcmp_layout.generate_initialization_value(
                 empty_params,
                 compute_ctx,
                 codegen,
@@ -792,14 +806,14 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
     }
 
     /// Generates the initialization op of a subcomponent using the given [`SubcmpType`].
-    fn generate_initialization_op_with_subcmp_type<'blk, 'val>(
+    fn generate_initialization_value_with_subcmp_type<'blk, 'val>(
         &self,
         subcmp_type: &SubcmpType<'ctx>,
         empty_params: Value<'ctx, 'val>,
         block_gen: &mut BlockGenContext<'_, 'ctx, 'blk, 'val>,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
-    ) -> Result<Operation<'ctx>>
+    ) -> Result<Value<'ctx, 'val>>
     where
         'val: 'blk,
     {
@@ -811,8 +825,9 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
             // We don't need template parameters in this case
             None,
         )?;
-        Ok(pod::new(
-            codegen.op_builder(),
+        let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+        block_gen.append_op_ref_unnamed_result(pod::new(
+            &builder,
             location,
             &wrap_pod_records(records),
             Some(subcmp_type.comp_pod(codegen).try_into()?),
@@ -835,23 +850,38 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
         'val: 'blk,
     {
         let decl = &subcmp_decls[self.name()];
-        let initialization_op = self.generate_initialization_op(compute_ctx, codegen, decl)?;
-        compute_ctx.block_ctx.declare_name_ensure_not_present(self.name(), initialization_op)?;
+        let initialization_value =
+            self.generate_initialization_value(compute_ctx, codegen, decl)?;
+        compute_ctx
+            .block_ctx
+            .declare_value_ensure_not_present(self.name(), initialization_value)?;
         self.initialize_subcmp_array(
             *compute_ctx.block_ctx.get_named_value(self.name())?,
             compute_ctx,
             codegen,
             decl.location(),
         )?;
-        compute_ctx.block_ctx.declare_name_ensure_not_present(
-            self.name_inputs(),
-            match self.inputs_as::<ArrayType>() {
-                Ok(ty) => codegen.new_array_new_op(decl.location(), ty, ArrayCtor::Empty),
-                Err(_) => {
-                    pod::new(codegen.op_builder(), decl.location(), &[], Some(self.inputs_as()?))
-                }
-            },
-        )
+        let inputs_value = match self.inputs_as::<ArrayType>() {
+            Ok(ty) => {
+                let builder = compute_ctx.builder_at_current_insertion_point(codegen.context);
+                compute_ctx.append_op_ref_unnamed_result(codegen.new_array_new_op(
+                    &builder,
+                    decl.location(),
+                    ty,
+                    ArrayCtor::Empty,
+                ))?
+            }
+            Err(_) => {
+                let builder = compute_ctx.builder_at_current_insertion_point(codegen.context);
+                compute_ctx.append_op_ref_unnamed_result(pod::new(
+                    &builder,
+                    decl.location(),
+                    &[],
+                    Some(self.inputs_as()?),
+                ))?
+            }
+        };
+        compute_ctx.block_ctx.declare_value_ensure_not_present(self.name_inputs(), inputs_value)
     }
 
     /// Generates a loop nest that initializes a subcomponent if it's an array and the layout is
@@ -874,8 +904,9 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
             unreachable!("Mixed subcomponents cannot be represented with uniform array types")
         };
         let subcmp_type = subcmp_type.scoped_to_inner();
-        let empty_params = compute_ctx.append_op_unnamed_result(pod::new(
-            codegen.op_builder(),
+        let builder = compute_ctx.builder_at_current_insertion_point(codegen.context);
+        let empty_params = compute_ctx.append_op_ref_unnamed_result(pod::new(
+            &builder,
             location,
             &[],
             Some(codegen.pod_type(&[])),
@@ -886,14 +917,13 @@ impl<'ctx> SubcmpPrologueData<'ctx> {
             location,
             &comp_pod.dims(),
             |block_gen, indices| {
-                let init_op = self.generate_initialization_op_with_subcmp_type(
+                let comp_memory_pod = self.generate_initialization_value_with_subcmp_type(
                     &subcmp_type,
                     empty_params,
                     block_gen,
                     codegen,
                     location,
                 )?;
-                let comp_memory_pod = block_gen.append_op_unnamed_result(init_op)?;
                 block_gen.append_array_write(
                     codegen,
                     comp_memory,

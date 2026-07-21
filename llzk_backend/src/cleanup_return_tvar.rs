@@ -13,15 +13,17 @@ use crate::traversal::WalkCallbacks;
 use anyhow::bail;
 use anyhow::Result;
 use llzk::attributes::array::ArrayAttribute;
+use llzk::builder::EntryPoint;
 use llzk::builder::OpBuilder;
 use llzk::dialect::function;
 use llzk::dialect::poly;
-use llzk::prelude::Block;
+use llzk::operation::build_owned_operation;
 use llzk::prelude::BlockLike as _;
-use llzk::prelude::CallOpLike;
+use llzk::prelude::CallOpLike as _;
 use llzk::prelude::CallOpRef;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::FunctionType;
+use llzk::prelude::LlzkError;
 use llzk::prelude::OperationLike;
 use llzk::prelude::OperationRefMut;
 use llzk::prelude::OperationResult;
@@ -33,7 +35,7 @@ use llzk::prelude::TemplateParamOpRefMut;
 use llzk::prelude::TemplateSymbolBindingOpLike as _;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
-use llzk::prelude::ValueLike;
+use llzk::prelude::ValueLike as _;
 use llzk::symbol_ref::SymbolRefAttribute;
 use llzk::value_ext::replace_all_uses;
 use llzk::value_ext::users_of;
@@ -122,50 +124,56 @@ fn wrap_call_in_synthetic_template<'ctx>(
     // The tvar type that lives inside the synthetic template, referencing its own @T_return param.
     let synthetic_tvar_type = codegen.tvar_type(function_return_type_param());
 
-    // Build the synthetic function.def with a body block taking the call's operands as args.
     let func_type = FunctionType::new(codegen.context, &operand_types, &[]);
-    let func_def = function::def(location, UNUSED_CALL_RESULT_WRAPPER_NAME, func_type, &[], None)?;
-    func_def.set_allow_non_native_field_ops_attr(true);
-    let inner_call = {
-        let arg_locs: Vec<_> = operand_types.iter().map(|&t| (t, location)).collect();
-        let block = func_def.region(0)?.append_block(Block::new(&arg_locs));
-        let block_args = (0..operand_types.len())
-            .map(|i| block.argument(i).map(Value::from).map_err(Into::into))
-            .collect::<Result<Vec<_>>>()?;
 
-        // Rebuild the original call inside the synthetic function using the block args as operands.
-        // The result type references the synthetic template's own @T_return param.
-        let inner_call = function::call(
-            codegen.op_builder(),
-            location,
-            call_op.callee()?,
-            &block_args,
-            &[synthetic_tvar_type],
-        )?;
-        let inner_call = block.append_operation(inner_call.into());
+    let mut inner_call = None;
 
-        // The result of the inner call is discarded; return void.
-        block.append_operation(function::r#return(location, &[]));
-        inner_call.to_raw()
-    }; // block and block_args dropped here, releasing the borrow on func_def
-
-    // Build poly.template @synthetic { poly.param; function.def }.
-    let scratch = Block::new(&[]);
-    let builder = OpBuilder::at_block_end(codegen.context, &scratch);
-    let template_op =
-        poly::template(&builder, location, UNUSED_CALL_RESULT_WRAPPER_NAME, |builder| {
+    // Build owned/detached poly.template @synthetic { poly.param; function.def }.
+    let template_op = build_owned_operation(codegen.context, |builder| {
+        poly::template(builder, location, UNUSED_CALL_RESULT_WRAPPER_NAME, |builder| {
             poly::param(
                 builder,
                 location,
                 function_return_type_param(),
                 Some(synthetic_tvar_type),
             )?;
+            let func_def = function::def(
+                builder,
+                location,
+                UNUSED_CALL_RESULT_WRAPPER_NAME,
+                func_type,
+                &[],
+                None,
+                llzk::dialect::empty_region,
+            )?;
+            func_def.set_allow_non_native_field_ops_attr(true);
+
+            let block = func_def.body()?.first_block().expect("synthetic function body is empty");
+            let inner_builder = OpBuilder::at_block_end(codegen.context, block);
+
+            // Rebuild the original call inside the synthetic function using the block args as
+            // operands. The result type references the synthetic template's own @T_return param.
+            let block_args = (0..operand_types.len())
+                .map(|i| block.argument(i).map(Value::from).map_err(LlzkError::from))
+                .collect::<std::result::Result<Vec<_>, LlzkError>>()?;
+            let call = function::call(
+                &inner_builder,
+                location,
+                call_op.callee()?,
+                &block_args,
+                &[synthetic_tvar_type],
+            )?;
+
+            // The result of the inner call is discarded; return void.
+            function::r#return(&inner_builder, location, &[]);
+            inner_call = Some(call.to_raw());
             Ok(())
-        })?;
-    template_op.body().append_operation(func_def.into());
+        })
+        .map(Into::into)
+    })?;
+    let inner_call = inner_call.expect("synthetic template callback must create inner call");
 
     // Insert the template into the module, uniquing the name to avoid collisions.
-    let template_op = shared::detach_owned_operation(&template_op);
     let op_ref = shared::insert_unique_symbol_op(&codegen.module.as_operation(), template_op);
     let template_name = shared::get_sym_name_attr(&op_ref)
         .expect("`poly.template` must have `sym_name` attribute per ODS");
@@ -178,8 +186,9 @@ fn wrap_call_in_synthetic_template<'ctx>(
     // The replacement call passes the original operands and uses wildcard attribute for the
     // template params (i.e. the unused return `tvar` of the call op).
     let original_operands: Vec<_> = call_op.operands().collect();
-    let replacement = function::call_with_template_params(
-        codegen.op_builder(),
+    let replacement_builder = OpBuilder::new(codegen.context, EntryPoint::Before(call_op.into()));
+    function::call_with_template_params(
+        &replacement_builder,
         location,
         callee,
         &original_operands,
@@ -187,12 +196,6 @@ fn wrap_call_in_synthetic_template<'ctx>(
         &[] as &[Type<'ctx>],
         &[codegen.wildcard_attr()],
     )?;
-
-    // Insert the replacement before the original call, then remove the original.
-    let call_block = call_op
-        .block()
-        .ok_or_else(|| anyhow::anyhow!("function.call at {location} has no parent block"))?;
-    call_block.insert_operation_before(call_op.into(), replacement.into());
     Ok(inner_call)
 }
 
@@ -210,13 +213,8 @@ fn specialize_call_result_type<'ctx>(
     let callee = call_op.callee()?;
     let operands: Vec<_> = call_op.operands().collect();
     let location = call_op.location();
-    let block = call_op
-        .block()
-        .ok_or_else(|| anyhow::anyhow!("function.call at {location} has no parent block"))?;
-    let new_call = block.insert_operation_before(
-        call_op.into(),
-        function::call(codegen.op_builder(), location, callee, &operands, &[use_type])?.into(),
-    );
+    let builder = OpBuilder::new(codegen.context, EntryPoint::Before(call_op.into()));
+    let new_call = function::call(&builder, location, callee, &operands, &[use_type])?;
     let new_call_raw = new_call.to_raw();
     let new_result = Value::from(new_call.result(0)?);
     replace_all_uses(Value::from(old_result), new_result);
@@ -282,7 +280,7 @@ pub(crate) fn specialize_tvar_function_calls<'ctx>(
     walk_from_block(
         codegen.module.body(),
         WalkCallbacks::for_ops(|op| {
-            if function::is_func_call(&op) {
+            if function::is_call_op(&op) {
                 calls.push(op.to_raw());
             }
         }),

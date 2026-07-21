@@ -18,7 +18,6 @@ use crate::subcmp::names::PARAMS;
 use crate::subcmp::SubcmpInfo;
 use crate::template::TemplateContext;
 use anyhow::Result;
-use llzk::dialect::r#struct;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::Location;
 use llzk::prelude::PodType;
@@ -159,7 +158,6 @@ impl<'ast> WriteChain<'ast> {
     }
 
     /// Writes a value into a field of a mixed subcomponent input pod.
-    #[allow(clippy::too_many_arguments)]
     fn write_mixed_input_tail<'ctx, 'val>(
         signal_name: &str,
         tail: &[AccessRef<'_, 'ast>],
@@ -181,7 +179,9 @@ impl<'ast> WriteChain<'ast> {
                 if !rest.is_empty() {
                     anyhow::bail!("unsupported nested access after subcomponent input array");
                 }
-                let field_value = fc.append_op_unnamed_result(codegen.new_pod_read_op(
+                let builder = fc.builder_at_current_insertion_point(codegen.context);
+                let field_value = fc.append_op_ref_unnamed_result(codegen.new_pod_read_op(
+                    &builder,
                     input_record,
                     signal_name,
                     location,
@@ -201,7 +201,9 @@ impl<'ast> WriteChain<'ast> {
             None => fc.cast_to_expected_type_if_needed(codegen, location, val, field_type)?,
         };
 
-        fc.append_op_no_result(codegen.new_pod_write_op(
+        let builder = fc.builder_at_current_insertion_point(codegen.context);
+        fc.append_op_ref_no_result(codegen.new_pod_write_op(
+            &builder,
             location,
             input_record,
             signal_name,
@@ -214,7 +216,6 @@ impl<'ast> WriteChain<'ast> {
     /// The selected record has a concrete component type, but different records may have
     /// different input pod shapes. Keep those record-specific values inside the dispatch branch
     /// and only merge the uniform parent pods back into the surrounding block.
-    #[allow(clippy::too_many_arguments)]
     fn try_write_mixed_subcmp<'ctx, 'val>(
         &self,
         val: Value<'ctx, 'val>,
@@ -290,19 +291,25 @@ impl<'ast> WriteChain<'ast> {
                 &index_vals,
             )?;
 
-            let (info, ()) = NestedBlockInfo::with_scope(fc, |fc| {
+            let (info, ()) = NestedBlockInfo::with_scope(codegen.context, fc, |fc| {
                 if let Some(signal_name) = signal_name {
                     let inputs_value = inputs_value.expect("input value exists for signal writes");
-                    let memory_record = fc.append_op_unnamed_result(codegen.new_pod_read_op(
-                        memory_value,
-                        entry.record_name(),
-                        location,
-                    )?)?;
-                    let input_record = fc.append_op_unnamed_result(codegen.new_pod_read_op(
-                        inputs_value,
-                        entry.record_name(),
-                        location,
-                    )?)?;
+                    let builder = fc.builder_at_current_insertion_point(codegen.context);
+                    let memory_record =
+                        fc.append_op_ref_unnamed_result(codegen.new_pod_read_op(
+                            &builder,
+                            memory_value,
+                            entry.record_name(),
+                            location,
+                        )?)?;
+                    let builder = fc.builder_at_current_insertion_point(codegen.context);
+                    let input_record =
+                        fc.append_op_ref_unnamed_result(codegen.new_pod_read_op(
+                            &builder,
+                            inputs_value,
+                            entry.record_name(),
+                            location,
+                        )?)?;
                     Self::write_mixed_input_tail(
                         signal_name,
                         &tail[1..],
@@ -315,7 +322,9 @@ impl<'ast> WriteChain<'ast> {
                         signal_write_info,
                         subcmp_info,
                     )?;
-                    fc.append_op_no_result(codegen.new_pod_write_op(
+                    let builder = fc.builder_at_current_insertion_point(codegen.context);
+                    fc.append_op_ref_no_result(codegen.new_pod_write_op(
+                        &builder,
                         location,
                         inputs_value,
                         entry.record_name(),
@@ -330,11 +339,14 @@ impl<'ast> WriteChain<'ast> {
                         location,
                         codegen,
                         |fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>| {
-                            let params = fc.append_op_unnamed_result(codegen.new_pod_read_op(
-                                memory_record,
-                                PARAMS,
-                                location,
-                            )?)?;
+                            let builder = fc.builder_at_current_insertion_point(codegen.context);
+                            let params =
+                                fc.append_op_ref_unnamed_result(codegen.new_pod_read_op(
+                                    &builder,
+                                    memory_record,
+                                    PARAMS,
+                                    location,
+                                )?)?;
                             let subcmp_instance = fc.gen_compute_call(
                                 entry.struct_type(),
                                 input_record,
@@ -342,7 +354,9 @@ impl<'ast> WriteChain<'ast> {
                                 location,
                                 codegen,
                             )?;
-                            fc.append_op_no_result(codegen.new_pod_write_op(
+                            let builder = fc.builder_at_current_insertion_point(codegen.context);
+                            fc.append_op_ref_no_result(codegen.new_pod_write_op(
+                                &builder,
                                 location,
                                 memory_record,
                                 COMP,
@@ -350,7 +364,9 @@ impl<'ast> WriteChain<'ast> {
                             ))
                         },
                     )?;
-                    fc.append_op_no_result(codegen.new_pod_write_op(
+                    let builder = fc.builder_at_current_insertion_point(codegen.context);
+                    fc.append_op_ref_no_result(codegen.new_pod_write_op(
+                        &builder,
                         location,
                         memory_value,
                         entry.record_name(),
@@ -367,7 +383,9 @@ impl<'ast> WriteChain<'ast> {
                         })?;
                     let val =
                         fc.cast_to_expected_type_if_needed(codegen, location, val, record_type)?;
-                    fc.append_op_no_result(codegen.new_pod_write_op(
+                    let builder = fc.builder_at_current_insertion_point(codegen.context);
+                    fc.append_op_ref_no_result(codegen.new_pod_write_op(
+                        &builder,
                         location,
                         memory_value,
                         entry.record_name(),
@@ -384,7 +402,6 @@ impl<'ast> WriteChain<'ast> {
     }
 
     /// Handle [Lvalue::Array] case of [`WriteChain::write`].
-    #[allow(clippy::too_many_arguments)]
     fn write_array<'ctx, 'val>(
         indices: Vec<&Expression>,
         prev: Self,
@@ -447,7 +464,9 @@ impl<'ast> WriteChain<'ast> {
                             val,
                             record_type,
                         )?;
-                        fc.append_op_no_result(codegen.new_pod_write_op(
+                        let builder = fc.builder_at_current_insertion_point(codegen.context);
+                        fc.append_op_ref_no_result(codegen.new_pod_write_op(
+                            &builder,
                             location,
                             arr_ref,
                             record_name,
@@ -478,7 +497,6 @@ impl<'ast> WriteChain<'ast> {
     }
 
     /// Handle [Lvalue::Subcmp] case of [`WriteChain::write`].
-    #[allow(clippy::too_many_arguments)]
     fn write_subcmp<'ctx, 'val>(
         name: &str,
         prev: Self,
@@ -501,7 +519,9 @@ impl<'ast> WriteChain<'ast> {
             &|subcmp_value_inputs: Value<'ctx, 'val>,
               fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>|
              -> Result<()> {
-                fc.append_op_no_result(codegen.new_pod_write_op(
+                let builder = fc.builder_at_current_insertion_point(codegen.context);
+                fc.append_op_ref_no_result(codegen.new_pod_write_op(
+                    &builder,
                     location,
                     subcmp_value_inputs,
                     name,
@@ -543,7 +563,9 @@ impl<'ast> WriteChain<'ast> {
                     location,
                     codegen,
                     |fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>| {
-                        let params = fc.append_op_unnamed_result(codegen.new_pod_read_op(
+                        let builder = fc.builder_at_current_insertion_point(codegen.context);
+                        let params = fc.append_op_ref_unnamed_result(codegen.new_pod_read_op(
+                            &builder,
                             subcmp_value,
                             PARAMS,
                             location,
@@ -558,7 +580,9 @@ impl<'ast> WriteChain<'ast> {
                             location,
                             codegen,
                         )?;
-                        fc.append_op_no_result(codegen.new_pod_write_op(
+                        let builder = fc.builder_at_current_insertion_point(codegen.context);
+                        fc.append_op_ref_no_result(codegen.new_pod_write_op(
+                            &builder,
                             location,
                             subcmp_value,
                             COMP,
@@ -579,7 +603,6 @@ impl<'ast> WriteChain<'ast> {
         )
     }
 
-    #[allow(clippy::too_many_arguments)]
     /// Emits the write operations.
     pub fn write<'ctx, 'val>(
         self,
@@ -605,9 +628,12 @@ impl<'ast> WriteChain<'ast> {
 
                 let self_value = fc.func.self_value_of_compute()?;
                 // Write value to field of "self" struct.
-                fc.block_ctx.enqueue_in_block(
-                    r#struct::writem(location, self_value, &var, val)?.into(),
+                fc.block_ctx.enqueue_struct_write_in_block(
                     block,
+                    location,
+                    self_value,
+                    var.clone(),
+                    val,
                 )?;
                 fc.block_ctx.set_named_value_at_declaration(var.clone(), val)?;
                 signal_write_info.mark_signal_as_written(var)

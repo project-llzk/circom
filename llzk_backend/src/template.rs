@@ -50,6 +50,7 @@ use llzk::prelude::BlockRef;
 use llzk::prelude::FlatSymbolRefAttribute;
 use llzk::prelude::FuncDefOpLike as _;
 use llzk::prelude::IntegerAttribute;
+use llzk::prelude::LlzkContext;
 use llzk::prelude::LoopBoundsAttribute;
 use llzk::prelude::MemberDefOpLike as _;
 use llzk::prelude::PodType;
@@ -58,9 +59,9 @@ use llzk::prelude::StringRef;
 use llzk::prelude::StructDefOpLike as _;
 use llzk::prelude::StructDefOpRefMut;
 use llzk::prelude::SymbolRefAttribute;
-use llzk::prelude::TemplateOpLike;
+use llzk::prelude::TemplateOpLike as _;
 use llzk::prelude::TemplateOpRefMut;
-use llzk::prelude::TemplateSymbolBindingOpLike;
+use llzk::prelude::TemplateSymbolBindingOpLike as _;
 use llzk::prelude::Type;
 use llzk::prelude::Value;
 use llzk::prelude::ValueLike as _;
@@ -228,14 +229,32 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
     ) -> Result<()> {
         let global_ref = || SymbolRefAttribute::new_from_str(codegen.context, global_name, &[]);
         if let Some(fc) = self.compute.as_ref() {
-            fc.borrow_mut().block_ctx.declare_name_if_not_present(name, || {
-                Ok(global::read(location, global_ref(), ty))
-            })?;
+            fc.borrow_mut().block_ctx.declare_value_if_not_present(
+                name,
+                |builder| {
+                    shared::single_result_as_value(global::read(
+                        builder,
+                        location,
+                        global_ref(),
+                        ty,
+                    ))
+                },
+                codegen.context,
+            )?;
         }
         if let Some(fc) = self.constrain.as_ref() {
-            fc.borrow_mut().block_ctx.declare_name_if_not_present(name, || {
-                Ok(global::read(location, global_ref(), ty))
-            })?;
+            fc.borrow_mut().block_ctx.declare_value_if_not_present(
+                name,
+                |builder| {
+                    shared::single_result_as_value(global::read(
+                        builder,
+                        location,
+                        global_ref(),
+                        ty,
+                    ))
+                },
+                codegen.context,
+            )?;
         }
         Ok(())
     }
@@ -251,12 +270,12 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
     }
 
     /// Part of the finalization procedure that emits the pending operations in the queue.
-    fn finalize_queue(self) -> Result<Self> {
+    fn finalize_queue(self, codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>) -> Result<Self> {
         self.and_then_same::<_, GenResultUnit>(|fc, _| {
             if !fc.block_ctx.is_only_root() {
                 anyhow::bail!("Template generation reached final step with more than one scope");
             }
-            fc.block_ctx.append_queue();
+            fc.block_ctx.append_queue(codegen.context)?;
             Ok(())
         })?;
         Ok(self)
@@ -287,12 +306,15 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
                     // Write the inputs of the subcomponent.
                     let name_inputs = crate::subcmp::names::inputs(name);
                     let name_inputs_val = *fc.block_ctx.get_named_value(&name_inputs)?;
-                    fc.append_op_no_result(r#struct::writem(
+                    let builder = fc.builder_at_current_insertion_point(codegen.context);
+                    let write = r#struct::writem(
+                        &builder,
                         location,
                         self_value,
                         &name_inputs,
                         name_inputs_val,
-                    )?)?;
+                    )?;
+                    fc.append_op_ref_no_result(write)?;
 
                     // This value is the memory SSA value. We need to extract the component from
                     // it.
@@ -303,7 +325,9 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
                                 // Copy the components into an array of the same dimensions.
                                 let struct_type = comp_type(ty.element_type().try_into()?)?;
 
-                                let comp_array = fc.append_op_unnamed_result(codegen.new_array_new_op(
+                                let builder = fc.builder_at_current_insertion_point(codegen.context);
+                                let comp_array = fc.append_op_ref_unnamed_result(codegen.new_array_new_op(
+                                    &builder,
                                     location,
                                     map_array_inner_type(ty.into(), struct_type).try_into()?,
                                     ArrayCtor::Empty
@@ -317,12 +341,15 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
                                         location,
                                         None
                                     )?;
-                                    let comp_instance = fc.append_op_unnamed_result(pod::read(
+                                    let builder = fc.builder_at_current_insertion_point(codegen.context);
+                                    let read = pod::read(
+                                        &builder,
                                         location,
                                         comp_memory,
                                         COMP,
                                         struct_type
-                                    ))?;
+                                    );
+                                    let comp_instance = fc.append_op_ref_unnamed_result(read)?;
                                     fc.append_array_write(
                                         codegen,
                                         comp_array,
@@ -336,35 +363,45 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
                                 comp_array
                             }
                             PodType => {
-                                fc.append_op_unnamed_result(pod::read(
+                                let builder = fc.builder_at_current_insertion_point(codegen.context);
+                                let read = pod::read(
+                                    &builder,
                                     location,
                                     mem,
                                     COMP,
                                     comp_type(ty)?
-                                ))?
+                                );
+                                fc.append_op_ref_unnamed_result(read)?
                             }
                         },
                         SubcmpLayout::Mixed(layout) => {
                             let records = layout.entries().iter().map(|entry| {
-                                let comp_memory = fc.append_op_unnamed_result(pod::read(
+                                let builder = fc.builder_at_current_insertion_point(codegen.context);
+                                let read = pod::read(
+                                    &builder,
                                     location,
                                     mem,
                                     entry.record_name(),
                                     entry.memory_type().into(),
-                                ))?;
-                                let comp_instance = fc.append_op_unnamed_result(pod::read(
+                                );
+                                let comp_memory = fc.append_op_ref_unnamed_result(read)?;
+                                let builder = fc.builder_at_current_insertion_point(codegen.context);
+                                let read = pod::read(
+                                    &builder,
                                     location,
                                     comp_memory,
                                     COMP,
                                     entry.struct_type().into(),
-                                ))?;
+                                );
+                                let comp_instance = fc.append_op_ref_unnamed_result(read)?;
                                 Ok(RecordValue::new(
                                     StringRef::new(entry.record_name()),
                                     comp_instance,
                                 ))
                             }).collect::<Result<Vec<_>>>()?;
-                            fc.append_op_unnamed_result(pod::new(
-                                codegen.op_builder(),
+                            let builder = fc.builder_at_current_insertion_point(codegen.context);
+                            fc.append_op_ref_unnamed_result(pod::new(
+                                &builder,
                                 location,
                                 &records,
                                 Some(layout.component_type()),
@@ -372,12 +409,15 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
                         }
                     };
 
-                    fc.append_op_no_result(r#struct::writem(
+                    let builder = fc.builder_at_current_insertion_point(codegen.context);
+                    let write = r#struct::writem(
+                        &builder,
                         location,
                         self_value,
                         name,
                         value,
-                    )?)
+                    )?;
+                    fc.append_op_ref_no_result(write)
 
                 })
 
@@ -425,18 +465,24 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
                         },
                         SubcmpLayout::Mixed(layout) => {
                             layout.entries().iter().try_for_each(|entry| {
-                                let subcmp_instance = fc.append_op_unnamed_result(pod::read(
+                                let builder = fc.builder_at_current_insertion_point(codegen.context);
+                                let read = pod::read(
+                                    &builder,
                                     location,
                                     subcmp,
                                     entry.record_name(),
                                     entry.struct_type().into(),
-                                ))?;
-                                let subcmp_inputs = fc.append_op_unnamed_result(pod::read(
+                                );
+                                let subcmp_instance = fc.append_op_ref_unnamed_result(read)?;
+                                let builder = fc.builder_at_current_insertion_point(codegen.context);
+                                let read = pod::read(
+                                    &builder,
                                     location,
                                     inputs,
                                     entry.record_name(),
                                     entry.inputs_type().into(),
-                                ))?;
+                                );
+                                let subcmp_inputs = fc.append_op_ref_unnamed_result(read)?;
                                 fc.gen_constrain_call(
                                     subcmp_instance,
                                     subcmp_inputs,
@@ -459,7 +505,7 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
         'val: 'blk,
     {
         self.finalize_subcmps(codegen)?
-            .finalize_queue()?
+            .finalize_queue(codegen)?
             .and_then_same(|fc, _| fc.finalize(codegen))
     }
 
@@ -554,6 +600,7 @@ where
 
     fn stack_pop<H>(
         &mut self,
+        context: &'ctx LlzkContext,
         overwrite_handler: H,
         overwrite_data: &mut Self::HandlerDataType,
     ) -> Result<()>
@@ -570,7 +617,7 @@ where
         // `NestedBlockInfo` passed to it so just insert a default `NestedBlockInfo`.
         if let Some(rc) = self.compute.as_ref() {
             let mut fc = rc.borrow_mut();
-            let popped = fc.block_ctx.pop();
+            let popped = fc.block_ctx.pop(context)?;
             overwrite_handler(
                 &mut fc,
                 overwrite_data.compute.get_or_insert_with(NestedBlockInfo::default),
@@ -579,7 +626,7 @@ where
         }
         if let Some(rc) = self.constrain.as_ref() {
             let mut fc = rc.borrow_mut();
-            let popped = fc.block_ctx.pop();
+            let popped = fc.block_ctx.pop(context)?;
             overwrite_handler(
                 &mut fc,
                 overwrite_data.constrain.get_or_insert_with(NestedBlockInfo::default),
@@ -1054,6 +1101,7 @@ where
     // Initially, generate the blocks for the 'then' and 'else' cases naively.
     let mut then_info = TemplateFuncPair::new(template);
     template.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        codegen.context,
         then_info.block(),
         |template| if_case.gen_llzk_in_template(codegen, template),
         &mut then_info,
@@ -1061,6 +1109,7 @@ where
     let mut else_info = TemplateFuncPair::new(template);
     if let Some(else_case) = else_case {
         template.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+            codegen.context,
             else_info.block(),
             |template| else_case.gen_llzk_in_template(codegen, template),
             &mut else_info,
@@ -1120,12 +1169,14 @@ where
     // Generate the loop condition (i.e. "before") and body (i.e. "after") blocks naively.
     let mut loop_cond_info = TemplateFuncPair::new(template);
     let cond_result = template.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        codegen.context,
         loop_cond_info.block(),
         |template| cond.gen_llzk_in_template(codegen, template),
         &mut loop_cond_info,
     )?;
     let mut loop_body_info = TemplateFuncPair::new(template);
     template.gen_in_given_block_with_new_circom_scope_and_cache_overwrites(
+        codegen.context,
         loop_body_info.block(),
         |template| body_stmt.gen_llzk_in_template(codegen, template),
         &mut loop_body_info,
@@ -1223,6 +1274,7 @@ where
             Statement::Block { meta, stmts } => {
                 let mut template = template; // satisfy the &mut in `GenWithCircomScopeHandling`
                 template.gen_in_current_block_with_new_circom_scope_and_merge_overwrites(
+                    codegen.context,
                     |template| {
                         try_for_loop_heuristic!(codegen, template, meta, stmts);
                         // Fallback to standard block handling.
@@ -1244,6 +1296,7 @@ where
 
                                         if val.r#type() != subcmp_type {
                                             val = fc.unifiable_cast(
+                                                codegen,
                                                 codegen.location_from_meta(meta),
                                                 val,
                                                 template.get_subcmp_type(var)?,
@@ -1311,10 +1364,12 @@ where
                                         )?;
                                         // Write value to field of "self" struct.
                                         let self_val = fc.func.self_value_of_compute()?;
-                                        fc.append_op_no_result(
-                                            r#struct::writem(location, self_val, var, value)?
-                                                .into(),
+                                        let builder =
+                                            fc.builder_at_current_insertion_point(codegen.context);
+                                        let write = r#struct::writem(
+                                            &builder, location, self_val, var, value,
                                         )?;
+                                        fc.append_op_ref_no_result(write)?;
                                         fc.block_ctx.set_named_value(var.clone(), value)
                                     })
                             }
@@ -1349,10 +1404,16 @@ where
                                         )?;
                                         // Write value to field of "self" struct.
                                         let self_val = fc.func.self_value_of_compute()?;
-                                        fc.append_op_no_result(
-                                            r#struct::writem(location, self_val, var, value)?
-                                                .into(),
+                                        let builder =
+                                            fc.builder_at_current_insertion_point(codegen.context);
+                                        let write = r#struct::writem(
+                                            &builder,
+                                            location,
+                                            self_val,
+                                            var,
+                                            value,
                                         )?;
+                                        fc.append_op_ref_no_result(write)?;
                                         fc.block_ctx.set_named_value(var.clone(), value)
                                     },
                                     |fc, val| {
@@ -1591,12 +1652,16 @@ impl<'ast, 'ctx, 'val, 'info> CtorCallScope<'ast, 'ctx, 'info> {
     ) -> Result<Value<'ctx, 'val>> {
         type_switch! { attr,
             IntegerAttribute as int => {
-                fc.append_op_unnamed_result(
-                    codegen.new_felt_const_op(&BigInt::from(int.value()), self.location)?
-                )
+                let builder = fc.builder_at_current_insertion_point(codegen.context);
+                fc.append_op_ref_unnamed_result(codegen.new_felt_const_op(
+                    &builder,
+                    &BigInt::from(int.value()),
+                    self.location,
+                )?)
             }
             FlatSymbolRefAttribute as sym => {
                 let value = fc.read_poly_template_binding(
+                    codegen,
                     self.location,
                     sym.value(),
                     self.subcmp_type.param_type(codegen),
@@ -1646,8 +1711,9 @@ impl<'ast, 'ctx, 'val, 'info> CtorCallScope<'ast, 'ctx, 'info> {
     {
         let mut map_operands_values = vec![];
         let params = self.emit_params(codegen, fc, &mut map_operands_values)?;
-        let params_pod = fc.append_op_unnamed_result(pod::new(
-            codegen.op_builder(),
+        let builder = fc.builder_at_current_insertion_point(codegen.context);
+        let params_pod = fc.append_op_ref_unnamed_result(pod::new(
+            &builder,
             self.location,
             &params,
             Some(self.subcmp_type.params_pod_type(codegen)),
@@ -1659,8 +1725,9 @@ impl<'ast, 'ctx, 'val, 'info> CtorCallScope<'ast, 'ctx, 'info> {
             map_operands.append_operands_with_dim_count(ValueRange::try_from(value_range)?, 1);
         }
 
-        fc.append_op_unnamed_result(pod::new_with_affine_init(
-            codegen.op_builder(),
+        let builder = fc.builder_at_current_insertion_point(codegen.context);
+        fc.append_op_ref_unnamed_result(pod::new_with_affine_init(
+            &builder,
             self.location,
             &records,
             self.pod_type,
