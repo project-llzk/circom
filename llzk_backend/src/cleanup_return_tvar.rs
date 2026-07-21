@@ -17,6 +17,7 @@ use llzk::builder::EntryPoint;
 use llzk::builder::OpBuilder;
 use llzk::dialect::function;
 use llzk::dialect::poly;
+use llzk::operation::build_owned_operation;
 use llzk::prelude::BlockLike as _;
 use llzk::prelude::CallOpLike as _;
 use llzk::prelude::CallOpRef;
@@ -128,7 +129,7 @@ fn wrap_call_in_synthetic_template<'ctx>(
     let mut inner_call = None;
 
     // Build owned/detached poly.template @synthetic { poly.param; function.def }.
-    let template_op = shared::build_owned_operation(codegen.context, |builder| {
+    let template_op = build_owned_operation(codegen.context, |builder| {
         poly::template(builder, location, UNUSED_CALL_RESULT_WRAPPER_NAME, |builder| {
             poly::param(
                 builder,

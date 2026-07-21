@@ -32,6 +32,7 @@ use llzk::dialect::felt;
 use llzk::dialect::global;
 use llzk::dialect::pod;
 use llzk::dialect::poly;
+use llzk::operation::build_owned_operation;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::melior_dialects::arith;
 use llzk::prelude::replace_uses_of_with;
@@ -114,28 +115,6 @@ use std::io::Write;
 use std::ops::Deref;
 use std::os::raw::c_void;
 use std::path::Path;
-
-/// Build an owned operation that is not attached to any block.
-///
-/// This mirrors `llzk::operation::build_owned_operation`, but does not tie the returned
-/// `OperationRef` lifetime to the callback's builder borrow. The upstream helper does that with a
-/// higher-ranked callback lifetime, while the LLZK dialect builders return refs with an independent
-/// inferred lifetime.
-pub fn build_owned_operation<'ctx: 'a, 'a, E>(
-    context: &'ctx LlzkContext,
-    build: impl FnOnce(&OpBuilder<'ctx, '_>) -> std::result::Result<OperationRef<'ctx, 'a>, E>,
-) -> std::result::Result<Operation<'ctx>, E> {
-    let scratch = Block::new(&[]);
-    let builder = OpBuilder::at_block_end(context, &scratch);
-    let raw = build(&builder)?.to_raw();
-    // SAFETY: `raw` is the operation inserted into the scratch block.
-    // Removing it transfers ownership to the returned `Operation`.
-    unsafe {
-        let mut op_ref = llzk::prelude::OperationRefMut::from_raw(raw);
-        op_ref.remove_from_parent();
-        Ok(Operation::from_raw(raw))
-    }
-}
 
 /// This macro allows writing type switches with a syntax similar to match expressions.
 #[macro_export]
