@@ -2625,7 +2625,7 @@ where
         let name = K::expr_name(target_expr);
         let location = codegen.location_from_meta(target_expr.get_meta());
         let mut incomplete_poly_expr = false;
-        let expr_op = build_owned_operation(codegen.context, |builder| {
+        let expr_op = build_owned_operation(codegen.context, |builder| -> Result<_> {
             let expr_op = poly::expr(builder, location, &name, empty_region)?;
             let mut expr_gen_ctx = BlockGenContext::new(
                 BlockContextStack::new(
@@ -2650,7 +2650,7 @@ where
             )?
             else {
                 incomplete_poly_expr = true;
-                return Ok::<OperationRef<'_, '_>, anyhow::Error>(expr_op.into());
+                return Ok(expr_op.into());
             };
             let val = K::finalize_poly_expr_value(&mut expr_gen_ctx, codegen, location, val)?;
             let yield_builder = OpBuilder::at_block_end(
