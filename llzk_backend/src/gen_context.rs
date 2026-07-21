@@ -38,7 +38,6 @@ use llzk::dialect::pod;
 use llzk::dialect::poly;
 use llzk::dialect::r#struct;
 use llzk::map_operands::MapOperandsBuilder;
-use llzk::operation::build_owned_operation;
 use llzk::prelude::is_felt_type;
 use llzk::prelude::is_type_variable;
 use llzk::prelude::melior_dialects::arith;
@@ -2592,7 +2591,7 @@ where
         location: Location<'ctx>,
         name: &str,
     ) -> Result<StringAttribute<'ctx>> {
-        build_owned_operation(codegen.context, |builder| {
+        shared::build_owned_operation(codegen.context, |builder| {
             poly::param(builder, location, name, None).map(Into::into)
         })
         .and_then(TemplateParamOp::try_from)
