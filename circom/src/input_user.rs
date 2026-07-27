@@ -43,6 +43,7 @@ pub struct Input {
     pub flag_no_init: bool,
     pub prime: String,
     pub llzk_plaintext_out_flag: bool,
+    pub llzk_strip_debug_info_flag: bool,
     pub llzk_pass_pipeline: String,
     pub link_libraries : Vec<PathBuf>
 }
@@ -114,6 +115,7 @@ impl Input {
             c_flag: c_flag,
             llzk_flag: input_processing::get_llzk(&matches),
             llzk_plaintext_out_flag: input_processing::get_llzk_plaintext(&matches),
+            llzk_strip_debug_info_flag: input_processing::get_llzk_strip_debug_info(&matches),
             llzk_pass_pipeline: input_processing::get_llzk_pass_pipeline(&matches)?,
             no_asm_flag:input_processing::get_no_asm(&matches),
             r1cs_flag: input_processing::get_r1cs(&matches),
@@ -282,6 +284,9 @@ impl Input {
     pub fn llzk_plaintext_out_flag(&self) -> bool {
         self.llzk_plaintext_out_flag
     }
+    pub fn llzk_strip_debug_info_flag(&self) -> bool {
+        self.llzk_strip_debug_info_flag
+    }
     pub fn to_llzk_config(&self) -> Result<llzk_backend::LlzkConfig, ()> {
         use program_structure::constants::UsefulConstants;
         let prime = UsefulConstants::new(&self.prime).get_p().to_biguint().ok_or_else(|| {
@@ -298,6 +303,7 @@ impl Input {
             verbose: self.flag_verbose(),
             stabilize: self.flag_stabilize(),
             emit_plaintext: self.llzk_plaintext_out_flag(),
+            strip_debug_info: self.llzk_strip_debug_info_flag(),
         })
     }
 }
@@ -469,6 +475,10 @@ mod input_processing {
 
     pub fn get_llzk_plaintext(matches: &ArgMatches) -> bool {
         matches.is_present("llzk_plaintext")
+    }
+
+    pub fn get_llzk_strip_debug_info(matches: &ArgMatches) -> bool {
+        matches.is_present("llzk_strip_debug_info")
     }
 
     pub fn view() -> ArgMatches<'static> {
@@ -703,6 +713,13 @@ mod input_processing {
                     .takes_value(false)
                     .display_order(5003)
                     .help("Emit LLZK IR in plaintext/assembly format instead of bytecode (default is bytecode)"),
+            )
+            .arg(
+                Arg::with_name("llzk_strip_debug_info")
+                    .long("llzk_strip_debug_info")
+                    .takes_value(false)
+                    .display_order(5004)
+                    .help("Strip source locations from LLZK IR output"),
             )
             .get_matches()
     }

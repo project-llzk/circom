@@ -1,5 +1,5 @@
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext --llzk_strip_debug_info -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
 
 pragma circom 2.0.0;
@@ -40,7 +40,7 @@ component main = SubCmps4(3);
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@SubCmps4::@SubCmps4<[3]>>} {
 // CHECK-NEXT:    poly.template @SubCmps4 {
 // CHECK-NEXT:      poly.param @n : index
-// CHECK-NEXT:      poly.expr @"n_Mul_2@443" {
+// CHECK-NEXT:      poly.expr @"n_Mul_2@[[OFFSET0:[0-9]+]]" {
 // CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = poly.read_const @n : index
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_1]] : index, !felt.type<"bn128">
@@ -54,11 +54,11 @@ component main = SubCmps4(3);
 // CHECK-NEXT:        struct.member @a$inputs : !pod.type<[@inp: !array.type<@n x !felt.type<"bn128">>]> {signal}
 // CHECK-NEXT:        struct.member @b : !struct.type<@Sum::@Sum<[@n]>>
 // CHECK-NEXT:        struct.member @b$inputs : !pod.type<[@inp: !array.type<@n x !felt.type<"bn128">>]> {signal}
-// CHECK-NEXT:        function.def @compute(%[[VAL_5:[0-9a-zA-Z_\.]+]]: !array.type<@"n_Mul_2@443" x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@SubCmps4::@SubCmps4<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:        function.def @compute(%[[VAL_5:[0-9a-zA-Z_\.]+]]: !array.type<@"n_Mul_2@[[OFFSET0]]" x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@SubCmps4::@SubCmps4<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.new : <@SubCmps4::@SubCmps4<[@n]>>
 // CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = poly.read_const @n : index
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_7]] : index, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = poly.read_const @"n_Mul_2@443" : index
+// CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = poly.read_const @"n_Mul_2@[[OFFSET0]]" : index
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_9]] : index, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = pod.new : <[@inp: !array.type<@n x !felt.type<"bn128">>]>
@@ -87,7 +87,7 @@ component main = SubCmps4(3);
 // CHECK-NEXT:            %[[VAL_38:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_36]], %[[VAL_37]]) : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_39:[0-9a-zA-Z_\.]+]]:2 = scf.if %[[VAL_38]] -> (!pod.type<[@inp: !array.type<@n x !felt.type<"bn128">>]>, !pod.type<[@inp: !array.type<@n x !felt.type<"bn128">>]>) {
 // CHECK-NEXT:              %[[VAL_40:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_34]] : !felt.type<"bn128">
-// CHECK-NEXT:              %[[VAL_41:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_5]]{{\[}}%[[VAL_40]]] : <@"n_Mul_2@443" x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:              %[[VAL_41:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_5]]{{\[}}%[[VAL_40]]] : <@"n_Mul_2@[[OFFSET0]]" x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:              %[[VAL_42:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_32]][@inp] : <[@inp: !array.type<@n x !felt.type<"bn128">>]>, !array.type<@n x !felt.type<"bn128">>
 // CHECK-NEXT:              %[[VAL_43:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:              %[[VAL_44:[0-9a-zA-Z_\.]+]] = felt.uintdiv %[[VAL_34]], %[[VAL_43]] : !felt.type<"bn128">, !felt.type<"bn128">
@@ -109,7 +109,7 @@ component main = SubCmps4(3);
 // CHECK-NEXT:              scf.yield %[[VAL_32]], %[[VAL_33]] : !pod.type<[@inp: !array.type<@n x !felt.type<"bn128">>]>, !pod.type<[@inp: !array.type<@n x !felt.type<"bn128">>]>
 // CHECK-NEXT:            } else {
 // CHECK-NEXT:              %[[VAL_54:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_34]] : !felt.type<"bn128">
-// CHECK-NEXT:              %[[VAL_55:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_5]]{{\[}}%[[VAL_54]]] : <@"n_Mul_2@443" x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:              %[[VAL_55:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_5]]{{\[}}%[[VAL_54]]] : <@"n_Mul_2@[[OFFSET0]]" x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:              %[[VAL_56:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_33]][@inp] : <[@inp: !array.type<@n x !felt.type<"bn128">>]>, !array.type<@n x !felt.type<"bn128">>
 // CHECK-NEXT:              %[[VAL_57:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:              %[[VAL_58:[0-9a-zA-Z_\.]+]] = felt.uintdiv %[[VAL_34]], %[[VAL_57]] : !felt.type<"bn128">, !felt.type<"bn128">
@@ -153,10 +153,10 @@ component main = SubCmps4(3);
 // CHECK-NEXT:          struct.writem %[[VAL_6]][@outp] = %[[VAL_11]] : <@SubCmps4::@SubCmps4<[@n]>>, !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_6]] : !struct.type<@SubCmps4::@SubCmps4<[@n]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_80:[0-9a-zA-Z_\.]+]]: !struct.type<@SubCmps4::@SubCmps4<[@n]>>, %[[VAL_81:[0-9a-zA-Z_\.]+]]: !array.type<@"n_Mul_2@443" x !felt.type<"bn128">> {function.arg_name = "inp"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:        function.def @constrain(%[[VAL_80:[0-9a-zA-Z_\.]+]]: !struct.type<@SubCmps4::@SubCmps4<[@n]>>, %[[VAL_81:[0-9a-zA-Z_\.]+]]: !array.type<@"n_Mul_2@[[OFFSET0]]" x !felt.type<"bn128">> {function.arg_name = "inp"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_82:[0-9a-zA-Z_\.]+]] = poly.read_const @n : index
 // CHECK-NEXT:          %[[VAL_83:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_82]] : index, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_84:[0-9a-zA-Z_\.]+]] = poly.read_const @"n_Mul_2@443" : index
+// CHECK-NEXT:          %[[VAL_84:[0-9a-zA-Z_\.]+]] = poly.read_const @"n_Mul_2@[[OFFSET0]]" : index
 // CHECK-NEXT:          %[[VAL_85:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_84]] : index, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_86:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_80]][@outp] : <@SubCmps4::@SubCmps4<[@n]>>, !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_87:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_80]][@a] : <@SubCmps4::@SubCmps4<[@n]>>, !struct.type<@Sum::@Sum<[@n]>>
@@ -185,7 +185,7 @@ component main = SubCmps4(3);
 // CHECK-NEXT:            %[[VAL_109:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_107]], %[[VAL_108]]) : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            scf.if %[[VAL_109]] {
 // CHECK-NEXT:              %[[VAL_110:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_105]] : !felt.type<"bn128">
-// CHECK-NEXT:              %[[VAL_111:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_81]]{{\[}}%[[VAL_110]]] : <@"n_Mul_2@443" x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:              %[[VAL_111:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_81]]{{\[}}%[[VAL_110]]] : <@"n_Mul_2@[[OFFSET0]]" x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:              %[[VAL_112:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_88]][@inp] : <[@inp: !array.type<@n x !felt.type<"bn128">>]>, !array.type<@n x !felt.type<"bn128">>
 // CHECK-NEXT:              %[[VAL_113:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:              %[[VAL_114:[0-9a-zA-Z_\.]+]] = felt.uintdiv %[[VAL_105]], %[[VAL_113]] : !felt.type<"bn128">, !felt.type<"bn128">
@@ -194,7 +194,7 @@ component main = SubCmps4(3);
 // CHECK-NEXT:              constrain.eq %[[VAL_116]], %[[VAL_111]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            } else {
 // CHECK-NEXT:              %[[VAL_117:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_105]] : !felt.type<"bn128">
-// CHECK-NEXT:              %[[VAL_118:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_81]]{{\[}}%[[VAL_117]]] : <@"n_Mul_2@443" x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:              %[[VAL_118:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_81]]{{\[}}%[[VAL_117]]] : <@"n_Mul_2@[[OFFSET0]]" x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:              %[[VAL_119:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_90]][@inp] : <[@inp: !array.type<@n x !felt.type<"bn128">>]>, !array.type<@n x !felt.type<"bn128">>
 // CHECK-NEXT:              %[[VAL_120:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:              %[[VAL_121:[0-9a-zA-Z_\.]+]] = felt.uintdiv %[[VAL_105]], %[[VAL_120]] : !felt.type<"bn128">, !felt.type<"bn128">

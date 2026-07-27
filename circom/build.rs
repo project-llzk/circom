@@ -10,12 +10,18 @@ use glob::glob;
 /// Each test function is named based on the file path, with slashes replaced
 /// by underscores, and is set up to call `lit_test` with the file's contents.
 fn main() {
+    println!("cargo:rerun-if-changed=tests");
+
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("discovered_tests.in");
     let mut test_code = "".to_string();
 
     for entry in glob("tests/**/*.circom").expect("Failed to read glob pattern") {
         let path = entry.unwrap();
+        // Ignore Inputs/ directory like real lit does
+        if path.components().any(|component| component.as_os_str() == "Inputs") {
+            continue;
+        }
         create_dir_all(Path::new(&out_dir).join(path.parent().unwrap())).unwrap();
         copy(path.clone(), Path::new(&out_dir).join(path.clone())).unwrap();
         let test_name = path

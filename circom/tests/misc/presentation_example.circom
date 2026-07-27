@@ -1,5 +1,5 @@
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext --llzk_strip_debug_info -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
 
 pragma circom 2.0.3;
@@ -24,10 +24,10 @@ component main = ComputeValue();
 // CHECK-NEXT:    poly.template @ComputeValue {
 // CHECK-NEXT:      struct.def @ComputeValue {
 // CHECK-NEXT:        struct.member @ret : !array.type<2 x !felt.type<"bn128">> {llzk.pub, signal}
-// CHECK-NEXT:        struct.member @GetWeight_17_409 : !struct.type<@GetWeight::@GetWeight<[99]>>
-// CHECK-NEXT:        struct.member @GetWeight_17_409$inputs : !pod.type<[@inp: !felt.type<"bn128">]> {signal}
-// CHECK-NEXT:        struct.member @GetWeight_18_446 : !struct.type<@GetWeight::@GetWeight<[88]>>
-// CHECK-NEXT:        struct.member @GetWeight_18_446$inputs : !pod.type<[@inp: !felt.type<"bn128">]> {signal}
+// CHECK-NEXT:        struct.member @GetWeight_[[MEMBER0:[0-9]+_[0-9]+]] : !struct.type<@GetWeight::@GetWeight<[99]>>
+// CHECK-NEXT:        struct.member @GetWeight_[[MEMBER0]]$inputs : !pod.type<[@inp: !felt.type<"bn128">]> {signal}
+// CHECK-NEXT:        struct.member @GetWeight_[[MEMBER1:[0-9]+_[0-9]+]] : !struct.type<@GetWeight::@GetWeight<[88]>>
+// CHECK-NEXT:        struct.member @GetWeight_[[MEMBER1]]$inputs : !pod.type<[@inp: !felt.type<"bn128">]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@ComputeValue::@ComputeValue<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@ComputeValue::@ComputeValue<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type<"bn128">>
@@ -83,21 +83,21 @@ component main = ComputeValue();
 // CHECK-NEXT:          %[[VAL_41:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_42:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_41]] : !felt.type<"bn128">
 // CHECK-NEXT:          array.write %[[VAL_2]]{{\[}}%[[VAL_42]]] = %[[VAL_40]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:          struct.writem %[[VAL_1]][@GetWeight_17_409$inputs] = %[[VAL_3]] : <@ComputeValue::@ComputeValue<[]>>, !pod.type<[@inp: !felt.type<"bn128">]>
+// CHECK-NEXT:          struct.writem %[[VAL_1]][@GetWeight_[[MEMBER0]]$inputs] = %[[VAL_3]] : <@ComputeValue::@ComputeValue<[]>>, !pod.type<[@inp: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_43:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_8]][@comp] : <[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[99]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>, !struct.type<@GetWeight::@GetWeight<[99]>>
-// CHECK-NEXT:          struct.writem %[[VAL_1]][@GetWeight_17_409] = %[[VAL_43]] : <@ComputeValue::@ComputeValue<[]>>, !struct.type<@GetWeight::@GetWeight<[99]>>
-// CHECK-NEXT:          struct.writem %[[VAL_1]][@GetWeight_18_446$inputs] = %[[VAL_4]] : <@ComputeValue::@ComputeValue<[]>>, !pod.type<[@inp: !felt.type<"bn128">]>
+// CHECK-NEXT:          struct.writem %[[VAL_1]][@GetWeight_[[MEMBER0]]] = %[[VAL_43]] : <@ComputeValue::@ComputeValue<[]>>, !struct.type<@GetWeight::@GetWeight<[99]>>
+// CHECK-NEXT:          struct.writem %[[VAL_1]][@GetWeight_[[MEMBER1]]$inputs] = %[[VAL_4]] : <@ComputeValue::@ComputeValue<[]>>, !pod.type<[@inp: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_44:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_27]][@comp] : <[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[88]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>, !struct.type<@GetWeight::@GetWeight<[88]>>
-// CHECK-NEXT:          struct.writem %[[VAL_1]][@GetWeight_18_446] = %[[VAL_44]] : <@ComputeValue::@ComputeValue<[]>>, !struct.type<@GetWeight::@GetWeight<[88]>>
+// CHECK-NEXT:          struct.writem %[[VAL_1]][@GetWeight_[[MEMBER1]]] = %[[VAL_44]] : <@ComputeValue::@ComputeValue<[]>>, !struct.type<@GetWeight::@GetWeight<[88]>>
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@ret] = %[[VAL_2]] : <@ComputeValue::@ComputeValue<[]>>, !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@ComputeValue::@ComputeValue<[]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_45:[0-9a-zA-Z_\.]+]]: !struct.type<@ComputeValue::@ComputeValue<[]>>, %[[VAL_46:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_45]][@ret] : <@ComputeValue::@ComputeValue<[]>>, !array.type<2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_45]][@GetWeight_17_409] : <@ComputeValue::@ComputeValue<[]>>, !struct.type<@GetWeight::@GetWeight<[99]>>
-// CHECK-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_45]][@GetWeight_17_409$inputs] : <@ComputeValue::@ComputeValue<[]>>, !pod.type<[@inp: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_45]][@GetWeight_18_446] : <@ComputeValue::@ComputeValue<[]>>, !struct.type<@GetWeight::@GetWeight<[88]>>
-// CHECK-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_45]][@GetWeight_18_446$inputs] : <@ComputeValue::@ComputeValue<[]>>, !pod.type<[@inp: !felt.type<"bn128">]>
+// CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_45]][@GetWeight_[[MEMBER0]]] : <@ComputeValue::@ComputeValue<[]>>, !struct.type<@GetWeight::@GetWeight<[99]>>
+// CHECK-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_45]][@GetWeight_[[MEMBER0]]$inputs] : <@ComputeValue::@ComputeValue<[]>>, !pod.type<[@inp: !felt.type<"bn128">]>
+// CHECK-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_45]][@GetWeight_[[MEMBER1]]] : <@ComputeValue::@ComputeValue<[]>>, !struct.type<@GetWeight::@GetWeight<[88]>>
+// CHECK-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_45]][@GetWeight_[[MEMBER1]]$inputs] : <@ComputeValue::@ComputeValue<[]>>, !pod.type<[@inp: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = felt.const  99 : <"bn128">
 // CHECK-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = pod.new { @A = %[[VAL_52]] }  : <[@A: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[99]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>

@@ -130,6 +130,15 @@ pub fn generate_llzk(program: &impl ProgramLike, config: LlzkConfig) -> Result<(
         std::process::exit(70); // force exit to avoid hang if MLIR state is inconsistent
     })?;
 
+    codegen.strip_debug_info().map_err(|err| {
+        if codegen.config.verbose {
+            eprintln!("{} {err:?}", Color::Red.paint("Failed to strip debug information:"));
+        } else {
+            eprintln!("{} {err}", Color::Red.paint("Failed to strip debug information:"));
+        }
+        std::process::exit(80); // force exit to avoid hang if MLIR state is inconsistent
+    })?;
+
     // Write module to file
     let verbose = codegen.config.verbose;
     let write_result = if codegen.config.emit_plaintext {

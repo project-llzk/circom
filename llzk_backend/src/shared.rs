@@ -34,7 +34,7 @@ use llzk::{
     symbol_table,
     value_ext::{OwningValueRange, ValueRange},
 };
-use melior::utility;
+use melior::{ir::operation::OperationPrintingFlags, utility};
 use num_bigint_dig::{BigInt, BigUint, ModInverse, ToBigInt as _};
 use num_traits::{cast::ToPrimitive, One, Zero};
 use program_structure::{
@@ -209,6 +209,8 @@ pub struct LlzkConfig {
     pub stabilize: bool,
     /// Emit plaintext (assembly) instead of bytecode.
     pub emit_plaintext: bool,
+    /// Strip source location debug information from the output.
+    pub strip_debug_info: bool,
 }
 
 /// Stores necessary context for generating LLZK IR.
@@ -1132,6 +1134,22 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         manager.run(&mut self.module).map_err(Into::into)
     }
 
+    /// Strip locations from the generated module when requested.
+    pub fn strip_debug_info(&mut self) -> Result<()> {
+        if !self.config.strip_debug_info {
+            return Ok(());
+        }
+        let manager = PassManager::new(self.context);
+        manager.enable_verifier(true);
+        utility::register_all_passes();
+        utility::parse_pass_pipeline(
+            manager.as_operation_pass_manager(),
+            "builtin.module(strip-debuginfo)",
+        )
+        .map_err(anyhow::Error::from)?;
+        manager.run(&mut self.module).map_err(Into::into)
+    }
+
     /// Verify the generated `Module`.
     #[inline]
     pub fn verify(&self) -> Result<(), LlzkError> {
@@ -1152,7 +1170,9 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     pub fn write_assembly_to_file(self) -> Result<()> {
         let filename = self.config.filename.as_str();
         let mut file = Self::create_file(filename)?;
-        write!(file, "{}", self.module.as_operation())?;
+        let flags =
+            OperationPrintingFlags::new().enable_debug_info(!self.config.strip_debug_info, false);
+        write!(file, "{}", self.module.as_operation().to_string_with_flags(flags)?)?;
         println!("{} {}", Color::Green.paint("Written successfully:"), filename);
         Ok(())
     }
