@@ -1,5 +1,7 @@
 //! Extensions for the [`ProgramArchive`] and [`VCP`] types.
 
+use std::collections::HashMap;
+
 use anyhow::{anyhow, bail, Result};
 use compiler::compiler_interface::VCP;
 use program_structure::{
@@ -42,6 +44,15 @@ pub struct MainComponentInfo {
     pub params: Vec<Expression>,
 }
 
+/// Source location of a Circom definition.
+#[derive(Clone, Debug)]
+pub struct DefinitionLocation {
+    /// ID of the file containing the definition.
+    pub file_id: FileID,
+    /// Location of the definition within the file.
+    pub file_location: FileLocation,
+}
+
 /// A trait that allows common handling of the structs used to represent a circom
 /// program at different stages in the compilation process.
 pub trait ProgramLike: std::fmt::Debug {
@@ -51,6 +62,10 @@ pub trait ProgramLike: std::fmt::Debug {
     fn get_main_file_id(&self) -> &FileID;
     /// Get information specifying the main component.
     fn get_main_component_info(&self) -> MainComponentInfo;
+    /// Get the source location of a function definition.
+    fn get_function_location(&self, name: &str) -> Option<DefinitionLocation>;
+    /// Get the source location of a template definition.
+    fn get_template_location(&self, name: &str) -> Option<DefinitionLocation>;
     /// Get the names of public inputs of the main component.
     fn get_main_public_inputs(&self) -> &[String];
     /// Get an iterator over all functions in the program.
@@ -102,6 +117,18 @@ impl ProgramLike for ProgramArchive {
             _ => unreachable!("Main component expression must be `Call`"),
         }
     }
+    fn get_function_location(&self, name: &str) -> Option<DefinitionLocation> {
+        self.functions.get(name).map(|function| DefinitionLocation {
+            file_id: function.get_file_id(),
+            file_location: function.get_param_location(),
+        })
+    }
+    fn get_template_location(&self, name: &str) -> Option<DefinitionLocation> {
+        self.templates.get(name).map(|template| DefinitionLocation {
+            file_id: template.get_file_id(),
+            file_location: template.get_param_location(),
+        })
+    }
     fn get_main_public_inputs(&self) -> &[String] {
         self.get_public_inputs_main_component()
     }
@@ -146,6 +173,10 @@ pub struct CachedParseInfo {
     pub main_file_id: FileID,
     /// Location of the "main" component declaration expression.
     pub main_expr_location: FileLocation,
+    /// Source locations of function definitions, keyed by their source-level names.
+    pub function_locations: HashMap<String, DefinitionLocation>,
+    /// Source locations of template definitions, keyed by their source-level names.
+    pub template_locations: HashMap<String, DefinitionLocation>,
 }
 
 impl From<&ProgramArchive> for CachedParseInfo {
@@ -154,6 +185,32 @@ impl From<&ProgramArchive> for CachedParseInfo {
             public_inputs: program.get_public_inputs_main_component().clone(),
             main_file_id: *program.get_file_id_main(),
             main_expr_location: program.get_main_expression().get_meta().file_location(),
+            function_locations: program
+                .functions
+                .iter()
+                .map(|(name, function)| {
+                    (
+                        name.clone(),
+                        DefinitionLocation {
+                            file_id: function.get_file_id(),
+                            file_location: function.get_param_location(),
+                        },
+                    )
+                })
+                .collect(),
+            template_locations: program
+                .templates
+                .iter()
+                .map(|(name, template)| {
+                    (
+                        name.clone(),
+                        DefinitionLocation {
+                            file_id: template.get_file_id(),
+                            file_location: template.get_param_location(),
+                        },
+                    )
+                })
+                .collect(),
         }
     }
 }
@@ -180,6 +237,12 @@ impl ProgramLike for VCPPlus<'_> {
             name: self.vcp.templates[self.vcp.main_id].template_header.clone(),
             params: vec![],
         }
+    }
+    fn get_function_location(&self, name: &str) -> Option<DefinitionLocation> {
+        self.parse_info.function_locations.get(name).cloned()
+    }
+    fn get_template_location(&self, name: &str) -> Option<DefinitionLocation> {
+        self.parse_info.template_locations.get(name).cloned()
     }
     fn get_main_public_inputs(&self) -> &[String] {
         &self.parse_info.public_inputs

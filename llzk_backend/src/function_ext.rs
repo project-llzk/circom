@@ -106,7 +106,10 @@ impl FunctionLike for VCF {
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Location<'ctx> {
-        codegen.location_unknown()
+        codegen.program.get_function_location(&self.name).map_or_else(
+            || codegen.location_unknown(),
+            |location| codegen.location(location.file_id, location.file_location),
+        )
     }
 
     fn get_name(&self) -> &str {

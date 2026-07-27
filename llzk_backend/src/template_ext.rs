@@ -187,7 +187,10 @@ impl TemplateLike for TemplateInstance {
         &self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Location<'ctx> {
-        codegen.location_unknown()
+        codegen.program.get_template_location(&self.template_name).map_or_else(
+            || codegen.location_unknown(),
+            |location| codegen.location(location.file_id, location.file_location),
+        )
     }
 
     fn get_name(&self) -> &str {

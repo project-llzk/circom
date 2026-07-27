@@ -1,5 +1,5 @@
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext --llzk_strip_debug_info -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
 
 pragma circom 2.1.0;
@@ -44,8 +44,8 @@ component main = B(3);
 // CHECK-NEXT:    poly.template @B {
 // CHECK-NEXT:      poly.param @n : index
 // CHECK-NEXT:      struct.def @B {
-// CHECK-NEXT:        struct.member @A_15_375 : !struct.type<@A::@A<[@n]>>
-// CHECK-NEXT:        struct.member @A_15_375$inputs : !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">, @c: !felt.type<"bn128">]> {signal}
+// CHECK-NEXT:        struct.member @A_[[MEMBER0:[0-9]+_[0-9]+]] : !struct.type<@A::@A<[@n]>>
+// CHECK-NEXT:        struct.member @A_[[MEMBER0]]$inputs : !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">, @c: !felt.type<"bn128">]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@B::@B<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = struct.new : <@B::@B<[@n]>>
 // CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = poly.read_const @n : index
@@ -112,16 +112,16 @@ component main = B(3);
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_65:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_25]][@comp] : <[@count: index, @comp: !struct.type<@A::@A<[@n]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, !struct.type<@A::@A<[@n]>>
 // CHECK-NEXT:          %[[VAL_66:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_65]][@d] : <@A::@A<[@n]>>, !felt.type<"bn128">
-// CHECK-NEXT:          struct.writem %[[VAL_17]][@A_15_375$inputs] = %[[VAL_20]] : <@B::@B<[@n]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">, @c: !felt.type<"bn128">]>
+// CHECK-NEXT:          struct.writem %[[VAL_17]][@A_[[MEMBER0]]$inputs] = %[[VAL_20]] : <@B::@B<[@n]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">, @c: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_67:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_25]][@comp] : <[@count: index, @comp: !struct.type<@A::@A<[@n]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, !struct.type<@A::@A<[@n]>>
-// CHECK-NEXT:          struct.writem %[[VAL_17]][@A_15_375] = %[[VAL_67]] : <@B::@B<[@n]>>, !struct.type<@A::@A<[@n]>>
+// CHECK-NEXT:          struct.writem %[[VAL_17]][@A_[[MEMBER0]]] = %[[VAL_67]] : <@B::@B<[@n]>>, !struct.type<@A::@A<[@n]>>
 // CHECK-NEXT:          function.return %[[VAL_17]] : !struct.type<@B::@B<[@n]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_68:[0-9a-zA-Z_\.]+]]: !struct.type<@B::@B<[@n]>>, %[[VAL_69:[0-9a-zA-Z_\.]+]]: !array.type<@n x !felt.type<"bn128">> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_70:[0-9a-zA-Z_\.]+]] = poly.read_const @n : index
 // CHECK-NEXT:          %[[VAL_71:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_70]] : index, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_72:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_68]][@A_15_375] : <@B::@B<[@n]>>, !struct.type<@A::@A<[@n]>>
-// CHECK-NEXT:          %[[VAL_73:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_68]][@A_15_375$inputs] : <@B::@B<[@n]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">, @c: !felt.type<"bn128">]>
+// CHECK-NEXT:          %[[VAL_72:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_68]][@A_[[MEMBER0]]] : <@B::@B<[@n]>>, !struct.type<@A::@A<[@n]>>
+// CHECK-NEXT:          %[[VAL_73:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_68]][@A_[[MEMBER0]]$inputs] : <@B::@B<[@n]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">, @c: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_74:[0-9a-zA-Z_\.]+]] = poly.read_const @n : index
 // CHECK-NEXT:          %[[VAL_75:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_74]] : index, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_76:[0-9a-zA-Z_\.]+]] = pod.new { @n = %[[VAL_75]] }  : <[@n: !felt.type<"bn128">]>

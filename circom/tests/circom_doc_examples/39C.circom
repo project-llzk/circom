@@ -1,5 +1,5 @@
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext --llzk_strip_debug_info -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 // END.
 
 pragma circom 2.1.5;
@@ -29,8 +29,8 @@ component main = A(3);
 // CHECK-NEXT:      struct.def @A {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {signal}
 // CHECK-NEXT:        struct.member @aux : !felt.type<"bn128"> {signal}
-// CHECK-NEXT:        struct.member @B_18_478 : !struct.type<@B::@B<[]>>
-// CHECK-NEXT:        struct.member @B_18_478$inputs : !pod.type<[@in: !felt.type<"bn128">]> {signal}
+// CHECK-NEXT:        struct.member @B_[[MEMBER0:[0-9]+_[0-9]+]] : !struct.type<@B::@B<[]>>
+// CHECK-NEXT:        struct.member @B_[[MEMBER0]]$inputs : !pod.type<[@in: !felt.type<"bn128">]> {signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@A::@A<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@A::@A<[@n]>>
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
@@ -68,17 +68,17 @@ component main = A(3);
 // CHECK-NEXT:            struct.writem %[[VAL_0]][@out] = %[[VAL_23]] : <@A::@A<[@n]>>, !felt.type<"bn128">
 // CHECK-NEXT:            scf.yield %[[VAL_4]], %[[VAL_5]], %[[VAL_23]] : !pod.type<[@count: index, @comp: !struct.type<@B::@B<[]>>, @params: !pod.type<[]>]>, !pod.type<[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:          }
-// CHECK-NEXT:          struct.writem %[[VAL_0]][@B_18_478$inputs] = %[[VAL_8]]#1 : <@A::@A<[@n]>>, !pod.type<[@in: !felt.type<"bn128">]>
+// CHECK-NEXT:          struct.writem %[[VAL_0]][@B_[[MEMBER0]]$inputs] = %[[VAL_8]]#1 : <@A::@A<[@n]>>, !pod.type<[@in: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_8]]#0[@comp] : <[@count: index, @comp: !struct.type<@B::@B<[]>>, @params: !pod.type<[]>]>, !struct.type<@B::@B<[]>>
-// CHECK-NEXT:          struct.writem %[[VAL_0]][@B_18_478] = %[[VAL_24]] : <@A::@A<[@n]>>, !struct.type<@B::@B<[]>>
+// CHECK-NEXT:          struct.writem %[[VAL_0]][@B_[[MEMBER0]]] = %[[VAL_24]] : <@A::@A<[@n]>>, !struct.type<@B::@B<[]>>
 // CHECK-NEXT:          function.return %[[VAL_0]] : !struct.type<@A::@A<[@n]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_25:[0-9a-zA-Z_\.]+]]: !struct.type<@A::@A<[@n]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_25]][@out] : <@A::@A<[@n]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_25]][@aux] : <@A::@A<[@n]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_25]][@B_18_478] : <@A::@A<[@n]>>, !struct.type<@B::@B<[]>>
-// CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_25]][@B_18_478$inputs] : <@A::@A<[@n]>>, !pod.type<[@in: !felt.type<"bn128">]>
+// CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_25]][@B_[[MEMBER0]]] : <@A::@A<[@n]>>, !struct.type<@B::@B<[]>>
+// CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_25]][@B_[[MEMBER0]]$inputs] : <@A::@A<[@n]>>, !pod.type<[@in: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_26]], %[[VAL_31]]) : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          scf.if %[[VAL_32]] {
