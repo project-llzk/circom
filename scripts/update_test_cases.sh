@@ -46,13 +46,13 @@ if ! test -z "$(git status --porcelain)"; then
   exit 1
 fi
 
-# Build the frontend once 
+# Build the frontend once
 cargo build -p circom
 
 for f in $positional; do
   o=$(mktemp -d)
   name=$(basename "$f" .circom)
-  target/debug/circom --stabilize --llzk_plaintext --llzk "$llzk_type" -o $o "$f"
+  target/debug/circom --stabilize --llzk_plaintext --llzk_strip_debug_info --llzk "$llzk_type" -o $o "$f"
   sed '/\/\/ CHECK-*/d' "$f" > "$f".updated
   python3 $LLZKLIB_HOME/scripts/generate-test-checks.py "$o/${name}_llzk/$name.llzk" | grep '^// CHECK-' >> "$f".updated
   mv "$f".updated "$f"
