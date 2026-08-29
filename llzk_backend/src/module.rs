@@ -740,8 +740,11 @@ where
     let struct_fields = declarations.struct_fields;
     let template_builder =
         llzk::builder::OpBuilder::at_block_end(codegen.context, new_template.body());
-    let new_struct_ref =
-        r#struct::def(&template_builder, location, template_like.get_name(), |builder| {
+    let new_struct_ref = r#struct::def(
+        &template_builder,
+        location,
+        template_like.get_name(),
+        |builder| -> Result<()> {
             for field in struct_fields {
                 r#struct::member(
                     builder,
@@ -754,7 +757,8 @@ where
                 )?;
             }
             Ok(())
-        })?;
+        },
+    )?;
     let new_struct = StructDefOpRef::try_from(new_struct_ref)?;
 
     // Consume and separate 'declarations.inputs' (to avoid cloning 'attrs' and 'name').
