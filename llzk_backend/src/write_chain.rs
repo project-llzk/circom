@@ -581,16 +581,19 @@ impl<'ast> WriteChain<'ast> {
                             COMP,
                             subcmp_instance,
                         ))?;
-                        prev_for_compute.clone().write(
-                            subcmp_value,
-                            target,
-                            codegen,
-                            fc,
-                            location,
-                            signal_write_info,
-                            subcmp_info,
-                        )
+                        Ok(())
                     },
+                )?;
+                // Persist the decremented count regardless of whether this input completed
+                // the subcomponent. If it did, this also stores the computed instance.
+                prev_for_compute.clone().write(
+                    subcmp_value,
+                    target,
+                    codegen,
+                    fc,
+                    location,
+                    signal_write_info,
+                    subcmp_info,
                 )
             },
         )
