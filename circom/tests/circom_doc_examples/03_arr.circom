@@ -112,10 +112,10 @@ component main = B(1);
 // CHECK-NEXT:            %[[VAL_51:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_50]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_52:[0-9a-zA-Z_\.]+]] = function.call @A::@A::@compute(%[[VAL_49]]) {(%[[VAL_51]])} : (!felt.type<"bn128">) -> !struct.type<@A::@A<[#[[$ATTR_0]], 1]>>
 // CHECK-NEXT:            pod.write %[[VAL_39]][@comp] = %[[VAL_52]] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]], 1]>>, @params: !pod.type<[@N: !felt.type<"bn128">, @M: !felt.type<"bn128">]>]>, !struct.type<@A::@A<[#[[$ATTR_0]], 1]>>
-// CHECK-NEXT:            %[[VAL_53:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:            %[[VAL_54:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_53]] : !felt.type<"bn128">
-// CHECK-NEXT:            array.write %[[VAL_11]]{{\[}}%[[VAL_54]]] = %[[VAL_39]] : <1 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]], 1]>>, @params: !pod.type<[@N: !felt.type<"bn128">, @M: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]], 1]>>, @params: !pod.type<[@N: !felt.type<"bn128">, @M: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          }
+// CHECK-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_53]] : !felt.type<"bn128">
+// CHECK-NEXT:          array.write %[[VAL_11]]{{\[}}%[[VAL_54]]] = %[[VAL_39]] : <1 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]], 1]>>, @params: !pod.type<[@N: !felt.type<"bn128">, @M: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]], 1]>>, @params: !pod.type<[@N: !felt.type<"bn128">, @M: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_55:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_55]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_11]]{{\[}}%[[VAL_56]]] : <1 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]], 1]>>, @params: !pod.type<[@N: !felt.type<"bn128">, @M: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]], 1]>>, @params: !pod.type<[@N: !felt.type<"bn128">, @M: !felt.type<"bn128">]>]>
