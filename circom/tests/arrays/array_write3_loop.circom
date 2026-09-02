@@ -45,24 +45,24 @@ component main = Array1();
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = array.new  : <5 x !pod.type<[@a: !felt.type<"bn128">]>>
 // CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_13:[0-9a-zA-Z_\.]+]] = %[[VAL_10]], %[[VAL_14:[0-9a-zA-Z_\.]+]] = %[[VAL_11]]) : (!array.type<5 x !pod.type<[@a: !felt.type<"bn128">]>>, !felt.type<"bn128">) -> (!array.type<5 x !pod.type<[@a: !felt.type<"bn128">]>>, !felt.type<"bn128">) {
+// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]]:3 = scf.while (%[[VAL_2_IN:[0-9a-zA-Z_\.]+]] = %[[VAL_2]], %[[VAL_13:[0-9a-zA-Z_\.]+]] = %[[VAL_10]], %[[VAL_14:[0-9a-zA-Z_\.]+]] = %[[VAL_11]]) : (!array.type<5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">]>>, !felt.type<"bn128">) -> (!array.type<5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">]>>, !felt.type<"bn128">) {
 // CHECK-NEXT:            %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.const  5 : <"bn128">
 // CHECK-NEXT:            %[[VAL_16:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_14]], %[[VAL_15]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:            scf.condition(%[[VAL_16]]) %[[VAL_13]], %[[VAL_14]] : !array.type<5 x !pod.type<[@a: !felt.type<"bn128">]>>, !felt.type<"bn128">
+// CHECK-NEXT:            scf.condition(%[[VAL_16]]) %[[VAL_2_IN]], %[[VAL_13]], %[[VAL_14]] : !array.type<5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">]>>, !felt.type<"bn128">
 // CHECK-NEXT:          } do {
-// CHECK-NEXT:          ^bb0(%[[VAL_17:[0-9a-zA-Z_\.]+]]: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">]>>, %[[VAL_18:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
+// CHECK-NEXT:          ^bb0(%[[VAL_2_LCV:[0-9a-zA-Z_\.]+]]: !array.type<5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, %[[VAL_17:[0-9a-zA-Z_\.]+]]: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">]>>, %[[VAL_18:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
 // CHECK-NEXT:            %[[VAL_19:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:            %[[VAL_20:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:            %[[VAL_21:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_20]], @params = %[[VAL_19]] }  : <[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_22:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_18]] : !felt.type<"bn128">
-// CHECK-NEXT:            array.write %[[VAL_2]]{{\[}}%[[VAL_22]]] = %[[VAL_21]] : <5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:            array.write %[[VAL_2_LCV]]{{\[}}%[[VAL_22]]] = %[[VAL_21]] : <5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_23:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_18]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_24:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_17]]{{\[}}%[[VAL_23]]] : <5 x !pod.type<[@a: !felt.type<"bn128">]>>, !pod.type<[@a: !felt.type<"bn128">]>
 // CHECK-NEXT:            pod.write %[[VAL_24]][@a] = %[[VAL_18]] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_25:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_18]] : !felt.type<"bn128">
 // CHECK-NEXT:            array.write %[[VAL_17]]{{\[}}%[[VAL_25]]] = %[[VAL_24]] : <5 x !pod.type<[@a: !felt.type<"bn128">]>>, !pod.type<[@a: !felt.type<"bn128">]>
 // CHECK-NEXT:            %[[VAL_26:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_18]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_27:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_2]]{{\[}}%[[VAL_26]]] : <5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:            %[[VAL_27:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_2_LCV]]{{\[}}%[[VAL_26]]] : <5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_28:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_18]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_29:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_17]]{{\[}}%[[VAL_28]]] : <5 x !pod.type<[@a: !felt.type<"bn128">]>>, !pod.type<[@a: !felt.type<"bn128">]>
 // CHECK-NEXT:            %[[VAL_30:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_27]][@count] : <[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>, index
@@ -76,26 +76,26 @@ component main = Array1();
 // CHECK-NEXT:              %[[VAL_36:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_29]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:              %[[VAL_37:[0-9a-zA-Z_\.]+]] = function.call @Foo::@Foo::@compute(%[[VAL_36]]) : (!felt.type<"bn128">) -> !struct.type<@Foo::@Foo<[]>>
 // CHECK-NEXT:              pod.write %[[VAL_27]][@comp] = %[[VAL_37]] : <[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>, !struct.type<@Foo::@Foo<[]>>
-// CHECK-NEXT:              %[[VAL_38:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_18]] : !felt.type<"bn128">
-// CHECK-NEXT:              array.write %[[VAL_2]]{{\[}}%[[VAL_38]]] = %[[VAL_27]] : <5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            }
+// CHECK-NEXT:            %[[VAL_38:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_18]] : !felt.type<"bn128">
+// CHECK-NEXT:            array.write %[[VAL_2_LCV]]{{\[}}%[[VAL_38]]] = %[[VAL_27]] : <5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_39:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_18]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_40:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_2]]{{\[}}%[[VAL_39]]] : <5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:            %[[VAL_40:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_2_LCV]]{{\[}}%[[VAL_39]]] : <5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_41:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_40]][@comp] : <[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>, !struct.type<@Foo::@Foo<[]>>
 // CHECK-NEXT:            %[[VAL_42:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_41]][@b] : <@Foo::@Foo<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_43:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_18]] : !felt.type<"bn128">
 // CHECK-NEXT:            array.write %[[VAL_1]]{{\[}}%[[VAL_43]]] = %[[VAL_42]] : <5 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_44:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_45:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_18]], %[[VAL_44]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:            scf.yield %[[VAL_17]], %[[VAL_45]] : !array.type<5 x !pod.type<[@a: !felt.type<"bn128">]>>, !felt.type<"bn128">
+// CHECK-NEXT:            scf.yield %[[VAL_2_LCV]], %[[VAL_17]], %[[VAL_45]] : !array.type<5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">]>>, !felt.type<"bn128">
 // CHECK-NEXT:          }
-// CHECK-NEXT:          struct.writem %[[VAL_0]][@foo$inputs] = %[[VAL_12]]#0 : <@Array1::@Array1<[]>>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">]>>
+// CHECK-NEXT:          struct.writem %[[VAL_0]][@foo$inputs] = %[[VAL_12]]#1 : <@Array1::@Array1<[]>>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">]>>
 // CHECK-NEXT:          %[[VAL_46:[0-9a-zA-Z_\.]+]] = array.new  : <5 x !struct.type<@Foo::@Foo<[]>>>
 // CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = arith.constant 5 : index
 // CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:          scf.for %[[VAL_50:[0-9a-zA-Z_\.]+]] = %[[VAL_48]] to %[[VAL_47]] step %[[VAL_49]] {
-// CHECK-NEXT:            %[[VAL_51:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_2]]{{\[}}%[[VAL_50]]] : <5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:            %[[VAL_51:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_12]]#0{{\[}}%[[VAL_50]]] : <5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_52:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_51]][@comp] : <[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>, !struct.type<@Foo::@Foo<[]>>
 // CHECK-NEXT:            array.write %[[VAL_46]]{{\[}}%[[VAL_50]]] = %[[VAL_52]] : <5 x !struct.type<@Foo::@Foo<[]>>>, !struct.type<@Foo::@Foo<[]>>
 // CHECK-NEXT:          }

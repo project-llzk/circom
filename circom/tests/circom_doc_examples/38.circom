@@ -147,10 +147,10 @@ component main {public [in]} = MultiplierN(3);
 // CHECK-NEXT:            %[[VAL_63:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_55]][@in2] : <[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_64:[0-9a-zA-Z_\.]+]] = function.call @Multiplier2::@Multiplier2::@compute(%[[VAL_62]], %[[VAL_63]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> !struct.type<@Multiplier2::@Multiplier2<[]>>
 // CHECK-NEXT:            pod.write %[[VAL_52]][@comp] = %[[VAL_64]] : <[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>, !struct.type<@Multiplier2::@Multiplier2<[]>>
-// CHECK-NEXT:            %[[VAL_65:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:            %[[VAL_66:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_65]] : !felt.type<"bn128">
-// CHECK-NEXT:            array.write %[[VAL_20]]{{\[}}%[[VAL_66]]] = %[[VAL_52]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          }
+// CHECK-NEXT:          %[[VAL_65:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_66:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_65]] : !felt.type<"bn128">
+// CHECK-NEXT:          array.write %[[VAL_20]]{{\[}}%[[VAL_66]]] = %[[VAL_52]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_67:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_68:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_67]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_69:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_14]]{{\[}}%[[VAL_68]]] : <@N x !felt.type<"bn128">>, !felt.type<"bn128">
@@ -179,20 +179,20 @@ component main {public [in]} = MultiplierN(3);
 // CHECK-NEXT:            %[[VAL_88:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_80]][@in2] : <[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_89:[0-9a-zA-Z_\.]+]] = function.call @Multiplier2::@Multiplier2::@compute(%[[VAL_87]], %[[VAL_88]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> !struct.type<@Multiplier2::@Multiplier2<[]>>
 // CHECK-NEXT:            pod.write %[[VAL_77]][@comp] = %[[VAL_89]] : <[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>, !struct.type<@Multiplier2::@Multiplier2<[]>>
-// CHECK-NEXT:            %[[VAL_90:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:            %[[VAL_91:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_90]] : !felt.type<"bn128">
-// CHECK-NEXT:            array.write %[[VAL_20]]{{\[}}%[[VAL_91]]] = %[[VAL_77]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          }
+// CHECK-NEXT:          %[[VAL_90:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_91:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_90]] : !felt.type<"bn128">
+// CHECK-NEXT:          array.write %[[VAL_20]]{{\[}}%[[VAL_91]]] = %[[VAL_77]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_92:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_93:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_94:[0-9a-zA-Z_\.]+]] = %[[VAL_28]], %[[VAL_95:[0-9a-zA-Z_\.]+]] = %[[VAL_92]]) : (!array.type<@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>>, !felt.type<"bn128">) -> (!array.type<@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>>, !felt.type<"bn128">) {
+// CHECK-NEXT:          %[[VAL_93:[0-9a-zA-Z_\.]+]]:3 = scf.while (%[[VAL_20_IN:[0-9a-zA-Z_\.]+]] = %[[VAL_20]], %[[VAL_94:[0-9a-zA-Z_\.]+]] = %[[VAL_28]], %[[VAL_95:[0-9a-zA-Z_\.]+]] = %[[VAL_92]]) : (!array.type<@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !array.type<@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>>, !felt.type<"bn128">) -> (!array.type<@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !array.type<@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>>, !felt.type<"bn128">) {
 // CHECK-NEXT:            %[[VAL_96:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:            %[[VAL_97:[0-9a-zA-Z_\.]+]] = felt.sub %[[VAL_17]], %[[VAL_96]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_98:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_95]], %[[VAL_97]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:            scf.condition(%[[VAL_98]]) %[[VAL_94]], %[[VAL_95]] : !array.type<@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>>, !felt.type<"bn128">
+// CHECK-NEXT:            scf.condition(%[[VAL_98]]) %[[VAL_20_IN]], %[[VAL_94]], %[[VAL_95]] : !array.type<@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !array.type<@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>>, !felt.type<"bn128">
 // CHECK-NEXT:          } do {
-// CHECK-NEXT:          ^bb0(%[[VAL_99:[0-9a-zA-Z_\.]+]]: !array.type<@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>>, %[[VAL_100:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
+// CHECK-NEXT:          ^bb0(%[[VAL_20_LCV:[0-9a-zA-Z_\.]+]]: !array.type<@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, %[[VAL_99:[0-9a-zA-Z_\.]+]]: !array.type<@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>>, %[[VAL_100:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
 // CHECK-NEXT:            %[[VAL_101:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_100]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_102:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_20]]{{\[}}%[[VAL_101]]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:            %[[VAL_102:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_20_LCV]]{{\[}}%[[VAL_101]]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_103:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_102]][@comp] : <[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>, !struct.type<@Multiplier2::@Multiplier2<[]>>
 // CHECK-NEXT:            %[[VAL_104:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_103]][@out] : <@Multiplier2::@Multiplier2<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_105:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
@@ -207,7 +207,7 @@ component main {public [in]} = MultiplierN(3);
 // CHECK-NEXT:            %[[VAL_112:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_113:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_100]], %[[VAL_112]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_114:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_113]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_115:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_20]]{{\[}}%[[VAL_114]]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:            %[[VAL_115:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_20_LCV]]{{\[}}%[[VAL_114]]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_116:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_117:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_100]], %[[VAL_116]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_118:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_117]] : !felt.type<"bn128">
@@ -224,11 +224,11 @@ component main {public [in]} = MultiplierN(3);
 // CHECK-NEXT:              %[[VAL_127:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_119]][@in2] : <[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:              %[[VAL_128:[0-9a-zA-Z_\.]+]] = function.call @Multiplier2::@Multiplier2::@compute(%[[VAL_126]], %[[VAL_127]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> !struct.type<@Multiplier2::@Multiplier2<[]>>
 // CHECK-NEXT:              pod.write %[[VAL_115]][@comp] = %[[VAL_128]] : <[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>, !struct.type<@Multiplier2::@Multiplier2<[]>>
-// CHECK-NEXT:              %[[VAL_129:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:              %[[VAL_130:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_100]], %[[VAL_129]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:              %[[VAL_131:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_130]] : !felt.type<"bn128">
-// CHECK-NEXT:              array.write %[[VAL_20]]{{\[}}%[[VAL_131]]] = %[[VAL_115]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            }
+// CHECK-NEXT:            %[[VAL_129:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:            %[[VAL_130:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_100]], %[[VAL_129]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_131:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_130]] : !felt.type<"bn128">
+// CHECK-NEXT:            array.write %[[VAL_20_LCV]]{{\[}}%[[VAL_131]]] = %[[VAL_115]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_132:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:            %[[VAL_133:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_100]], %[[VAL_132]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_134:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_133]] : !felt.type<"bn128">
@@ -245,7 +245,7 @@ component main {public [in]} = MultiplierN(3);
 // CHECK-NEXT:            %[[VAL_143:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_144:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_100]], %[[VAL_143]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_145:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_144]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_146:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_20]]{{\[}}%[[VAL_145]]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:            %[[VAL_146:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_20_LCV]]{{\[}}%[[VAL_145]]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_147:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_148:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_100]], %[[VAL_147]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_149:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_148]] : !felt.type<"bn128">
@@ -262,29 +262,29 @@ component main {public [in]} = MultiplierN(3);
 // CHECK-NEXT:              %[[VAL_158:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_150]][@in2] : <[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:              %[[VAL_159:[0-9a-zA-Z_\.]+]] = function.call @Multiplier2::@Multiplier2::@compute(%[[VAL_157]], %[[VAL_158]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> !struct.type<@Multiplier2::@Multiplier2<[]>>
 // CHECK-NEXT:              pod.write %[[VAL_146]][@comp] = %[[VAL_159]] : <[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>, !struct.type<@Multiplier2::@Multiplier2<[]>>
-// CHECK-NEXT:              %[[VAL_160:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:              %[[VAL_161:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_100]], %[[VAL_160]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:              %[[VAL_162:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_161]] : !felt.type<"bn128">
-// CHECK-NEXT:              array.write %[[VAL_20]]{{\[}}%[[VAL_162]]] = %[[VAL_146]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            }
+// CHECK-NEXT:            %[[VAL_160:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:            %[[VAL_161:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_100]], %[[VAL_160]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_162:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_161]] : !felt.type<"bn128">
+// CHECK-NEXT:            array.write %[[VAL_20_LCV]]{{\[}}%[[VAL_162]]] = %[[VAL_146]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_163:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_164:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_100]], %[[VAL_163]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:            scf.yield %[[VAL_99]], %[[VAL_164]] : !array.type<@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>>, !felt.type<"bn128">
+// CHECK-NEXT:            scf.yield %[[VAL_20_LCV]], %[[VAL_99]], %[[VAL_164]] : !array.type<@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !array.type<@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>>, !felt.type<"bn128">
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_165:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          %[[VAL_166:[0-9a-zA-Z_\.]+]] = felt.sub %[[VAL_17]], %[[VAL_165]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_167:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_166]] : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_168:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_20]]{{\[}}%[[VAL_167]]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:          %[[VAL_168:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_93]]#0{{\[}}%[[VAL_167]]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_169:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_168]][@comp] : <[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>, !struct.type<@Multiplier2::@Multiplier2<[]>>
 // CHECK-NEXT:          %[[VAL_170:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_169]][@out] : <@Multiplier2::@Multiplier2<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          struct.writem %[[VAL_15]][@out] = %[[VAL_170]] : <@MultiplierN::@MultiplierN<[@N]>>, !felt.type<"bn128">
-// CHECK-NEXT:          struct.writem %[[VAL_15]][@comp$inputs] = %[[VAL_93]]#0 : <@MultiplierN::@MultiplierN<[@N]>>, !array.type<@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>>
+// CHECK-NEXT:          struct.writem %[[VAL_15]][@comp$inputs] = %[[VAL_93]]#1 : <@MultiplierN::@MultiplierN<[@N]>>, !array.type<@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@in1: !felt.type<"bn128">, @in2: !felt.type<"bn128">]>>
 // CHECK-NEXT:          %[[VAL_171:[0-9a-zA-Z_\.]+]] = array.new  : <@"N_Sub_1@[[OFFSET0]]" x !struct.type<@Multiplier2::@Multiplier2<[]>>>
 // CHECK-NEXT:          %[[VAL_172:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Sub_1@[[OFFSET0]]" : index
 // CHECK-NEXT:          %[[VAL_173:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:          %[[VAL_174:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:          scf.for %[[VAL_175:[0-9a-zA-Z_\.]+]] = %[[VAL_173]] to %[[VAL_172]] step %[[VAL_174]] {
-// CHECK-NEXT:            %[[VAL_176:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_20]]{{\[}}%[[VAL_175]]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
+// CHECK-NEXT:            %[[VAL_176:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_93]]#0{{\[}}%[[VAL_175]]] : <@"N_Sub_1@[[OFFSET0]]" x !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_177:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_176]][@comp] : <[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>, !struct.type<@Multiplier2::@Multiplier2<[]>>
 // CHECK-NEXT:            array.write %[[VAL_171]]{{\[}}%[[VAL_175]]] = %[[VAL_177]] : <@"N_Sub_1@[[OFFSET0]]" x !struct.type<@Multiplier2::@Multiplier2<[]>>>, !struct.type<@Multiplier2::@Multiplier2<[]>>
 // CHECK-NEXT:          }

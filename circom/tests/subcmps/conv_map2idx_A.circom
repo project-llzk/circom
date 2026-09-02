@@ -65,10 +65,10 @@ component main = ComputeValue();
 // CHECK-NEXT:            %[[VAL_30:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_29]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_31:[0-9a-zA-Z_\.]+]] = function.call @GetWeight::@GetWeight::@compute(%[[VAL_28]]) {(%[[VAL_30]])} : (!felt.type<"bn128">) -> !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>
 // CHECK-NEXT:            pod.write %[[VAL_18]][@comp] = %[[VAL_31]] : <[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>, !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>
-// CHECK-NEXT:            %[[VAL_32:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:            %[[VAL_33:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_32]] : !felt.type<"bn128">
-// CHECK-NEXT:            array.write %[[VAL_1]]{{\[}}%[[VAL_33]]] = %[[VAL_18]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          }
+// CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_32]] : !felt.type<"bn128">
+// CHECK-NEXT:          array.write %[[VAL_1]]{{\[}}%[[VAL_33]]] = %[[VAL_18]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_35:[0-9a-zA-Z_\.]+]] = pod.new { @A = %[[VAL_34]] }  : <[@A: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -104,10 +104,10 @@ component main = ComputeValue();
 // CHECK-NEXT:            %[[VAL_61:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_60]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_62:[0-9a-zA-Z_\.]+]] = function.call @GetWeight::@GetWeight::@compute(%[[VAL_59]]) {(%[[VAL_61]])} : (!felt.type<"bn128">) -> !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>
 // CHECK-NEXT:            pod.write %[[VAL_49]][@comp] = %[[VAL_62]] : <[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>, !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>
-// CHECK-NEXT:            %[[VAL_63:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:            %[[VAL_64:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_63]] : !felt.type<"bn128">
-// CHECK-NEXT:            array.write %[[VAL_1]]{{\[}}%[[VAL_64]]] = %[[VAL_49]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          }
+// CHECK-NEXT:          %[[VAL_63:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:          %[[VAL_64:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_63]] : !felt.type<"bn128">
+// CHECK-NEXT:          array.write %[[VAL_1]]{{\[}}%[[VAL_64]]] = %[[VAL_49]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          struct.writem %[[VAL_0]][@getWeights$inputs] = %[[VAL_2]] : <@ComputeValue::@ComputeValue<[]>>, !array.type<2 x !pod.type<[@inp: !felt.type<"bn128">]>>
 // CHECK-NEXT:          %[[VAL_65:[0-9a-zA-Z_\.]+]] = array.new  : <2 x !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>>
 // CHECK-NEXT:          %[[VAL_66:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index

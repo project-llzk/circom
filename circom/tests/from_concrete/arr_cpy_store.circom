@@ -33,30 +33,30 @@ component main = Foo(2);
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = pod.new : <[@inp: !array.type<2 x !felt.type<"bn128">>]>
 // CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_10:[0-9a-zA-Z_\.]+]] = %[[VAL_6]], %[[VAL_11:[0-9a-zA-Z_\.]+]] = %[[VAL_8]]) : (!pod.type<[@inp: !array.type<2 x !felt.type<"bn128">>]>, !felt.type<"bn128">) -> (!pod.type<[@inp: !array.type<2 x !felt.type<"bn128">>]>, !felt.type<"bn128">) {
+// CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]]:3 = scf.while (%[[VAL_5_IN:[0-9a-zA-Z_\.]+]] = %[[VAL_5]], %[[VAL_10:[0-9a-zA-Z_\.]+]] = %[[VAL_6]], %[[VAL_11:[0-9a-zA-Z_\.]+]] = %[[VAL_8]]) : (!pod.type<[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>, !pod.type<[@inp: !array.type<2 x !felt.type<"bn128">>]>, !felt.type<"bn128">) -> (!pod.type<[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>, !pod.type<[@inp: !array.type<2 x !felt.type<"bn128">>]>, !felt.type<"bn128">) {
 // CHECK-NEXT:            %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:            %[[VAL_13:[0-9a-zA-Z_\.]+]] = bool.cmp le(%[[VAL_11]], %[[VAL_12]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:            scf.condition(%[[VAL_13]]) %[[VAL_10]], %[[VAL_11]] : !pod.type<[@inp: !array.type<2 x !felt.type<"bn128">>]>, !felt.type<"bn128">
+// CHECK-NEXT:            scf.condition(%[[VAL_13]]) %[[VAL_5_IN]], %[[VAL_10]], %[[VAL_11]] : !pod.type<[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>, !pod.type<[@inp: !array.type<2 x !felt.type<"bn128">>]>, !felt.type<"bn128">
 // CHECK-NEXT:          } do {
-// CHECK-NEXT:          ^bb0(%[[VAL_14:[0-9a-zA-Z_\.]+]]: !pod.type<[@inp: !array.type<2 x !felt.type<"bn128">>]>, %[[VAL_15:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
+// CHECK-NEXT:          ^bb0(%[[VAL_5_LCV:[0-9a-zA-Z_\.]+]]: !pod.type<[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>, %[[VAL_14:[0-9a-zA-Z_\.]+]]: !pod.type<[@inp: !array.type<2 x !felt.type<"bn128">>]>, %[[VAL_15:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
 // CHECK-NEXT:            pod.write %[[VAL_14]][@inp] = %[[VAL_0]] : <[@inp: !array.type<2 x !felt.type<"bn128">>]>, !array.type<2 x !felt.type<"bn128">>
-// CHECK-NEXT:            %[[VAL_16:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_5]][@count] : <[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>, index
+// CHECK-NEXT:            %[[VAL_16:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_5_LCV]][@count] : <[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>, index
 // CHECK-NEXT:            %[[VAL_17:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:            %[[VAL_18:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_16]], %[[VAL_17]] : index
-// CHECK-NEXT:            pod.write %[[VAL_5]][@count] = %[[VAL_18]] : <[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>, index
+// CHECK-NEXT:            pod.write %[[VAL_5_LCV]][@count] = %[[VAL_18]] : <[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>, index
 // CHECK-NEXT:            %[[VAL_19:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:            %[[VAL_20:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_18]], %[[VAL_19]] : index
 // CHECK-NEXT:            scf.if %[[VAL_20]] {
-// CHECK-NEXT:              %[[VAL_21:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_5]][@params] : <[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>, !pod.type<[]>
+// CHECK-NEXT:              %[[VAL_21:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_5_LCV]][@params] : <[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>, !pod.type<[]>
 // CHECK-NEXT:              %[[VAL_22:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_14]][@inp] : <[@inp: !array.type<2 x !felt.type<"bn128">>]>, !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:              %[[VAL_23:[0-9a-zA-Z_\.]+]] = function.call @Sum_0::@Sum_0::@compute(%[[VAL_22]]) : (!array.type<2 x !felt.type<"bn128">>) -> !struct.type<@Sum_0::@Sum_0<[]>>
-// CHECK-NEXT:              pod.write %[[VAL_5]][@comp] = %[[VAL_23]] : <[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@Sum_0::@Sum_0<[]>>
+// CHECK-NEXT:              pod.write %[[VAL_5_LCV]][@comp] = %[[VAL_23]] : <[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@Sum_0::@Sum_0<[]>>
 // CHECK-NEXT:            }
 // CHECK-NEXT:            %[[VAL_24:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
-// CHECK-NEXT:            scf.yield %[[VAL_14]], %[[VAL_24]] : !pod.type<[@inp: !array.type<2 x !felt.type<"bn128">>]>, !felt.type<"bn128">
+// CHECK-NEXT:            scf.yield %[[VAL_5_LCV]], %[[VAL_14]], %[[VAL_24]] : !pod.type<[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>, !pod.type<[@inp: !array.type<2 x !felt.type<"bn128">>]>, !felt.type<"bn128">
 // CHECK-NEXT:          }
-// CHECK-NEXT:          struct.writem %[[VAL_2]][@c$inputs] = %[[VAL_9]]#0 : <@Foo_1::@Foo_1<[]>>, !pod.type<[@inp: !array.type<2 x !felt.type<"bn128">>]>
-// CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_5]][@comp] : <[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@Sum_0::@Sum_0<[]>>
+// CHECK-NEXT:          struct.writem %[[VAL_2]][@c$inputs] = %[[VAL_9]]#1 : <@Foo_1::@Foo_1<[]>>, !pod.type<[@inp: !array.type<2 x !felt.type<"bn128">>]>
+// CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_9]]#0[@comp] : <[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@Sum_0::@Sum_0<[]>>
 // CHECK-NEXT:          struct.writem %[[VAL_2]][@c] = %[[VAL_25]] : <@Foo_1::@Foo_1<[]>>, !struct.type<@Sum_0::@Sum_0<[]>>
 // CHECK-NEXT:          function.return %[[VAL_2]] : !struct.type<@Foo_1::@Foo_1<[]>>
 // CHECK-NEXT:        }
