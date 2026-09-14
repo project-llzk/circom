@@ -753,8 +753,8 @@ component main = BabyPbk();
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:    global.def const @vcp_array_const_0 : !array.type<2 x !felt.type<"bn128">> = [
-// CHECK-SAME:      #felt<const 5299619240641551281634865583518297030282874472190772894086521144482721001553 : <"bn128">> : !felt.type<"bn128">,
-// CHECK-SAME:      #felt<const 16950150798460657717958625567821834550301663161624707787222815936182638968203 : <"bn128">> : !felt.type<"bn128">]
+// CHECK-SAME:      5299619240641551281634865583518297030282874472190772894086521144482721001553 : <"bn128">,
+// CHECK-SAME:      16950150798460657717958625567821834550301663161624707787222815936182638968203 : <"bn128">]
 // CHECK-NEXT:    poly.template @Montgomery2Edwards_2 {
 // CHECK-NEXT:      struct.def @Montgomery2Edwards_2 {
 // CHECK-NEXT:        struct.member @out : !array.type<2 x !felt.type<"bn128">> {llzk.pub, signal}

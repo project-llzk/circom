@@ -123,12 +123,6 @@ component main = Template([[0, 1], [2, 3]], [1, 0], 2);
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-NEXT:    global.def const @vcp_array_const_0 : !array.type<2,2 x !felt.type<"bn128">> = [
-// CHECK-SAME:      #felt<const 0 : <"bn128">> : !felt.type<"bn128">,
-// CHECK-SAME:      #felt<const 1 : <"bn128">> : !felt.type<"bn128">,
-// CHECK-SAME:      #felt<const 2 : <"bn128">> : !felt.type<"bn128">,
-// CHECK-SAME:      #felt<const 3 : <"bn128">> : !felt.type<"bn128">]
-// CHECK-NEXT:    global.def const @vcp_array_const_1 : !array.type<2 x !felt.type<"bn128">> = [
-// CHECK-SAME:      #felt<const 1 : <"bn128">> : !felt.type<"bn128">,
-// CHECK-SAME:      #felt<const 0 : <"bn128">> : !felt.type<"bn128">]
+// CHECK-NEXT:    global.def const @vcp_array_const_0 : !array.type<2,2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  1 : <"bn128">,  2 : <"bn128">,  3 : <"bn128">]
+// CHECK-NEXT:    global.def const @vcp_array_const_1 : !array.type<2 x !felt.type<"bn128">> = [ 1 : <"bn128">,  0 : <"bn128">]
 // CHECK-NEXT:  }
