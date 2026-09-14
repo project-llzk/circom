@@ -13,7 +13,7 @@ use llzk::{
     attributes::array::AffineMapAttribute,
     builder::{EntryPoint, OpBuilder},
     dialect::{
-        array, array::ArrayCtor, bool, cast, constrain, felt, function, pod, poly, r#struct,
+        array, array::ArrayCtor, bool, cast, constrain, felt, function, global, pod, poly, r#struct,
     },
     map_operands::MapOperandsBuilder,
     operation::build_owned_operation,
@@ -23,10 +23,10 @@ use llzk::{
         replace_uses_of_with, ArrayType, Attribute, BlockLike as _, BlockRef,
         FlatSymbolRefAttribute, FuncDefOp, IntegerAttribute, LlzkContext, Location,
         LoopBoundsAttribute, Operation, OperationLike, OperationMutLike as _, OperationRef,
-        PodType, Region, RegionLike as _, StringAttribute, StringRef, StructType, TVarType,
-        TemplateParamOp, TemplateParamOpLike as _, TemplateSymbolBindingOp,
-        TemplateSymbolBindingOpLike as _, TemplateSymbolBindingOpRef, Type, Value, ValueLike as _,
-        FUNC_NAME_COMPUTE, FUNC_NAME_CONSTRAIN,
+        PodType, Region, RegionLike as _, StringAttribute, StringRef, StructType,
+        SymbolRefAttribute, TVarType, TemplateParamOp, TemplateParamOpLike as _,
+        TemplateSymbolBindingOp, TemplateSymbolBindingOpLike as _, TemplateSymbolBindingOpRef,
+        Type, Value, ValueLike as _, FUNC_NAME_COMPUTE, FUNC_NAME_CONSTRAIN,
     },
     typing::types_unify,
     utils::{print_region, IsA as _},
@@ -67,6 +67,32 @@ pub(crate) const CIRCOM_RETURN_MARKER_ATTR: &str = "from_circom_return";
 /// LLZK attribute used to attach comma-separated list of variable names for the operands
 /// of an `scf.yield` op.
 pub(crate) const OPERAND_VAL_NAMES: &str = "operand_val_names";
+
+/// Returns the shape and row-major elements of a rectangular array literal of felt constants.
+///
+/// The result can directly initialize an LLZK `global.def const`; non-literal and ragged arrays
+/// return `None` and retain their normal runtime lowering.
+fn literal_array_dimensions_and_values(expr: &Expression) -> Option<(Vec<usize>, Vec<BigInt>)> {
+    match expr {
+        Expression::Number(_, value) => Some((vec![], vec![value.clone()])),
+        Expression::ArrayInLine { values, .. } if !values.is_empty() => {
+            let (element_dimensions, mut flattened) =
+                literal_array_dimensions_and_values(&values[0])?;
+            for value in &values[1..] {
+                let (dimensions, elements) = literal_array_dimensions_and_values(value)?;
+                if dimensions != element_dimensions {
+                    return None;
+                }
+                flattened.extend(elements);
+            }
+            let mut dimensions = Vec::with_capacity(element_dimensions.len() + 1);
+            dimensions.push(values.len());
+            dimensions.extend(element_dimensions);
+            Some((dimensions, flattened))
+        }
+        _ => None,
+    }
+}
 
 /// Trait for types that can be yielded from an `scf.if` arm via `scf::yield`.
 ///
@@ -2786,6 +2812,25 @@ where
             }
             Expression::ArrayInLine { meta, values } => {
                 let location = codegen.location_from_meta(meta);
+                if let Some((dimensions, flattened)) = literal_array_dimensions_and_values(self) {
+                    // This read may be generated in a `poly.expr` initializer. LLZK must permit
+                    // such reads when they target an immutable `global.def const`; the helper
+                    // below always creates that form of global.
+                    let (global_name, array_type) = codegen
+                        .get_or_create_array_literal_const_global(
+                            location,
+                            &dimensions,
+                            &flattened,
+                        )?;
+                    let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                    return block_gen.append_op_ref_unnamed_result(global::read(
+                        &builder,
+                        location,
+                        SymbolRefAttribute::new_from_str(codegen.context, &global_name, &[]),
+                        true,
+                        array_type,
+                    ));
+                }
                 // Multi-dimensional arrays are made up of array values as their elements
                 let values = values
                     .iter()

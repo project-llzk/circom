@@ -248,6 +248,11 @@ pub struct LlzkCodegen<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> {
     statement_trace: RefCell<Vec<*const Statement>>,
     /// Deduplicated global constants for concrete VCP array arguments.
     vcp_array_const_globals: RefCell<HashMap<VcpArrayConstKey, String>>,
+    /// Deduplicated global constants for numeric literals in function and template bodies.
+    ///
+    /// A key includes both the flattened elements and shape, so a one-dimensional `[1, 2, 3,
+    /// 4]` never aliases a two-dimensional `[[1, 2], [3, 4]]`.
+    array_literal_const_globals: RefCell<HashMap<VcpArrayConstKey, String>>,
     /// Operation builder
     builder: OpBuilder<'ctx, 'static>,
 }
@@ -574,6 +579,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
             current_body: Cell::new(None),
             statement_trace: RefCell::new(Vec::new()),
             vcp_array_const_globals: RefCell::new(Default::default()),
+            array_literal_const_globals: RefCell::new(Default::default()),
             builder,
         }
     }
@@ -644,6 +650,46 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         let builder = OpBuilder::at_block_end(self.context, self.module.body());
         global::def(&builder, location, &name, array_type, true, Some(initial_value));
         self.vcp_array_const_globals.borrow_mut().insert(key, name.clone());
+        Ok((name, array_type))
+    }
+
+    /// Returns the symbol and type for a deduplicated module-level global const containing a
+    /// concrete numeric array literal.
+    ///
+    /// `values` must be in LLZK storage order: row-major for multidimensional arrays. LLZK
+    /// represents every array initializer as one flat attribute list, including a `2 x 2`
+    /// array, rather than as nested array attributes. The returned globals are immutable, which
+    /// permits their reads in `function.def` bodies and, once supported by LLZK, `poly.expr`
+    /// initializers as well.
+    pub(crate) fn get_or_create_array_literal_const_global(
+        &self,
+        location: Location<'ctx>,
+        dimensions: &[usize],
+        values: &[BigInt],
+    ) -> Result<(String, Type<'ctx>)> {
+        ensure!(!dimensions.is_empty(), "array literal constants must have at least one dimension");
+        let expected_len = dimensions.iter().try_fold(1usize, |acc, dim| {
+            acc.checked_mul(*dim).ok_or_else(|| anyhow!("array constant dimensions overflow"))
+        })?;
+        ensure!(
+            expected_len == values.len(),
+            "array constant has {} values, expected {expected_len} from dimensions {:?}",
+            values.len(),
+            dimensions
+        );
+
+        let array_type = self.type_from_dimension_consts(self.felt_type().into(), dimensions)?;
+        let key = VcpArrayConstKey { dimensions: dimensions.to_vec(), values: values.to_vec() };
+        if let Some(name) = self.array_literal_const_globals.borrow().get(&key) {
+            return Ok((name.clone(), array_type));
+        }
+
+        let name = format!("array_const_{}", self.array_literal_const_globals.borrow().len());
+        let initial_value = self.build_vcp_array_const_attr(values);
+
+        let builder = OpBuilder::at_block_end(self.context, self.module.body());
+        global::def(&builder, location, &name, array_type, true, Some(initial_value));
+        self.array_literal_const_globals.borrow_mut().insert(key, name.clone());
         Ok((name, array_type))
     }
 

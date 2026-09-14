@@ -15,7 +15,7 @@ use anyhow::{Context as _, Result};
 use llzk::{
     builder::OpBuilder,
     dialect,
-    dialect::{array, array::ArrayCtor, bool, function, poly},
+    dialect::{array, array::ArrayCtor, bool, function, global, poly},
     operation::{erase_op, WalkOperationMutLike as _},
     prelude::{
         is_type_variable,
@@ -25,13 +25,15 @@ use llzk::{
         },
         ArrayType, Attribute, BlockLike as _, BlockRef, FuncDefOpLike as _, FuncDefOpRefMut,
         IntegerAttribute, LlzkContext, Location, LoopBoundsAttribute, Operation,
-        OperationLike as _, OperationMutLike, OperationRefMut, Type, Value, ValueLike as _,
-        WalkOrder, WalkResult,
+        OperationLike as _, OperationMutLike, OperationRefMut, SymbolRefAttribute, Type, Value,
+        ValueLike as _, WalkOrder, WalkResult,
     },
     value_ext::has_uses,
 };
+use num_bigint_dig::BigInt;
+use num_traits::ToPrimitive;
 use program_structure::{
-    ast::{Expression, Meta, Statement, VariableType},
+    ast::{Access, AssignOp, Expression, Meta, Statement, VariableType},
     error_code::ReportCode,
 };
 
@@ -881,22 +883,30 @@ where
                             if then_arr_ty.num_dims() == else_arr_ty.num_dims() =>
                         {
                             (
-                                copy_concrete_array_to_type_in_block(
-                                    codegen,
-                                    location,
-                                    then_info.block,
-                                    then_return,
-                                    then_arr_ty,
-                                    return_arr_ty,
-                                )?,
-                                copy_concrete_array_to_type_in_block(
-                                    codegen,
-                                    location,
-                                    else_info.block,
-                                    else_return,
-                                    else_arr_ty,
-                                    return_arr_ty,
-                                )?,
+                                if then_arr_ty == return_arr_ty {
+                                    then_return
+                                } else {
+                                    copy_concrete_array_to_type_in_block(
+                                        codegen,
+                                        location,
+                                        then_info.block,
+                                        then_return,
+                                        then_arr_ty,
+                                        return_arr_ty,
+                                    )?
+                                },
+                                if else_arr_ty == return_arr_ty {
+                                    else_return
+                                } else {
+                                    copy_concrete_array_to_type_in_block(
+                                        codegen,
+                                        location,
+                                        else_info.block,
+                                        else_return,
+                                        else_arr_ty,
+                                        return_arr_ty,
+                                    )?
+                                },
                             )
                         }
                         // Non-array mismatch, dimension mismatch, or tvar return type:
@@ -1207,6 +1217,167 @@ where
     }
 }
 
+/// A concrete numeric array literal recovered from the temporary declarations and writes emitted
+/// by the concrete-program sugar cleaner.
+///
+/// The cleaner does not preserve an `ArrayInLine` expression in VCF bodies: it creates a local
+/// array, writes each element, then returns or inserts that local. Retaining the declaration for
+/// the recovered outer array preserves normal scope handling; all initializer operations are
+/// omitted in favor of a `global.read`.
+struct ConcreteArrayLiteral<'a> {
+    meta: &'a Meta,
+    name: &'a str,
+    dimensions: Vec<usize>,
+    values: Vec<BigInt>,
+    /// Offset of the declaration to retain within the matched statement sequence.
+    declaration_offset: usize,
+    consumed: usize,
+}
+
+/// Extract a one-dimensional array literal whose elements are all numeric constants.
+///
+/// Synthetic declarations created by the cleaner sometimes store their dimension only in
+/// initialized `MemoryKnowledge`, so use that as a fallback when the AST `dimensions` list is
+/// empty. A dimension-less ordinary AST declaration is not an array literal and is ignored.
+fn direct_concrete_array_literal_initializer(
+    statements: &[Statement],
+) -> Option<ConcreteArrayLiteral<'_>> {
+    let Statement::Declaration { meta, name, dimensions, .. } = statements.first()? else {
+        return None;
+    };
+    let dimensions = if dimensions.is_empty() {
+        let memory_knowledge = meta.get_memory_knowledge();
+        if !memory_knowledge.has_concrete_dimensions() {
+            return None;
+        }
+        memory_knowledge.get_concrete_dimensions().to_vec()
+    } else {
+        dimensions
+            .iter()
+            .map(|dimension| match dimension {
+                Expression::Number(_, value) => value.to_usize(),
+                _ => None,
+            })
+            .collect::<Option<Vec<_>>>()?
+    };
+    if dimensions.len() != 1 {
+        return None;
+    }
+    let element_count = dimensions[0];
+
+    let mut values = Vec::with_capacity(element_count);
+    for (flat_index, statement) in statements.iter().skip(1).take(element_count).enumerate() {
+        let Statement::Substitution { var, access, op, rhe, .. } = statement else {
+            return None;
+        };
+        if var != name || *op != AssignOp::AssignVar || access.len() != dimensions.len() {
+            return None;
+        }
+
+        let mut expected_index = flat_index;
+        for (access, dimension) in access.iter().rev().zip(dimensions.iter().rev()) {
+            let Access::ArrayAccess(Expression::Number(_, value)) = access else {
+                return None;
+            };
+            if value.to_usize()? != expected_index % dimension {
+                return None;
+            }
+            expected_index /= dimension;
+        }
+        if expected_index != 0 {
+            return None;
+        }
+
+        let Expression::Number(_, value) = rhe else {
+            return None;
+        };
+        values.push(value.clone());
+    }
+    Some(ConcreteArrayLiteral {
+        meta,
+        name,
+        dimensions,
+        values,
+        declaration_offset: 0,
+        consumed: element_count + 1,
+    })
+}
+
+/// Recognizes a two-dimensional literal array after the concrete-program sugar cleaner has
+/// extracted its rows into temporary declarations. The row temporaries precede a parent
+/// declaration that inserts them, so recover and validate every row before flattening their
+/// values in row-major storage order.
+///
+/// If the pattern is incomplete, non-constant, non-rectangular, or uses a non-sequential index,
+/// this returns `None` and the normal lowering remains responsible for the statements.
+fn concrete_array_literal_initializer(
+    statements: &[Statement],
+) -> Option<ConcreteArrayLiteral<'_>> {
+    let mut children = Vec::new();
+    let mut consumed = 0;
+    while let Some(child) = direct_concrete_array_literal_initializer(&statements[consumed..]) {
+        consumed += child.consumed;
+        children.push(child);
+
+        let Some(Statement::Declaration { meta, name, dimensions, .. }) = statements.get(consumed)
+        else {
+            break;
+        };
+        let dimensions = dimensions
+            .iter()
+            .map(|dimension| match dimension {
+                Expression::Number(_, value) => value.to_usize(),
+                _ => None,
+            })
+            .collect::<Option<Vec<_>>>()?;
+        let Some((&outer_dimension, child_dimensions)) = dimensions.split_first() else {
+            continue;
+        };
+        if outer_dimension != children.len()
+            || children.iter().any(|child| child.dimensions != child_dimensions)
+        {
+            continue;
+        }
+
+        let inserts = &statements[consumed + 1..];
+        if inserts.len() < outer_dimension {
+            return None;
+        }
+        for (index, (child, statement)) in
+            children.iter().zip(&inserts[..outer_dimension]).enumerate()
+        {
+            let Statement::Substitution { var, access, op, rhe, .. } = statement else {
+                return None;
+            };
+            if var != name || *op != AssignOp::AssignVar {
+                return None;
+            }
+            let [Access::ArrayAccess(Expression::Number(_, array_index))] = access.as_slice()
+            else {
+                return None;
+            };
+            let Expression::Variable { name: value_name, access, .. } = rhe else {
+                return None;
+            };
+            if array_index.to_usize()? != index || value_name != child.name || !access.is_empty() {
+                return None;
+            }
+        }
+
+        let values = children.into_iter().flat_map(|child| child.values).collect();
+        return Some(ConcreteArrayLiteral {
+            meta,
+            name,
+            dimensions,
+            values,
+            declaration_offset: consumed,
+            consumed: consumed + outer_dimension + 1,
+        });
+    }
+
+    direct_concrete_array_literal_initializer(statements)
+}
+
 impl<'ctx, 'func, 'blk, 'val> GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val> for [Statement]
 where
     'ctx: 'func,
@@ -1222,11 +1393,40 @@ where
         function: &mut FunctionContext<'_, 'ctx, 'func, 'blk, 'val>,
         info: InfoProviders<'info, 'ctx>,
     ) -> Result<Self::Output> {
-        for s in self {
+        let mut index = 0;
+        while index < self.len() {
+            if let Some(literal) = concrete_array_literal_initializer(&self[index..]) {
+                // Keep the outer declaration for scope bookkeeping, then replace its
+                // uninitialized value with a read of the deduplicated global literal. For a
+                // recovered two-dimensional literal, `declaration_offset` skips its row
+                // temporaries and selects the parent declaration.
+                self[index + literal.declaration_offset]
+                    .gen_llzk_in_function(codegen, function, info)?;
+                let location = codegen.location_from_meta(literal.meta);
+                let (global_name, array_type) = codegen.get_or_create_array_literal_const_global(
+                    location,
+                    &literal.dimensions,
+                    &literal.values,
+                )?;
+                let builder = function.builder_at_current_insertion_point(codegen.context);
+                let value = function.append_op_ref_unnamed_result(global::read(
+                    &builder,
+                    location,
+                    SymbolRefAttribute::new_from_str(codegen.context, &global_name, &[]),
+                    true,
+                    array_type,
+                ))?;
+                function.block_ctx.set_named_value(literal.name.to_owned(), value)?;
+                index += literal.consumed;
+                continue;
+            }
+
+            let s = &self[index];
             let skip_rest_of_block = s.gen_llzk_in_function(codegen, function, info)?;
             if skip_rest_of_block {
                 break;
             }
+            index += 1;
         }
         Ok(())
     }
