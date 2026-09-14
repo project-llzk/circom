@@ -6,7 +6,7 @@ This repository expects coding agents to use `nix` for builds and command execut
 
 - As much as possible, code changes should be restricted to the `llzk_backend` directory.
 - Tests are located within `circom/tests`.
-- Auto-formatting commands should only be applied in the `llzk_backend` directory.
+- Auto-formatting commands should only be applied in the `llzk_backend` directory via `cargo fmt -p llzk_backend`.
 
 ## Build and command guidance
 
