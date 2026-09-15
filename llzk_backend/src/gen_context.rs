@@ -37,7 +37,7 @@ use melior::{
     ir::{AttributeLike as _, TypeLike as _},
 };
 use num_bigint_dig::BigInt;
-use num_traits::Zero;
+use num_traits::{ToPrimitive, Zero};
 use program_structure::ast::{
     Access, AssignOp, Expression, ExpressionInfixOpcode, ExpressionPrefixOpcode, Meta,
 };
@@ -70,8 +70,9 @@ pub(crate) const OPERAND_VAL_NAMES: &str = "operand_val_names";
 
 /// Returns the shape and row-major elements of a rectangular array literal of felt constants.
 ///
-/// The result can directly initialize an LLZK `global.def const`; non-literal and ragged arrays
-/// return `None` and retain their normal runtime lowering.
+/// This includes constant `UniformArray` expressions, which represent Circom's implicit
+/// all-zero array initializer. The result can directly initialize an LLZK `global.def const`;
+/// non-literal and ragged arrays return `None` and retain their normal runtime lowering.
 fn literal_array_dimensions_and_values(expr: &Expression) -> Option<(Vec<usize>, Vec<BigInt>)> {
     match expr {
         Expression::Number(_, value) => Some((vec![], vec![value.clone()])),
@@ -87,6 +88,25 @@ fn literal_array_dimensions_and_values(expr: &Expression) -> Option<(Vec<usize>,
             }
             let mut dimensions = Vec::with_capacity(element_dimensions.len() + 1);
             dimensions.push(values.len());
+            dimensions.extend(element_dimensions);
+            Some((dimensions, flattened))
+        }
+        Expression::UniformArray { value, dimension, .. } => {
+            let (element_dimensions, element_values) = literal_array_dimensions_and_values(value)?;
+            let Expression::Number(_, dimension) = dimension.as_ref() else {
+                return None;
+            };
+            let dimension = dimension.to_usize()?;
+            if dimension == 0 {
+                return None;
+            }
+            let capacity = element_values.len().checked_mul(dimension)?;
+            let mut flattened = Vec::with_capacity(capacity);
+            for _ in 0..dimension {
+                flattened.extend(element_values.iter().cloned());
+            }
+            let mut dimensions = Vec::with_capacity(element_dimensions.len() + 1);
+            dimensions.push(dimension);
             dimensions.extend(element_dimensions);
             Some((dimensions, flattened))
         }
@@ -2875,6 +2895,22 @@ where
             }
             Expression::UniformArray { meta, value, dimension } => {
                 let location = codegen.location_from_meta(meta);
+                if let Some((dimensions, flattened)) = literal_array_dimensions_and_values(self) {
+                    let (global_name, array_type) = codegen
+                        .get_or_create_array_literal_const_global(
+                            location,
+                            &dimensions,
+                            &flattened,
+                        )?;
+                    let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                    return block_gen.append_op_ref_unnamed_result(global::read(
+                        &builder,
+                        location,
+                        codegen.global_symbol_ref(&global_name),
+                        true,
+                        array_type,
+                    ));
+                }
                 // Multi-dimensional arrays are made up of array values as their elements
                 let value = value.gen_llzk_in_block(codegen, block_gen, info)?;
                 let dim = block_gen
