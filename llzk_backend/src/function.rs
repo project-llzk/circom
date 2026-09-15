@@ -1220,18 +1220,43 @@ where
 /// A concrete numeric array literal recovered from the temporary declarations and writes emitted
 /// by the concrete-program sugar cleaner.
 ///
-/// The cleaner does not preserve an `ArrayInLine` expression in VCF bodies: it creates a local
-/// array, writes each element, then returns or inserts that local. Retaining the declaration for
-/// the recovered outer array preserves normal scope handling; all initializer operations are
-/// omitted in favor of a `global.read`.
-struct ConcreteArrayLiteral<'a> {
-    meta: &'a Meta,
-    name: &'a str,
-    dimensions: Vec<usize>,
-    values: Vec<BigInt>,
+/// The cleaner does not always preserve an `ArrayInLine` expression: it can create a local array
+/// and write each element. Retaining the declaration for the recovered outer array preserves
+/// normal scope handling; all initializer operations are omitted in favor of a `global.read`.
+#[derive(Clone)]
+pub(crate) struct ConcreteArrayLiteral<'a> {
+    /// Source location of the declaration retained by lowering.
+    pub(crate) meta: &'a Meta,
+    /// Name of the array declaration replaced by a `global.read`.
+    pub(crate) name: &'a str,
+    /// Fully concrete array shape, in outermost-to-innermost order.
+    pub(crate) dimensions: Vec<usize>,
+    /// Flattened row-major field values for the global initializer.
+    pub(crate) values: Vec<BigInt>,
     /// Offset of the declaration to retain within the matched statement sequence.
-    declaration_offset: usize,
-    consumed: usize,
+    pub(crate) declaration_offset: usize,
+    /// Number of statements covered by the recovered initializer sequence.
+    pub(crate) consumed: usize,
+}
+
+/// Extract the concrete dimensions of a declaration, including synthetic declarations emitted by
+/// the concrete-program sugar cleaner.
+fn concrete_array_dimensions(meta: &Meta, dimensions: &[Expression]) -> Option<Vec<usize>> {
+    if dimensions.is_empty() {
+        let memory_knowledge = meta.get_memory_knowledge();
+        if !memory_knowledge.has_concrete_dimensions() {
+            return None;
+        }
+        return Some(memory_knowledge.get_concrete_dimensions().to_vec());
+    }
+
+    dimensions
+        .iter()
+        .map(|dimension| match dimension {
+            Expression::Number(_, value) => value.to_usize(),
+            _ => None,
+        })
+        .collect()
 }
 
 /// Extract a one-dimensional array literal whose elements are all numeric constants.
@@ -1245,137 +1270,283 @@ fn direct_concrete_array_literal_initializer(
     let Statement::Declaration { meta, name, dimensions, .. } = statements.first()? else {
         return None;
     };
-    let dimensions = if dimensions.is_empty() {
-        let memory_knowledge = meta.get_memory_knowledge();
-        if !memory_knowledge.has_concrete_dimensions() {
-            return None;
-        }
-        memory_knowledge.get_concrete_dimensions().to_vec()
-    } else {
-        dimensions
-            .iter()
-            .map(|dimension| match dimension {
-                Expression::Number(_, value) => value.to_usize(),
-                _ => None,
-            })
-            .collect::<Option<Vec<_>>>()?
-    };
+    let dimensions = concrete_array_dimensions(meta, dimensions)?;
     if dimensions.len() != 1 {
         return None;
     }
     let element_count = dimensions[0];
+    if element_count == 0 {
+        return None;
+    }
 
-    let mut values = Vec::with_capacity(element_count);
-    for (flat_index, statement) in statements.iter().skip(1).take(element_count).enumerate() {
+    // A declaration may be followed by more than one complete constant initialization pass.
+    // This is how the concrete cleaner represents an array's default zero initialization before
+    // its literal initializer. No intervening statement can observe the intermediate values, so
+    // retain only the final complete pass.
+    let mut consumed = 1;
+    let mut values = None;
+    while statements.len() >= consumed + element_count {
+        let pass_values = statements[consumed..consumed + element_count]
+            .iter()
+            .enumerate()
+            .map(|(flat_index, statement)| {
+                let Statement::Substitution { var, access, op, rhe, .. } = statement else {
+                    return None;
+                };
+                if var != name || *op != AssignOp::AssignVar || access.len() != dimensions.len() {
+                    return None;
+                }
+
+                let mut expected_index = flat_index;
+                for (access, dimension) in access.iter().rev().zip(dimensions.iter().rev()) {
+                    let Access::ArrayAccess(Expression::Number(_, value)) = access else {
+                        return None;
+                    };
+                    if value.to_usize()? != expected_index % dimension {
+                        return None;
+                    }
+                    expected_index /= dimension;
+                }
+                if expected_index != 0 {
+                    return None;
+                }
+
+                let Expression::Number(_, value) = rhe else {
+                    return None;
+                };
+                Some(value.clone())
+            })
+            .collect::<Option<Vec<_>>>();
+
+        let Some(pass_values) = pass_values else {
+            break;
+        };
+        values = Some(pass_values);
+        consumed += element_count;
+    }
+    let values = values?;
+    Some(ConcreteArrayLiteral { meta, name, dimensions, values, declaration_offset: 0, consumed })
+}
+
+/// Recovers one complete initialization pass following an already-declared parent array.
+///
+/// The concrete-program sugar cleaner may create leaves and intermediate arrays in a different
+/// order from their nesting: sibling children can be declared before either enclosing temporary
+/// is assembled. This scans the contiguous initializer sequence, retaining a pool of resolved
+/// constant arrays. A declaration is added to that pool once its following inserts select only
+/// values already in the pool. The pass ends at ordered inserts into `parent_name`.
+///
+/// Returns the parent's flattened row-major values and the number of consumed statements. It
+/// rejects partial, dynamic, non-rectangular, and out-of-order initialization, leaving normal
+/// lowering responsible for those cases.
+fn constant_child_initialization_pass(
+    statements: &[Statement],
+    parent_name: &str,
+    outer_dimension: usize,
+    child_dimensions: &[usize],
+) -> Option<(Vec<BigInt>, usize)> {
+    let mut children = Vec::new();
+    let mut consumed = 0;
+    loop {
+        if let Some(values) = constant_values_from_inserts(
+            &statements[consumed..],
+            parent_name,
+            outer_dimension,
+            child_dimensions,
+            &children,
+            false,
+        ) {
+            return Some((values, consumed + outer_dimension));
+        }
+
+        if let Some(child) = direct_concrete_array_literal_initializer(&statements[consumed..])
+            .or_else(|| parent_first_concrete_array_literal_initializer(&statements[consumed..]))
+        {
+            consumed += child.consumed;
+            children.push(child);
+            continue;
+        }
+        if let Some(child) =
+            child_first_concrete_array_literal_initializer(statements, &children, consumed, false)
+        {
+            consumed = child.consumed;
+            children.push(child);
+            continue;
+        }
+
+        return None;
+    }
+}
+
+/// Recovers a multi-dimensional literal whose outer declaration comes before its temporary
+/// children, which is the normal layout produced for a source-level array declaration.
+///
+/// A declaration can have consecutive complete initialization passes: a default-zero pass and a
+/// later literal pass, for example. Because this matcher admits no intervening observation of
+/// the parent, it keeps the values from the final pass and consumes all of them.
+fn parent_first_concrete_array_literal_initializer(
+    statements: &[Statement],
+) -> Option<ConcreteArrayLiteral<'_>> {
+    let Statement::Declaration { meta, name, dimensions, .. } = statements.first()? else {
+        return None;
+    };
+    let dimensions = concrete_array_dimensions(meta, dimensions)?;
+    let Some((&outer_dimension, child_dimensions)) = dimensions.split_first() else {
+        return None;
+    };
+    if child_dimensions.is_empty() || outer_dimension == 0 {
+        return None;
+    }
+
+    // A default zero initialization may be immediately followed by a full literal assignment.
+    // Since no statement observes the intermediate state, retain only the last complete pass.
+    let mut consumed = 1;
+    let mut values = None;
+    while let Some((pass_values, pass_consumed)) = constant_child_initialization_pass(
+        &statements[consumed..],
+        name,
+        outer_dimension,
+        child_dimensions,
+    ) {
+        values = Some(pass_values);
+        consumed += pass_consumed;
+    }
+    let values = values?;
+
+    Some(ConcreteArrayLiteral { meta, name, dimensions, values, declaration_offset: 0, consumed })
+}
+
+/// Validates an ordered prefix of `array[index] = child` substitutions and flattens their values.
+///
+/// Every outer index must be assigned exactly once in ascending order, and each RHS must name a
+/// resolved child of `child_dimensions`. `require_all_children` is used for the child-first form
+/// to ensure the matcher cannot discard an unrelated temporary; the parent-first scanner keeps a
+/// broader pool of nested and sibling arrays, so it permits unused entries there.
+fn constant_values_from_inserts(
+    statements: &[Statement],
+    parent_name: &str,
+    outer_dimension: usize,
+    child_dimensions: &[usize],
+    children: &[ConcreteArrayLiteral<'_>],
+    require_all_children: bool,
+) -> Option<Vec<BigInt>> {
+    if children.is_empty() || statements.len() < outer_dimension {
+        return None;
+    }
+
+    let mut values = Vec::with_capacity(outer_dimension.checked_mul(children[0].values.len())?);
+    let mut used_children = vec![false; children.len()];
+    for (index, statement) in statements[..outer_dimension].iter().enumerate() {
         let Statement::Substitution { var, access, op, rhe, .. } = statement else {
             return None;
         };
-        if var != name || *op != AssignOp::AssignVar || access.len() != dimensions.len() {
+        if var != parent_name || *op != AssignOp::AssignVar {
             return None;
         }
-
-        let mut expected_index = flat_index;
-        for (access, dimension) in access.iter().rev().zip(dimensions.iter().rev()) {
-            let Access::ArrayAccess(Expression::Number(_, value)) = access else {
-                return None;
-            };
-            if value.to_usize()? != expected_index % dimension {
-                return None;
-            }
-            expected_index /= dimension;
-        }
-        if expected_index != 0 {
-            return None;
-        }
-
-        let Expression::Number(_, value) = rhe else {
+        let [Access::ArrayAccess(Expression::Number(_, array_index))] = access.as_slice() else {
             return None;
         };
-        values.push(value.clone());
+        let Expression::Variable { name: value_name, access, .. } = rhe else {
+            return None;
+        };
+        if array_index.to_usize()? != index || !access.is_empty() {
+            return None;
+        }
+        let child_index = children
+            .iter()
+            .position(|child| child.name == value_name && child.dimensions == child_dimensions)?;
+        used_children[child_index] = true;
+        values.extend_from_slice(&children[child_index].values);
     }
+    if require_all_children && used_children.iter().any(|used| !used) {
+        return None;
+    }
+
+    Some(values)
+}
+
+/// Recovers a multi-dimensional literal whose constant children occur before its declaration.
+///
+/// `declaration_offset` identifies the candidate parent declaration in `statements`; `children`
+/// contains resolved literals preceding it. With `require_all_children`, every supplied child
+/// must be referenced by the parent's inserts. The parent-first scanner disables that requirement
+/// because its pool can also hold children for later sibling declarations.
+fn child_first_concrete_array_literal_initializer<'a>(
+    statements: &'a [Statement],
+    children: &[ConcreteArrayLiteral<'a>],
+    declaration_offset: usize,
+    require_all_children: bool,
+) -> Option<ConcreteArrayLiteral<'a>> {
+    let Some(Statement::Declaration { meta, name, dimensions, .. }) =
+        statements.get(declaration_offset)
+    else {
+        return None;
+    };
+    let dimensions = concrete_array_dimensions(meta, dimensions)?;
+    let Some((&outer_dimension, child_dimensions)) = dimensions.split_first() else {
+        return None;
+    };
+    if children.is_empty() || (require_all_children && children.len() > outer_dimension) {
+        return None;
+    }
+
+    let values = constant_values_from_inserts(
+        &statements[declaration_offset + 1..],
+        name,
+        outer_dimension,
+        child_dimensions,
+        children,
+        require_all_children,
+    )?;
+
     Some(ConcreteArrayLiteral {
         meta,
         name,
         dimensions,
         values,
-        declaration_offset: 0,
-        consumed: element_count + 1,
+        declaration_offset,
+        consumed: declaration_offset + outer_dimension + 1,
     })
 }
 
-/// Recognizes a two-dimensional literal array after the concrete-program sugar cleaner has
-/// extracted its rows into temporary declarations. The row temporaries precede a parent
-/// declaration that inserts them, so recover and validate every row before flattening their
-/// values in row-major storage order.
+/// Recovers a fully initialized, concrete numeric array in either cleaner layout.
 ///
-/// If the pattern is incomplete, non-constant, non-rectangular, or uses a non-sequential index,
-/// this returns `None` and the normal lowering remains responsible for the statements.
-fn concrete_array_literal_initializer(
+/// It first handles the common parent-first layout, including arbitrary nesting through
+/// [`constant_child_initialization_pass`]. It then recognizes child-first chains, promoting each
+/// resolved parent so nested arrays can be reconstructed from the leaves upward. Only complete
+/// constant initializers are returned; any unrecognized statement sequence falls back to normal
+/// code generation.
+pub(crate) fn concrete_array_literal_initializer(
     statements: &[Statement],
 ) -> Option<ConcreteArrayLiteral<'_>> {
+    if let Some(literal) = parent_first_concrete_array_literal_initializer(statements) {
+        return Some(literal);
+    }
+
     let mut children = Vec::new();
     let mut consumed = 0;
-    while let Some(child) = direct_concrete_array_literal_initializer(&statements[consumed..]) {
-        consumed += child.consumed;
-        children.push(child);
+    let mut last_literal = None;
+    loop {
+        if let Some(literal) =
+            child_first_concrete_array_literal_initializer(statements, &children, consumed, true)
+        {
+            consumed = literal.consumed;
+            last_literal = Some(literal.clone());
+            children.clear();
+            children.push(literal);
+            continue;
+        }
 
-        let Some(Statement::Declaration { meta, name, dimensions, .. }) = statements.get(consumed)
+        let Some(child) = direct_concrete_array_literal_initializer(&statements[consumed..])
+            .or_else(|| parent_first_concrete_array_literal_initializer(&statements[consumed..]))
         else {
             break;
         };
-        let dimensions = dimensions
-            .iter()
-            .map(|dimension| match dimension {
-                Expression::Number(_, value) => value.to_usize(),
-                _ => None,
-            })
-            .collect::<Option<Vec<_>>>()?;
-        let Some((&outer_dimension, child_dimensions)) = dimensions.split_first() else {
-            continue;
-        };
-        if outer_dimension != children.len()
-            || children.iter().any(|child| child.dimensions != child_dimensions)
-        {
-            continue;
-        }
-
-        let inserts = &statements[consumed + 1..];
-        if inserts.len() < outer_dimension {
-            return None;
-        }
-        for (index, (child, statement)) in
-            children.iter().zip(&inserts[..outer_dimension]).enumerate()
-        {
-            let Statement::Substitution { var, access, op, rhe, .. } = statement else {
-                return None;
-            };
-            if var != name || *op != AssignOp::AssignVar {
-                return None;
-            }
-            let [Access::ArrayAccess(Expression::Number(_, array_index))] = access.as_slice()
-            else {
-                return None;
-            };
-            let Expression::Variable { name: value_name, access, .. } = rhe else {
-                return None;
-            };
-            if array_index.to_usize()? != index || value_name != child.name || !access.is_empty() {
-                return None;
-            }
-        }
-
-        let values = children.into_iter().flat_map(|child| child.values).collect();
-        return Some(ConcreteArrayLiteral {
-            meta,
-            name,
-            dimensions,
-            values,
-            declaration_offset: consumed,
-            consumed: consumed + outer_dimension + 1,
-        });
+        consumed += child.consumed;
+        children.push(child);
     }
 
-    direct_concrete_array_literal_initializer(statements)
+    last_literal.or_else(|| direct_concrete_array_literal_initializer(statements))
 }
 
 impl<'ctx, 'func, 'blk, 'val> GenerateLLZKInFunction<'ctx, 'func, 'blk, 'val> for [Statement]
@@ -1398,7 +1569,7 @@ where
             if let Some(literal) = concrete_array_literal_initializer(&self[index..]) {
                 // Keep the outer declaration for scope bookkeeping, then replace its
                 // uninitialized value with a read of the deduplicated global literal. For a
-                // recovered two-dimensional literal, `declaration_offset` skips its row
+                // recovered multi-dimensional literal, `declaration_offset` skips any child
                 // temporaries and selects the parent declaration.
                 self[index + literal.declaration_offset]
                     .gen_llzk_in_function(codegen, function, info)?;
