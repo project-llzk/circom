@@ -26,14 +26,16 @@ component main = ComputeFee();
 // CHECK-NEXT:      function.def @feeShiftTable(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0> {function.arg_name = "i"}) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_1]], %[[VAL_1]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_0]] : (!poly.tvar<@T_arg0>) -> index
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_3]]{{\[}}%[[VAL_4]]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_5]] : (!felt.type<"bn128">) -> !poly.tvar<@T_return>
 // CHECK-NEXT:        function.return %[[VAL_6]] : !poly.tvar<@T_return>
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-NEXT:    global.def const @array_const_0 : !array.type<2 x !felt.type<"bn128">> = [ 3 : <"bn128">,  9 : <"bn128">]
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<2 x !felt.type<"bn128">> = [ 3 : <"bn128">,  9 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @ComputeFee {
 // CHECK-NEXT:      struct.def @ComputeFee {
 // CHECK-NEXT:        struct.member @feeOut : !array.type<2 x !felt.type<"bn128">> {llzk.pub, signal}

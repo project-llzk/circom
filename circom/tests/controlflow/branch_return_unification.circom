@@ -32,19 +32,21 @@ component main = T();
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_0]] : (!poly.tvar<@T_arg0>) -> !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_2]], %[[VAL_1]]) : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_3]] -> (!poly.tvar<@T_return>) {
-// CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_5]] : (!array.type<2 x !felt.type<"bn128">>) -> !poly.tvar<@T_return>
 // CHECK-NEXT:          scf.yield %[[VAL_6]] : !poly.tvar<@T_return>
 // CHECK-NEXT:        } else {
-// CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = global.read const @array_const_1 : !array.type<3 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_7]] : (!array.type<3 x !felt.type<"bn128">>) -> !poly.tvar<@T_return>
 // CHECK-NEXT:          scf.yield %[[VAL_8]] : !poly.tvar<@T_return>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.return %[[VAL_4]] : !poly.tvar<@T_return>
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-NEXT:    global.def const @array_const_0 : !array.type<2 x !felt.type<"bn128">> = [ 1 : <"bn128">,  2 : <"bn128">]
-// CHECK-NEXT:    global.def const @array_const_1 : !array.type<3 x !felt.type<"bn128">> = [ 1 : <"bn128">,  2 : <"bn128">,  3 : <"bn128">]
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<2 x !felt.type<"bn128">> = [ 1 : <"bn128">,  2 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_1 : !array.type<3 x !felt.type<"bn128">> = [ 1 : <"bn128">,  2 : <"bn128">,  3 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @T {
 // CHECK-NEXT:      struct.def @T {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}

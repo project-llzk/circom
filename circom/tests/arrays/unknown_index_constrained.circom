@@ -82,7 +82,7 @@ component main = ForUnknownIndex(252);
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = pod.new : <[@in: !array.type<2 x !felt.type<"bn128">>]>
 // CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_5]], %[[VAL_5]], %[[VAL_5]], %[[VAL_5]], %[[VAL_5]], %[[VAL_5]], %[[VAL_5]], %[[VAL_5]], %[[VAL_5]], %[[VAL_5]] : <10 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<10 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = poly.read_const @y : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = pod.new { @x = %[[VAL_8]] }  : <[@x: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
@@ -181,7 +181,7 @@ component main = ForUnknownIndex(252);
 // CHECK-NEXT:          %[[VAL_73:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_66]][@lt$inputs] : <@ForUnknownIndex::@ForUnknownIndex<[@y]>>, !pod.type<[@in: !array.type<2 x !felt.type<"bn128">>]>
 // CHECK-NEXT:          %[[VAL_74:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_75:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_74]], %[[VAL_74]], %[[VAL_74]], %[[VAL_74]], %[[VAL_74]], %[[VAL_74]], %[[VAL_74]], %[[VAL_74]], %[[VAL_74]], %[[VAL_74]] : <10 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_76:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<10 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_76:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_77:[0-9a-zA-Z_\.]+]] = poly.read_const @y : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_78:[0-9a-zA-Z_\.]+]] = pod.new { @x = %[[VAL_77]] }  : <[@x: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_79:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@GreaterEqThan::@GreaterEqThan<[@y]>>, @params: !pod.type<[@x: !felt.type<"bn128">]>]>
@@ -224,7 +224,9 @@ component main = ForUnknownIndex(252);
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-NEXT:    global.def const @array_const_0 : !array.type<10 x !felt.type<"bn128">> = [ 0 : <"bn128">,  1 : <"bn128">,  2 : <"bn128">,  3 : <"bn128">,  4 : <"bn128">,  5 : <"bn128">,  6 : <"bn128">,  7 : <"bn128">,  8 : <"bn128">,  9 : <"bn128">]
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<10 x !felt.type<"bn128">> = [ 0 : <"bn128">,  1 : <"bn128">,  2 : <"bn128">,  3 : <"bn128">,  4 : <"bn128">,  5 : <"bn128">,  6 : <"bn128">,  7 : <"bn128">,  8 : <"bn128">,  9 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @GreaterEqThan {
 // CHECK-NEXT:      poly.param @x
 // CHECK-NEXT:      struct.def @GreaterEqThan {

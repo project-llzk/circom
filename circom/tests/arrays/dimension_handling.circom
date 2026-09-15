@@ -56,7 +56,7 @@ component main = A();
 // CHECK-NEXT:        array.insert %[[VAL_16]]{{\[}}%[[VAL_17]]] = %[[VAL_15]] : <1,1 x !felt.type<"bn128">>, <1 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_18]], %[[VAL_18]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:        %[[VAL_22:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_23:[0-9a-zA-Z_\.]+]] = %[[VAL_20]], %[[VAL_24:[0-9a-zA-Z_\.]+]] = %[[VAL_21]]) : (!array.type<2 x !felt.type<"bn128">>, !felt.type<"bn128">) -> (!array.type<2 x !felt.type<"bn128">>, !felt.type<"bn128">) {
 // CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = felt.const  4 : <"bn128">
@@ -85,7 +85,9 @@ component main = A();
 // CHECK-NEXT:        function.return %[[VAL_44]] : !poly.tvar<@T_return>
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-NEXT:    global.def const @array_const_0 : !array.type<2 x !felt.type<"bn128">> = [ 18446744073709551557 : <"bn128">,  18446744073709551557 : <"bn128">]
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<2 x !felt.type<"bn128">> = [ 18446744073709551557 : <"bn128">,  18446744073709551557 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @A {
 // CHECK-NEXT:      struct.def @A {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@A::@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {

@@ -23,10 +23,10 @@ use llzk::{
         replace_uses_of_with, ArrayType, Attribute, BlockLike as _, BlockRef,
         FlatSymbolRefAttribute, FuncDefOp, IntegerAttribute, LlzkContext, Location,
         LoopBoundsAttribute, Operation, OperationLike, OperationMutLike as _, OperationRef,
-        PodType, Region, RegionLike as _, StringAttribute, StringRef, StructType,
-        SymbolRefAttribute, TVarType, TemplateParamOp, TemplateParamOpLike as _,
-        TemplateSymbolBindingOp, TemplateSymbolBindingOpLike as _, TemplateSymbolBindingOpRef,
-        Type, Value, ValueLike as _, FUNC_NAME_COMPUTE, FUNC_NAME_CONSTRAIN,
+        PodType, Region, RegionLike as _, StringAttribute, StringRef, StructType, TVarType,
+        TemplateParamOp, TemplateParamOpLike as _, TemplateSymbolBindingOp,
+        TemplateSymbolBindingOpLike as _, TemplateSymbolBindingOpRef, Type, Value, ValueLike as _,
+        FUNC_NAME_COMPUTE, FUNC_NAME_CONSTRAIN,
     },
     typing::types_unify,
     utils::{print_region, IsA as _},
@@ -2826,7 +2826,7 @@ where
                     return block_gen.append_op_ref_unnamed_result(global::read(
                         &builder,
                         location,
-                        SymbolRefAttribute::new_from_str(codegen.context, &global_name, &[]),
+                        codegen.global_symbol_ref(&global_name),
                         true,
                         array_type,
                     ));

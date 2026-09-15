@@ -37,7 +37,7 @@ component main = Arrays();
 // CHECK-NEXT:          array.insert %[[VAL_12]]{{\[}}%[[VAL_13]]] = %[[VAL_11]] : <2,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:          array.insert %[[VAL_12]]{{\[}}%[[VAL_14]]] = %[[VAL_11]] : <2,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_0]] : !struct.type<@Arrays::@Arrays<[]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_16:[0-9a-zA-Z_\.]+]]: !struct.type<@Arrays::@Arrays<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
@@ -62,10 +62,12 @@ component main = Arrays();
 // CHECK-NEXT:          array.insert %[[VAL_28]]{{\[}}%[[VAL_29]]] = %[[VAL_27]] : <2,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:          array.insert %[[VAL_28]]{{\[}}%[[VAL_30]]] = %[[VAL_27]] : <2,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-NEXT:    global.def const @array_const_0 : !array.type<2,2 x !felt.type<"bn128">> = [ 1 : <"bn128">,  2 : <"bn128">,  3 : <"bn128">,  4 : <"bn128">]
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<2,2 x !felt.type<"bn128">> = [ 1 : <"bn128">,  2 : <"bn128">,  3 : <"bn128">,  4 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:  }

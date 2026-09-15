@@ -34,7 +34,7 @@ component main = SmallToLarge();
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_2]], %[[VAL_2]], %[[VAL_2]], %[[VAL_2]], %[[VAL_2]], %[[VAL_2]], %[[VAL_2]], %[[VAL_2]], %[[VAL_2]], %[[VAL_2]] : <10 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<8 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<8 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = arith.constant 8 : index
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -42,7 +42,7 @@ component main = SmallToLarge();
 // CHECK-NEXT:            %[[VAL_9:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_4]]{{\[}}%[[VAL_8]]] : <8 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:            array.write %[[VAL_3]]{{\[}}%[[VAL_8]]] = %[[VAL_9]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          }
-// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = global.read const @array_const_1 : !array.type<5 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<5 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = arith.constant 5 : index
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -108,7 +108,7 @@ component main = SmallToLarge();
 // CHECK-NEXT:          %[[VAL_58:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_57]][@out] : <@SmallToLarge::@SmallToLarge<[]>>, !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_59:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_60:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_59]], %[[VAL_59]], %[[VAL_59]], %[[VAL_59]], %[[VAL_59]], %[[VAL_59]], %[[VAL_59]], %[[VAL_59]], %[[VAL_59]], %[[VAL_59]] : <10 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_61:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<8 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_61:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<8 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_62:[0-9a-zA-Z_\.]+]] = arith.constant 8 : index
 // CHECK-NEXT:          %[[VAL_63:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:          %[[VAL_64:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -116,7 +116,7 @@ component main = SmallToLarge();
 // CHECK-NEXT:            %[[VAL_66:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_61]]{{\[}}%[[VAL_65]]] : <8 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:            array.write %[[VAL_60]]{{\[}}%[[VAL_65]]] = %[[VAL_66]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          }
-// CHECK-NEXT:          %[[VAL_67:[0-9a-zA-Z_\.]+]] = global.read const @array_const_1 : !array.type<5 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_67:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<5 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_68:[0-9a-zA-Z_\.]+]] = arith.constant 5 : index
 // CHECK-NEXT:          %[[VAL_69:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:          %[[VAL_70:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -175,6 +175,8 @@ component main = SmallToLarge();
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-NEXT:    global.def const @array_const_0 : !array.type<8 x !felt.type<"bn128">> = [ 99 : <"bn128">,  98 : <"bn128">,  97 : <"bn128">,  96 : <"bn128">,  95 : <"bn128">,  94 : <"bn128">,  93 : <"bn128">,  92 : <"bn128">]
-// CHECK-NEXT:    global.def const @array_const_1 : !array.type<5 x !felt.type<"bn128">> = [ 89 : <"bn128">,  88 : <"bn128">,  87 : <"bn128">,  86 : <"bn128">,  85 : <"bn128">]
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<8 x !felt.type<"bn128">> = [ 99 : <"bn128">,  98 : <"bn128">,  97 : <"bn128">,  96 : <"bn128">,  95 : <"bn128">,  94 : <"bn128">,  93 : <"bn128">,  92 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_1 : !array.type<5 x !felt.type<"bn128">> = [ 89 : <"bn128">,  88 : <"bn128">,  87 : <"bn128">,  86 : <"bn128">,  85 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:  }

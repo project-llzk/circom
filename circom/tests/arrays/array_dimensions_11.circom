@@ -17,7 +17,9 @@ template EvilArrayDims(N) {
 component main = EvilArrayDims(7);
 
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@EvilArrayDims::@EvilArrayDims<[7]>>} {
-// CHECK-NEXT:    global.def const @array_const_0 : !array.type<2 x !felt.type<"bn128">> = [ 123 : <"bn128">,  675 : <"bn128">]
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<2 x !felt.type<"bn128">> = [ 123 : <"bn128">,  675 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @EvilArrayDims {
 // CHECK-NEXT:      poly.param @N
 // CHECK-NEXT:      poly.expr @"N_Greater_12?a[0]_Add_a[1]:0@[[OFFSET0:[0-9]+]]" {
@@ -28,7 +30,7 @@ component main = EvilArrayDims(7);
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_1]], %[[VAL_1]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_5]], %[[VAL_2]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:        array.write %[[VAL_7]]{{\[}}%[[VAL_3]]] = %[[VAL_8]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = bool.cmp gt(%[[VAL_5]], %[[VAL_0]]) : !felt.type<"bn128">, !felt.type<"bn128">
@@ -49,7 +51,7 @@ component main = EvilArrayDims(7);
 // CHECK-NEXT:        %[[VAL_17:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:        %[[VAL_18:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_19:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_15]], %[[VAL_15]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:        %[[VAL_20:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_21:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_18]], %[[VAL_16]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:        array.write %[[VAL_20]]{{\[}}%[[VAL_17]]] = %[[VAL_21]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_22:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_20]]{{\[}}%[[VAL_17]]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
@@ -77,7 +79,7 @@ component main = EvilArrayDims(7);
 // CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = felt.const  12 : <"bn128">
 // CHECK-NEXT:          %[[VAL_37:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_38:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_37]], %[[VAL_37]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_39:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_39:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_40:[0-9a-zA-Z_\.]+]] = felt.const  6 : <"bn128">
 // CHECK-NEXT:          %[[VAL_41:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_29]], %[[VAL_40]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_42:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
@@ -98,7 +100,7 @@ component main = EvilArrayDims(7);
 // CHECK-NEXT:          %[[VAL_55:[0-9a-zA-Z_\.]+]] = felt.const  12 : <"bn128">
 // CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_56]], %[[VAL_56]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_58:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_58:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_59:[0-9a-zA-Z_\.]+]] = felt.const  6 : <"bn128">
 // CHECK-NEXT:          %[[VAL_60:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_46]], %[[VAL_59]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_61:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">

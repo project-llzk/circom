@@ -38,13 +38,13 @@ component main = UnknownIndexOverwriteKnown();
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  45 : <"bn128">
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]], %[[VAL_3]] : <10 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<10 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_6]], %[[VAL_6]], %[[VAL_6]], %[[VAL_6]], %[[VAL_6]], %[[VAL_6]], %[[VAL_6]], %[[VAL_6]], %[[VAL_6]], %[[VAL_6]] : <10 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = global.read const @array_const_1 : !array.type<10 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_9]], %[[VAL_9]], %[[VAL_9]], %[[VAL_9]], %[[VAL_9]], %[[VAL_9]], %[[VAL_9]], %[[VAL_9]], %[[VAL_9]], %[[VAL_9]] : <10 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = global.read const @array_const_2 : !array.type<10 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_2 : !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.const  99 : <"bn128">
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_0]] : !felt.type<"bn128">
 // CHECK-NEXT:          array.write %[[VAL_8]]{{\[}}%[[VAL_13]]] = %[[VAL_12]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
@@ -95,13 +95,13 @@ component main = UnknownIndexOverwriteKnown();
 // CHECK-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = felt.const  45 : <"bn128">
 // CHECK-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_51]], %[[VAL_51]], %[[VAL_51]], %[[VAL_51]], %[[VAL_51]], %[[VAL_51]], %[[VAL_51]], %[[VAL_51]], %[[VAL_51]], %[[VAL_51]] : <10 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<10 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_55:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_54]], %[[VAL_54]], %[[VAL_54]], %[[VAL_54]], %[[VAL_54]], %[[VAL_54]], %[[VAL_54]], %[[VAL_54]], %[[VAL_54]], %[[VAL_54]] : <10 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = global.read const @array_const_1 : !array.type<10 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_58:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_57]], %[[VAL_57]], %[[VAL_57]], %[[VAL_57]], %[[VAL_57]], %[[VAL_57]], %[[VAL_57]], %[[VAL_57]], %[[VAL_57]], %[[VAL_57]] : <10 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_59:[0-9a-zA-Z_\.]+]] = global.read const @array_const_2 : !array.type<10 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_59:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_2 : !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_60:[0-9a-zA-Z_\.]+]] = felt.const  99 : <"bn128">
 // CHECK-NEXT:          %[[VAL_61:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_48]] : !felt.type<"bn128">
 // CHECK-NEXT:          array.write %[[VAL_56]]{{\[}}%[[VAL_61]]] = %[[VAL_60]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
@@ -149,7 +149,9 @@ component main = UnknownIndexOverwriteKnown();
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-NEXT:    global.def const @array_const_0 : !array.type<10 x !felt.type<"bn128">> = [ 0 : <"bn128">,  1 : <"bn128">,  2 : <"bn128">,  3 : <"bn128">,  4 : <"bn128">,  5 : <"bn128">,  6 : <"bn128">,  7 : <"bn128">,  8 : <"bn128">,  9 : <"bn128">]
-// CHECK-NEXT:    global.def const @array_const_1 : !array.type<10 x !felt.type<"bn128">> = [ 10 : <"bn128">,  11 : <"bn128">,  12 : <"bn128">,  13 : <"bn128">,  14 : <"bn128">,  15 : <"bn128">,  16 : <"bn128">,  17 : <"bn128">,  18 : <"bn128">,  19 : <"bn128">]
-// CHECK-NEXT:    global.def const @array_const_2 : !array.type<10 x !felt.type<"bn128">> = [ 20 : <"bn128">,  21 : <"bn128">,  22 : <"bn128">,  23 : <"bn128">,  24 : <"bn128">,  25 : <"bn128">,  26 : <"bn128">,  27 : <"bn128">,  28 : <"bn128">,  29 : <"bn128">]
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<10 x !felt.type<"bn128">> = [ 0 : <"bn128">,  1 : <"bn128">,  2 : <"bn128">,  3 : <"bn128">,  4 : <"bn128">,  5 : <"bn128">,  6 : <"bn128">,  7 : <"bn128">,  8 : <"bn128">,  9 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_1 : !array.type<10 x !felt.type<"bn128">> = [ 10 : <"bn128">,  11 : <"bn128">,  12 : <"bn128">,  13 : <"bn128">,  14 : <"bn128">,  15 : <"bn128">,  16 : <"bn128">,  17 : <"bn128">,  18 : <"bn128">,  19 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_2 : !array.type<10 x !felt.type<"bn128">> = [ 20 : <"bn128">,  21 : <"bn128">,  22 : <"bn128">,  23 : <"bn128">,  24 : <"bn128">,  25 : <"bn128">,  26 : <"bn128">,  27 : <"bn128">,  28 : <"bn128">,  29 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:  }

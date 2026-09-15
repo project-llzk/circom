@@ -21,8 +21,8 @@ use llzk::{
     prelude::{
         ArrayType, BlockRef, FlatSymbolRefAttribute, FuncDefOpLike as _, IntegerAttribute,
         LlzkContext, LoopBoundsAttribute, MemberDefOpLike as _, PodType, RecordValue, StringRef,
-        StructDefOpLike as _, StructDefOpRefMut, SymbolRefAttribute, TemplateOpLike as _,
-        TemplateOpRefMut, TemplateSymbolBindingOpLike as _, Type, Value, ValueLike as _,
+        StructDefOpLike as _, StructDefOpRefMut, TemplateOpLike as _, TemplateOpRefMut,
+        TemplateSymbolBindingOpLike as _, Type, Value, ValueLike as _,
     },
     value_ext::{OwningValueRange, ValueRange},
 };
@@ -196,7 +196,7 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
         ty: Type<'ctx>,
         location: Location<'ctx>,
     ) -> Result<()> {
-        let global_ref = || SymbolRefAttribute::new_from_str(codegen.context, global_name, &[]);
+        let global_ref = || codegen.global_symbol_ref(global_name);
         if let Some(fc) = self.compute.as_ref() {
             fc.borrow_mut().block_ctx.declare_value_if_not_present(
                 name,
@@ -1056,7 +1056,7 @@ where
                     let value = fc.append_op_ref_unnamed_result(global::read(
                         &builder,
                         location,
-                        SymbolRefAttribute::new_from_str(codegen.context, &global_name, &[]),
+                        codegen.global_symbol_ref(&global_name),
                         true,
                         array_type,
                     ))?;

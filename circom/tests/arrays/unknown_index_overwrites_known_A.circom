@@ -34,7 +34,7 @@ component main = UnknownIndexOverwriteKnown();
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@UnknownIndexOverwriteKnown::@UnknownIndexOverwriteKnown<[]>>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_2]], %[[VAL_2]], %[[VAL_2]], %[[VAL_2]], %[[VAL_2]], %[[VAL_2]], %[[VAL_2]], %[[VAL_2]], %[[VAL_2]], %[[VAL_2]] : <10 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<10 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  99 : <"bn128">
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_0]] : !felt.type<"bn128">
 // CHECK-NEXT:          array.write %[[VAL_4]]{{\[}}%[[VAL_6]]] = %[[VAL_5]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
@@ -56,7 +56,7 @@ component main = UnknownIndexOverwriteKnown();
 // CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_17]][@out] : <@UnknownIndexOverwriteKnown::@UnknownIndexOverwriteKnown<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_20]], %[[VAL_20]], %[[VAL_20]], %[[VAL_20]], %[[VAL_20]], %[[VAL_20]], %[[VAL_20]], %[[VAL_20]], %[[VAL_20]], %[[VAL_20]] : <10 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<10 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = felt.const  99 : <"bn128">
 // CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_18]] : !felt.type<"bn128">
 // CHECK-NEXT:          array.write %[[VAL_22]]{{\[}}%[[VAL_24]]] = %[[VAL_23]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
@@ -76,5 +76,7 @@ component main = UnknownIndexOverwriteKnown();
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-NEXT:    global.def const @array_const_0 : !array.type<10 x !felt.type<"bn128">> = [ 0 : <"bn128">,  1 : <"bn128">,  2 : <"bn128">,  3 : <"bn128">,  4 : <"bn128">,  5 : <"bn128">,  6 : <"bn128">,  7 : <"bn128">,  8 : <"bn128">,  9 : <"bn128">]
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<10 x !felt.type<"bn128">> = [ 0 : <"bn128">,  1 : <"bn128">,  2 : <"bn128">,  3 : <"bn128">,  4 : <"bn128">,  5 : <"bn128">,  6 : <"bn128">,  7 : <"bn128">,  8 : <"bn128">,  9 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:  }

@@ -31,7 +31,7 @@ component main = ArrayShenanigans();
 // CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = array.new  : <1,2,3 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:        array.insert %[[VAL_5]]{{\[}}%[[VAL_6]]] = %[[VAL_2]] : <1,2,3 x !felt.type<"bn128">>, <2,3 x !felt.type<"bn128">>
-// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<1,2,3 x !felt.type<"bn128">>
+// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<1,2,3 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_8]] : <1 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = array.new  : <1,1 x !felt.type<"bn128">>
@@ -57,7 +57,9 @@ component main = ArrayShenanigans();
 // CHECK-NEXT:        function.return %[[VAL_23]] : !poly.tvar<@T_return>
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-NEXT:    global.def const @array_const_0 : !array.type<1,2,3 x !felt.type<"bn128">> = [ 2 : <"bn128">,  3 : <"bn128">,  4 : <"bn128">,  5 : <"bn128">,  6 : <"bn128">,  7 : <"bn128">]
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<1,2,3 x !felt.type<"bn128">> = [ 2 : <"bn128">,  3 : <"bn128">,  4 : <"bn128">,  5 : <"bn128">,  6 : <"bn128">,  7 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @ArrayShenanigans {
 // CHECK-NEXT:      struct.def @ArrayShenanigans {
 // CHECK-NEXT:        struct.member @outp : !array.type<2,2,2 x !felt.type<"bn128">> {llzk.pub, signal}

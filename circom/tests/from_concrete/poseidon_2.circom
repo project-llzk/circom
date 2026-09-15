@@ -62,13 +62,13 @@ component main = Poseidon();
 // CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_0]], %[[VAL_1]]) : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_2]] -> (!array.type<3,3 x !felt.type<"bn128">>) {
-// CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<3,3 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<3,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          scf.yield %[[VAL_4]] : !array.type<3,3 x !felt.type<"bn128">>
 // CHECK-NEXT:        } else {
 // CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_0]], %[[VAL_5]]) : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_6]] -> (!array.type<3,3 x !felt.type<"bn128">>) {
-// CHECK-NEXT:            %[[VAL_8:[0-9a-zA-Z_\.]+]] = global.read const @array_const_1 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:            %[[VAL_8:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_9:[0-9a-zA-Z_\.]+]] = array.new  : <3,3 x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_10:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:            %[[VAL_11:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
@@ -88,7 +88,7 @@ component main = Poseidon();
 // CHECK-NEXT:            array.write %[[VAL_9]]{{\[}}%[[VAL_19]], %[[VAL_20]]] = %[[VAL_21]] : <3,3 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:            scf.yield %[[VAL_9]] : !array.type<3,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          } else {
-// CHECK-NEXT:            %[[VAL_22:[0-9a-zA-Z_\.]+]] = global.read const @array_const_2 : !array.type<1,1 x !felt.type<"bn128">>
+// CHECK-NEXT:            %[[VAL_22:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_2 : !array.type<1,1 x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_23:[0-9a-zA-Z_\.]+]] = array.new  : <3,3 x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_24:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:            %[[VAL_25:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
@@ -101,9 +101,12 @@ component main = Poseidon();
 // CHECK-NEXT:        function.return %[[VAL_3]] : !array.type<3,3 x !felt.type<"bn128">>
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-NEXT:    global.def const @array_const_0 : !array.type<3,3 x !felt.type<"bn128">> = [ 12 : <"bn128">,  11 : <"bn128">,  10 : <"bn128">,  23 : <"bn128">,  24 : <"bn128">,  25 : <"bn128">,  53 : <"bn128">,  55 : <"bn128">,  54 : <"bn128">]
-// CHECK-NEXT:    global.def const @array_const_1 : !array.type<2,2 x !felt.type<"bn128">> = [ 33 : <"bn128">,  99 : <"bn128">,  88 : <"bn128">,  77 : <"bn128">]
-// CHECK-NEXT:    global.def const @array_const_2 : !array.type<1,1 x !felt.type<"bn128">> = [ 0 : <"bn128">]
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<3,3 x !felt.type<"bn128">> = [ 12 : <"bn128">,  11 : <"bn128">,  10 : <"bn128">,  23 : <"bn128">,  24 : <"bn128">,  25 : <"bn128">,  53 : <"bn128">,  55 : <"bn128">,  54 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_1 : !array.type<2,2 x !felt.type<"bn128">> = [ 33 : <"bn128">,  99 : <"bn128">,  88 : <"bn128">,  77 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_2 : !array.type<1,1 x !felt.type<"bn128">> = [ 0 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_3 : !array.type<2,2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Poseidon_0 {
 // CHECK-NEXT:      struct.def @Poseidon_0 {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
@@ -111,7 +114,7 @@ component main = Poseidon();
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.new : <@Poseidon_0::@Poseidon_0<[]>>
 // CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = global.read const @array_const_3 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_3 : !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = function.call @POSEIDON_M_0::@POSEIDON_M_0(%[[VAL_32]]) : (!felt.type<"bn128">) -> !array.type<3,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
@@ -132,7 +135,7 @@ component main = Poseidon();
 // CHECK-NEXT:          %[[VAL_46:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_42]], %[[VAL_45]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_41]], %[[VAL_46]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = global.read const @array_const_2 : !array.type<1,1 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_2 : !array.type<1,1 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = function.call @POSEIDON_M_0::@POSEIDON_M_0(%[[VAL_50]]) : (!felt.type<"bn128">) -> !array.type<3,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -158,7 +161,7 @@ component main = Poseidon();
 // CHECK-NEXT:          %[[VAL_67:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_65]][@out] : <@Poseidon_0::@Poseidon_0<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_68:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_69:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:          %[[VAL_70:[0-9a-zA-Z_\.]+]] = global.read const @array_const_3 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_70:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_3 : !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_71:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          %[[VAL_72:[0-9a-zA-Z_\.]+]] = function.call @POSEIDON_M_0::@POSEIDON_M_0(%[[VAL_71]]) : (!felt.type<"bn128">) -> !array.type<3,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_73:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
@@ -179,7 +182,7 @@ component main = Poseidon();
 // CHECK-NEXT:          %[[VAL_85:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_81]], %[[VAL_84]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_86:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_80]], %[[VAL_85]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_87:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_88:[0-9a-zA-Z_\.]+]] = global.read const @array_const_2 : !array.type<1,1 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_88:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_2 : !array.type<1,1 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_89:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_90:[0-9a-zA-Z_\.]+]] = function.call @POSEIDON_M_0::@POSEIDON_M_0(%[[VAL_89]]) : (!felt.type<"bn128">) -> !array.type<3,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_91:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -203,5 +206,4 @@ component main = Poseidon();
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-NEXT:    global.def const @array_const_3 : !array.type<2,2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
 // CHECK-NEXT:  }

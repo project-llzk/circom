@@ -29,11 +29,11 @@ component main = Caller();
 // CHECK-NEXT:        array.insert %[[VAL_2]]{{\[}}%[[VAL_3]]] = %[[VAL_1]] : <2,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:        array.insert %[[VAL_2]]{{\[}}%[[VAL_4]]] = %[[VAL_1]] : <2,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_6]] : !felt.type<"bn128">
 // CHECK-NEXT:        array.insert %[[VAL_2]]{{\[}}%[[VAL_7]]] = %[[VAL_5]] : <2,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = global.read const @array_const_1 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_9]] : !felt.type<"bn128">
 // CHECK-NEXT:        array.insert %[[VAL_2]]{{\[}}%[[VAL_10]]] = %[[VAL_8]] : <2,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
@@ -46,8 +46,10 @@ component main = Caller();
 // CHECK-NEXT:        function.return %[[VAL_16]] : !poly.tvar<@T_return>
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-NEXT:    global.def const @array_const_0 : !array.type<2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  1 : <"bn128">]
-// CHECK-NEXT:    global.def const @array_const_1 : !array.type<2 x !felt.type<"bn128">> = [ 2 : <"bn128">,  3 : <"bn128">]
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  1 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_1 : !array.type<2 x !felt.type<"bn128">> = [ 2 : <"bn128">,  3 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Caller {
 // CHECK-NEXT:      struct.def @Caller {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}

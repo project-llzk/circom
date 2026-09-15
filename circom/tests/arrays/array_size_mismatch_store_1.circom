@@ -31,7 +31,7 @@ component main = ArrayShenanigans();
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = array.new  : <1,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:          array.insert %[[VAL_8]]{{\[}}%[[VAL_9]]] = %[[VAL_7]] : <1,3 x !felt.type<"bn128">>, <3 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<1,3 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<1,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
@@ -59,7 +59,7 @@ component main = ArrayShenanigans();
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = array.new  : <1,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:          array.insert %[[VAL_27]]{{\[}}%[[VAL_28]]] = %[[VAL_26]] : <1,3 x !felt.type<"bn128">>, <3 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<1,3 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<1,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
 // CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
@@ -75,5 +75,7 @@ component main = ArrayShenanigans();
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-NEXT:    global.def const @array_const_0 : !array.type<1,3 x !felt.type<"bn128">> = [ 9 : <"bn128">,  8 : <"bn128">,  7 : <"bn128">]
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<1,3 x !felt.type<"bn128">> = [ 9 : <"bn128">,  8 : <"bn128">,  7 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:  }

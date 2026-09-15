@@ -25,8 +25,8 @@ use llzk::{
         },
         ArrayType, Attribute, BlockLike as _, BlockRef, FuncDefOpLike as _, FuncDefOpRefMut,
         IntegerAttribute, LlzkContext, Location, LoopBoundsAttribute, Operation,
-        OperationLike as _, OperationMutLike, OperationRefMut, SymbolRefAttribute, Type, Value,
-        ValueLike as _, WalkOrder, WalkResult,
+        OperationLike as _, OperationMutLike, OperationRefMut, Type, Value, ValueLike as _,
+        WalkOrder, WalkResult,
     },
     value_ext::has_uses,
 };
@@ -1391,9 +1391,7 @@ fn parent_first_concrete_array_literal_initializer(
         return None;
     };
     let dimensions = concrete_array_dimensions(meta, dimensions)?;
-    let Some((&outer_dimension, child_dimensions)) = dimensions.split_first() else {
-        return None;
-    };
+    let (&outer_dimension, child_dimensions) = dimensions.split_first()?;
     if child_dimensions.is_empty() || outer_dimension == 0 {
         return None;
     }
@@ -1483,9 +1481,7 @@ fn child_first_concrete_array_literal_initializer<'a>(
         return None;
     };
     let dimensions = concrete_array_dimensions(meta, dimensions)?;
-    let Some((&outer_dimension, child_dimensions)) = dimensions.split_first() else {
-        return None;
-    };
+    let (&outer_dimension, child_dimensions) = dimensions.split_first()?;
     if children.is_empty() || (require_all_children && children.len() > outer_dimension) {
         return None;
     }
@@ -1583,7 +1579,7 @@ where
                 let value = function.append_op_ref_unnamed_result(global::read(
                     &builder,
                     location,
-                    SymbolRefAttribute::new_from_str(codegen.context, &global_name, &[]),
+                    codegen.global_symbol_ref(&global_name),
                     true,
                     array_type,
                 ))?;

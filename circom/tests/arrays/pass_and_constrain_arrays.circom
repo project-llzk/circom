@@ -253,7 +253,7 @@ component main = Main();
 // CHECK-NEXT:          %[[VAL_158:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<16,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_159:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_160:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_159]], %[[VAL_159]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_161:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_161:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_162:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_163:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_162]], %[[VAL_162]] : <2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_164:[0-9a-zA-Z_\.]+]] = array.new  : <16,2 x !felt.type<"bn128">>
@@ -325,7 +325,7 @@ component main = Main();
 // CHECK-NEXT:          %[[VAL_206:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_205]][@out] : <@Main::@Main<[]>>, !array.type<16,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_207:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_208:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_207]], %[[VAL_207]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_209:[0-9a-zA-Z_\.]+]] = global.read const @array_const_0 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_209:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_210:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_211:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_210]], %[[VAL_210]] : <2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_212:[0-9a-zA-Z_\.]+]] = array.new  : <16,2 x !felt.type<"bn128">>
@@ -396,5 +396,7 @@ component main = Main();
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
-// CHECK-NEXT:    global.def const @array_const_0 : !array.type<2 x !felt.type<"bn128">> = [ 5299619240641551281634865583518297030282874472190772894086521144482721001553 : <"bn128">,  16950150798460657717958625567821834550301663161624707787222815936182638968203 : <"bn128">]
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<2 x !felt.type<"bn128">> = [ 5299619240641551281634865583518297030282874472190772894086521144482721001553 : <"bn128">,  16950150798460657717958625567821834550301663161624707787222815936182638968203 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:  }
