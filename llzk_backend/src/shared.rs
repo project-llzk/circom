@@ -684,29 +684,11 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
             return Ok((name.clone(), array_type));
         }
 
-        let requested_name =
-            format!("array_const_{}", self.array_literal_const_globals.borrow().len());
+        let name = format!("array_const_{}", self.array_literal_const_globals.borrow().len());
         let initial_value = self.build_vcp_array_const_attr(values);
 
-        // Global literals share the module symbol table with source-level templates and
-        // functions. Insert the global through the symbol table so a source-level symbol with
-        // the generated base name cannot create a duplicate symbol. The insertion may rename
-        // the global, so cache and return the final name used by `global.read`.
-        let global_op = build_owned_operation(self.context, |builder| {
-            Ok::<_, anyhow::Error>(
-                global::def(
-                    builder,
-                    location,
-                    &requested_name,
-                    array_type,
-                    true,
-                    Some(initial_value),
-                )
-                .into(),
-            )
-        })?;
-        let global_op = insert_unique_symbol_op(&self.module.as_operation(), global_op);
-        let name = get_sym_name_attr(&global_op)?.value().to_owned();
+        let builder = OpBuilder::at_block_end(self.context, self.module.body());
+        global::def(&builder, location, &name, array_type, true, Some(initial_value));
         self.array_literal_const_globals.borrow_mut().insert(key, name.clone());
         Ok((name, array_type))
     }
