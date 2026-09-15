@@ -21,8 +21,8 @@ use llzk::{
     prelude::{
         ArrayType, BlockRef, FlatSymbolRefAttribute, FuncDefOpLike as _, IntegerAttribute,
         LlzkContext, LoopBoundsAttribute, MemberDefOpLike as _, PodType, RecordValue, StringRef,
-        StructDefOpLike as _, StructDefOpRefMut, SymbolRefAttribute, TemplateOpLike as _,
-        TemplateOpRefMut, TemplateSymbolBindingOpLike as _, Type, Value, ValueLike as _,
+        StructDefOpLike as _, StructDefOpRefMut, TemplateOpLike as _, TemplateOpRefMut,
+        TemplateSymbolBindingOpLike as _, Type, Value, ValueLike as _,
     },
     value_ext::{OwningValueRange, ValueRange},
 };
@@ -34,7 +34,7 @@ use program_structure::{
 };
 
 use crate::{
-    function::{FunctionContext, InfoProviders},
+    function::{concrete_array_literal_initializer, FunctionContext, InfoProviders},
     gen_context::{
         BlockGenContext, GenWithCircomScopeHandling, GenerateLLZKInAnyBlock, NestedBlockInfo,
     },
@@ -196,7 +196,7 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
         ty: Type<'ctx>,
         location: Location<'ctx>,
     ) -> Result<()> {
-        let global_ref = || SymbolRefAttribute::new_from_str(codegen.context, global_name, &[]);
+        let global_ref = || codegen.global_symbol_ref(global_name);
         if let Some(fc) = self.compute.as_ref() {
             fc.borrow_mut().block_ctx.declare_value_if_not_present(
                 name,
@@ -1037,7 +1037,36 @@ where
     where
         'val: 'r,
     {
-        for s in self {
+        let mut index = 0;
+        while index < self.len() {
+            if let Some(literal) = concrete_array_literal_initializer(&self[index..]) {
+                // The concrete-program sugar cleaner lowers numeric array literals to a
+                // declaration followed by complete element-wise initialization passes. Retain the
+                // declaration for scope bookkeeping, but replace those passes with a read of a
+                // deduplicated immutable global in every generated template function.
+                self[index + literal.declaration_offset].gen_llzk_in_template(codegen, template)?;
+                let location = codegen.location_from_meta(literal.meta);
+                let (global_name, array_type) = codegen.get_or_create_array_literal_const_global(
+                    location,
+                    &literal.dimensions,
+                    &literal.values,
+                )?;
+                template.and_then_same::<_, ()>(|fc, _| {
+                    let builder = fc.builder_at_current_insertion_point(codegen.context);
+                    let value = fc.append_op_ref_unnamed_result(global::read(
+                        &builder,
+                        location,
+                        codegen.global_symbol_ref(&global_name),
+                        true,
+                        array_type,
+                    ))?;
+                    fc.block_ctx.set_named_value(literal.name.to_owned(), value)
+                })?;
+                index += literal.consumed;
+                continue;
+            }
+
+            let s = &self[index];
             s.gen_llzk_in_template(codegen, template)?;
             // circom allows unreachable code after a return but it is not processed
             // (e.g. `assert(1 == 0)` after a return does not cause an error as it normally
@@ -1046,6 +1075,7 @@ where
             if matches!(s, Statement::Return { .. }) {
                 break;
             }
+            index += 1;
         }
         Ok(())
     }

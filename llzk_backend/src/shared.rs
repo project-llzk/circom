@@ -34,7 +34,13 @@ use llzk::{
     symbol_table,
     value_ext::{OwningValueRange, ValueRange},
 };
-use melior::{ir::operation::OperationPrintingFlags, utility};
+use melior::{
+    ir::{
+        operation::{OperationBuilder, OperationPrintingFlags},
+        Identifier,
+    },
+    utility,
+};
 use num_bigint_dig::{BigInt, BigUint, ModInverse, ToBigInt as _};
 use num_traits::{cast::ToPrimitive, One, Zero};
 use program_structure::{
@@ -248,6 +254,18 @@ pub struct LlzkCodegen<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> {
     statement_trace: RefCell<Vec<*const Statement>>,
     /// Deduplicated global constants for concrete VCP array arguments.
     vcp_array_const_globals: RefCell<HashMap<VcpArrayConstKey, String>>,
+    /// Deduplicated global constants for numeric literals in function and template bodies.
+    ///
+    /// A key includes both the flattened elements and shape, so a one-dimensional `[1, 2, 3,
+    /// 4]` never aliases a two-dimensional `[[1, 2], [3, 4]]`.
+    array_literal_const_globals: RefCell<HashMap<VcpArrayConstKey, String>>,
+    /// Nested `builtin.module` that owns every generated global.
+    ///
+    /// This is created lazily so programs without generated globals retain their existing IR.
+    /// The module is itself a top-level symbol and is inserted through the root symbol table.
+    global_module: RefCell<Option<OperationRef<'ctx, 'r>>>,
+    /// The final symbol name of [`Self::global_module`]. The root insertion may uniquify it.
+    global_module_name: RefCell<Option<String>>,
     /// Operation builder
     builder: OpBuilder<'ctx, 'static>,
 }
@@ -574,6 +592,9 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
             current_body: Cell::new(None),
             statement_trace: RefCell::new(Vec::new()),
             vcp_array_const_globals: RefCell::new(Default::default()),
+            array_literal_const_globals: RefCell::new(Default::default()),
+            global_module: RefCell::new(None),
+            global_module_name: RefCell::new(None),
             builder,
         }
     }
@@ -613,8 +634,47 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         ArrayAttribute::new(self.context, &attrs).into()
     }
 
-    /// Returns the symbol and type for a deduplicated module-level global const containing the
-    /// given concrete VCP array argument.
+    /// Returns the nested module that owns all generated globals, creating it on first use.
+    fn get_or_create_global_module(
+        &self,
+        location: Location<'ctx>,
+    ) -> Result<OperationRef<'ctx, 'r>> {
+        if let Some(global_module) = *self.global_module.borrow() {
+            return Ok(global_module);
+        }
+
+        let region = Region::new();
+        region.append_block(Block::new(&[]));
+        let global_module = OperationBuilder::new("builtin.module", location)
+            .add_attributes(&[(
+                Identifier::new(self.context, "sym_name"),
+                StringAttribute::new(self.context, "global").into(),
+            )])
+            .add_regions([region])
+            .build()?;
+        let global_module = insert_unique_symbol_op(&self.module.as_operation(), global_module);
+        let global_module_name = get_sym_name_attr(&global_module)?.value().to_owned();
+
+        // SAFETY: The operation is owned by `self.module`, whose lifetime is `'ctx`. Since
+        // `'ctx: 'r`, the reference remains valid for the lifetime of this code generator.
+        let global_module: OperationRef<'ctx, 'r> =
+            unsafe { OperationRef::from_raw(global_module.to_raw()) };
+        self.global_module.replace(Some(global_module));
+        self.global_module_name.replace(Some(global_module_name));
+        Ok(global_module)
+    }
+
+    /// Builds a reference to a generated global in the nested global module.
+    pub(crate) fn global_symbol_ref(&self, name: &str) -> SymbolRefAttribute<'ctx> {
+        let global_module_name = self.global_module_name.borrow();
+        let global_module_name = global_module_name
+            .as_deref()
+            .expect("generated global module must exist before creating a reference");
+        SymbolRefAttribute::new_from_str(self.context, global_module_name, &[name])
+    }
+
+    /// Returns the symbol and type for a deduplicated generated global const containing the given
+    /// concrete VCP array argument.
     pub(crate) fn get_or_create_vcp_array_const_global(
         &self,
         location: Location<'ctx>,
@@ -638,12 +698,82 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
             return Ok((name.clone(), array_type));
         }
 
-        let name = format!("vcp_array_const_{}", self.vcp_array_const_globals.borrow().len());
+        let requested_name =
+            format!("vcp_array_const_{}", self.vcp_array_const_globals.borrow().len());
         let initial_value = self.build_vcp_array_const_attr(values);
 
-        let builder = OpBuilder::at_block_end(self.context, self.module.body());
-        global::def(&builder, location, &name, array_type, true, Some(initial_value));
+        let global_module = self.get_or_create_global_module(location)?;
+        let global_op = build_owned_operation(self.context, |builder| {
+            Ok::<_, anyhow::Error>(
+                global::def(
+                    builder,
+                    location,
+                    &requested_name,
+                    array_type,
+                    true,
+                    Some(initial_value),
+                )
+                .into(),
+            )
+        })?;
+        let global_op = insert_unique_symbol_op(&global_module, global_op);
+        let name = get_sym_name_attr(&global_op)?.value().to_owned();
         self.vcp_array_const_globals.borrow_mut().insert(key, name.clone());
+        Ok((name, array_type))
+    }
+
+    /// Returns the symbol and type for a deduplicated generated global const containing a
+    /// concrete numeric array literal.
+    ///
+    /// `values` must be in LLZK storage order: row-major for multidimensional arrays. LLZK
+    /// represents every array initializer as one flat attribute list, including a `2 x 2`
+    /// array, rather than as nested array attributes. The returned globals are immutable, which
+    /// permits their reads in `function.def` bodies and, once supported by LLZK, `poly.expr`
+    /// initializers as well.
+    pub(crate) fn get_or_create_array_literal_const_global(
+        &self,
+        location: Location<'ctx>,
+        dimensions: &[usize],
+        values: &[BigInt],
+    ) -> Result<(String, Type<'ctx>)> {
+        ensure!(!dimensions.is_empty(), "array literal constants must have at least one dimension");
+        let expected_len = dimensions.iter().try_fold(1usize, |acc, dim| {
+            acc.checked_mul(*dim).ok_or_else(|| anyhow!("array constant dimensions overflow"))
+        })?;
+        ensure!(
+            expected_len == values.len(),
+            "array constant has {} values, expected {expected_len} from dimensions {:?}",
+            values.len(),
+            dimensions
+        );
+
+        let array_type = self.type_from_dimension_consts(self.felt_type().into(), dimensions)?;
+        let key = VcpArrayConstKey { dimensions: dimensions.to_vec(), values: values.to_vec() };
+        if let Some(name) = self.array_literal_const_globals.borrow().get(&key) {
+            return Ok((name.clone(), array_type));
+        }
+
+        let requested_name =
+            format!("array_const_{}", self.array_literal_const_globals.borrow().len());
+        let initial_value = self.build_vcp_array_const_attr(values);
+
+        let global_module = self.get_or_create_global_module(location)?;
+        let global_op = build_owned_operation(self.context, |builder| {
+            Ok::<_, anyhow::Error>(
+                global::def(
+                    builder,
+                    location,
+                    &requested_name,
+                    array_type,
+                    true,
+                    Some(initial_value),
+                )
+                .into(),
+            )
+        })?;
+        let global_op = insert_unique_symbol_op(&global_module, global_op);
+        let name = get_sym_name_attr(&global_op)?.value().to_owned();
+        self.array_literal_const_globals.borrow_mut().insert(key, name.clone());
         Ok((name, array_type))
     }
 

@@ -13,7 +13,7 @@ use llzk::{
     attributes::array::AffineMapAttribute,
     builder::{EntryPoint, OpBuilder},
     dialect::{
-        array, array::ArrayCtor, bool, cast, constrain, felt, function, pod, poly, r#struct,
+        array, array::ArrayCtor, bool, cast, constrain, felt, function, global, pod, poly, r#struct,
     },
     map_operands::MapOperandsBuilder,
     operation::build_owned_operation,
@@ -37,7 +37,7 @@ use melior::{
     ir::{AttributeLike as _, TypeLike as _},
 };
 use num_bigint_dig::BigInt;
-use num_traits::Zero;
+use num_traits::{ToPrimitive, Zero};
 use program_structure::ast::{
     Access, AssignOp, Expression, ExpressionInfixOpcode, ExpressionPrefixOpcode, Meta,
 };
@@ -67,6 +67,52 @@ pub(crate) const CIRCOM_RETURN_MARKER_ATTR: &str = "from_circom_return";
 /// LLZK attribute used to attach comma-separated list of variable names for the operands
 /// of an `scf.yield` op.
 pub(crate) const OPERAND_VAL_NAMES: &str = "operand_val_names";
+
+/// Returns the shape and row-major elements of a rectangular array literal of felt constants.
+///
+/// This includes constant `UniformArray` expressions, which represent Circom's implicit
+/// all-zero array initializer. The result can directly initialize an LLZK `global.def const`;
+/// non-literal and ragged arrays return `None` and retain their normal runtime lowering.
+fn literal_array_dimensions_and_values(expr: &Expression) -> Option<(Vec<usize>, Vec<BigInt>)> {
+    match expr {
+        Expression::Number(_, value) => Some((vec![], vec![value.clone()])),
+        Expression::ArrayInLine { values, .. } if !values.is_empty() => {
+            let (element_dimensions, mut flattened) =
+                literal_array_dimensions_and_values(&values[0])?;
+            for value in &values[1..] {
+                let (dimensions, elements) = literal_array_dimensions_and_values(value)?;
+                if dimensions != element_dimensions {
+                    return None;
+                }
+                flattened.extend(elements);
+            }
+            let mut dimensions = Vec::with_capacity(element_dimensions.len() + 1);
+            dimensions.push(values.len());
+            dimensions.extend(element_dimensions);
+            Some((dimensions, flattened))
+        }
+        Expression::UniformArray { value, dimension, .. } => {
+            let (element_dimensions, element_values) = literal_array_dimensions_and_values(value)?;
+            let Expression::Number(_, dimension) = dimension.as_ref() else {
+                return None;
+            };
+            let dimension = dimension.to_usize()?;
+            if dimension == 0 {
+                return None;
+            }
+            let capacity = element_values.len().checked_mul(dimension)?;
+            let mut flattened = Vec::with_capacity(capacity);
+            for _ in 0..dimension {
+                flattened.extend(element_values.iter().cloned());
+            }
+            let mut dimensions = Vec::with_capacity(element_dimensions.len() + 1);
+            dimensions.push(dimension);
+            dimensions.extend(element_dimensions);
+            Some((dimensions, flattened))
+        }
+        _ => None,
+    }
+}
 
 /// Trait for types that can be yielded from an `scf.if` arm via `scf::yield`.
 ///
@@ -2786,6 +2832,25 @@ where
             }
             Expression::ArrayInLine { meta, values } => {
                 let location = codegen.location_from_meta(meta);
+                if let Some((dimensions, flattened)) = literal_array_dimensions_and_values(self) {
+                    // This read may be generated in a `poly.expr` initializer. LLZK must permit
+                    // such reads when they target an immutable `global.def const`; the helper
+                    // below always creates that form of global.
+                    let (global_name, array_type) = codegen
+                        .get_or_create_array_literal_const_global(
+                            location,
+                            &dimensions,
+                            &flattened,
+                        )?;
+                    let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                    return block_gen.append_op_ref_unnamed_result(global::read(
+                        &builder,
+                        location,
+                        codegen.global_symbol_ref(&global_name),
+                        true,
+                        array_type,
+                    ));
+                }
                 // Multi-dimensional arrays are made up of array values as their elements
                 let values = values
                     .iter()
@@ -2830,6 +2895,22 @@ where
             }
             Expression::UniformArray { meta, value, dimension } => {
                 let location = codegen.location_from_meta(meta);
+                if let Some((dimensions, flattened)) = literal_array_dimensions_and_values(self) {
+                    let (global_name, array_type) = codegen
+                        .get_or_create_array_literal_const_global(
+                            location,
+                            &dimensions,
+                            &flattened,
+                        )?;
+                    let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                    return block_gen.append_op_ref_unnamed_result(global::read(
+                        &builder,
+                        location,
+                        codegen.global_symbol_ref(&global_name),
+                        true,
+                        array_type,
+                    ));
+                }
                 // Multi-dimensional arrays are made up of array values as their elements
                 let value = value.gen_llzk_in_block(codegen, block_gen, info)?;
                 let dim = block_gen
