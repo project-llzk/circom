@@ -37,18 +37,18 @@ component main = Template([[0, 1], [2, 3]], [1, 0], 2);
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = global.read const @global::@vcp_array_const_1 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = function.call @f_0::@f_0(%[[VAL_3]]) : (!array.type<2,2 x !felt.type<"bn128">>) -> !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = function.call @f_0::@f_0(%[[VAL_3]]) : (!array.type<2,2 x !felt.type<"bn128">>) -> !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@Template_0::@Template_0<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_9:[0-9a-zA-Z_\.]+]]: !struct.type<@Template_0::@Template_0<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = global.read const @global::@vcp_array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = global.read const @global::@vcp_array_const_1 : !array.type<2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = function.call @f_0::@f_0(%[[VAL_11]]) : (!array.type<2,2 x !felt.type<"bn128">>) -> !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:        function.def @constrain(%[[VAL_37:[0-9a-zA-Z_\.]+]]: !struct.type<@Template_0::@Template_0<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_38:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
+// CHECK-NEXT:          %[[VAL_39:[0-9a-zA-Z_\.]+]] = global.read const @global::@vcp_array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_40:[0-9a-zA-Z_\.]+]] = global.read const @global::@vcp_array_const_1 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_41:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_42:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_60:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_72:[0-9a-zA-Z_\.]+]] = function.call @f_0::@f_0(%[[VAL_39]]) : (!array.type<2,2 x !felt.type<"bn128">>) -> !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

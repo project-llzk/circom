@@ -28,14 +28,14 @@ component main = Main();
 // CHECK-NEXT:    poly.template @Main_0 {
 // CHECK-NEXT:      struct.def @Main_0 {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Main_0::@Main_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Main_0::@Main_0<[]>>
-// CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<3,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = function.call @default_init_0::@default_init_0() : () -> !array.type<3,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@Main_0::@Main_0<[]>>
+// CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = struct.new : <@Main_0::@Main_0<[]>>
+// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<3,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = function.call @default_init_0::@default_init_0() : () -> !array.type<3,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          function.return %[[VAL_14]] : !struct.type<@Main_0::@Main_0<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@Main_0::@Main_0<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<3,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = function.call @default_init_0::@default_init_0() : () -> !array.type<3,2 x !felt.type<"bn128">>
+// CHECK-NEXT:        function.def @constrain(%[[VAL_30:[0-9a-zA-Z_\.]+]]: !struct.type<@Main_0::@Main_0<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<3,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_45:[0-9a-zA-Z_\.]+]] = function.call @default_init_0::@default_init_0() : () -> !array.type<3,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
