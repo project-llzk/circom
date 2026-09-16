@@ -17,6 +17,10 @@ template FixIdxNested() {
 component main = FixIdxNested();
 
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@FixIdxNested::@FixIdxNested<[]>>} {
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<16 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_1 : !array.type<16 x !felt.type<"bn128">> = [ 0 : <"bn128">,  5 : <"bn128">,  10 : <"bn128">,  15 : <"bn128">,  4 : <"bn128">,  9 : <"bn128">,  14 : <"bn128">,  3 : <"bn128">,  8 : <"bn128">,  13 : <"bn128">,  2 : <"bn128">,  7 : <"bn128">,  12 : <"bn128">,  1 : <"bn128">,  6 : <"bn128">,  11 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @FixIdxNested {
 // CHECK-NEXT:      struct.def @FixIdxNested {
 // CHECK-NEXT:        struct.member @out : !array.type<16 x !felt.type<"bn128">> {llzk.pub, signal}
@@ -70,9 +74,5 @@ component main = FixIdxNested();
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
-// CHECK-NEXT:    }
-// CHECK-NEXT:    module @global {
-// CHECK-NEXT:      global.def const @array_const_0 : !array.type<16 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
-// CHECK-NEXT:      global.def const @array_const_1 : !array.type<16 x !felt.type<"bn128">> = [ 0 : <"bn128">,  5 : <"bn128">,  10 : <"bn128">,  15 : <"bn128">,  4 : <"bn128">,  9 : <"bn128">,  14 : <"bn128">,  3 : <"bn128">,  8 : <"bn128">,  13 : <"bn128">,  2 : <"bn128">,  7 : <"bn128">,  12 : <"bn128">,  1 : <"bn128">,  6 : <"bn128">,  11 : <"bn128">]
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }

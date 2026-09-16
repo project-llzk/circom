@@ -12,6 +12,11 @@ template Arrays() {
 component main = Arrays();
 
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Arrays::@Arrays<[]>>} {
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<3,2,1 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_1 : !array.type<2,2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_2 : !array.type<2,2 x !felt.type<"bn128">> = [ 1 : <"bn128">,  2 : <"bn128">,  3 : <"bn128">,  4 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @Arrays {
 // CHECK-NEXT:      struct.def @Arrays {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Arrays::@Arrays<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
@@ -28,10 +33,5 @@ component main = Arrays();
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
-// CHECK-NEXT:    }
-// CHECK-NEXT:    module @global {
-// CHECK-NEXT:      global.def const @array_const_0 : !array.type<3,2,1 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
-// CHECK-NEXT:      global.def const @array_const_1 : !array.type<2,2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
-// CHECK-NEXT:      global.def const @array_const_2 : !array.type<2,2 x !felt.type<"bn128">> = [ 1 : <"bn128">,  2 : <"bn128">,  3 : <"bn128">,  4 : <"bn128">]
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }

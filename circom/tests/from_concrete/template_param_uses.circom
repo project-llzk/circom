@@ -17,6 +17,12 @@ template Template(m, n, c) {
 component main = Template([[0, 1], [2, 3]], [1, 0], 2);
 
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Template_0::@Template_0<[]>>} {
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @vcp_array_const_0 : !array.type<2,2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  1 : <"bn128">,  2 : <"bn128">,  3 : <"bn128">]
+// CHECK-NEXT:      global.def const @vcp_array_const_1 : !array.type<2 x !felt.type<"bn128">> = [ 1 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<2,2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_1 : !array.type<2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @f_0 {
 // CHECK-NEXT:      function.def @f_0(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<2,2 x !felt.type<"bn128">> {function.arg_name = "a"}) -> !array.type<2,2 x !felt.type<"bn128">> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:        function.return %[[VAL_0]] : !array.type<2,2 x !felt.type<"bn128">>
@@ -46,11 +52,5 @@ component main = Template([[0, 1], [2, 3]], [1, 0], 2);
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
-// CHECK-NEXT:    }
-// CHECK-NEXT:    module @global {
-// CHECK-NEXT:      global.def const @vcp_array_const_0 : !array.type<2,2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  1 : <"bn128">,  2 : <"bn128">,  3 : <"bn128">]
-// CHECK-NEXT:      global.def const @vcp_array_const_1 : !array.type<2 x !felt.type<"bn128">> = [ 1 : <"bn128">,  0 : <"bn128">]
-// CHECK-NEXT:      global.def const @array_const_0 : !array.type<2,2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
-// CHECK-NEXT:      global.def const @array_const_1 : !array.type<2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">]
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }

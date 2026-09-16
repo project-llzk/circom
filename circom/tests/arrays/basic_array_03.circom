@@ -25,6 +25,9 @@ template ArrayReturnTemplate(n) {
 component main = ArrayReturnTemplate(4);
 
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ArrayReturnTemplate::@ArrayReturnTemplate<[4]>>} {
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<5 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @return_array_A {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_arg1 : !poly.tvar<@T_arg1>
@@ -49,9 +52,6 @@ component main = ArrayReturnTemplate(4);
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_3]] : (!array.type<5 x !felt.type<"bn128">>) -> !poly.tvar<@T_return>
 // CHECK-NEXT:        function.return %[[VAL_14]] : !poly.tvar<@T_return>
 // CHECK-NEXT:      }
-// CHECK-NEXT:    }
-// CHECK-NEXT:    module @global {
-// CHECK-NEXT:      global.def const @array_const_0 : !array.type<5 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @return_array_B {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>

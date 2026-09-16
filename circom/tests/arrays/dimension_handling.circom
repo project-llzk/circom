@@ -26,6 +26,11 @@ template A() {
 component main = A();
 
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@A::@A<[]>>} {
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_1 : !array.type<1,1 x !felt.type<"bn128">> = [ 0 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_2 : !array.type<2 x !felt.type<"bn128">> = [ 18446744073709551557 : <"bn128">,  18446744073709551557 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @myAdd {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_arg1 : !poly.tvar<@T_arg1>
@@ -44,11 +49,6 @@ component main = A();
 // CHECK-NEXT:        %[[VAL_12:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_11]] : (!array.type<2 x !felt.type<"bn128">>) -> !poly.tvar<@T_return>
 // CHECK-NEXT:        function.return %[[VAL_12]] : !poly.tvar<@T_return>
 // CHECK-NEXT:      }
-// CHECK-NEXT:    }
-// CHECK-NEXT:    module @global {
-// CHECK-NEXT:      global.def const @array_const_0 : !array.type<2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">]
-// CHECK-NEXT:      global.def const @array_const_1 : !array.type<1,1 x !felt.type<"bn128">> = [ 0 : <"bn128">]
-// CHECK-NEXT:      global.def const @array_const_2 : !array.type<2 x !felt.type<"bn128">> = [ 18446744073709551557 : <"bn128">,  18446744073709551557 : <"bn128">]
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @myFun {
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>

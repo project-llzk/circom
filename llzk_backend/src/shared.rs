@@ -643,17 +643,19 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
             return Ok(global_module);
         }
 
+        // Functions are generated before templates, so pick a name outside the complete
+        // source-level namespace before directly inserting this module at the start of the root.
+        let global_module_name = self.pick_global_module_name();
         let region = Region::new();
         region.append_block(Block::new(&[]));
         let global_module = OperationBuilder::new("builtin.module", location)
             .add_attributes(&[(
                 Identifier::new(self.context, "sym_name"),
-                StringAttribute::new(self.context, "global").into(),
+                StringAttribute::new(self.context, &global_module_name).into(),
             )])
             .add_regions([region])
             .build()?;
-        let global_module = insert_unique_symbol_op(&self.module.as_operation(), global_module);
-        let global_module_name = get_sym_name_attr(&global_module)?.value().to_owned();
+        let global_module = self.module.body().insert_operation(0, global_module);
 
         // SAFETY: The operation is owned by `self.module`, whose lifetime is `'ctx`. Since
         // `'ctx: 'r`, the reference remains valid for the lifetime of this code generator.
@@ -662,6 +664,23 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         self.global_module.replace(Some(global_module));
         self.global_module_name.replace(Some(global_module_name));
         Ok(global_module)
+    }
+
+    /// Return a generated-global module name that cannot collide with a source-level symbol
+    /// inserted later in code generation.
+    fn pick_global_module_name(&self) -> String {
+        let mut candidate = "global".to_owned();
+        loop {
+            if !self.program.contains_function(&candidate)
+                && !self.program.contains_template(&candidate)
+            {
+                return candidate;
+            }
+            // Do not use a numeric suffix here. The LLZK symbol table treats one as part of the
+            // same generated-name family, so inserting `global_0` when `global` exists can
+            // itself become `global_1` and reintroduce a later source-symbol collision.
+            candidate.push('_');
+        }
     }
 
     /// Builds a reference to a generated global in the nested global module.

@@ -29,6 +29,9 @@ template BigModOld(n) {
 component main = BigModOld(2);
 
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@BigModOld::@BigModOld<[2]>>} {
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<1 x !felt.type<"bn128">> = [ 0 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @identity {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
@@ -49,9 +52,6 @@ component main = BigModOld(2);
 // CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_3]] : (!array.type<1 x !felt.type<"bn128">>) -> !poly.tvar<@T_return>
 // CHECK-NEXT:        function.return %[[VAL_7]] : !poly.tvar<@T_return>
 // CHECK-NEXT:      }
-// CHECK-NEXT:    }
-// CHECK-NEXT:    module @global {
-// CHECK-NEXT:      global.def const @array_const_0 : !array.type<1 x !felt.type<"bn128">> = [ 0 : <"bn128">]
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @short_div {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>

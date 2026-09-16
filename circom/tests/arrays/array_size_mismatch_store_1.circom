@@ -14,6 +14,11 @@ template ArrayShenanigans() {
 component main = ArrayShenanigans();
 
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ArrayShenanigans::@ArrayShenanigans<[]>>} {
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<2,2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_1 : !array.type<1,3 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_2 : !array.type<1,3 x !felt.type<"bn128">> = [ 9 : <"bn128">,  8 : <"bn128">,  7 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @ArrayShenanigans {
 // CHECK-NEXT:      struct.def @ArrayShenanigans {
 // CHECK-NEXT:        struct.member @outp : !array.type<2,2 x !felt.type<"bn128">> {llzk.pub, signal}
@@ -54,10 +59,5 @@ component main = ArrayShenanigans();
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
-// CHECK-NEXT:    }
-// CHECK-NEXT:    module @global {
-// CHECK-NEXT:      global.def const @array_const_0 : !array.type<2,2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
-// CHECK-NEXT:      global.def const @array_const_1 : !array.type<1,3 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
-// CHECK-NEXT:      global.def const @array_const_2 : !array.type<1,3 x !felt.type<"bn128">> = [ 9 : <"bn128">,  8 : <"bn128">,  7 : <"bn128">]
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }

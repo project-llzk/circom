@@ -29,6 +29,9 @@ template CallInLoop(n, m) {
 component main = CallInLoop(2, 3);
 
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@CallInLoop::@CallInLoop<[2, 3]>>} {
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<5 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @fun {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_arg1 : !poly.tvar<@T_arg1>
@@ -83,9 +86,6 @@ component main = CallInLoop(2, 3);
 // CHECK-NEXT:        function.return %[[VAL_43]] : !poly.tvar<@T_return>
 // CHECK-NEXT:      }
 // CHECK-NEXT:      poly.param @"$e" : !poly.tvar<@"$e">
-// CHECK-NEXT:    }
-// CHECK-NEXT:    module @global {
-// CHECK-NEXT:      global.def const @array_const_0 : !array.type<5 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @CallInLoop {
 // CHECK-NEXT:      poly.param @n : index

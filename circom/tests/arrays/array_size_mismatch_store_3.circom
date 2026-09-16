@@ -26,6 +26,11 @@ template SmallToLarge() {
 component main = SmallToLarge();
 
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@SmallToLarge::@SmallToLarge<[]>>} {
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<10 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_1 : !array.type<8 x !felt.type<"bn128">> = [ 99 : <"bn128">,  98 : <"bn128">,  97 : <"bn128">,  96 : <"bn128">,  95 : <"bn128">,  94 : <"bn128">,  93 : <"bn128">,  92 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_2 : !array.type<5 x !felt.type<"bn128">> = [ 89 : <"bn128">,  88 : <"bn128">,  87 : <"bn128">,  86 : <"bn128">,  85 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @SmallToLarge {
 // CHECK-NEXT:      struct.def @SmallToLarge {
 // CHECK-NEXT:        struct.member @out : !array.type<10 x !felt.type<"bn128">> {llzk.pub, signal}
@@ -172,10 +177,5 @@ component main = SmallToLarge();
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
-// CHECK-NEXT:    }
-// CHECK-NEXT:    module @global {
-// CHECK-NEXT:      global.def const @array_const_0 : !array.type<10 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
-// CHECK-NEXT:      global.def const @array_const_1 : !array.type<8 x !felt.type<"bn128">> = [ 99 : <"bn128">,  98 : <"bn128">,  97 : <"bn128">,  96 : <"bn128">,  95 : <"bn128">,  94 : <"bn128">,  93 : <"bn128">,  92 : <"bn128">]
-// CHECK-NEXT:      global.def const @array_const_2 : !array.type<5 x !felt.type<"bn128">> = [ 89 : <"bn128">,  88 : <"bn128">,  87 : <"bn128">,  86 : <"bn128">,  85 : <"bn128">]
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }

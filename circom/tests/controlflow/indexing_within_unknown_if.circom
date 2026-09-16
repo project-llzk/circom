@@ -19,6 +19,9 @@ template TestSetAllUnknownWithinUnknownCondition(k) {
 component main = TestSetAllUnknownWithinUnknownCondition(1);
 
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@TestSetAllUnknownWithinUnknownCondition::@TestSetAllUnknownWithinUnknownCondition<[1]>>} {
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<10 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @TestSetAllUnknownWithinUnknownCondition {
 // CHECK-NEXT:      poly.param @k
 // CHECK-NEXT:      struct.def @TestSetAllUnknownWithinUnknownCondition {
@@ -80,8 +83,5 @@ component main = TestSetAllUnknownWithinUnknownCondition(1);
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
-// CHECK-NEXT:    }
-// CHECK-NEXT:    module @global {
-// CHECK-NEXT:      global.def const @array_const_0 : !array.type<10 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }
