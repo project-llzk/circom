@@ -88,21 +88,13 @@ component main = A();
 // CHECK-NEXT:      struct.def @A {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@A::@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_40:[0-9a-zA-Z_\.]+]] = struct.new : <@A::@A<[]>>
-// CHECK-NEXT:          %[[VAL_41:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_42:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_41]] : <1 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_43:[0-9a-zA-Z_\.]+]] = array.new  : <1,1 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_44:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:          array.insert %[[VAL_43]]{{\[}}%[[VAL_44]]] = %[[VAL_42]] : <1,1 x !felt.type<"bn128">>, <1 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_45:[0-9a-zA-Z_\.]+]] = function.call @myFun::@myFun() : () -> !array.type<1,1 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_41:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<1,1 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_42:[0-9a-zA-Z_\.]+]] = function.call @myFun::@myFun() : () -> !array.type<1,1 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_40]] : !struct.type<@A::@A<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_46:[0-9a-zA-Z_\.]+]]: !struct.type<@A::@A<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_47]] : <1 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = array.new  : <1,1 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:          array.insert %[[VAL_49]]{{\[}}%[[VAL_50]]] = %[[VAL_48]] : <1,1 x !felt.type<"bn128">>, <1 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = function.call @myFun::@myFun() : () -> !array.type<1,1 x !felt.type<"bn128">>
+// CHECK-NEXT:        function.def @constrain(%[[VAL_43:[0-9a-zA-Z_\.]+]]: !struct.type<@A::@A<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_44:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<1,1 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_45:[0-9a-zA-Z_\.]+]] = function.call @myFun::@myFun() : () -> !array.type<1,1 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

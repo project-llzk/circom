@@ -64,15 +64,13 @@ component main = BigModOld();
 // CHECK-NEXT:      struct.def @BigModOld {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@BigModOld::@BigModOld<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = struct.new : <@BigModOld::@BigModOld<[]>>
-// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_16]] : <1 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = function.call @long_div::@long_div() : () -> !array.type<1 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<1 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = function.call @long_div::@long_div() : () -> !array.type<1 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_15]] : !struct.type<@BigModOld::@BigModOld<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_19:[0-9a-zA-Z_\.]+]]: !struct.type<@BigModOld::@BigModOld<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_20]] : <1 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = function.call @long_div::@long_div() : () -> !array.type<1 x !felt.type<"bn128">>
+// CHECK-NEXT:        function.def @constrain(%[[VAL_18:[0-9a-zA-Z_\.]+]]: !struct.type<@BigModOld::@BigModOld<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<1 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = function.call @long_div::@long_div() : () -> !array.type<1 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

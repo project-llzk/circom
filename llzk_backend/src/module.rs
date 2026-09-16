@@ -852,6 +852,13 @@ where
     let decl_key_to_name = declarations.decl_key_to_name;
     for (key, ty) in decl_inits(declarations.decl_inits, codegen.config.stabilize) {
         let name = decl_key_to_name.get(&key).expect("every decl_inits key has a name entry");
+        // Static non-concrete arrays are initialized when their declaration is visited below.
+        // Do not also seed an unused `llzk.nondet` here: template lowering does not remove that
+        // placeholder, and it would become a redundant zero `array.new` beside the global read.
+        if !codegen.program.is_concrete() && codegen.static_array_dimensions_for_type(ty).is_some()
+        {
+            continue;
+        }
         // Insert the declaration into the compute function.
         compute_ctx.block_ctx.declare_value_if_not_present(
             name,

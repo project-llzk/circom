@@ -73,7 +73,9 @@ pub(crate) const OPERAND_VAL_NAMES: &str = "operand_val_names";
 /// This includes constant `UniformArray` expressions, which represent Circom's implicit
 /// all-zero array initializer. The result can directly initialize an LLZK `global.def const`;
 /// non-literal and ragged arrays return `None` and retain their normal runtime lowering.
-fn literal_array_dimensions_and_values(expr: &Expression) -> Option<(Vec<usize>, Vec<BigInt>)> {
+pub(crate) fn literal_array_dimensions_and_values(
+    expr: &Expression,
+) -> Option<(Vec<usize>, Vec<BigInt>)> {
     match expr {
         Expression::Number(_, value) => Some((vec![], vec![value.clone()])),
         Expression::ArrayInLine { values, .. } if !values.is_empty() => {
@@ -2911,11 +2913,43 @@ where
                         array_type,
                     ));
                 }
-                // Multi-dimensional arrays are made up of array values as their elements
-                let value = value.gen_llzk_in_block(codegen, block_gen, info)?;
                 let dim = block_gen
                     .get_poly_binding::<ArrayDimExprKind>(codegen, dimension)
                     .and_then(ArrayDimension::try_from)?;
+                if let (Ok(dim), Some((element_dimensions, element_values))) =
+                    (IntegerAttribute::try_from(&dim), literal_array_dimensions_and_values(value))
+                {
+                    let dimension = usize::try_from(dim.value())?;
+                    if dimension != 0 {
+                        let capacity = element_values
+                            .len()
+                            .checked_mul(dimension)
+                            .ok_or_else(|| anyhow!("array constant dimensions overflow"))?;
+                        let mut flattened = Vec::with_capacity(capacity);
+                        for _ in 0..dimension {
+                            flattened.extend(element_values.iter().cloned());
+                        }
+                        let mut dimensions = Vec::with_capacity(element_dimensions.len() + 1);
+                        dimensions.push(dimension);
+                        dimensions.extend(element_dimensions);
+                        let (global_name, array_type) = codegen
+                            .get_or_create_array_literal_const_global(
+                                location,
+                                &dimensions,
+                                &flattened,
+                            )?;
+                        let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                        return block_gen.append_op_ref_unnamed_result(global::read(
+                            &builder,
+                            location,
+                            codegen.global_symbol_ref(&global_name),
+                            true,
+                            array_type,
+                        ));
+                    }
+                }
+                // Multi-dimensional arrays are made up of array values as their elements
+                let value = value.gen_llzk_in_block(codegen, block_gen, info)?;
                 block_gen.generate_uniform_array(codegen, location, value, &dim)
             }
             Expression::Call { meta, id, args } => {

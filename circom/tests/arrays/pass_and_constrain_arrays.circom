@@ -219,146 +219,76 @@ component main = Main();
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Main::@Main<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_136:[0-9a-zA-Z_\.]+]] = struct.new : <@Main::@Main<[]>>
 // CHECK-NEXT:          %[[VAL_137:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<16,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_138:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_139:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_138]], %[[VAL_138]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_140:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_2 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_138:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_139:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_2 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_140:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<16,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_141:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_142:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_141]], %[[VAL_141]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_143:[0-9a-zA-Z_\.]+]] = array.new  : <16,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_144:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:          array.insert %[[VAL_143]]{{\[}}%[[VAL_144]]] = %[[VAL_142]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_145:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:          array.insert %[[VAL_143]]{{\[}}%[[VAL_145]]] = %[[VAL_142]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_146:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CHECK-NEXT:          array.insert %[[VAL_143]]{{\[}}%[[VAL_146]]] = %[[VAL_142]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_147:[0-9a-zA-Z_\.]+]] = arith.constant 3 : index
-// CHECK-NEXT:          array.insert %[[VAL_143]]{{\[}}%[[VAL_147]]] = %[[VAL_142]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_148:[0-9a-zA-Z_\.]+]] = arith.constant 4 : index
-// CHECK-NEXT:          array.insert %[[VAL_143]]{{\[}}%[[VAL_148]]] = %[[VAL_142]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_149:[0-9a-zA-Z_\.]+]] = arith.constant 5 : index
-// CHECK-NEXT:          array.insert %[[VAL_143]]{{\[}}%[[VAL_149]]] = %[[VAL_142]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_150:[0-9a-zA-Z_\.]+]] = arith.constant 6 : index
-// CHECK-NEXT:          array.insert %[[VAL_143]]{{\[}}%[[VAL_150]]] = %[[VAL_142]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_151:[0-9a-zA-Z_\.]+]] = arith.constant 7 : index
-// CHECK-NEXT:          array.insert %[[VAL_143]]{{\[}}%[[VAL_151]]] = %[[VAL_142]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_152:[0-9a-zA-Z_\.]+]] = arith.constant 8 : index
-// CHECK-NEXT:          array.insert %[[VAL_143]]{{\[}}%[[VAL_152]]] = %[[VAL_142]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_153:[0-9a-zA-Z_\.]+]] = arith.constant 9 : index
-// CHECK-NEXT:          array.insert %[[VAL_143]]{{\[}}%[[VAL_153]]] = %[[VAL_142]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_154:[0-9a-zA-Z_\.]+]] = arith.constant 10 : index
-// CHECK-NEXT:          array.insert %[[VAL_143]]{{\[}}%[[VAL_154]]] = %[[VAL_142]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_155:[0-9a-zA-Z_\.]+]] = arith.constant 11 : index
-// CHECK-NEXT:          array.insert %[[VAL_143]]{{\[}}%[[VAL_155]]] = %[[VAL_142]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_156:[0-9a-zA-Z_\.]+]] = arith.constant 12 : index
-// CHECK-NEXT:          array.insert %[[VAL_143]]{{\[}}%[[VAL_156]]] = %[[VAL_142]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_157:[0-9a-zA-Z_\.]+]] = arith.constant 13 : index
-// CHECK-NEXT:          array.insert %[[VAL_143]]{{\[}}%[[VAL_157]]] = %[[VAL_142]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_158:[0-9a-zA-Z_\.]+]] = arith.constant 14 : index
-// CHECK-NEXT:          array.insert %[[VAL_143]]{{\[}}%[[VAL_158]]] = %[[VAL_142]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_159:[0-9a-zA-Z_\.]+]] = arith.constant 15 : index
-// CHECK-NEXT:          array.insert %[[VAL_143]]{{\[}}%[[VAL_159]]] = %[[VAL_142]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_160:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_161:[0-9a-zA-Z_\.]+]] = function.call @mul::@mul(%[[VAL_140]], %[[VAL_160]]) : (!array.type<2 x !felt.type<"bn128">>, !felt.type<"bn128">) -> !array.type<16,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_162:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_163:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_164:[0-9a-zA-Z_\.]+]] = %[[VAL_162]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
-// CHECK-NEXT:            %[[VAL_165:[0-9a-zA-Z_\.]+]] = felt.const  16 : <"bn128">
-// CHECK-NEXT:            %[[VAL_166:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_164]], %[[VAL_165]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:            scf.condition(%[[VAL_166]]) %[[VAL_164]] : !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_142:[0-9a-zA-Z_\.]+]] = function.call @mul::@mul(%[[VAL_139]], %[[VAL_141]]) : (!array.type<2 x !felt.type<"bn128">>, !felt.type<"bn128">) -> !array.type<16,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_143:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_144:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_145:[0-9a-zA-Z_\.]+]] = %[[VAL_143]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
+// CHECK-NEXT:            %[[VAL_146:[0-9a-zA-Z_\.]+]] = felt.const  16 : <"bn128">
+// CHECK-NEXT:            %[[VAL_147:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_145]], %[[VAL_146]]) : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:            scf.condition(%[[VAL_147]]) %[[VAL_145]] : !felt.type<"bn128">
 // CHECK-NEXT:          } do {
-// CHECK-NEXT:          ^bb0(%[[VAL_167:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CHECK-NEXT:            %[[VAL_168:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_167]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_169:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:            %[[VAL_170:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_169]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_171:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_161]]{{\[}}%[[VAL_168]], %[[VAL_170]]] : <16,2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_172:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_167]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_173:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:            %[[VAL_174:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_173]] : !felt.type<"bn128">
-// CHECK-NEXT:            array.write %[[VAL_137]]{{\[}}%[[VAL_172]], %[[VAL_174]]] = %[[VAL_171]] : <16,2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_175:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_167]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_176:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:            %[[VAL_177:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_176]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_178:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_161]]{{\[}}%[[VAL_175]], %[[VAL_177]]] : <16,2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_179:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_167]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_180:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:            %[[VAL_181:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_180]] : !felt.type<"bn128">
-// CHECK-NEXT:            array.write %[[VAL_137]]{{\[}}%[[VAL_179]], %[[VAL_181]]] = %[[VAL_178]] : <16,2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_182:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:            %[[VAL_183:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_167]], %[[VAL_182]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:            scf.yield %[[VAL_183]] : !felt.type<"bn128">
+// CHECK-NEXT:          ^bb0(%[[VAL_148:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
+// CHECK-NEXT:            %[[VAL_149:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_148]] : !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_150:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:            %[[VAL_151:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_150]] : !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_152:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_142]]{{\[}}%[[VAL_149]], %[[VAL_151]]] : <16,2 x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_153:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_148]] : !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_154:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:            %[[VAL_155:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_154]] : !felt.type<"bn128">
+// CHECK-NEXT:            array.write %[[VAL_137]]{{\[}}%[[VAL_153]], %[[VAL_155]]] = %[[VAL_152]] : <16,2 x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_156:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_148]] : !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_157:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:            %[[VAL_158:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_157]] : !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_159:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_142]]{{\[}}%[[VAL_156]], %[[VAL_158]]] : <16,2 x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_160:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_148]] : !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_161:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:            %[[VAL_162:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_161]] : !felt.type<"bn128">
+// CHECK-NEXT:            array.write %[[VAL_137]]{{\[}}%[[VAL_160]], %[[VAL_162]]] = %[[VAL_159]] : <16,2 x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_163:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:            %[[VAL_164:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_148]], %[[VAL_163]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:            scf.yield %[[VAL_164]] : !felt.type<"bn128">
 // CHECK-NEXT:          }
 // CHECK-NEXT:          struct.writem %[[VAL_136]][@out] = %[[VAL_137]] : <@Main::@Main<[]>>, !array.type<16,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_136]] : !struct.type<@Main::@Main<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_184:[0-9a-zA-Z_\.]+]]: !struct.type<@Main::@Main<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_185:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_184]][@out] : <@Main::@Main<[]>>, !array.type<16,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_186:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_187:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_186]], %[[VAL_186]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_188:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_2 : !array.type<2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_189:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_190:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_189]], %[[VAL_189]] : <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_191:[0-9a-zA-Z_\.]+]] = array.new  : <16,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_192:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:          array.insert %[[VAL_191]]{{\[}}%[[VAL_192]]] = %[[VAL_190]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_193:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:          array.insert %[[VAL_191]]{{\[}}%[[VAL_193]]] = %[[VAL_190]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_194:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CHECK-NEXT:          array.insert %[[VAL_191]]{{\[}}%[[VAL_194]]] = %[[VAL_190]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_195:[0-9a-zA-Z_\.]+]] = arith.constant 3 : index
-// CHECK-NEXT:          array.insert %[[VAL_191]]{{\[}}%[[VAL_195]]] = %[[VAL_190]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_196:[0-9a-zA-Z_\.]+]] = arith.constant 4 : index
-// CHECK-NEXT:          array.insert %[[VAL_191]]{{\[}}%[[VAL_196]]] = %[[VAL_190]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_197:[0-9a-zA-Z_\.]+]] = arith.constant 5 : index
-// CHECK-NEXT:          array.insert %[[VAL_191]]{{\[}}%[[VAL_197]]] = %[[VAL_190]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_198:[0-9a-zA-Z_\.]+]] = arith.constant 6 : index
-// CHECK-NEXT:          array.insert %[[VAL_191]]{{\[}}%[[VAL_198]]] = %[[VAL_190]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_199:[0-9a-zA-Z_\.]+]] = arith.constant 7 : index
-// CHECK-NEXT:          array.insert %[[VAL_191]]{{\[}}%[[VAL_199]]] = %[[VAL_190]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_200:[0-9a-zA-Z_\.]+]] = arith.constant 8 : index
-// CHECK-NEXT:          array.insert %[[VAL_191]]{{\[}}%[[VAL_200]]] = %[[VAL_190]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_201:[0-9a-zA-Z_\.]+]] = arith.constant 9 : index
-// CHECK-NEXT:          array.insert %[[VAL_191]]{{\[}}%[[VAL_201]]] = %[[VAL_190]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_202:[0-9a-zA-Z_\.]+]] = arith.constant 10 : index
-// CHECK-NEXT:          array.insert %[[VAL_191]]{{\[}}%[[VAL_202]]] = %[[VAL_190]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_203:[0-9a-zA-Z_\.]+]] = arith.constant 11 : index
-// CHECK-NEXT:          array.insert %[[VAL_191]]{{\[}}%[[VAL_203]]] = %[[VAL_190]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_204:[0-9a-zA-Z_\.]+]] = arith.constant 12 : index
-// CHECK-NEXT:          array.insert %[[VAL_191]]{{\[}}%[[VAL_204]]] = %[[VAL_190]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_205:[0-9a-zA-Z_\.]+]] = arith.constant 13 : index
-// CHECK-NEXT:          array.insert %[[VAL_191]]{{\[}}%[[VAL_205]]] = %[[VAL_190]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_206:[0-9a-zA-Z_\.]+]] = arith.constant 14 : index
-// CHECK-NEXT:          array.insert %[[VAL_191]]{{\[}}%[[VAL_206]]] = %[[VAL_190]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_207:[0-9a-zA-Z_\.]+]] = arith.constant 15 : index
-// CHECK-NEXT:          array.insert %[[VAL_191]]{{\[}}%[[VAL_207]]] = %[[VAL_190]] : <16,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_208:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_209:[0-9a-zA-Z_\.]+]] = function.call @mul::@mul(%[[VAL_188]], %[[VAL_208]]) : (!array.type<2 x !felt.type<"bn128">>, !felt.type<"bn128">) -> !array.type<16,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_210:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_211:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_212:[0-9a-zA-Z_\.]+]] = %[[VAL_210]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
-// CHECK-NEXT:            %[[VAL_213:[0-9a-zA-Z_\.]+]] = felt.const  16 : <"bn128">
-// CHECK-NEXT:            %[[VAL_214:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_212]], %[[VAL_213]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:            scf.condition(%[[VAL_214]]) %[[VAL_212]] : !felt.type<"bn128">
+// CHECK-NEXT:        function.def @constrain(%[[VAL_165:[0-9a-zA-Z_\.]+]]: !struct.type<@Main::@Main<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_166:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_165]][@out] : <@Main::@Main<[]>>, !array.type<16,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_167:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_168:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_2 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_169:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<16,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_170:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_171:[0-9a-zA-Z_\.]+]] = function.call @mul::@mul(%[[VAL_168]], %[[VAL_170]]) : (!array.type<2 x !felt.type<"bn128">>, !felt.type<"bn128">) -> !array.type<16,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_172:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:          %[[VAL_173:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_174:[0-9a-zA-Z_\.]+]] = %[[VAL_172]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
+// CHECK-NEXT:            %[[VAL_175:[0-9a-zA-Z_\.]+]] = felt.const  16 : <"bn128">
+// CHECK-NEXT:            %[[VAL_176:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_174]], %[[VAL_175]]) : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:            scf.condition(%[[VAL_176]]) %[[VAL_174]] : !felt.type<"bn128">
 // CHECK-NEXT:          } do {
-// CHECK-NEXT:          ^bb0(%[[VAL_215:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CHECK-NEXT:            %[[VAL_216:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_215]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_217:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:            %[[VAL_218:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_217]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_219:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_209]]{{\[}}%[[VAL_216]], %[[VAL_218]]] : <16,2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_220:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_215]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_221:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:            %[[VAL_222:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_221]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_223:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_185]]{{\[}}%[[VAL_220]], %[[VAL_222]]] : <16,2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:            constrain.eq %[[VAL_223]], %[[VAL_219]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_224:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_215]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_225:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:            %[[VAL_226:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_225]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_227:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_209]]{{\[}}%[[VAL_224]], %[[VAL_226]]] : <16,2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_228:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_215]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_229:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:            %[[VAL_230:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_229]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_231:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_185]]{{\[}}%[[VAL_228]], %[[VAL_230]]] : <16,2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:            constrain.eq %[[VAL_231]], %[[VAL_227]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_232:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:            %[[VAL_233:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_215]], %[[VAL_232]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:            scf.yield %[[VAL_233]] : !felt.type<"bn128">
+// CHECK-NEXT:          ^bb0(%[[VAL_177:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
+// CHECK-NEXT:            %[[VAL_178:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_177]] : !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_179:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:            %[[VAL_180:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_179]] : !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_181:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_171]]{{\[}}%[[VAL_178]], %[[VAL_180]]] : <16,2 x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_182:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_177]] : !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_183:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
+// CHECK-NEXT:            %[[VAL_184:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_183]] : !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_185:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_166]]{{\[}}%[[VAL_182]], %[[VAL_184]]] : <16,2 x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:            constrain.eq %[[VAL_185]], %[[VAL_181]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_186:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_177]] : !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_187:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:            %[[VAL_188:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_187]] : !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_189:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_171]]{{\[}}%[[VAL_186]], %[[VAL_188]]] : <16,2 x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_190:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_177]] : !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_191:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:            %[[VAL_192:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_191]] : !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_193:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_166]]{{\[}}%[[VAL_190]], %[[VAL_192]]] : <16,2 x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:            constrain.eq %[[VAL_193]], %[[VAL_189]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_194:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:            %[[VAL_195:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_177]], %[[VAL_194]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:            scf.yield %[[VAL_195]] : !felt.type<"bn128">
 // CHECK-NEXT:          }
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }

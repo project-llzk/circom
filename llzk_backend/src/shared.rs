@@ -777,6 +777,54 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         Ok((name, array_type))
     }
 
+    /// Return a deduplicated all-zero global for a statically shaped felt array type.
+    ///
+    /// `None` means `ty` is scalar, has a symbolic dimension, or contains a zero dimension and
+    /// must retain its normal initialization path.
+    pub(crate) fn get_or_create_zero_array_const_global_for_type(
+        &self,
+        location: Location<'ctx>,
+        ty: Type<'ctx>,
+    ) -> Result<Option<(String, Type<'ctx>)>> {
+        let Ok(array_type) = ArrayType::try_from(ty) else {
+            return Ok(None);
+        };
+        let dimensions = array_type
+            .dims()
+            .into_iter()
+            .map(|attr| {
+                usize::try_from(IntegerAttribute::try_from(attr).ok()?.value())
+                    .ok()
+                    .filter(|dimension| *dimension != 0)
+            })
+            .collect::<Option<Vec<_>>>();
+        let Some(dimensions) = dimensions else {
+            return Ok(None);
+        };
+        let value_count = dimensions.iter().try_fold(1usize, |acc, dimension| {
+            acc.checked_mul(*dimension).ok_or_else(|| anyhow!("array constant dimensions overflow"))
+        })?;
+        let values = vec![BigInt::zero(); value_count];
+        self.get_or_create_array_literal_const_global(location, &dimensions, &values).map(Some)
+    }
+
+    /// Return the dimensions of a statically shaped, non-empty array type without creating a
+    /// global. This is for callers that only need to test whether a declaration is static.
+    pub(crate) fn static_array_dimensions_for_type(&self, ty: Type<'ctx>) -> Option<Vec<usize>> {
+        let Ok(array_type) = ArrayType::try_from(ty) else {
+            return None;
+        };
+        array_type
+            .dims()
+            .into_iter()
+            .map(|attr| {
+                usize::try_from(IntegerAttribute::try_from(attr).ok()?.value())
+                    .ok()
+                    .filter(|dimension| *dimension != 0)
+            })
+            .collect()
+    }
+
     /// Set the body of the function or template currently being processed.
     pub fn set_current_body(&self, body: &'ast [Statement]) {
         self.current_body.set(Some(body));
@@ -2455,11 +2503,28 @@ where
                         if let Some(ty) = gen_ctx.get_var_decl_types().get(&qualified_key) {
                             let builder =
                                 gen_ctx.builder_at_current_insertion_point(codegen.context);
-                            let value = single_result_as_value(codegen.new_nondet_at_location(
-                                &builder,
-                                codegen.location_from_meta(meta),
-                                *ty,
-                            ))?;
+                            let location = codegen.location_from_meta(meta);
+                            let const_global = (!codegen.program.is_concrete())
+                                .then(|| {
+                                    codegen.get_or_create_zero_array_const_global_for_type(
+                                        location, *ty,
+                                    )
+                                })
+                                .transpose()?
+                                .flatten();
+                            let value = if let Some((global_name, array_type)) = const_global {
+                                single_result_as_value(global::read(
+                                    &builder,
+                                    location,
+                                    codegen.global_symbol_ref(&global_name),
+                                    true,
+                                    array_type,
+                                ))?
+                            } else {
+                                single_result_as_value(
+                                    codegen.new_nondet_at_location(&builder, location, *ty),
+                                )?
+                            };
                             if codegen.config.verbose {
                                 println!(
                                     "Declaring '{name}' @ {}",
