@@ -18,4 +18,5 @@ This repository expects coding agents to use `nix` for builds and command execut
 
 - Always ensure the build is successful before you stop working.
 - If you make changes, finish by running a successful build with `nix`.
-- Do not update "CHECK" lines for FileCheck in the ".circom" tests. Tests that fail only because they need updated CHECK lines do not block your completion.
+- **Implementation agents only:** While independently modifying code, do not update "CHECK" lines for FileCheck in ".circom" tests. Tests that fail solely because these expectations require refreshes do not block implementation completion.
+- **Code-review agents:** This implementation constraint is not a review criterion. Do not raise a finding, request a revert, or recommend against a submitted change solely because it updates FileCheck "CHECK" lines in ".circom" tests. Review the correctness of those expectation changes on their technical merits, like any other test change.
