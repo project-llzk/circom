@@ -18,13 +18,13 @@ component main = Template();
 // CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Template::@Template<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@Template::@Template<[]>>
-// CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  7
+// CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  7 : <"bn128">
 // CHECK-NEXT:          struct.writem %[[VAL_0]][@outp] = %[[VAL_1]] : <@Template::@Template<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          function.return %[[VAL_0]] : !struct.type<@Template::@Template<[]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_2:[0-9a-zA-Z_\.]+]]: !struct.type<@Template::@Template<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_2]][@outp] : <@Template::@Template<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  7
+// CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  7 : <"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_3]], %[[VAL_4]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
