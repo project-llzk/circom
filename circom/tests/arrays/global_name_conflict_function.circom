@@ -4,8 +4,6 @@
 
 pragma circom 2.0.0;
 
-// This function is lowered first and occupies the top-level symbol `@global`.
-// The generated-global container must therefore use the reserved name `@global_`.
 function global() {
     return 42;
 }
