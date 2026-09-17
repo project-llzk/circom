@@ -1,5 +1,6 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext --llzk_strip_debug_info -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext --llzk_strip_debug_info --no_init -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --check-prefix=NO-INIT
 // END.
 
 pragma circom 2.0.0;
@@ -48,3 +49,30 @@ component main = ArrayCopyTemplate();
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }
+
+// NO-INIT-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ArrayCopyTemplate::@ArrayCopyTemplate<[]>>} {
+// NO-INIT-NEXT:    poly.template @copy {
+// NO-INIT-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
+// NO-INIT-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
+// NO-INIT-NEXT:      function.def @copy(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0> {function.arg_name = "inp"}) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
+// NO-INIT-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_0]] : (!poly.tvar<@T_arg0>) -> !array.type<3 x !felt.type<"bn128">>
+// NO-INIT-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_1]] : (!array.type<3 x !felt.type<"bn128">>) -> !poly.tvar<@T_return>
+// NO-INIT-NEXT:        function.return %[[VAL_2]] : !poly.tvar<@T_return>
+// NO-INIT-NEXT:      }
+// NO-INIT-NEXT:    }
+// NO-INIT-NEXT:    poly.template @ArrayCopyTemplate {
+// NO-INIT-NEXT:      struct.def @ArrayCopyTemplate {
+// NO-INIT-NEXT:        function.def @compute() -> !struct.type<@ArrayCopyTemplate::@ArrayCopyTemplate<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// NO-INIT-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = struct.new : <@ArrayCopyTemplate::@ArrayCopyTemplate<[]>>
+// NO-INIT-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type<"bn128">>
+// NO-INIT-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = function.call @copy::@copy(%[[VAL_4]]) : (!array.type<3 x !felt.type<"bn128">>) -> !array.type<3 x !felt.type<"bn128">>
+// NO-INIT-NEXT:          function.return %[[VAL_3]] : !struct.type<@ArrayCopyTemplate::@ArrayCopyTemplate<[]>>
+// NO-INIT-NEXT:        }
+// NO-INIT-NEXT:        function.def @constrain(%[[VAL_6:[0-9a-zA-Z_\.]+]]: !struct.type<@ArrayCopyTemplate::@ArrayCopyTemplate<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// NO-INIT-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type<"bn128">>
+// NO-INIT-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = function.call @copy::@copy(%[[VAL_7]]) : (!array.type<3 x !felt.type<"bn128">>) -> !array.type<3 x !felt.type<"bn128">>
+// NO-INIT-NEXT:          function.return
+// NO-INIT-NEXT:        }
+// NO-INIT-NEXT:      }
+// NO-INIT-NEXT:    }
+// NO-INIT-NEXT:  }

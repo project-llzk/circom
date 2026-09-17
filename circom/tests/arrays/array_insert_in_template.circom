@@ -1,5 +1,6 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext --llzk_strip_debug_info -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext --llzk_strip_debug_info --no_init -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --check-prefix=NO-INIT
 // END.
 
 pragma circom 2.0.0;
@@ -43,3 +44,27 @@ component main = Main();
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }
+
+// NO-INIT-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Main::@Main<[]>>} {
+// NO-INIT-NEXT:    poly.template @default_init {
+// NO-INIT-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
+// NO-INIT-NEXT:      function.def @default_init() -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
+// NO-INIT-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3,2 x !felt.type<"bn128">>
+// NO-INIT-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_0]] : (!array.type<3,2 x !felt.type<"bn128">>) -> !poly.tvar<@T_return>
+// NO-INIT-NEXT:        function.return %[[VAL_1]] : !poly.tvar<@T_return>
+// NO-INIT-NEXT:      }
+// NO-INIT-NEXT:    }
+// NO-INIT-NEXT:    poly.template @Main {
+// NO-INIT-NEXT:      struct.def @Main {
+// NO-INIT-NEXT:        function.def @compute() -> !struct.type<@Main::@Main<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// NO-INIT-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@Main::@Main<[]>>
+// NO-INIT-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = function.call @default_init::@default_init() : () -> !array.type<3,2 x !felt.type<"bn128">>
+// NO-INIT-NEXT:          function.return %[[VAL_2]] : !struct.type<@Main::@Main<[]>>
+// NO-INIT-NEXT:        }
+// NO-INIT-NEXT:        function.def @constrain(%[[VAL_4:[0-9a-zA-Z_\.]+]]: !struct.type<@Main::@Main<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// NO-INIT-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = function.call @default_init::@default_init() : () -> !array.type<3,2 x !felt.type<"bn128">>
+// NO-INIT-NEXT:          function.return
+// NO-INIT-NEXT:        }
+// NO-INIT-NEXT:      }
+// NO-INIT-NEXT:    }
+// NO-INIT-NEXT:  }
