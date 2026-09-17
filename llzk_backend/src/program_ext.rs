@@ -56,6 +56,11 @@ pub struct DefinitionLocation {
 /// A trait that allows common handling of the structs used to represent a circom
 /// program at different stages in the compilation process.
 pub trait ProgramLike: std::fmt::Debug {
+    /// Whether this program originated from the very-concrete-program pipeline.
+    fn is_concrete(&self) -> bool {
+        false
+    }
+
     /// Get the file library of the program.
     fn get_file_library(&self) -> &FileLibrary;
     /// Get the FileID of the file containing the "main" component declaration.
@@ -225,6 +230,10 @@ pub struct VCPPlus<'vcp> {
 }
 
 impl ProgramLike for VCPPlus<'_> {
+    fn is_concrete(&self) -> bool {
+        true
+    }
+
     fn get_file_library(&self) -> &FileLibrary {
         &self.vcp.file_library
     }

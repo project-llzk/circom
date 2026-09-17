@@ -246,14 +246,24 @@ pub struct LlzkCodegen<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> {
     /// on-the-fly and translated. These pointers must only be used for pointer equality
     /// comparisons to avoid unsafe behavior.
     statement_trace: RefCell<Vec<*const Statement>>,
-    /// Deduplicated global constants for concrete VCP array arguments.
-    vcp_array_const_globals: RefCell<HashMap<VcpArrayConstKey, String>>,
+    /// Deduplicated global constants for concrete array arguments and literals.
+    ///
+    /// A key includes both the flattened elements and shape, so a one-dimensional `[1, 2, 3,
+    /// 4]` never aliases a two-dimensional `[[1, 2], [3, 4]]`.
+    array_const_globals: RefCell<HashMap<ArrayConstKey, String>>,
+    /// Nested `builtin.module` that owns every generated global.
+    ///
+    /// This is created lazily so programs without generated globals retain their existing IR.
+    /// The module is itself a top-level symbol and is inserted through the root symbol table.
+    global_module: RefCell<Option<OperationRef<'ctx, 'r>>>,
+    /// The final symbol name of [`Self::global_module`]. The root insertion may uniquify it.
+    global_module_name: RefCell<Option<String>>,
     /// Operation builder
     builder: OpBuilder<'ctx, 'static>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-struct VcpArrayConstKey {
+struct ArrayConstKey {
     /// Concrete dimensions of the array type, ordered outermost to innermost.
     ///
     /// These are part of the key because the same flattened value list can represent different
@@ -573,7 +583,9 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
             binding_insert_strategy: RefCell::new(None),
             current_body: Cell::new(None),
             statement_trace: RefCell::new(Vec::new()),
-            vcp_array_const_globals: RefCell::new(Default::default()),
+            array_const_globals: RefCell::new(Default::default()),
+            global_module: RefCell::new(None),
+            global_module_name: RefCell::new(None),
             builder,
         }
     }
@@ -589,13 +601,13 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         &self.builder
     }
 
-    /// Builds the `initial_value` attribute for a VCP array `global.def`.
+    /// Builds the `initial_value` attribute for an array `global.def`.
     ///
     /// LLZK verifies array globals against the flattened element count of their declared
     /// `!array.type`, even for multidimensional arrays. For example, a `2 x 2` array expects a
     /// single builtin array attribute containing four felt attributes, not a nested two-by-two
     /// attribute tree.
-    fn build_vcp_array_const_attr(&self, values: &[BigInt]) -> Attribute<'ctx> {
+    fn build_array_const_attr(&self, values: &[BigInt]) -> Attribute<'ctx> {
         let attrs = values
             .iter()
             .map(|value| {
@@ -613,15 +625,75 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         ArrayAttribute::new(self.context, &attrs).into()
     }
 
-    /// Returns the symbol and type for a deduplicated module-level global const containing the
-    /// given concrete VCP array argument.
-    pub(crate) fn get_or_create_vcp_array_const_global(
+    /// Returns the nested module that owns all generated globals, creating it on first use.
+    fn get_or_create_global_module(
+        &self,
+        location: Location<'ctx>,
+    ) -> Result<OperationRef<'ctx, 'r>> {
+        if let Some(global_module) = *self.global_module.borrow() {
+            return Ok(global_module);
+        }
+
+        // Functions are generated before templates, so pick a name outside the complete
+        // source-level namespace before directly inserting this module at the start of the root.
+        let global_module_name = self.pick_global_module_name();
+        let mut global_module = Module::new(location);
+        let mut global_module = global_module.as_operation_mut();
+        global_module.set_attribute(
+            "sym_name",
+            StringAttribute::new(self.context, &global_module_name).into(),
+        );
+        let global_module = self.module.body().insert_operation(0, global_module.deref().clone());
+
+        // SAFETY: The operation is owned by `self.module`, whose lifetime is `'ctx`. Since
+        // `'ctx: 'r`, the reference remains valid for the lifetime of this code generator.
+        let global_module: OperationRef<'ctx, 'r> =
+            unsafe { OperationRef::from_raw(global_module.to_raw()) };
+        self.global_module.replace(Some(global_module));
+        self.global_module_name.replace(Some(global_module_name));
+        Ok(global_module)
+    }
+
+    /// Return a generated-global module name that cannot collide with a source-level symbol
+    /// inserted later in code generation.
+    fn pick_global_module_name(&self) -> String {
+        let mut candidate = "global".to_owned();
+        loop {
+            if !self.program.contains_function(&candidate)
+                && !self.program.contains_template(&candidate)
+            {
+                return candidate;
+            }
+            // Do not use a numeric suffix here. The LLZK symbol table treats one as part of the
+            // same generated-name family, so inserting `global_0` when `global` exists can
+            // itself become `global_1` and reintroduce a later source-symbol collision.
+            candidate.push('_');
+        }
+    }
+
+    /// Builds a reference to a generated global in the nested global module.
+    pub(crate) fn global_symbol_ref(&self, name: &str) -> SymbolRefAttribute<'ctx> {
+        let global_module_name = self.global_module_name.borrow();
+        let global_module_name = global_module_name
+            .as_deref()
+            .expect("generated global module must exist before creating a reference");
+        SymbolRefAttribute::new_from_str(self.context, global_module_name, &[name])
+    }
+
+    /// Returns the symbol and type for a deduplicated generated global const containing a
+    /// concrete numeric array.
+    ///
+    /// `values` must be in LLZK storage order: row-major for multidimensional arrays. LLZK
+    /// represents every array initializer as one flat attribute list, including a `2 x 2`
+    /// array, rather than as nested array attributes. The returned globals are immutable, which
+    /// permits their reads in `function.def` bodies and `poly.expr` initializers as well.
+    pub(crate) fn get_or_create_array_const_global(
         &self,
         location: Location<'ctx>,
         dimensions: &[usize],
         values: &[BigInt],
     ) -> Result<(String, Type<'ctx>)> {
-        ensure!(!dimensions.is_empty(), "VCP array constants must have at least one dimension");
+        ensure!(!dimensions.is_empty(), "array constants must have at least one dimension");
         let expected_len = dimensions.iter().try_fold(1usize, |acc, dim| {
             acc.checked_mul(*dim).ok_or_else(|| anyhow!("array constant dimensions overflow"))
         })?;
@@ -633,18 +705,68 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         );
 
         let array_type = self.type_from_dimension_consts(self.felt_type().into(), dimensions)?;
-        let key = VcpArrayConstKey { dimensions: dimensions.to_vec(), values: values.to_vec() };
-        if let Some(name) = self.vcp_array_const_globals.borrow().get(&key) {
+        let key = ArrayConstKey { dimensions: dimensions.to_vec(), values: values.to_vec() };
+        if let Some(name) = self.array_const_globals.borrow().get(&key) {
             return Ok((name.clone(), array_type));
         }
 
-        let name = format!("vcp_array_const_{}", self.vcp_array_const_globals.borrow().len());
-        let initial_value = self.build_vcp_array_const_attr(values);
+        let requested_name = format!("array_const_{}", self.array_const_globals.borrow().len());
+        let initial_value = self.build_array_const_attr(values);
 
-        let builder = OpBuilder::at_block_end(self.context, self.module.body());
-        global::def(&builder, location, &name, array_type, true, Some(initial_value));
-        self.vcp_array_const_globals.borrow_mut().insert(key, name.clone());
+        let global_module = self.get_or_create_global_module(location)?;
+        let global_op = build_owned_operation(self.context, |builder| {
+            Ok::<_, anyhow::Error>(
+                global::def(
+                    builder,
+                    location,
+                    &requested_name,
+                    array_type,
+                    true,
+                    Some(initial_value),
+                )
+                .into(),
+            )
+        })?;
+        let global_op = insert_unique_symbol_op(&global_module, global_op);
+        let name = get_sym_name_attr(&global_op)?.value().to_owned();
+        self.array_const_globals.borrow_mut().insert(key, name.clone());
         Ok((name, array_type))
+    }
+
+    /// Return a deduplicated all-zero global for a statically shaped felt array type.
+    ///
+    /// `None` means `ty` is scalar, has a symbolic dimension, or contains a zero dimension and
+    /// must retain its normal initialization path.
+    pub(crate) fn get_or_create_zero_array_const_global_for_type(
+        &self,
+        location: Location<'ctx>,
+        ty: Type<'ctx>,
+    ) -> Result<Option<(String, Type<'ctx>)>> {
+        let Some(dimensions) = self.static_array_dimensions_for_type(ty) else {
+            return Ok(None);
+        };
+        let value_count = dimensions.iter().try_fold(1usize, |acc, dimension| {
+            acc.checked_mul(*dimension).ok_or_else(|| anyhow!("array constant dimensions overflow"))
+        })?;
+        let values = vec![BigInt::zero(); value_count];
+        self.get_or_create_array_const_global(location, &dimensions, &values).map(Some)
+    }
+
+    /// Return the dimensions of a statically shaped, non-empty array type without creating a
+    /// global. This is for callers that only need to test whether a declaration is static.
+    pub(crate) fn static_array_dimensions_for_type(&self, ty: Type<'ctx>) -> Option<Vec<usize>> {
+        let Ok(array_type) = ArrayType::try_from(ty) else {
+            return None;
+        };
+        array_type
+            .dims()
+            .into_iter()
+            .map(|attr| {
+                usize::try_from(IntegerAttribute::try_from(attr).ok()?.value())
+                    .ok()
+                    .filter(|dimension| *dimension != 0)
+            })
+            .collect()
     }
 
     /// Set the body of the function or template currently being processed.
@@ -2325,11 +2447,28 @@ where
                         if let Some(ty) = gen_ctx.get_var_decl_types().get(&qualified_key) {
                             let builder =
                                 gen_ctx.builder_at_current_insertion_point(codegen.context);
-                            let value = single_result_as_value(codegen.new_nondet_at_location(
-                                &builder,
-                                codegen.location_from_meta(meta),
-                                *ty,
-                            ))?;
+                            let location = codegen.location_from_meta(meta);
+                            let const_global = (!codegen.program.is_concrete())
+                                .then(|| {
+                                    codegen.get_or_create_zero_array_const_global_for_type(
+                                        location, *ty,
+                                    )
+                                })
+                                .transpose()?
+                                .flatten();
+                            let value = if let Some((global_name, array_type)) = const_global {
+                                single_result_as_value(global::read(
+                                    &builder,
+                                    location,
+                                    codegen.global_symbol_ref(&global_name),
+                                    true,
+                                    array_type,
+                                ))?
+                            } else {
+                                single_result_as_value(
+                                    codegen.new_nondet_at_location(&builder, location, *ty),
+                                )?
+                            };
                             if codegen.config.verbose {
                                 println!(
                                     "Declaring '{name}' @ {}",

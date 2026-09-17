@@ -29,6 +29,9 @@ template BigModOld(n, k) {
 component main = BigModOld(8, 2);
 
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@BigModOld::@BigModOld<[8, 2]>>} {
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<5 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @long_div2 {
 // CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
 // CHECK-NEXT:      poly.param @T_arg1 : !poly.tvar<@T_arg1>
@@ -36,8 +39,7 @@ component main = BigModOld(8, 2);
 // CHECK-NEXT:      poly.param @T_arg3 : !poly.tvar<@T_arg3>
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
 // CHECK-NEXT:      function.def @long_div2(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0> {function.arg_name = "n"}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg1> {function.arg_name = "k"}, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg2> {function.arg_name = "m"}, %[[VAL_3:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg3> {function.arg_name = "a"}) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_4]], %[[VAL_4]], %[[VAL_4]], %[[VAL_4]], %[[VAL_4]] : <5 x !felt.type<"bn128">>
+// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<5 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_2]] : (!poly.tvar<@T_arg2>) -> !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_8:[0-9a-zA-Z_\.]+]] = %[[VAL_6]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -117,8 +119,7 @@ component main = BigModOld(8, 2);
 // CHECK-NEXT:          %[[VAL_55:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_54]] : index, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = poly.read_const @k : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_58:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_59:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_58]], %[[VAL_58]], %[[VAL_58]], %[[VAL_58]], %[[VAL_58]] : <5 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_59:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<5 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_60:[0-9a-zA-Z_\.]+]] = function.call @long_div2::@long_div2<[?, ?, ?, ?, ?, ?, ?]>(%[[VAL_57]], %[[VAL_56]], %[[VAL_56]], %[[VAL_52]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !array.type<@"2_Mul_k@[[OFFSET0]]" x !felt.type<"bn128">>) -> !array.type<5 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_53]] : !struct.type<@BigModOld::@BigModOld<[@n, @k]>>
 // CHECK-NEXT:        }
@@ -127,8 +128,7 @@ component main = BigModOld(8, 2);
 // CHECK-NEXT:          %[[VAL_64:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_63]] : index, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_65:[0-9a-zA-Z_\.]+]] = poly.read_const @k : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_66:[0-9a-zA-Z_\.]+]] = poly.read_const @n : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_67:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_68:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_67]], %[[VAL_67]], %[[VAL_67]], %[[VAL_67]], %[[VAL_67]] : <5 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_68:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<5 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_69:[0-9a-zA-Z_\.]+]] = function.call @long_div2::@long_div2<[?, ?, ?, ?, ?, ?, ?]>(%[[VAL_66]], %[[VAL_65]], %[[VAL_65]], %[[VAL_62]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !array.type<@"2_Mul_k@[[OFFSET0]]" x !felt.type<"bn128">>) -> !array.type<5 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }

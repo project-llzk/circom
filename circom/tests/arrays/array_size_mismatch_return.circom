@@ -23,15 +23,14 @@ template ImplicitExtension() {
 component main = ImplicitExtension();
 
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ImplicitExtension::@ImplicitExtension<[]>>} {
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<5 x !felt.type<"bn128">> = [ 99 : <"bn128">,  98 : <"bn128">,  97 : <"bn128">,  96 : <"bn128">,  95 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_1 : !array.type<10 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @smaller {
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
 // CHECK-NEXT:      function.def @smaller() -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = felt.const  99 : <"bn128">
-// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  98 : <"bn128">
-// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  97 : <"bn128">
-// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = felt.const  96 : <"bn128">
-// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  95 : <"bn128">
-// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_0]], %[[VAL_1]], %[[VAL_2]], %[[VAL_3]], %[[VAL_4]] : <5 x !felt.type<"bn128">>
+// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<5 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_5]] : (!array.type<5 x !felt.type<"bn128">>) -> !poly.tvar<@T_return>
 // CHECK-NEXT:        function.return %[[VAL_6]] : !poly.tvar<@T_return>
 // CHECK-NEXT:      }
@@ -42,8 +41,7 @@ component main = ImplicitExtension();
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@ImplicitExtension::@ImplicitExtension<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = struct.new : <@ImplicitExtension::@ImplicitExtension<[]>>
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<10 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_9]], %[[VAL_9]], %[[VAL_9]], %[[VAL_9]], %[[VAL_9]], %[[VAL_9]], %[[VAL_9]], %[[VAL_9]], %[[VAL_9]], %[[VAL_9]] : <10 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = function.call @smaller::@smaller() : () -> !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_12]] : !felt.type<"bn128">
@@ -74,8 +72,7 @@ component main = ImplicitExtension();
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_32:[0-9a-zA-Z_\.]+]]: !struct.type<@ImplicitExtension::@ImplicitExtension<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_32]][@out] : <@ImplicitExtension::@ImplicitExtension<[]>>, !array.type<10 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_35:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_34]], %[[VAL_34]], %[[VAL_34]], %[[VAL_34]], %[[VAL_34]], %[[VAL_34]], %[[VAL_34]], %[[VAL_34]], %[[VAL_34]], %[[VAL_34]] : <10 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_35:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = function.call @smaller::@smaller() : () -> !array.type<10 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }

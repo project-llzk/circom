@@ -32,7 +32,6 @@ component main = Array1();
 // CHECK-NEXT:        struct.member @foo$inputs : !array.type<5 x !pod.type<[@a: !felt.type<"bn128">]>> {signal}
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Array1::@Array1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@Array1::@Array1<[]>>
-// CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<5 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = array.new  : <5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = arith.constant 5 : index
@@ -44,6 +43,7 @@ component main = Array1();
 // CHECK-NEXT:            array.write %[[VAL_2]]{{\[}}%[[VAL_7]]] = %[[VAL_9]] : <5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = array.new  : <5 x !pod.type<[@a: !felt.type<"bn128">]>>
+// CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<5 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]]:3 = scf.while (%[[VAL_13:[0-9a-zA-Z_\.]+]] = %[[VAL_2]], %[[VAL_14:[0-9a-zA-Z_\.]+]] = %[[VAL_10]], %[[VAL_15:[0-9a-zA-Z_\.]+]] = %[[VAL_11]]) : (!array.type<5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">]>>, !felt.type<"bn128">) -> (!array.type<5 x !pod.type<[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">]>>, !felt.type<"bn128">) {
 // CHECK-NEXT:            %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.const  5 : <"bn128">

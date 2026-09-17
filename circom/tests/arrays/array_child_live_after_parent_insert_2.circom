@@ -1,0 +1,63 @@
+// REQUIRES: circom
+// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext --llzk_strip_debug_info -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// END.
+
+// A row used to construct a later multidimensional array remains live after the insert.  The
+// array-literal recovery must not consume the row declaration while lowering only `matrix`.
+pragma circom 2.0.0;
+
+function read_live_row(value) {
+    var row[2] = [17, 29];
+    var matrix[1][2] = [row];
+    return row[1] + value;
+}
+
+template Main() {
+    signal input in;
+    signal output out <== read_live_row(in);
+}
+
+component main = Main();
+// CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@Main::@Main<[]>>} {
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_1 : !array.type<2 x !felt.type<"bn128">> = [ 17 : <"bn128">,  29 : <"bn128">]
+// CHECK-NEXT:      global.def const @array_const_2 : !array.type<1,2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:    }
+// CHECK-NEXT:    poly.template @read_live_row {
+// CHECK-NEXT:      poly.param @T_arg0 : !poly.tvar<@T_arg0>
+// CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
+// CHECK-NEXT:      function.def @read_live_row(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0> {function.arg_name = "value"}) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<2 x !felt.type<"bn128">>
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_2 : !array.type<1,2 x !felt.type<"bn128">>
+// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = array.new  : <1,2 x !felt.type<"bn128">>
+// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
+// CHECK-NEXT:        array.insert %[[VAL_4]]{{\[}}%[[VAL_5]]] = %[[VAL_2]] : <1,2 x !felt.type<"bn128">>, <2 x !felt.type<"bn128">>
+// CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
+// CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_6]] : !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_2]]{{\[}}%[[VAL_7]]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_0]] : (!poly.tvar<@T_arg0>) -> !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_8]], %[[VAL_9]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_11:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_10]] : (!felt.type<"bn128">) -> !poly.tvar<@T_return>
+// CHECK-NEXT:        function.return %[[VAL_11]] : !poly.tvar<@T_return>
+// CHECK-NEXT:      }
+// CHECK-NEXT:    }
+// CHECK-NEXT:    poly.template @Main {
+// CHECK-NEXT:      struct.def @Main {
+// CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
+// CHECK-NEXT:        function.def @compute(%[[VAL_12:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@Main::@Main<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.new : <@Main::@Main<[]>>
+// CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = function.call @read_live_row::@read_live_row(%[[VAL_12]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
+// CHECK-NEXT:          struct.writem %[[VAL_13]][@out] = %[[VAL_14]] : <@Main::@Main<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          function.return %[[VAL_13]] : !struct.type<@Main::@Main<[]>>
+// CHECK-NEXT:        }
+// CHECK-NEXT:        function.def @constrain(%[[VAL_15:[0-9a-zA-Z_\.]+]]: !struct.type<@Main::@Main<[]>>, %[[VAL_16:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_15]][@out] : <@Main::@Main<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = function.call @read_live_row::@read_live_row(%[[VAL_16]]) : (!felt.type<"bn128">) -> !felt.type<"bn128">
+// CHECK-NEXT:          constrain.eq %[[VAL_17]], %[[VAL_18]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:          function.return
+// CHECK-NEXT:        }
+// CHECK-NEXT:      }
+// CHECK-NEXT:    }
+// CHECK-NEXT:  }
