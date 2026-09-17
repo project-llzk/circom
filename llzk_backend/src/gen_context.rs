@@ -2416,6 +2416,26 @@ where
         }
     }
 
+    /// Create or reuse an immutable global array constant and read it into the current block.
+    pub fn append_array_const_global_read(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        location: Location<'ctx>,
+        dimensions: &[usize],
+        values: &[BigInt],
+    ) -> Result<Value<'ctx, 'val>> {
+        let (global_name, array_type) =
+            codegen.get_or_create_array_const_global(location, dimensions, values)?;
+        let builder = self.builder_at_current_insertion_point(codegen.context);
+        self.append_op_ref_unnamed_result(global::read(
+            &builder,
+            location,
+            codegen.global_symbol_ref(&global_name),
+            true,
+            array_type,
+        ))
+    }
+
     /// Generate an `scf.while` op based on the given [NestedBlockInfo] and update the
     /// block context with the results of the `scf.while` op mapped to the given names.
     pub fn gen_scf_while(
@@ -2835,23 +2855,12 @@ where
             Expression::ArrayInLine { meta, values } => {
                 let location = codegen.location_from_meta(meta);
                 if let Some((dimensions, flattened)) = literal_array_dimensions_and_values(self) {
-                    // This read may be generated in a `poly.expr` initializer. LLZK must permit
-                    // such reads when they target an immutable `global.def const`; the helper
-                    // below always creates that form of global.
-                    let (global_name, array_type) = codegen
-                        .get_or_create_array_literal_const_global(
-                            location,
-                            &dimensions,
-                            &flattened,
-                        )?;
-                    let builder = block_gen.builder_at_current_insertion_point(codegen.context);
-                    return block_gen.append_op_ref_unnamed_result(global::read(
-                        &builder,
+                    return block_gen.append_array_const_global_read(
+                        codegen,
                         location,
-                        codegen.global_symbol_ref(&global_name),
-                        true,
-                        array_type,
-                    ));
+                        &dimensions,
+                        &flattened,
+                    );
                 }
                 // Multi-dimensional arrays are made up of array values as their elements
                 let values = values
@@ -2898,20 +2907,12 @@ where
             Expression::UniformArray { meta, value, dimension } => {
                 let location = codegen.location_from_meta(meta);
                 if let Some((dimensions, flattened)) = literal_array_dimensions_and_values(self) {
-                    let (global_name, array_type) = codegen
-                        .get_or_create_array_literal_const_global(
-                            location,
-                            &dimensions,
-                            &flattened,
-                        )?;
-                    let builder = block_gen.builder_at_current_insertion_point(codegen.context);
-                    return block_gen.append_op_ref_unnamed_result(global::read(
-                        &builder,
+                    return block_gen.append_array_const_global_read(
+                        codegen,
                         location,
-                        codegen.global_symbol_ref(&global_name),
-                        true,
-                        array_type,
-                    ));
+                        &dimensions,
+                        &flattened,
+                    );
                 }
                 let dim = block_gen
                     .get_poly_binding::<ArrayDimExprKind>(codegen, dimension)
@@ -2932,20 +2933,12 @@ where
                         let mut dimensions = Vec::with_capacity(element_dimensions.len() + 1);
                         dimensions.push(dimension);
                         dimensions.extend(element_dimensions);
-                        let (global_name, array_type) = codegen
-                            .get_or_create_array_literal_const_global(
-                                location,
-                                &dimensions,
-                                &flattened,
-                            )?;
-                        let builder = block_gen.builder_at_current_insertion_point(codegen.context);
-                        return block_gen.append_op_ref_unnamed_result(global::read(
-                            &builder,
+                        return block_gen.append_array_const_global_read(
+                            codegen,
                             location,
-                            codegen.global_symbol_ref(&global_name),
-                            true,
-                            array_type,
-                        ));
+                            &dimensions,
+                            &flattened,
+                        );
                     }
                 }
                 // Multi-dimensional arrays are made up of array values as their elements

@@ -610,6 +610,10 @@ where
     'ctx: 'blk,
     'blk: 'val,
 {
+    if src_ty == dst_ty {
+        return Ok(src);
+    }
+
     fn const_dims(arr_ty: ArrayType<'_>) -> Result<Vec<i64>> {
         arr_ty
             .dims()
@@ -883,30 +887,22 @@ where
                             if then_arr_ty.num_dims() == else_arr_ty.num_dims() =>
                         {
                             (
-                                if then_arr_ty == return_arr_ty {
-                                    then_return
-                                } else {
-                                    copy_concrete_array_to_type_in_block(
-                                        codegen,
-                                        location,
-                                        then_info.block,
-                                        then_return,
-                                        then_arr_ty,
-                                        return_arr_ty,
-                                    )?
-                                },
-                                if else_arr_ty == return_arr_ty {
-                                    else_return
-                                } else {
-                                    copy_concrete_array_to_type_in_block(
-                                        codegen,
-                                        location,
-                                        else_info.block,
-                                        else_return,
-                                        else_arr_ty,
-                                        return_arr_ty,
-                                    )?
-                                },
+                                copy_concrete_array_to_type_in_block(
+                                    codegen,
+                                    location,
+                                    then_info.block,
+                                    then_return,
+                                    then_arr_ty,
+                                    return_arr_ty,
+                                )?,
+                                copy_concrete_array_to_type_in_block(
+                                    codegen,
+                                    location,
+                                    else_info.block,
+                                    else_return,
+                                    else_arr_ty,
+                                    return_arr_ty,
+                                )?,
                             )
                         }
                         // Non-array mismatch, dimension mismatch, or tvar return type:
@@ -1570,7 +1566,7 @@ where
                 self[index + literal.declaration_offset]
                     .gen_llzk_in_function(codegen, function, info)?;
                 let location = codegen.location_from_meta(literal.meta);
-                let (global_name, array_type) = codegen.get_or_create_array_literal_const_global(
+                let (global_name, array_type) = codegen.get_or_create_array_const_global(
                     location,
                     &literal.dimensions,
                     &literal.values,

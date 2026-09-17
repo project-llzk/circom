@@ -1096,8 +1096,8 @@ where
                     })?;
                     let location = codegen.location_from_meta(meta);
                     let values = vec![BigInt::zero(); value_count];
-                    let (global_name, array_type) = codegen
-                        .get_or_create_array_literal_const_global(location, &dimensions, &values)?;
+                    let (global_name, array_type) =
+                        codegen.get_or_create_array_const_global(location, &dimensions, &values)?;
                     template.and_then_same::<_, ()>(|fc, _| {
                         let builder = fc.builder_at_current_insertion_point(codegen.context);
                         let value = fc.append_op_ref_unnamed_result(global::read(
@@ -1120,7 +1120,7 @@ where
                 // deduplicated immutable global in every generated template function.
                 self[index + literal.declaration_offset].gen_llzk_in_template(codegen, template)?;
                 let location = codegen.location_from_meta(literal.meta);
-                let (global_name, array_type) = codegen.get_or_create_array_literal_const_global(
+                let (global_name, array_type) = codegen.get_or_create_array_const_global(
                     location,
                     &literal.dimensions,
                     &literal.values,

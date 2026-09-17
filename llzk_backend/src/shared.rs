@@ -34,13 +34,7 @@ use llzk::{
     symbol_table,
     value_ext::{OwningValueRange, ValueRange},
 };
-use melior::{
-    ir::{
-        operation::{OperationBuilder, OperationPrintingFlags},
-        Identifier,
-    },
-    utility,
-};
+use melior::{ir::operation::OperationPrintingFlags, utility};
 use num_bigint_dig::{BigInt, BigUint, ModInverse, ToBigInt as _};
 use num_traits::{cast::ToPrimitive, One, Zero};
 use program_structure::{
@@ -252,13 +246,11 @@ pub struct LlzkCodegen<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> {
     /// on-the-fly and translated. These pointers must only be used for pointer equality
     /// comparisons to avoid unsafe behavior.
     statement_trace: RefCell<Vec<*const Statement>>,
-    /// Deduplicated global constants for concrete VCP array arguments.
-    vcp_array_const_globals: RefCell<HashMap<VcpArrayConstKey, String>>,
-    /// Deduplicated global constants for numeric literals in function and template bodies.
+    /// Deduplicated global constants for concrete array arguments and literals.
     ///
     /// A key includes both the flattened elements and shape, so a one-dimensional `[1, 2, 3,
     /// 4]` never aliases a two-dimensional `[[1, 2], [3, 4]]`.
-    array_literal_const_globals: RefCell<HashMap<VcpArrayConstKey, String>>,
+    array_const_globals: RefCell<HashMap<ArrayConstKey, String>>,
     /// Nested `builtin.module` that owns every generated global.
     ///
     /// This is created lazily so programs without generated globals retain their existing IR.
@@ -271,7 +263,7 @@ pub struct LlzkCodegen<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> {
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-struct VcpArrayConstKey {
+struct ArrayConstKey {
     /// Concrete dimensions of the array type, ordered outermost to innermost.
     ///
     /// These are part of the key because the same flattened value list can represent different
@@ -591,8 +583,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
             binding_insert_strategy: RefCell::new(None),
             current_body: Cell::new(None),
             statement_trace: RefCell::new(Vec::new()),
-            vcp_array_const_globals: RefCell::new(Default::default()),
-            array_literal_const_globals: RefCell::new(Default::default()),
+            array_const_globals: RefCell::new(Default::default()),
             global_module: RefCell::new(None),
             global_module_name: RefCell::new(None),
             builder,
@@ -610,13 +601,13 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         &self.builder
     }
 
-    /// Builds the `initial_value` attribute for a VCP array `global.def`.
+    /// Builds the `initial_value` attribute for an array `global.def`.
     ///
     /// LLZK verifies array globals against the flattened element count of their declared
     /// `!array.type`, even for multidimensional arrays. For example, a `2 x 2` array expects a
     /// single builtin array attribute containing four felt attributes, not a nested two-by-two
     /// attribute tree.
-    fn build_vcp_array_const_attr(&self, values: &[BigInt]) -> Attribute<'ctx> {
+    fn build_array_const_attr(&self, values: &[BigInt]) -> Attribute<'ctx> {
         let attrs = values
             .iter()
             .map(|value| {
@@ -646,16 +637,13 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         // Functions are generated before templates, so pick a name outside the complete
         // source-level namespace before directly inserting this module at the start of the root.
         let global_module_name = self.pick_global_module_name();
-        let region = Region::new();
-        region.append_block(Block::new(&[]));
-        let global_module = OperationBuilder::new("builtin.module", location)
-            .add_attributes(&[(
-                Identifier::new(self.context, "sym_name"),
-                StringAttribute::new(self.context, &global_module_name).into(),
-            )])
-            .add_regions([region])
-            .build()?;
-        let global_module = self.module.body().insert_operation(0, global_module);
+        let mut global_module = Module::new(location);
+        let mut global_module = global_module.as_operation_mut();
+        global_module.set_attribute(
+            "sym_name",
+            StringAttribute::new(self.context, &global_module_name).into(),
+        );
+        let global_module = self.module.body().insert_operation(0, global_module.deref().clone());
 
         // SAFETY: The operation is owned by `self.module`, whose lifetime is `'ctx`. Since
         // `'ctx: 'r`, the reference remains valid for the lifetime of this code generator.
@@ -692,70 +680,20 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         SymbolRefAttribute::new_from_str(self.context, global_module_name, &[name])
     }
 
-    /// Returns the symbol and type for a deduplicated generated global const containing the given
-    /// concrete VCP array argument.
-    pub(crate) fn get_or_create_vcp_array_const_global(
-        &self,
-        location: Location<'ctx>,
-        dimensions: &[usize],
-        values: &[BigInt],
-    ) -> Result<(String, Type<'ctx>)> {
-        ensure!(!dimensions.is_empty(), "VCP array constants must have at least one dimension");
-        let expected_len = dimensions.iter().try_fold(1usize, |acc, dim| {
-            acc.checked_mul(*dim).ok_or_else(|| anyhow!("array constant dimensions overflow"))
-        })?;
-        ensure!(
-            expected_len == values.len(),
-            "array constant has {} values, expected {expected_len} from dimensions {:?}",
-            values.len(),
-            dimensions
-        );
-
-        let array_type = self.type_from_dimension_consts(self.felt_type().into(), dimensions)?;
-        let key = VcpArrayConstKey { dimensions: dimensions.to_vec(), values: values.to_vec() };
-        if let Some(name) = self.vcp_array_const_globals.borrow().get(&key) {
-            return Ok((name.clone(), array_type));
-        }
-
-        let requested_name =
-            format!("vcp_array_const_{}", self.vcp_array_const_globals.borrow().len());
-        let initial_value = self.build_vcp_array_const_attr(values);
-
-        let global_module = self.get_or_create_global_module(location)?;
-        let global_op = build_owned_operation(self.context, |builder| {
-            Ok::<_, anyhow::Error>(
-                global::def(
-                    builder,
-                    location,
-                    &requested_name,
-                    array_type,
-                    true,
-                    Some(initial_value),
-                )
-                .into(),
-            )
-        })?;
-        let global_op = insert_unique_symbol_op(&global_module, global_op);
-        let name = get_sym_name_attr(&global_op)?.value().to_owned();
-        self.vcp_array_const_globals.borrow_mut().insert(key, name.clone());
-        Ok((name, array_type))
-    }
-
     /// Returns the symbol and type for a deduplicated generated global const containing a
-    /// concrete numeric array literal.
+    /// concrete numeric array.
     ///
     /// `values` must be in LLZK storage order: row-major for multidimensional arrays. LLZK
     /// represents every array initializer as one flat attribute list, including a `2 x 2`
     /// array, rather than as nested array attributes. The returned globals are immutable, which
-    /// permits their reads in `function.def` bodies and, once supported by LLZK, `poly.expr`
-    /// initializers as well.
-    pub(crate) fn get_or_create_array_literal_const_global(
+    /// permits their reads in `function.def` bodies and `poly.expr` initializers as well.
+    pub(crate) fn get_or_create_array_const_global(
         &self,
         location: Location<'ctx>,
         dimensions: &[usize],
         values: &[BigInt],
     ) -> Result<(String, Type<'ctx>)> {
-        ensure!(!dimensions.is_empty(), "array literal constants must have at least one dimension");
+        ensure!(!dimensions.is_empty(), "array constants must have at least one dimension");
         let expected_len = dimensions.iter().try_fold(1usize, |acc, dim| {
             acc.checked_mul(*dim).ok_or_else(|| anyhow!("array constant dimensions overflow"))
         })?;
@@ -767,14 +705,13 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         );
 
         let array_type = self.type_from_dimension_consts(self.felt_type().into(), dimensions)?;
-        let key = VcpArrayConstKey { dimensions: dimensions.to_vec(), values: values.to_vec() };
-        if let Some(name) = self.array_literal_const_globals.borrow().get(&key) {
+        let key = ArrayConstKey { dimensions: dimensions.to_vec(), values: values.to_vec() };
+        if let Some(name) = self.array_const_globals.borrow().get(&key) {
             return Ok((name.clone(), array_type));
         }
 
-        let requested_name =
-            format!("array_const_{}", self.array_literal_const_globals.borrow().len());
-        let initial_value = self.build_vcp_array_const_attr(values);
+        let requested_name = format!("array_const_{}", self.array_const_globals.borrow().len());
+        let initial_value = self.build_array_const_attr(values);
 
         let global_module = self.get_or_create_global_module(location)?;
         let global_op = build_owned_operation(self.context, |builder| {
@@ -792,7 +729,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         })?;
         let global_op = insert_unique_symbol_op(&global_module, global_op);
         let name = get_sym_name_attr(&global_op)?.value().to_owned();
-        self.array_literal_const_globals.borrow_mut().insert(key, name.clone());
+        self.array_const_globals.borrow_mut().insert(key, name.clone());
         Ok((name, array_type))
     }
 
@@ -805,26 +742,14 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         location: Location<'ctx>,
         ty: Type<'ctx>,
     ) -> Result<Option<(String, Type<'ctx>)>> {
-        let Ok(array_type) = ArrayType::try_from(ty) else {
-            return Ok(None);
-        };
-        let dimensions = array_type
-            .dims()
-            .into_iter()
-            .map(|attr| {
-                usize::try_from(IntegerAttribute::try_from(attr).ok()?.value())
-                    .ok()
-                    .filter(|dimension| *dimension != 0)
-            })
-            .collect::<Option<Vec<_>>>();
-        let Some(dimensions) = dimensions else {
+        let Some(dimensions) = self.static_array_dimensions_for_type(ty) else {
             return Ok(None);
         };
         let value_count = dimensions.iter().try_fold(1usize, |acc, dimension| {
             acc.checked_mul(*dimension).ok_or_else(|| anyhow!("array constant dimensions overflow"))
         })?;
         let values = vec![BigInt::zero(); value_count];
-        self.get_or_create_array_literal_const_global(location, &dimensions, &values).map(Some)
+        self.get_or_create_array_const_global(location, &dimensions, &values).map(Some)
     }
 
     /// Return the dimensions of a statically shaped, non-empty array type without creating a
