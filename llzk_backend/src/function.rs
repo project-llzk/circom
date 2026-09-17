@@ -25,8 +25,8 @@ use llzk::{
         },
         ArrayType, Attribute, BlockLike as _, BlockRef, FuncDefOpLike as _, FuncDefOpRefMut,
         IntegerAttribute, LlzkContext, Location, LoopBoundsAttribute, Operation,
-        OperationLike as _, OperationMutLike, OperationRefMut, Type, Value, ValueLike as _,
-        WalkOrder, WalkResult,
+        OperationLike as _, OperationMutLike, OperationRefMut, RegionLike as _, Type, Value,
+        ValueLike as _, WalkOrder, WalkResult,
     },
     value_ext::has_uses,
 };
@@ -576,26 +576,58 @@ where
 /// the remaining statements in the same block should be skipped).
 type SkipRestOfBlock = bool;
 
-/// Enumerate all N-dimensional index tuples for the given constant dimension sizes.
-/// E.g., `[2, 3]` → `[[0,0], [0,1], [0,2], [1,0], [1,1], [1,2]]`.
-fn cartesian_product_indices(dims: &[i64]) -> Vec<Vec<i64>> {
-    dims.iter().fold(vec![vec![]], |acc, &dim| {
-        acc.into_iter()
-            .flat_map(|prefix| {
-                (0..dim).map(move |i| {
-                    let mut p = prefix.clone();
-                    p.push(i);
-                    p
-                })
-            })
-            .collect()
-    })
+/// Append a nest of `scf.for` operations that copies the common extent of two concrete arrays.
+///
+/// The loop bounds are supplied by the caller as index values in the containing block. Each loop
+/// body captures the source and destination arrays, so the resulting IR is proportional to the
+/// number of dimensions instead of the number of copied elements.
+fn copy_concrete_array_loop_nest<'ctx, 'blk, 'val>(
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+    location: Location<'ctx>,
+    block: BlockRef<'ctx, 'blk>,
+    start: Value<'ctx, 'val>,
+    step: Value<'ctx, 'val>,
+    bounds: &[Value<'ctx, 'val>],
+    indices: &mut Vec<Value<'ctx, 'val>>,
+    src: Value<'ctx, 'val>,
+    src_ty: ArrayType<'ctx>,
+    dst: Value<'ctx, 'val>,
+) -> Result<()>
+where
+    'ctx: 'blk,
+    'blk: 'val,
+{
+    let (region, _) = new_region_and_block(&[(codegen.index_type(), location)]);
+    let loop_op =
+        block.append_operation(scf::r#for(start, bounds[indices.len()], step, region, location));
+    let loop_block = loop_op
+        .region(0)?
+        .first_block()
+        .ok_or_else(|| anyhow::anyhow!("scf.for region is missing its block"))?;
+    let induction_var = loop_block.argument(0)?.into();
+    indices.push(induction_var);
+
+    if indices.len() == bounds.len() {
+        let builder = OpBuilder::at_block_end(codegen.context, loop_block);
+        let read = array::read(&builder, location, src_ty.element_type(), src, indices);
+        let elem = single_result_as_value(read)?;
+        let write = array::write(&builder, location, dst, indices, elem);
+        no_results(write)?;
+    } else {
+        copy_concrete_array_loop_nest(
+            codegen, location, loop_block, start, step, bounds, indices, src, src_ty, dst,
+        )?;
+    }
+
+    indices.pop();
+    loop_block.append_operation(scf::r#yield(&[], location));
+    Ok(())
 }
 
-/// For two concrete array types with the same number of dimensions, generate inline copy code
-/// that copies elements from `src` (type `src_ty`) into a newly allocated empty array of type
-/// `dst_ty`, appending all generated ops directly to `block`. Only elements within the min
-/// bounds of each dimension are copied; elements beyond the source bounds are not modified.
+/// For two concrete array types with the same number of dimensions, generate a loop nest that
+/// copies elements from `src` (type `src_ty`) into a newly allocated empty array of type `dst_ty`,
+/// appending all generated ops directly to `block`. Only elements within the min bounds of each
+/// dimension are copied; elements beyond the source bounds are not modified.
 /// All dimension attributes in `src_ty` and `dst_ty` must be constant integer indices (true
 /// for all VCF concrete types).
 fn copy_concrete_array_to_type_in_block<'ctx, 'blk, 'val>(
@@ -645,22 +677,33 @@ where
         ArrayCtor::Empty,
     ))?;
 
-    // Copy elements within the min bounds of each dimension pair.
+    // Materialize the common bounds once in the containing block, then copy elements with a
+    // nested `scf.for`. This avoids emitting one read/write pair for every literal element.
     let min_dims: Vec<i64> = src_dims.iter().zip(&dst_dims).map(|(s, d)| *s.min(d)).collect();
-    for indices in cartesian_product_indices(&min_dims) {
-        let idx_vals: Vec<Value> = indices
-            .into_iter()
-            .map(|i| {
-                single_result_as_value(
-                    block.append_operation(codegen.new_index_const_op(i, location)),
-                )
-            })
-            .collect::<Result<_>>()?;
-        let read = array::read(&builder, location, src_ty.element_type(), src, &idx_vals);
-        let elem = single_result_as_value(read)?;
-        let write = array::write(&builder, location, dst, &idx_vals, elem);
-        no_results(write)?;
-    }
+    let start =
+        single_result_as_value(block.append_operation(codegen.new_index_const_op(0, location)))?;
+    let step =
+        single_result_as_value(block.append_operation(codegen.new_index_const_op(1, location)))?;
+    let bounds = min_dims
+        .into_iter()
+        .map(|bound| {
+            single_result_as_value(
+                block.append_operation(codegen.new_index_const_op(bound, location)),
+            )
+        })
+        .collect::<Result<Vec<_>>>()?;
+    copy_concrete_array_loop_nest(
+        codegen,
+        location,
+        block,
+        start,
+        step,
+        &bounds,
+        &mut Vec::with_capacity(bounds.len()),
+        src,
+        src_ty,
+        dst,
+    )?;
 
     Ok(dst)
 }
