@@ -1,5 +1,6 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext --llzk_strip_debug_info -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// RUN: rm -rf %t && mkdir %t && %circom --stabilize --llzk --llzk_plaintext --llzk_strip_debug_info --no_init -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --check-prefix=NO-INIT
 // END.
 
 pragma circom 2.0.0;
@@ -28,3 +29,17 @@ component main = ArrayDims();
 // CHECK-NEXT:      }
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }
+
+// NO-INIT-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@ArrayDims::@ArrayDims<[]>>} {
+// NO-INIT-NEXT:    poly.template @ArrayDims {
+// NO-INIT-NEXT:      struct.def @ArrayDims {
+// NO-INIT-NEXT:        function.def @compute() -> !struct.type<@ArrayDims::@ArrayDims<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// NO-INIT-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@ArrayDims::@ArrayDims<[]>>
+// NO-INIT-NEXT:          function.return %[[VAL_0]] : !struct.type<@ArrayDims::@ArrayDims<[]>>
+// NO-INIT-NEXT:        }
+// NO-INIT-NEXT:        function.def @constrain(%[[VAL_1:[0-9a-zA-Z_\.]+]]: !struct.type<@ArrayDims::@ArrayDims<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// NO-INIT-NEXT:          function.return
+// NO-INIT-NEXT:        }
+// NO-INIT-NEXT:      }
+// NO-INIT-NEXT:    }
+// NO-INIT-NEXT:  }
