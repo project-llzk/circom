@@ -20,6 +20,9 @@ template A() {
 component main = A();
 
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@A::@A<[]>>} {
+// CHECK-NEXT:    module @global {
+// CHECK-NEXT:      global.def const @array_const_0 : !array.type<13 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
+// CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @A {
 // CHECK-NEXT:      struct.def @A {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
@@ -33,8 +36,7 @@ component main = A();
 // CHECK-NEXT:            scf.condition(%[[VAL_8]]) %[[VAL_5]], %[[VAL_6]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          } do {
 // CHECK-NEXT:          ^bb0(%[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_10:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CHECK-NEXT:            %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:            %[[VAL_12:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_11]], %[[VAL_11]], %[[VAL_11]], %[[VAL_11]], %[[VAL_11]], %[[VAL_11]], %[[VAL_11]], %[[VAL_11]], %[[VAL_11]], %[[VAL_11]], %[[VAL_11]], %[[VAL_11]], %[[VAL_11]] : <13 x !felt.type<"bn128">>
+// CHECK-NEXT:            %[[VAL_12:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<13 x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_13:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_9]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_14:[0-9a-zA-Z_\.]+]] = array.extract %[[VAL_0]]{{\[}}%[[VAL_13]]] : <17,13 x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.const  13 : <"bn128">
@@ -58,8 +60,7 @@ component main = A();
 // CHECK-NEXT:            scf.condition(%[[VAL_31]]) %[[VAL_28]], %[[VAL_29]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          } do {
 // CHECK-NEXT:          ^bb0(%[[VAL_32:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">, %[[VAL_33:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CHECK-NEXT:            %[[VAL_34:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:            %[[VAL_35:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_34]], %[[VAL_34]], %[[VAL_34]], %[[VAL_34]], %[[VAL_34]], %[[VAL_34]], %[[VAL_34]], %[[VAL_34]], %[[VAL_34]], %[[VAL_34]], %[[VAL_34]], %[[VAL_34]], %[[VAL_34]] : <13 x !felt.type<"bn128">>
+// CHECK-NEXT:            %[[VAL_35:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<13 x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_36:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_32]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_37:[0-9a-zA-Z_\.]+]] = array.extract %[[VAL_23]]{{\[}}%[[VAL_36]]] : <17,13 x !felt.type<"bn128">>
 // CHECK-NEXT:            %[[VAL_38:[0-9a-zA-Z_\.]+]] = felt.const  13 : <"bn128">

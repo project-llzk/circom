@@ -352,7 +352,7 @@ impl TemplateLike for TemplateInstance {
             let meta = Meta::new(0, 0);
             if !arg.lengths.is_empty() {
                 let location = self.get_location(codegen);
-                let (global_name, global_type) = codegen.get_or_create_vcp_array_const_global(
+                let (global_name, global_type) = codegen.get_or_create_array_const_global(
                     location,
                     &arg.lengths,
                     &arg.values,

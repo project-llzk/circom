@@ -21,22 +21,24 @@ use llzk::{
     prelude::{
         ArrayType, BlockRef, FlatSymbolRefAttribute, FuncDefOpLike as _, IntegerAttribute,
         LlzkContext, LoopBoundsAttribute, MemberDefOpLike as _, PodType, RecordValue, StringRef,
-        StructDefOpLike as _, StructDefOpRefMut, SymbolRefAttribute, TemplateOpLike as _,
-        TemplateOpRefMut, TemplateSymbolBindingOpLike as _, Type, Value, ValueLike as _,
+        StructDefOpLike as _, StructDefOpRefMut, TemplateOpLike as _, TemplateOpRefMut,
+        TemplateSymbolBindingOpLike as _, Type, Value, ValueLike as _,
     },
     value_ext::{OwningValueRange, ValueRange},
 };
 use melior::ir::{Attribute, Location};
 use num_bigint_dig::BigInt;
+use num_traits::Zero;
 use program_structure::{
-    ast::{AssignOp, Expression, Meta, Statement},
+    ast::{AssignOp, Expression, Meta, Statement, VariableType},
     error_code::ReportCode,
 };
 
 use crate::{
-    function::{FunctionContext, InfoProviders},
+    function::{concrete_array_literal_initializer, FunctionContext, InfoProviders},
     gen_context::{
-        BlockGenContext, GenWithCircomScopeHandling, GenerateLLZKInAnyBlock, NestedBlockInfo,
+        literal_array_dimensions_and_values, BlockGenContext, GenWithCircomScopeHandling,
+        GenerateLLZKInAnyBlock, NestedBlockInfo,
     },
     lvalue::{Lvalue, Root},
     program_ext::{ProgramInfo, ProgramLike},
@@ -196,7 +198,7 @@ impl<'decls, 'ctx, 'str, 'func, 'blk, 'val> TemplateContext<'decls, 'ctx, 'str, 
         ty: Type<'ctx>,
         location: Location<'ctx>,
     ) -> Result<()> {
-        let global_ref = || SymbolRefAttribute::new_from_str(codegen.context, global_name, &[]);
+        let global_ref = || codegen.global_symbol_ref(global_name);
         if let Some(fc) = self.compute.as_ref() {
             fc.borrow_mut().block_ctx.declare_value_if_not_present(
                 name,
@@ -1013,6 +1015,51 @@ where
         'val: 'r;
 }
 
+/// Match the declaration plus implicit all-zero assignment retained in a non-concrete template.
+/// Replacing the pair together avoids creating a provisional declaration value that the assignment
+/// would immediately overwrite.
+fn default_zero_array_initializer<'a>(
+    statements: &'a [Statement],
+    codegen: &LlzkCodegen<'_, '_, '_, impl ProgramLike>,
+) -> Result<Option<(&'a Meta, &'a str, Vec<usize>)>> {
+    let Some((
+        Statement::Declaration { meta, xtype, name, dimensions, .. },
+        Statement::Substitution { var, access, op, rhe, .. },
+    )) = statements.first().zip(statements.get(1))
+    else {
+        return Ok(None);
+    };
+    if *xtype != VariableType::Var
+        || name != var
+        || !access.is_empty()
+        || *op != AssignOp::AssignVar
+    {
+        return Ok(None);
+    }
+    let Expression::UniformArray { value, .. } = rhe else {
+        return Ok(None);
+    };
+    let Some((_, values)) = literal_array_dimensions_and_values(value) else {
+        return Ok(None);
+    };
+    if !values.iter().all(Zero::is_zero) {
+        return Ok(None);
+    }
+    let dimensions = dimensions
+        .iter()
+        .map(|dimension| {
+            shared::try_compute_as_i64(dimension, codegen.prime())?
+                .and_then(|dimension| usize::try_from(dimension).ok())
+                .filter(|dimension| *dimension != 0)
+                .ok_or_else(|| anyhow!("default array dimension is not a non-zero constant"))
+        })
+        .collect::<Result<Vec<_>>>();
+    match dimensions {
+        Ok(dimensions) if !dimensions.is_empty() => Ok(Some((meta, name, dimensions))),
+        Ok(_) | Err(_) => Ok(None),
+    }
+}
+
 impl<'decls, 'ctx, 'str, 'func, 'blk, 'val>
     GenerateLLZKInTemplate<'decls, 'ctx, 'str, 'func, 'blk, 'val> for [Statement]
 where
@@ -1037,7 +1084,63 @@ where
     where
         'val: 'r,
     {
-        for s in self {
+        let mut index = 0;
+        while index < self.len() {
+            if !codegen.program.is_concrete() {
+                if let Some((meta, name, dimensions)) =
+                    default_zero_array_initializer(&self[index..], codegen)?
+                {
+                    let value_count = dimensions.iter().try_fold(1usize, |acc, dimension| {
+                        acc.checked_mul(*dimension)
+                            .ok_or_else(|| anyhow!("array constant dimensions overflow"))
+                    })?;
+                    let location = codegen.location_from_meta(meta);
+                    let values = vec![BigInt::zero(); value_count];
+                    let (global_name, array_type) =
+                        codegen.get_or_create_array_const_global(location, &dimensions, &values)?;
+                    template.and_then_same::<_, ()>(|fc, _| {
+                        let builder = fc.builder_at_current_insertion_point(codegen.context);
+                        let value = fc.append_op_ref_unnamed_result(global::read(
+                            &builder,
+                            location,
+                            codegen.global_symbol_ref(&global_name),
+                            true,
+                            array_type,
+                        ))?;
+                        fc.block_ctx.declare_value_ensure_not_present(name, value)
+                    })?;
+                    index += 2;
+                    continue;
+                }
+            }
+            if let Some(literal) = concrete_array_literal_initializer(&self[index..]) {
+                // The concrete-program sugar cleaner lowers numeric array literals to a
+                // declaration followed by complete element-wise initialization passes. Retain the
+                // declaration for scope bookkeeping, but replace those passes with a read of a
+                // deduplicated immutable global in every generated template function.
+                self[index + literal.declaration_offset].gen_llzk_in_template(codegen, template)?;
+                let location = codegen.location_from_meta(literal.meta);
+                let (global_name, array_type) = codegen.get_or_create_array_const_global(
+                    location,
+                    &literal.dimensions,
+                    &literal.values,
+                )?;
+                template.and_then_same::<_, ()>(|fc, _| {
+                    let builder = fc.builder_at_current_insertion_point(codegen.context);
+                    let value = fc.append_op_ref_unnamed_result(global::read(
+                        &builder,
+                        location,
+                        codegen.global_symbol_ref(&global_name),
+                        true,
+                        array_type,
+                    ))?;
+                    fc.block_ctx.set_named_value(literal.name.to_owned(), value)
+                })?;
+                index += literal.consumed;
+                continue;
+            }
+
+            let s = &self[index];
             s.gen_llzk_in_template(codegen, template)?;
             // circom allows unreachable code after a return but it is not processed
             // (e.g. `assert(1 == 0)` after a return does not cause an error as it normally
@@ -1046,6 +1149,7 @@ where
             if matches!(s, Statement::Return { .. }) {
                 break;
             }
+            index += 1;
         }
         Ok(())
     }
