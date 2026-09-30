@@ -88,6 +88,7 @@
             {
               nativeBuildInputs = pkgs.llzkSharedEnvironment.nativeBuildInputs;
               buildInputs = pkgs.llzkSharedEnvironment.devBuildInputs ++ [
+                pkgs.python3
                 pkgs.rust-bin.stable.latest.default
               ];
 
