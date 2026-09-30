@@ -20,13 +20,12 @@ use llzk::{
     prelude::{
         is_felt_type, is_type_variable,
         melior_dialects::{arith, index, scf},
-        replace_uses_of_with, ArrayType, Attribute, BlockLike as _, BlockRef,
-        FlatSymbolRefAttribute, FuncDefOp, IntegerAttribute, LlzkContext, Location,
-        LoopBoundsAttribute, Operation, OperationLike, OperationMutLike as _, OperationRef,
-        PodType, Region, RegionLike as _, StringAttribute, StringRef, StructType, TVarType,
-        TemplateParamOp, TemplateParamOpLike as _, TemplateSymbolBindingOp,
-        TemplateSymbolBindingOpLike as _, TemplateSymbolBindingOpRef, Type, Value, ValueLike as _,
-        FUNC_NAME_COMPUTE, FUNC_NAME_CONSTRAIN,
+        ArrayType, Attribute, BlockLike as _, BlockRef, FlatSymbolRefAttribute, FuncDefOp,
+        IntegerAttribute, LlzkContext, Location, LoopBoundsAttribute, Operation, OperationLike,
+        OperationMutLike as _, OperationRef, PodType, Region, RegionLike as _, StringAttribute,
+        StringRef, StructType, TVarType, TemplateParamOp, TemplateParamOpLike as _,
+        TemplateSymbolBindingOp, TemplateSymbolBindingOpLike as _, TemplateSymbolBindingOpRef,
+        Type, Value, ValueLike as _, FUNC_NAME_COMPUTE, FUNC_NAME_CONSTRAIN,
     },
     typing::types_unify,
     utils::{print_region, IsA as _},
@@ -1787,7 +1786,10 @@ where
             let terminator = block.terminator().expect("block has a terminator");
             let builder = OpBuilder::new(codegen.context, EntryPoint::Before(terminator));
             let new_cast = poly::unifiable_cast(&builder, location, value, target_ty);
-            replace_uses_of_with(&terminator, value, Value::from(new_cast.result(0)?));
+            block
+                .terminator_mut()
+                .expect("block has a terminator")
+                .replace_uses_of_with(value, Value::from(new_cast.result(0)?));
         }
         Ok(())
     }
@@ -2491,7 +2493,11 @@ where
                 if val.r#type() != expected_ty && types_unify(val.r#type(), expected_ty) {
                     let builder = OpBuilder::new(codegen.context, EntryPoint::Before(terminator));
                     let cast_op = poly::unifiable_cast(&builder, location, val, expected_ty);
-                    replace_uses_of_with(&terminator, val, Value::from(cast_op.result(0)?));
+                    loop_body_info
+                        .block
+                        .terminator_mut()
+                        .expect("yield was just appended")
+                        .replace_uses_of_with(val, Value::from(cast_op.result(0)?));
                 }
             }
         }

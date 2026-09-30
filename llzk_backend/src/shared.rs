@@ -21,20 +21,23 @@ use llzk::{
     dialect::{array, array::ArrayCtor, empty_region, felt, global, pod, poly},
     operation::build_owned_operation,
     prelude::{
-        is_felt_type, melior_dialects::arith, replace_uses_of_with, verify_operation_with_diags,
-        ArrayType, Attribute, AttributeLike as _, Block, BlockLike as _, BlockRef, BoolAttribute,
-        FeltType, FlatSymbolRefAttribute, FuncDefOp, FuncDefOpLike as _, FuncDefOpRef,
-        FuncDefOpRefMut, IntegerAttribute, IntegerType, LlzkContext, LlzkError, Location, Module,
-        Operation, OperationLike, OperationMutLike, OperationRef, PassManager, PodType,
-        RecordValue, Region, RegionLike as _, StringAttribute, StringRef, StructType,
-        SymbolRefAttribute, TemplateExprOp, TemplateExprOpLike as _, TemplateOpLike as _,
-        TemplateOpRefMut, TemplateSymbolBindingOp, TemplateSymbolBindingOpLike as _,
-        TemplateSymbolBindingOpRef, Type, TypeLike as _, Value, ValueLike as _,
+        is_felt_type, melior_dialects::arith, verify_operation_with_diags, ArrayType, Attribute,
+        AttributeLike as _, Block, BlockLike as _, BlockRef, BoolAttribute, FeltType,
+        FlatSymbolRefAttribute, FuncDefOp, FuncDefOpLike as _, FuncDefOpRef, FuncDefOpRefMut,
+        IntegerAttribute, IntegerType, LlzkContext, LlzkError, Location, Module, Operation,
+        OperationLike, OperationMutLike, OperationRef, PassManager, PodType, RecordValue, Region,
+        RegionLike as _, StringAttribute, StringRef, StructType, SymbolRefAttribute,
+        TemplateExprOp, TemplateExprOpLike as _, TemplateOpLike as _, TemplateOpRefMut,
+        TemplateSymbolBindingOp, TemplateSymbolBindingOpLike as _, TemplateSymbolBindingOpRef,
+        Type, TypeLike as _, Value, ValueLike as _,
     },
     symbol_table,
     value_ext::{OwningValueRange, ValueRange},
 };
-use melior::{ir::operation::OperationPrintingFlags, utility};
+use melior::{
+    ir::operation::{OperationPrintingFlags, OperationRefMut},
+    utility,
+};
 use num_bigint_dig::{BigInt, BigUint, ModInverse, ToBigInt as _};
 use num_traits::{cast::ToPrimitive, One, Zero};
 use program_structure::{
@@ -1642,7 +1645,7 @@ pub fn replace_uses_with_new_block_argument<'ctx, 'val>(
 ) -> Value<'ctx, 'val> {
     let replacement = block.add_argument(orig.r#type(), location);
     // `OperationRef` lifetimes are HRTB inside `WalkCallbacks::for_ops`, so collect
-    // raw handles and rebuild the `OperationRef` outside the walk.
+    // raw handles and rebuild the `OperationRefMut` outside the walk.
     let mut ops_using_orig: Vec<mlir_sys::MlirOperation> = Vec::new();
     walk_from_block(
         block,
@@ -1653,8 +1656,8 @@ pub fn replace_uses_with_new_block_argument<'ctx, 'val>(
         }),
     );
     for raw in ops_using_orig {
-        let op = unsafe { OperationRef::from_raw(raw) };
-        replace_uses_of_with(&op, *orig, replacement);
+        let mut op = unsafe { OperationRefMut::from_raw(raw) };
+        op.replace_uses_of_with(*orig, replacement);
     }
     replacement
 }
