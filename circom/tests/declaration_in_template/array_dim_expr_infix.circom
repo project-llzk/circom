@@ -15,13 +15,11 @@ component main = A();
 // CHECK-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@A::@A<[]>>} {
 // CHECK-NEXT:    poly.template @A {
 // CHECK-NEXT:      poly.expr @"2_Mul_s@[[OFFSET0:[0-9]+]]" {
-// CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = felt.const  12 : <"bn128">
-// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_0]] : !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = arith.constant 12 : index
 // CHECK-NEXT:        poly.yield %[[VAL_1]] : index
 // CHECK-NEXT:      }
 // CHECK-NEXT:      poly.expr @"2_Mul_s@[[OFFSET1:[0-9]+]]" {
-// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  12 : <"bn128">
-// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_2]] : !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = arith.constant 12 : index
 // CHECK-NEXT:        poly.yield %[[VAL_3]] : index
 // CHECK-NEXT:      }
 // CHECK-NEXT:      struct.def @A {
