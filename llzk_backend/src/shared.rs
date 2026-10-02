@@ -35,6 +35,7 @@ use llzk::{
     value_ext::{OwningValueRange, ValueRange},
 };
 use melior::{
+    dialect::DialectRegistry,
     ir::operation::{OperationPrintingFlags, OperationRefMut},
     utility,
 };
@@ -1206,6 +1207,27 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         felt::constant(builder, location, attr).map_err(Into::into)
     }
 
+    /// Register core LLZK passes, optionally including backend passes, and append their
+    /// dialect extensions to the context.
+    fn register_llzk_passes(&self, include_backends: bool) {
+        let registry = DialectRegistry::new();
+        llzk::passes::register_core_llzk_passes(&registry);
+        if include_backends {
+            llzk::passes::register_r1cs_passes(&registry);
+            llzk::passes::register_pcl_passes(&registry);
+            llzk::passes::register_zklean_passes(&registry);
+            llzk::passes::register_smt_passes(&registry);
+        }
+        self.context.append_dialect_registry(&registry);
+    }
+
+    /// Parse a pass pipeline into the given manager.
+    #[inline]
+    fn parse_pass_pipeline(manager: &PassManager<'_>, pipeline: &str) -> Result<()> {
+        utility::parse_pass_pipeline(manager.as_operation_pass_manager(), pipeline)
+            .map_err(anyhow::Error::from)
+    }
+
     /// Run the given pass pipeline on the given operation.
     pub fn run_pass_pipeline_on<'c: 'a, 'a>(
         &self,
@@ -1232,9 +1254,8 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         );
 
         // Setup and run the pass pipeline.
-        utility::register_all_passes();
-        utility::parse_pass_pipeline(manager.as_operation_pass_manager(), pipeline)
-            .map_err(anyhow::Error::from)?;
+        self.register_llzk_passes(false); // no current use of backends
+        Self::parse_pass_pipeline(&manager, pipeline)?;
 
         let mlir_result =
             unsafe { mlir_sys::mlirPassManagerRunOnOp(manager.to_raw(), op.to_raw()) };
@@ -1250,12 +1271,8 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         }
         let manager = PassManager::new(self.context);
         manager.enable_verifier(true);
-        utility::register_all_passes();
-        utility::parse_pass_pipeline(
-            manager.as_operation_pass_manager(),
-            &self.config.pass_pipeline,
-        )
-        .map_err(anyhow::Error::from)?;
+        self.register_llzk_passes(true); // user may include backends
+        Self::parse_pass_pipeline(&manager, &self.config.pass_pipeline)?;
         manager.run(&mut self.module).map_err(Into::into)
     }
 
@@ -1266,12 +1283,13 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         }
         let manager = PassManager::new(self.context);
         manager.enable_verifier(true);
-        utility::register_all_passes();
-        utility::parse_pass_pipeline(
-            manager.as_operation_pass_manager(),
-            "builtin.module(strip-debuginfo)",
-        )
-        .map_err(anyhow::Error::from)?;
+
+        // Only an upstream MLIR pass is used here but registration must still go through LLZK
+        // because LLZK defines an override of the `remove-dead-values` pass so calling
+        // `utility::register_all_passes()` would lead to a "pass allocator" error.
+        self.register_llzk_passes(false);
+
+        Self::parse_pass_pipeline(&manager, "builtin.module(strip-debuginfo)")?;
         manager.run(&mut self.module).map_err(Into::into)
     }
 
