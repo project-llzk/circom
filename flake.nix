@@ -1,16 +1,10 @@
 {
   inputs = {
-    llzk-pkgs.url = "github:project-llzk/llzk-nix-pkgs";
+    llzk-rs-pkgs.url = "git+https://github.com/project-llzk/llzk-rs";
+
+    llzk-pkgs.follows = "llzk-rs-pkgs/llzk-pkgs";
     nixpkgs.follows = "llzk-pkgs/nixpkgs";
     flake-utils.follows = "llzk-pkgs/flake-utils";
-    llzk-rs-pkgs = {
-      url = "git+https://github.com/project-llzk/llzk-rs";
-      inputs = {
-        nixpkgs.follows = "llzk-pkgs/nixpkgs";
-        flake-utils.follows = "llzk-pkgs/flake-utils";
-        llzk-pkgs.follows = "llzk-pkgs";
-      };
-    };
     llzk-lib.follows = "llzk-rs-pkgs/llzk-lib";
     release-helpers.follows = "llzk-rs-pkgs/llzk-lib/release-helpers";
     rust-overlay.follows = "llzk-rs-pkgs/rust-overlay";
