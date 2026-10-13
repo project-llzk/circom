@@ -113,10 +113,7 @@ component main = B(1);
 // CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = bool.cmp gt(%[[VAL_42]], %[[VAL_46]]) : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          scf.if %[[VAL_47]] {
 // CHECK-NEXT:            %[[VAL_48:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_49:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          } else {
-// CHECK-NEXT:            %[[VAL_52:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:            %[[VAL_53:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_45]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">

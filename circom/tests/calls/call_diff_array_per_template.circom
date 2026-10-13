@@ -200,7 +200,6 @@ component main = Main();
 // CHECK-NEXT:          %[[VAL_97:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_87]][@crt1$inputs] : <@Main::@Main<[]>>, !pod.type<[@inA: !array.type<8,5,3 x !felt.type<"bn128">>, @inB: !array.type<8,3 x !felt.type<"bn128">>]>
 // CHECK-NEXT:          %[[VAL_98:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_87]][@crt2] : <@Main::@Main<[]>>, !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[2]>>
 // CHECK-NEXT:          %[[VAL_99:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_87]][@crt2$inputs] : <@Main::@Main<[]>>, !pod.type<[@inA: !array.type<8,5,2 x !felt.type<"bn128">>, @inB: !array.type<8,2 x !felt.type<"bn128">>]>
-// CHECK-NEXT:          %[[VAL_100:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
 // CHECK-NEXT:          %[[VAL_103:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_97]][@inA] : <[@inA: !array.type<8,5,3 x !felt.type<"bn128">>, @inB: !array.type<8,3 x !felt.type<"bn128">>]>, !array.type<8,5,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          constrain.eq %[[VAL_103]], %[[VAL_88]] : !array.type<8,5,3 x !felt.type<"bn128">>, !array.type<8,5,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_104:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_97]][@inB] : <[@inA: !array.type<8,5,3 x !felt.type<"bn128">>, @inB: !array.type<8,3 x !felt.type<"bn128">>]>, !array.type<8,3 x !felt.type<"bn128">>
@@ -209,7 +208,6 @@ component main = Main();
 // CHECK-NEXT:          constrain.eq %[[VAL_92]], %[[VAL_105]] : !array.type<3 x !felt.type<"bn128">>, !array.type<? x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_106:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_96]][@outB] : <@CallDiffTypeTest::@CallDiffTypeTest<[3]>>, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_93]], %[[VAL_106]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_107:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          %[[VAL_110:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_99]][@inA] : <[@inA: !array.type<8,5,2 x !felt.type<"bn128">>, @inB: !array.type<8,2 x !felt.type<"bn128">>]>, !array.type<8,5,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          constrain.eq %[[VAL_110]], %[[VAL_90]] : !array.type<8,5,2 x !felt.type<"bn128">>, !array.type<8,5,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_111:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_99]][@inB] : <[@inA: !array.type<8,5,2 x !felt.type<"bn128">>, @inB: !array.type<8,2 x !felt.type<"bn128">>]>, !array.type<8,2 x !felt.type<"bn128">>

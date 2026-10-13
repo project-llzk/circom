@@ -95,7 +95,6 @@ component main = SubCmps3();
 // CHECK-NEXT:          %[[VAL_42:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_40]][@outp] : <@SubCmps3::@SubCmps3<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_43:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_40]][@s] : <@SubCmps3::@SubCmps3<[]>>, !struct.type<@Sum::@Sum<[4]>>
 // CHECK-NEXT:          %[[VAL_44:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_40]][@s$inputs] : <@SubCmps3::@SubCmps3<[]>>, !pod.type<[@inp: !array.type<4 x !felt.type<"bn128">>]>
-// CHECK-NEXT:          %[[VAL_45:[0-9a-zA-Z_\.]+]] = felt.const  4 : <"bn128">
 // CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_50:[0-9a-zA-Z_\.]+]] = %[[VAL_48]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
 // CHECK-NEXT:            %[[VAL_51:[0-9a-zA-Z_\.]+]] = felt.const  4 : <"bn128">

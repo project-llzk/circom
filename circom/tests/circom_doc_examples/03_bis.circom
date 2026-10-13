@@ -191,10 +191,8 @@ component main = D();
 // CHECK-NEXT:          %[[VAL_77:[0-9a-zA-Z_\.]+]] = struct.new : <@D::@D<[]>>
 // CHECK-NEXT:          %[[VAL_80:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_81:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_82:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_85:[0-9a-zA-Z_\.]+]] = function.call @B::@B::@compute() : () -> !struct.type<@B::@B<[0]>>
 // CHECK-NEXT:          %[[VAL_86:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_85]] }  : <[@count: index, @comp: !struct.type<@B::@B<[0]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
-// CHECK-NEXT:          %[[VAL_87:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_90:[0-9a-zA-Z_\.]+]] = function.call @B::@B::@compute() : () -> !struct.type<@B::@B<[1]>>
 // CHECK-NEXT:          %[[VAL_91:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_90]] }  : <[@count: index, @comp: !struct.type<@B::@B<[1]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_79:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type<"bn128">>
@@ -236,8 +234,6 @@ component main = D();
 // CHECK-NEXT:          %[[VAL_114:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_110]][@b0$inputs] : <@D::@D<[]>>, !pod.type<[]>
 // CHECK-NEXT:          %[[VAL_115:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_110]][@b1] : <@D::@D<[]>>, !struct.type<@B::@B<[1]>>
 // CHECK-NEXT:          %[[VAL_116:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_110]][@b1$inputs] : <@D::@D<[]>>, !pod.type<[]>
-// CHECK-NEXT:          %[[VAL_117:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_120:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_123:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_113]][@out] : <@B::@B<[0]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_124:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_125:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_124]] : !felt.type<"bn128">

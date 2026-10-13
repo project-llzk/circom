@@ -377,7 +377,6 @@ component main = IsNegative();
 // CHECK-NEXT:            scf.yield %[[VAL_250]], %[[VAL_249]], %[[VAL_180]], %[[VAL_187]], %[[VAL_252]], %[[VAL_254]], %[[VAL_191]], %[[VAL_197]], %[[VAL_248]] : !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          }
 // CHECK-NEXT:          constrain.eq %[[VAL_138]], %[[VAL_155]]#8 : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_255:[0-9a-zA-Z_\.]+]] = felt.const  135 : <"bn128">
 // CHECK-NEXT:          %[[VAL_258:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_140]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_258]], %[[VAL_138]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_259:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_139]][@out] : <@Num2Bits::@Num2Bits<[135]>>, !array.type<? x !felt.type<"bn128">>
@@ -401,8 +400,6 @@ component main = IsNegative();
 // CHECK-NEXT:        function.def @compute(%[[VAL_264:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@IsNegative::@IsNegative<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_265:[0-9a-zA-Z_\.]+]] = struct.new : <@IsNegative::@IsNegative<[]>>
 // CHECK-NEXT:          %[[VAL_266:[0-9a-zA-Z_\.]+]] = pod.new : <[@in: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_267:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_268:[0-9a-zA-Z_\.]+]] = arith.constant 254 : index
 // CHECK-NEXT:          %[[VAL_270:[0-9a-zA-Z_\.]+]] = pod.new : <[@in: !array.type<254 x !felt.type<"bn128">>]>
 // CHECK-NEXT:          %[[VAL_271:[0-9a-zA-Z_\.]+]] = felt.const  254 : <"bn128">
 // CHECK-NEXT:          %[[VAL_272:[0-9a-zA-Z_\.]+]] = pod.new { @n = %[[VAL_271]] }  : <[@n: !felt.type<"bn128">]>
@@ -472,7 +469,6 @@ component main = IsNegative();
 // CHECK-NEXT:          %[[VAL_320:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_316]][@num2Bits$inputs] : <@IsNegative::@IsNegative<[]>>, !pod.type<[@in: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_321:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_316]][@sign] : <@IsNegative::@IsNegative<[]>>, !struct.type<@Sign::@Sign<[]>>
 // CHECK-NEXT:          %[[VAL_322:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_316]][@sign$inputs] : <@IsNegative::@IsNegative<[]>>, !pod.type<[@in: !array.type<254 x !felt.type<"bn128">>]>
-// CHECK-NEXT:          %[[VAL_323:[0-9a-zA-Z_\.]+]] = felt.const  254 : <"bn128">
 // CHECK-NEXT:          %[[VAL_326:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_320]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_326]], %[[VAL_317]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_329:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
