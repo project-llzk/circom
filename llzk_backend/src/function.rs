@@ -13,7 +13,7 @@ use std::{
 
 use anyhow::{Context as _, Result};
 use llzk::{
-    builder::OpBuilder,
+    builder::{OpBuilder, OpBuilderLike as _},
     dialect,
     dialect::{array, array::ArrayCtor, bool, function, global, poly},
     operation::{erase_op, WalkOperationMutLike as _},
@@ -24,9 +24,9 @@ use llzk::{
             scf::{is_if_op, is_yield_op},
         },
         ArrayType, Attribute, BlockLike as _, BlockRef, FuncDefOpLike as _, FuncDefOpRefMut,
-        IntegerAttribute, LlzkContext, Location, LoopBoundsAttribute, Operation,
-        OperationLike as _, OperationMutLike, OperationRefMut, RegionLike as _, Type, Value,
-        ValueLike as _, WalkOrder, WalkResult,
+        IntegerAttribute, LlzkContext, Location, LoopBoundsAttribute, Operation, OperationLike,
+        OperationMutLike, OperationRefMut, RegionLike as _, Type, Value, ValueLike as _, WalkOrder,
+        WalkResult,
     },
     value_ext::has_uses,
 };
@@ -53,6 +53,12 @@ use crate::{
     try_for_loop_heuristic,
     write_chain::{NoSignalsInfo, SignalWriteInfo},
 };
+
+/// Identifies known single-result operations that can be safely removed when their result is
+/// unused. This includes operations like `llzk.nondet` and `arith.constant`.
+fn is_single_result_pure_op<'ctx: 'a, 'a>(op: &impl OperationLike<'ctx, 'a>) -> bool {
+    dialect::llzk::is_nondet_op(op) || op.name().as_string_ref().as_str() == Ok("arith.constant")
+}
 
 /// Contains references to information providers.
 ///
@@ -239,14 +245,15 @@ where
                 },
                 codegen.context,
             )?;
+            // No return has occurred when entering the function.
             block_ctx.declare_value_if_not_present(
                 VAR_NAME_HAD_RETURN,
                 |builder| {
-                    single_result_as_value(codegen.new_nondet_at_location(
-                        builder,
-                        codegen.location_unknown(),
-                        codegen.bool_type().into(),
-                    ))
+                    single_result_as_value(
+                        builder.insert(codegen.location_unknown(), |_, location| {
+                            codegen.new_bool_const_op(false, location)
+                        }),
+                    )
                 },
                 codegen.context,
             )?;
@@ -335,10 +342,9 @@ where
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<()> {
         self.func.walk_mut(WalkOrder::PreOrder, |mut op| {
-            // Remove any `llzk.nondet` ops from the function whose result value is unused. These
-            // were added, for example, when visiting [Statement::Declaration] but their uses were
-            // later replaced with actual values when visiting [Statement::Substitution], etc.
-            if dialect::llzk::is_nondet_op(&op) && !has_uses(single_result_as_value(op).unwrap()) {
+            // Remove unused pure ops. This includes unused `llzk.nondet` placeholders and
+            // `arith.constant` ops initializing an unused "has return" flag in functions.
+            if is_single_result_pure_op(&op) && !has_uses(single_result_as_value(op).unwrap()) {
                 OperationMutLike::remove_from_parent(op.deref_mut());
                 return WalkResult::Skip;
             }
