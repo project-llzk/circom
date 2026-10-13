@@ -45,10 +45,9 @@ component main = A(5);
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_12]], %[[VAL_9]]) : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_13]] -> (!felt.type<"bn128">) {
-// CHECK-NEXT:            %[[VAL_15:[0-9a-zA-Z_\.]+]] = llzk.nondet : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:            constrain.eq %[[VAL_15]], %[[VAL_16]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:            scf.yield %[[VAL_15]] : !felt.type<"bn128">
+// CHECK-NEXT:            constrain.eq %[[VAL_11]], %[[VAL_16]] : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:            scf.yield %[[VAL_11]] : !felt.type<"bn128">
 // CHECK-NEXT:          } else {
 // CHECK-NEXT:            scf.yield %[[VAL_12]] : !felt.type<"bn128">
 // CHECK-NEXT:          }
