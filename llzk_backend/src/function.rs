@@ -55,9 +55,14 @@ use crate::{
 };
 
 /// Identifies known single-result operations that can be safely removed when their result is
-/// unused. This includes operations like `llzk.nondet` and `arith.constant`.
-fn is_single_result_pure_op<'ctx: 'a, 'a>(op: &impl OperationLike<'ctx, 'a>) -> bool {
-    dialect::llzk::is_nondet_op(op) || op.name().as_string_ref().as_str() == Ok("arith.constant")
+/// unused. This includes operations like `llzk.nondet`, `arith.constant`, `felt.const`,
+/// `string.new`, `array.new`, and `pod.new`.
+fn is_removable_when_unused<'ctx: 'a, 'a>(op: &impl OperationLike<'ctx, 'a>) -> bool {
+    dialect::llzk::is_nondet_op(op)
+        || dialect::felt::is_const_op(op)
+        || dialect::array::is_new_op(op)
+        || dialect::pod::is_new_op(op)
+        || matches!(op.name().as_string_ref().as_str(), Ok("arith.constant" | "string.new"))
 }
 
 /// Contains references to information providers.
@@ -344,7 +349,7 @@ where
         self.func.walk_mut(WalkOrder::PreOrder, |mut op| {
             // Remove unused pure ops. This includes unused `llzk.nondet` placeholders and
             // `arith.constant` ops initializing an unused "has return" flag in functions.
-            if is_single_result_pure_op(&op) && !has_uses(single_result_as_value(op).unwrap()) {
+            if is_removable_when_unused(&op) && !has_uses(single_result_as_value(op).unwrap()) {
                 OperationMutLike::remove_from_parent(op.deref_mut());
                 return WalkResult::Skip;
             }
