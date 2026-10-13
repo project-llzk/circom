@@ -54,10 +54,9 @@ fn prepare_main_component_params<'ctx>(
             Ok(match n.to_i64() {
                 Some(n) => context.index_attr(n).into(),
                 None => {
-                    // Increase by one to ensure the value is kept unsigned.
-                    let bitlen = n.bits() + 1;
-                    let parts = to_u64_digits(&n);
-                    context.felt_attr_from_parts(bitlen.try_into().unwrap(), &parts).into()
+                    let mut parts = to_u64_digits(&n);
+                    parts.push(0); // Append a zero to keep the signed value non-negative.
+                    context.felt_attr_from_parts(&parts).into()
                 }
             })
         })
