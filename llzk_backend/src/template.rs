@@ -1338,13 +1338,20 @@ where
             Statement::InitializationBlock { initializations, .. } => {
                 gen_init_block(codegen, template, initializations)
             }
-            Statement::Declaration { meta, name, dimensions, .. } => {
-                template.and_then_same(|fc, _| {
-                    if !template.is_subcmp(name) {
-                        return fc.gen_declaration(codegen, meta, name, dimensions);
-                    }
-                    Ok(())
-                })
+            Statement::Declaration { meta, xtype, name, dimensions, .. } => {
+                if template.is_subcmp(name) {
+                    return Ok(());
+                }
+                template.and_then(
+                    |fc, _| fc.gen_declaration(codegen, meta, name, dimensions),
+                    |fc, _| match xtype {
+                        // Signal and bus values are already bound to function arguments or
+                        // struct member reads by gen_template_llzk. A nested declaration must
+                        // not shadow that binding with a fresh nondet in @constrain.
+                        VariableType::Signal(..) | VariableType::Bus(..) => Ok(()),
+                        _ => fc.gen_declaration(codegen, meta, name, dimensions),
+                    },
+                )
             }
             Statement::Block { meta, stmts } => {
                 let mut template = template; // satisfy the &mut in `GenWithCircomScopeHandling`
