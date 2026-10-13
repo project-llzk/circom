@@ -16,7 +16,7 @@ use llzk::{
     builder::{OpBuilder, OpBuilderLike as _},
     dialect,
     dialect::{array, array::ArrayCtor, bool, function, global, poly},
-    operation::{erase_op, WalkOperationMutLike as _},
+    operation::WalkOperationMutLike as _,
     prelude::{
         is_type_variable,
         melior_dialects::{
@@ -346,11 +346,14 @@ where
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<()> {
-        self.func.walk_mut(WalkOrder::PreOrder, |mut op| {
-            // Remove unused pure ops. This includes unused `llzk.nondet` placeholders and
-            // `arith.constant` ops initializing an unused "has return" flag in functions.
+        // Remove ops that can be safely discarded when unused. This includes unused `llzk.nondet`
+        // placeholders and `arith.constant` ops initializing an unused "has return" flag in
+        // functions. Reverse, bottom-up traversal is used to removing ops that become unused only
+        // after ops that use them have been removed (such as `array.new` and `pod.new` with
+        // initializers).
+        self.func.walk_rev_mut(WalkOrder::PostOrder, |mut op| {
             if is_removable_when_unused(&op) && !has_uses(single_result_as_value(op).unwrap()) {
-                OperationMutLike::remove_from_parent(op.deref_mut());
+                let _drop = remove_from_parent(&mut op);
                 return WalkResult::Skip;
             }
             WalkResult::Advance
@@ -759,10 +762,7 @@ where
             // ASSERT: Per `append_circom_return()` it has exactly one operand.
             assert_eq!(term.operand_count(), 1);
             let result = term.operand(0).unwrap();
-            term.remove_from_parent();
-            // To avoid "still has uses" native errors, must perform an explicit erase
-            // since there's no way to get the owned `Operation` out of the block.
-            erase_op(term);
+            let _drop = remove_from_parent(&mut term);
             return Some(result);
         }
     }
