@@ -13,7 +13,7 @@ use std::{
 
 use anyhow::{Context as _, Result};
 use llzk::{
-    builder::OpBuilder,
+    builder::{OpBuilder, OpBuilderLike as _},
     dialect,
     dialect::{array, array::ArrayCtor, bool, function, global, poly},
     operation::{erase_op, WalkOperationMutLike as _},
@@ -239,14 +239,15 @@ where
                 },
                 codegen.context,
             )?;
+            // No return has occurred when entering the function.
             block_ctx.declare_value_if_not_present(
                 VAR_NAME_HAD_RETURN,
                 |builder| {
-                    single_result_as_value(codegen.new_nondet_at_location(
-                        builder,
-                        codegen.location_unknown(),
-                        codegen.bool_type().into(),
-                    ))
+                    single_result_as_value(
+                        builder.insert(codegen.location_unknown(), |_, location| {
+                            codegen.new_bool_const_op(false, location)
+                        }),
+                    )
                 },
                 codegen.context,
             )?;
