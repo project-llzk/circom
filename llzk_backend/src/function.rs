@@ -54,8 +54,9 @@ use crate::{
     write_chain::{NoSignalsInfo, SignalWriteInfo},
 };
 
-/// Returns whether an operation is an `llzk.nondet` or `arith.constant`.
-fn is_single_result_constant<'ctx: 'a, 'a>(op: &impl OperationLike<'ctx, 'a>) -> bool {
+/// Identifies known single-result operations that can be safely removed when their result is
+/// unused. This includes operations like `llzk.nondet` and `arith.constant`.
+fn is_single_result_pure_op<'ctx: 'a, 'a>(op: &impl OperationLike<'ctx, 'a>) -> bool {
     dialect::llzk::is_nondet_op(op) || op.name().as_string_ref().as_str() == Ok("arith.constant")
 }
 
@@ -341,9 +342,9 @@ where
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<()> {
         self.func.walk_mut(WalkOrder::PreOrder, |mut op| {
-            // Remove unused constaint-like ops. This includes unused `llzk.nondet` placeholders
-            // and `arith.constant` ops initializing an unused "has return" flag in functions.
-            if is_single_result_constant(&op) && !has_uses(single_result_as_value(op).unwrap()) {
+            // Remove unused pure ops. This includes unused `llzk.nondet` placeholders and
+            // `arith.constant` ops initializing an unused "has return" flag in functions.
+            if is_single_result_pure_op(&op) && !has_uses(single_result_as_value(op).unwrap()) {
                 OperationMutLike::remove_from_parent(op.deref_mut());
                 return WalkResult::Skip;
             }
