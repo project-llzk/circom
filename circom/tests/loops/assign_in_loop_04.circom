@@ -134,8 +134,6 @@ component main = Num2Bits(3);
 // CHECK-NEXT:          } do {
 // CHECK-NEXT:          ^bb0(%[[VAL_74:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
 // CHECK-NEXT:            %[[VAL_75:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_74]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_76:[0-9a-zA-Z_\.]+]] = pod.new { @i = %[[VAL_74]] }  : <[@i: !felt.type<"bn128">]>
-// CHECK-NEXT:            %[[VAL_77:[0-9a-zA-Z_\.]+]] = pod.new(%[[VAL_75]]) : <[@count: index, @comp: !struct.type<@Inner::@Inner<[#[[$ATTR_0]]]>>, @params: !pod.type<[@i: !felt.type<"bn128">]>]>
 // CHECK-NEXT:            %[[VAL_78:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_79:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_74]], %[[VAL_78]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            scf.yield %[[VAL_79]] : !felt.type<"bn128">

@@ -36,8 +36,6 @@ component main = ComputeValue();
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = array.new  : <2 x !pod.type<[]>>
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  999 : <"bn128">
 // CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = pod.new { @A = %[[VAL_4]], @B = %[[VAL_5]] }  : <[@A: !felt.type<"bn128">, @B: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = function.call @GetWeight::@GetWeight::@compute() : () -> !struct.type<@GetWeight::@GetWeight<[999, 0]>>
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_8]] }  : <[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[999, 0]>>, @params: !pod.type<[@A: !felt.type<"bn128">, @B: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -46,8 +44,6 @@ component main = ComputeValue();
 // CHECK-NEXT:          array.write %[[VAL_2]]{{\[}}%[[VAL_11]]] = %[[VAL_12]] : <2 x !pod.type<[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]], #[[$ATTR_0]]]>>, @params: !pod.type<[@A: !felt.type<"bn128">, @B: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]], #[[$ATTR_0]]]>>, @params: !pod.type<[@A: !felt.type<"bn128">, @B: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.const  888 : <"bn128">
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = pod.new { @A = %[[VAL_13]], @B = %[[VAL_14]] }  : <[@A: !felt.type<"bn128">, @B: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = function.call @GetWeight::@GetWeight::@compute() : () -> !struct.type<@GetWeight::@GetWeight<[888, 1]>>
 // CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_17]] }  : <[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[888, 1]>>, @params: !pod.type<[@A: !felt.type<"bn128">, @B: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
@@ -91,12 +87,8 @@ component main = ComputeValue();
 // CHECK-NEXT:          %[[VAL_46:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_43]][@ws$inputs] : <@ComputeValue::@ComputeValue<[]>>, !array.type<2 x !pod.type<[]>>
 // CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = felt.const  999 : <"bn128">
 // CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = pod.new { @A = %[[VAL_47]], @B = %[[VAL_48]] }  : <[@A: !felt.type<"bn128">, @B: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[999, 0]>>, @params: !pod.type<[@A: !felt.type<"bn128">, @B: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = felt.const  888 : <"bn128">
 // CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = pod.new { @A = %[[VAL_51]], @B = %[[VAL_52]] }  : <[@A: !felt.type<"bn128">, @B: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[888, 1]>>, @params: !pod.type<[@A: !felt.type<"bn128">, @B: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_55:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_55]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_45]]{{\[}}%[[VAL_56]]] : <2 x !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]], #[[$ATTR_0]]]>>>, !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]], #[[$ATTR_0]]]>>

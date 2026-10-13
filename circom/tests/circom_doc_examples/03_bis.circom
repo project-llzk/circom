@@ -161,14 +161,10 @@ component main = D();
 // CHECK-NEXT:          %[[VAL_64:[0-9a-zA-Z_\.]+]] = bool.cmp gt(%[[VAL_56]], %[[VAL_63]]) : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          scf.if %[[VAL_64]] {
 // CHECK-NEXT:            %[[VAL_65:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Add_2@[[OFFSET1]]" : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_66:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_65]] }  : <[@N: !felt.type<"bn128">]>
-// CHECK-NEXT:            %[[VAL_67:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@A::@A<[@"N_Add_2@[[OFFSET1]]"]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
 // CHECK-NEXT:            %[[VAL_68:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            constrain.eq %[[VAL_60]], %[[VAL_68]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          } else {
 // CHECK-NEXT:            %[[VAL_69:[0-9a-zA-Z_\.]+]] = poly.read_const @"N_Add_1@[[OFFSET0]]" : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_70:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_69]] }  : <[@N: !felt.type<"bn128">]>
-// CHECK-NEXT:            %[[VAL_71:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@A::@A<[@"N_Add_1@[[OFFSET0]]"]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
 // CHECK-NEXT:            %[[VAL_72:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:            constrain.eq %[[VAL_60]], %[[VAL_72]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          }
@@ -196,13 +192,9 @@ component main = D();
 // CHECK-NEXT:          %[[VAL_80:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_81:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_82:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_83:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_82]] }  : <[@N: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_84:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_85:[0-9a-zA-Z_\.]+]] = function.call @B::@B::@compute() : () -> !struct.type<@B::@B<[0]>>
 // CHECK-NEXT:          %[[VAL_86:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_85]] }  : <[@count: index, @comp: !struct.type<@B::@B<[0]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_87:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_88:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_87]] }  : <[@N: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_89:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_90:[0-9a-zA-Z_\.]+]] = function.call @B::@B::@compute() : () -> !struct.type<@B::@B<[1]>>
 // CHECK-NEXT:          %[[VAL_91:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_90]] }  : <[@count: index, @comp: !struct.type<@B::@B<[1]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_79:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<2 x !felt.type<"bn128">>
@@ -245,11 +237,7 @@ component main = D();
 // CHECK-NEXT:          %[[VAL_115:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_110]][@b1] : <@D::@D<[]>>, !struct.type<@B::@B<[1]>>
 // CHECK-NEXT:          %[[VAL_116:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_110]][@b1$inputs] : <@D::@D<[]>>, !pod.type<[]>
 // CHECK-NEXT:          %[[VAL_117:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_118:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_117]] }  : <[@N: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_119:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@B::@B<[0]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_120:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_121:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_120]] }  : <[@N: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_122:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@B::@B<[1]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_123:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_113]][@out] : <@B::@B<[0]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_124:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_125:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_124]] : !felt.type<"bn128">

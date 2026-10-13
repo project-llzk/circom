@@ -64,8 +64,6 @@ component main = Main();
 // CHECK-NEXT:      poly.param @T_arg3 : !poly.tvar<@T_arg3>
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
 // CHECK-NEXT:      function.def @add(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0> {function.arg_name = "x1"}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg1> {function.arg_name = "y1"}, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg2> {function.arg_name = "x2"}, %[[VAL_3:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg3> {function.arg_name = "y2"}) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  168700 : <"bn128">
-// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  168696 : <"bn128">
 // CHECK-NEXT:        %[[VAL_7:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_8:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_0]] : (!poly.tvar<@T_arg0>) -> !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_9:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_3]] : (!poly.tvar<@T_arg3>) -> !felt.type<"bn128">
@@ -123,7 +121,6 @@ component main = Main();
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
 // CHECK-NEXT:      function.def @mul(%[[VAL_53:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg0> {function.arg_name = "base"}, %[[VAL_54:[0-9a-zA-Z_\.]+]]: !poly.tvar<@T_arg1> {function.arg_name = "k"}) -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_57:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<16,2 x !felt.type<"bn128">>
-// CHECK-NEXT:        %[[VAL_55:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:        %[[VAL_76:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_78:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_79:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_53]] : (!poly.tvar<@T_arg0>) -> !array.type<2 x !felt.type<"bn128">>

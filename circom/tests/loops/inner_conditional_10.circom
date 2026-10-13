@@ -138,8 +138,6 @@ component main = Poseidon();
 // CHECK-NEXT:                %[[VAL_80:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:                scf.yield %[[VAL_80]] : !felt.type<"bn128">
 // CHECK-NEXT:              }
-// CHECK-NEXT:              %[[VAL_81:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:              %[[VAL_82:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:              %[[VAL_83:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_78]] : !felt.type<"bn128">
 // CHECK-NEXT:              %[[VAL_84:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_64]]{{\[}}%[[VAL_83]]] : <2 x !pod.type<[@inp: !felt.type<"bn128">]>>, !pod.type<[@inp: !felt.type<"bn128">]>
 // CHECK-NEXT:              %[[VAL_85:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_84]][@inp] : <[@inp: !felt.type<"bn128">]>, !felt.type<"bn128">

@@ -34,7 +34,6 @@ component main = KnownLoopViaSignal();
 // CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@KnownLoopViaSignal::@KnownLoopViaSignal<[]>>
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_2]], @params = %[[VAL_1]] }  : <[@count: index, @comp: !struct.type<@accumulate::@accumulate<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = pod.new : <[@i: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -65,8 +64,6 @@ component main = KnownLoopViaSignal();
 // CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_20]][@y] : <@KnownLoopViaSignal::@KnownLoopViaSignal<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_20]][@a] : <@KnownLoopViaSignal::@KnownLoopViaSignal<[]>>, !struct.type<@accumulate::@accumulate<[]>>
 // CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_20]][@a$inputs] : <@KnownLoopViaSignal::@KnownLoopViaSignal<[]>>, !pod.type<[@i: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@accumulate::@accumulate<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_23]][@i] : <[@i: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:          function.call @accumulate::@accumulate::@constrain(%[[VAL_22]], %[[VAL_26]]) : (!struct.type<@accumulate::@accumulate<[]>>, !felt.type<"bn128">) -> ()
 // CHECK-NEXT:          function.return

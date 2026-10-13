@@ -114,8 +114,6 @@ component main = Array1();
 // CHECK-NEXT:            scf.condition(%[[VAL_63]]) %[[VAL_61]] : !felt.type<"bn128">
 // CHECK-NEXT:          } do {
 // CHECK-NEXT:          ^bb0(%[[VAL_64:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CHECK-NEXT:            %[[VAL_65:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:            %[[VAL_66:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Foo::@Foo<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_67:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_64]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_68:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_58]]{{\[}}%[[VAL_67]]] : <5 x !pod.type<[@a: !felt.type<"bn128">]>>, !pod.type<[@a: !felt.type<"bn128">]>
 // CHECK-NEXT:            %[[VAL_69:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_68]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">

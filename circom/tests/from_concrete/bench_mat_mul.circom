@@ -72,8 +72,6 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">> {function.arg_name = "a"}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">> {function.arg_name = "b"}) -> !struct.type<@matElemMul_0::@matElemMul_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@matElemMul_0::@matElemMul_0<[]>>
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<1,3 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_8:[0-9a-zA-Z_\.]+]] = %[[VAL_6]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
 // CHECK-NEXT:            %[[VAL_9:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
@@ -113,8 +111,6 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_33:[0-9a-zA-Z_\.]+]]: !struct.type<@matElemMul_0::@matElemMul_0<[]>>, %[[VAL_34:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">> {function.arg_name = "a"}, %[[VAL_35:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">> {function.arg_name = "b"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_33]][@out] : <@matElemMul_0::@matElemMul_0<[]>>, !array.type<1,3 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_37:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_38:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
 // CHECK-NEXT:          %[[VAL_39:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_40:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_41:[0-9a-zA-Z_\.]+]] = %[[VAL_39]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
 // CHECK-NEXT:            %[[VAL_42:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
@@ -161,8 +157,6 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:        function.def @compute(%[[VAL_67:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">> {function.arg_name = "a"}) -> !struct.type<@matElemSum_1::@matElemSum_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_68:[0-9a-zA-Z_\.]+]] = struct.new : <@matElemSum_1::@matElemSum_1<[]>>
 // CHECK-NEXT:          %[[VAL_69:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_70:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_71:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
 // CHECK-NEXT:          %[[VAL_72:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_73:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_72]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_74:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -221,8 +215,6 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:        function.def @constrain(%[[VAL_116:[0-9a-zA-Z_\.]+]]: !struct.type<@matElemSum_1::@matElemSum_1<[]>>, %[[VAL_117:[0-9a-zA-Z_\.]+]]: !array.type<1,3 x !felt.type<"bn128">> {function.arg_name = "a"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_118:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_116]][@out] : <@matElemSum_1::@matElemSum_1<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_119:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_116]][@sum] : <@matElemSum_1::@matElemSum_1<[]>>, !array.type<3 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_120:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_121:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
 // CHECK-NEXT:          %[[VAL_122:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_123:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_122]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_124:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -319,9 +311,6 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:            }
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_193:[0-9a-zA-Z_\.]+]] = array.new  : <2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type<"bn128">>]>>
-// CHECK-NEXT:          %[[VAL_194:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:          %[[VAL_195:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
-// CHECK-NEXT:          %[[VAL_196:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          %[[VAL_197:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_198:[0-9a-zA-Z_\.]+]]:5 = scf.while (%[[VAL_199:[0-9a-zA-Z_\.]+]] = %[[VAL_197]], %[[VAL_200:[0-9a-zA-Z_\.]+]] = %[[VAL_172]], %[[VAL_201:[0-9a-zA-Z_\.]+]] = %[[VAL_182]], %[[VAL_202:[0-9a-zA-Z_\.]+]] = %[[VAL_183]], %[[VAL_203:[0-9a-zA-Z_\.]+]] = %[[VAL_193]]) : (!felt.type<"bn128">, !array.type<2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0::@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type<"bn128">>, @b: !array.type<1,3 x !felt.type<"bn128">>]>>, !array.type<2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1::@matElemSum_1<[]>>, @params: !pod.type<[]>]>>, !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type<"bn128">>]>>) -> (!felt.type<"bn128">, !array.type<2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemMul_0::@matElemMul_0<[]>>, @params: !pod.type<[]>]>>, !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type<"bn128">>, @b: !array.type<1,3 x !felt.type<"bn128">>]>>, !array.type<2,2 x !pod.type<[@count: index, @comp: !struct.type<@matElemSum_1::@matElemSum_1<[]>>, @params: !pod.type<[]>]>>, !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type<"bn128">>]>>) {
 // CHECK-NEXT:            %[[VAL_204:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
@@ -536,9 +525,6 @@ component main = matMul(2,3,2);
 // CHECK-NEXT:          %[[VAL_384:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_379]][@matElemMulComp$inputs] : <@matMul_2::@matMul_2<[]>>, !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type<"bn128">>, @b: !array.type<1,3 x !felt.type<"bn128">>]>>
 // CHECK-NEXT:          %[[VAL_385:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_379]][@matElemSumComp] : <@matMul_2::@matMul_2<[]>>, !array.type<2,2 x !struct.type<@matElemSum_1::@matElemSum_1<[]>>>
 // CHECK-NEXT:          %[[VAL_386:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_379]][@matElemSumComp$inputs] : <@matMul_2::@matMul_2<[]>>, !array.type<2,2 x !pod.type<[@a: !array.type<1,3 x !felt.type<"bn128">>]>>
-// CHECK-NEXT:          %[[VAL_387:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:          %[[VAL_388:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
-// CHECK-NEXT:          %[[VAL_389:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          %[[VAL_390:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_391:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_392:[0-9a-zA-Z_\.]+]] = %[[VAL_390]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
 // CHECK-NEXT:            %[[VAL_393:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">

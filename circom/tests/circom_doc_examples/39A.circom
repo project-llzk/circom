@@ -85,8 +85,6 @@ component main = A(3);
 // CHECK-NEXT:          scf.if %[[VAL_33]] {
 // CHECK-NEXT:            %[[VAL_34:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:            constrain.eq %[[VAL_28]], %[[VAL_34]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_35:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:            %[[VAL_36:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@B::@B<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_37:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_31]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:            constrain.eq %[[VAL_37]], %[[VAL_28]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_38:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_30]][@out] : <@B::@B<[]>>, !felt.type<"bn128">

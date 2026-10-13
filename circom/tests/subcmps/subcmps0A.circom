@@ -135,8 +135,6 @@ component main = SubCmps0A(2);
 // CHECK-NEXT:            scf.condition(%[[VAL_75]]) %[[VAL_74]] : !felt.type<"bn128">
 // CHECK-NEXT:          } do {
 // CHECK-NEXT:          ^bb0(%[[VAL_76:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CHECK-NEXT:            %[[VAL_77:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:            %[[VAL_78:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@IsZero::@IsZero<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_79:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_80:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_76]], %[[VAL_79]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            scf.yield %[[VAL_80]] : !felt.type<"bn128">

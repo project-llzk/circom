@@ -60,8 +60,6 @@ component main = A(5);
 // CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_20]][@x] : <@A::@A<[@n]>>, !struct.type<@B::@B<[@"n_Mul_n@[[OFFSET0]]"]>>
 // CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_20]][@x$inputs] : <@A::@A<[@n]>>, !pod.type<[@inB: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = poly.read_const @"n_Mul_n@[[OFFSET0]]" : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = pod.new { @n = %[[VAL_26]] }  : <[@n: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@B::@B<[@"n_Mul_n@[[OFFSET0]]"]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_25]][@inB] : <[@inB: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:          function.call @B::@B::@constrain(%[[VAL_24]], %[[VAL_29]]) : (!struct.type<@B::@B<[@"n_Mul_n@[[OFFSET0]]"]>>, !felt.type<"bn128">) -> ()
 // CHECK-NEXT:          function.return

@@ -61,8 +61,6 @@ component main = Caller(5, 3);
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = arith.constant 3 : index
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_13]], @params = %[[VAL_12]] }  : <[@count: index, @comp: !struct.type<@Sum_1::@Sum_1<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = pod.new : <[@inp: !array.type<3 x !felt.type<"bn128">>]>
-// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
-// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = felt.const  5 : <"bn128">
 // CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]]:3 = scf.while (%[[VAL_20:[0-9a-zA-Z_\.]+]] = %[[VAL_18]], %[[VAL_21:[0-9a-zA-Z_\.]+]] = %[[VAL_3]], %[[VAL_22:[0-9a-zA-Z_\.]+]] = %[[VAL_11]]) : (!felt.type<"bn128">, !array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>>, !array.type<3 x !pod.type<[@inp: !array.type<5 x !felt.type<"bn128">>]>>) -> (!felt.type<"bn128">, !array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>>, !array.type<3 x !pod.type<[@inp: !array.type<5 x !felt.type<"bn128">>]>>) {
 // CHECK-NEXT:            %[[VAL_23:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
@@ -145,8 +143,6 @@ component main = Caller(5, 3);
 // CHECK-NEXT:          %[[VAL_76:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_71]][@step1$inputs] : <@Caller_2::@Caller_2<[]>>, !array.type<3 x !pod.type<[@inp: !array.type<5 x !felt.type<"bn128">>]>>
 // CHECK-NEXT:          %[[VAL_77:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_71]][@step2] : <@Caller_2::@Caller_2<[]>>, !struct.type<@Sum_1::@Sum_1<[]>>
 // CHECK-NEXT:          %[[VAL_78:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_71]][@step2$inputs] : <@Caller_2::@Caller_2<[]>>, !pod.type<[@inp: !array.type<3 x !felt.type<"bn128">>]>
-// CHECK-NEXT:          %[[VAL_79:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
-// CHECK-NEXT:          %[[VAL_80:[0-9a-zA-Z_\.]+]] = felt.const  5 : <"bn128">
 // CHECK-NEXT:          %[[VAL_81:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_82:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_83:[0-9a-zA-Z_\.]+]] = %[[VAL_81]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
 // CHECK-NEXT:            %[[VAL_84:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
@@ -194,7 +190,6 @@ component main = Caller(5, 3);
 // CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_109:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@Sum_0::@Sum_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_110:[0-9a-zA-Z_\.]+]] = struct.new : <@Sum_0::@Sum_0<[]>>
-// CHECK-NEXT:          %[[VAL_111:[0-9a-zA-Z_\.]+]] = felt.const  5 : <"bn128">
 // CHECK-NEXT:          %[[VAL_112:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_113:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_114:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_115:[0-9a-zA-Z_\.]+]] = %[[VAL_112]], %[[VAL_116:[0-9a-zA-Z_\.]+]] = %[[VAL_113]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> (!felt.type<"bn128">, !felt.type<"bn128">) {
@@ -215,7 +210,6 @@ component main = Caller(5, 3);
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_126:[0-9a-zA-Z_\.]+]]: !struct.type<@Sum_0::@Sum_0<[]>>, %[[VAL_127:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">> {function.arg_name = "inp"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_128:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_126]][@outp] : <@Sum_0::@Sum_0<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_129:[0-9a-zA-Z_\.]+]] = felt.const  5 : <"bn128">
 // CHECK-NEXT:          %[[VAL_130:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_131:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_132:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_133:[0-9a-zA-Z_\.]+]] = %[[VAL_130]], %[[VAL_134:[0-9a-zA-Z_\.]+]] = %[[VAL_131]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> (!felt.type<"bn128">, !felt.type<"bn128">) {
@@ -241,7 +235,6 @@ component main = Caller(5, 3);
 // CHECK-NEXT:        struct.member @outp : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_144:[0-9a-zA-Z_\.]+]]: !array.type<3 x !felt.type<"bn128">> {function.arg_name = "inp"}) -> !struct.type<@Sum_1::@Sum_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_145:[0-9a-zA-Z_\.]+]] = struct.new : <@Sum_1::@Sum_1<[]>>
-// CHECK-NEXT:          %[[VAL_146:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
 // CHECK-NEXT:          %[[VAL_147:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_148:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_149:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_150:[0-9a-zA-Z_\.]+]] = %[[VAL_147]], %[[VAL_151:[0-9a-zA-Z_\.]+]] = %[[VAL_148]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> (!felt.type<"bn128">, !felt.type<"bn128">) {
@@ -262,7 +255,6 @@ component main = Caller(5, 3);
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_161:[0-9a-zA-Z_\.]+]]: !struct.type<@Sum_1::@Sum_1<[]>>, %[[VAL_162:[0-9a-zA-Z_\.]+]]: !array.type<3 x !felt.type<"bn128">> {function.arg_name = "inp"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_163:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_161]][@outp] : <@Sum_1::@Sum_1<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_164:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
 // CHECK-NEXT:          %[[VAL_165:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_166:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_167:[0-9a-zA-Z_\.]+]]:2 = scf.while (%[[VAL_168:[0-9a-zA-Z_\.]+]] = %[[VAL_165]], %[[VAL_169:[0-9a-zA-Z_\.]+]] = %[[VAL_166]]) : (!felt.type<"bn128">, !felt.type<"bn128">) -> (!felt.type<"bn128">, !felt.type<"bn128">) {

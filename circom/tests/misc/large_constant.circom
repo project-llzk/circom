@@ -129,7 +129,6 @@ component main = IsNegative();
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = felt.sub %[[VAL_12]], %[[VAL_13]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]]:9 = scf.while (%[[VAL_20:[0-9a-zA-Z_\.]+]] = %[[VAL_15]], %[[VAL_21:[0-9a-zA-Z_\.]+]] = %[[VAL_14]], %[[VAL_22:[0-9a-zA-Z_\.]+]] = %[[VAL_5]], %[[VAL_23:[0-9a-zA-Z_\.]+]] = %[[VAL_6]], %[[VAL_24:[0-9a-zA-Z_\.]+]] = %[[VAL_16]], %[[VAL_25:[0-9a-zA-Z_\.]+]] = %[[VAL_18]], %[[VAL_26:[0-9a-zA-Z_\.]+]] = %[[VAL_7]], %[[VAL_27:[0-9a-zA-Z_\.]+]] = %[[VAL_8]], %[[VAL_28:[0-9a-zA-Z_\.]+]] = %[[VAL_9]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">) -> (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">) {
 // CHECK-NEXT:            %[[VAL_29:[0-9a-zA-Z_\.]+]] = felt.const  127 : <"bn128">
@@ -276,7 +275,6 @@ component main = IsNegative();
 // CHECK-NEXT:          %[[VAL_150:[0-9a-zA-Z_\.]+]] = felt.sub %[[VAL_148]], %[[VAL_149]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_151:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_152:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_153:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_154:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_155:[0-9a-zA-Z_\.]+]]:9 = scf.while (%[[VAL_156:[0-9a-zA-Z_\.]+]] = %[[VAL_151]], %[[VAL_157:[0-9a-zA-Z_\.]+]] = %[[VAL_150]], %[[VAL_158:[0-9a-zA-Z_\.]+]] = %[[VAL_141]], %[[VAL_159:[0-9a-zA-Z_\.]+]] = %[[VAL_142]], %[[VAL_160:[0-9a-zA-Z_\.]+]] = %[[VAL_152]], %[[VAL_161:[0-9a-zA-Z_\.]+]] = %[[VAL_154]], %[[VAL_162:[0-9a-zA-Z_\.]+]] = %[[VAL_143]], %[[VAL_163:[0-9a-zA-Z_\.]+]] = %[[VAL_144]], %[[VAL_164:[0-9a-zA-Z_\.]+]] = %[[VAL_145]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">) -> (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">) {
 // CHECK-NEXT:            %[[VAL_165:[0-9a-zA-Z_\.]+]] = felt.const  127 : <"bn128">
@@ -380,8 +378,6 @@ component main = IsNegative();
 // CHECK-NEXT:          }
 // CHECK-NEXT:          constrain.eq %[[VAL_138]], %[[VAL_155]]#8 : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_255:[0-9a-zA-Z_\.]+]] = felt.const  135 : <"bn128">
-// CHECK-NEXT:          %[[VAL_256:[0-9a-zA-Z_\.]+]] = pod.new { @n = %[[VAL_255]] }  : <[@n: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_257:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Num2Bits::@Num2Bits<[135]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_258:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_140]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_258]], %[[VAL_138]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_259:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_139]][@out] : <@Num2Bits::@Num2Bits<[135]>>, !array.type<? x !felt.type<"bn128">>
@@ -407,7 +403,6 @@ component main = IsNegative();
 // CHECK-NEXT:          %[[VAL_266:[0-9a-zA-Z_\.]+]] = pod.new : <[@in: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_267:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_268:[0-9a-zA-Z_\.]+]] = arith.constant 254 : index
-// CHECK-NEXT:          %[[VAL_269:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_268]], @params = %[[VAL_267]] }  : <[@count: index, @comp: !struct.type<@Sign::@Sign<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_270:[0-9a-zA-Z_\.]+]] = pod.new : <[@in: !array.type<254 x !felt.type<"bn128">>]>
 // CHECK-NEXT:          %[[VAL_271:[0-9a-zA-Z_\.]+]] = felt.const  254 : <"bn128">
 // CHECK-NEXT:          %[[VAL_272:[0-9a-zA-Z_\.]+]] = pod.new { @n = %[[VAL_271]] }  : <[@n: !felt.type<"bn128">]>
@@ -478,12 +473,8 @@ component main = IsNegative();
 // CHECK-NEXT:          %[[VAL_321:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_316]][@sign] : <@IsNegative::@IsNegative<[]>>, !struct.type<@Sign::@Sign<[]>>
 // CHECK-NEXT:          %[[VAL_322:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_316]][@sign$inputs] : <@IsNegative::@IsNegative<[]>>, !pod.type<[@in: !array.type<254 x !felt.type<"bn128">>]>
 // CHECK-NEXT:          %[[VAL_323:[0-9a-zA-Z_\.]+]] = felt.const  254 : <"bn128">
-// CHECK-NEXT:          %[[VAL_324:[0-9a-zA-Z_\.]+]] = pod.new { @n = %[[VAL_323]] }  : <[@n: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_325:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Num2Bits::@Num2Bits<[254]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_326:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_320]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_326]], %[[VAL_317]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_327:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_328:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Sign::@Sign<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_329:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_330:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_331:[0-9a-zA-Z_\.]+]] = %[[VAL_329]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
 // CHECK-NEXT:            %[[VAL_332:[0-9a-zA-Z_\.]+]] = felt.const  254 : <"bn128">
@@ -598,7 +589,6 @@ component main = IsNegative();
 // CHECK-NEXT:          %[[VAL_410:[0-9a-zA-Z_\.]+]] = pod.new { @ct = %[[VAL_409]] }  : <[@ct: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_411:[0-9a-zA-Z_\.]+]] = arith.constant 254 : index
 // CHECK-NEXT:          %[[VAL_412:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_411]], @params = %[[VAL_410]] }  : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>
-// CHECK-NEXT:          %[[VAL_413:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_414:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_415:[0-9a-zA-Z_\.]+]]:3 = scf.while (%[[VAL_416:[0-9a-zA-Z_\.]+]] = %[[VAL_412]], %[[VAL_417:[0-9a-zA-Z_\.]+]] = %[[VAL_408]], %[[VAL_418:[0-9a-zA-Z_\.]+]] = %[[VAL_414]]) : (!pod.type<[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>, !pod.type<[@in: !array.type<254 x !felt.type<"bn128">>]>, !felt.type<"bn128">) -> (!pod.type<[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>, !pod.type<[@in: !array.type<254 x !felt.type<"bn128">>]>, !felt.type<"bn128">) {
 // CHECK-NEXT:            %[[VAL_419:[0-9a-zA-Z_\.]+]] = felt.const  254 : <"bn128">
@@ -642,9 +632,6 @@ component main = IsNegative();
 // CHECK-NEXT:          %[[VAL_445:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_441]][@comp] : <@Sign::@Sign<[]>>, !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>
 // CHECK-NEXT:          %[[VAL_446:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_441]][@comp$inputs] : <@Sign::@Sign<[]>>, !pod.type<[@in: !array.type<254 x !felt.type<"bn128">>]>
 // CHECK-NEXT:          %[[VAL_447:[0-9a-zA-Z_\.]+]] = poly.read_const @"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]" : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_448:[0-9a-zA-Z_\.]+]] = pod.new { @ct = %[[VAL_447]] }  : <[@ct: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_449:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>
-// CHECK-NEXT:          %[[VAL_450:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_451:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_452:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_453:[0-9a-zA-Z_\.]+]] = %[[VAL_451]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
 // CHECK-NEXT:            %[[VAL_454:[0-9a-zA-Z_\.]+]] = felt.const  254 : <"bn128">

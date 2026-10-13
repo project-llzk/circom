@@ -68,13 +68,8 @@ component main = T();
 // CHECK-NEXT:        struct.member @p$inputs : !pod.type<[]>
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@T::@T<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = struct.new : <@T::@T<[]>>
-// CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = function.call @Producer::@Producer::@compute() : () -> !struct.type<@Producer::@Producer<[]>>
-// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_21]] }  : <[@count: index, @comp: !struct.type<@Producer::@Producer<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = function.call @Producer::@Producer::@compute() : () -> !struct.type<@Producer::@Producer<[]>>
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_26]] }  : <[@count: index, @comp: !struct.type<@Producer::@Producer<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_27]][@comp] : <[@count: index, @comp: !struct.type<@Producer::@Producer<[]>>, @params: !pod.type<[]>]>, !struct.type<@Producer::@Producer<[]>>
@@ -90,8 +85,6 @@ component main = T();
 // CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_32]][@y] : <@T::@T<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_32]][@p] : <@T::@T<[]>>, !struct.type<@Producer::@Producer<[]>>
 // CHECK-NEXT:          %[[VAL_35:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_32]][@p$inputs] : <@T::@T<[]>>, !pod.type<[]>
-// CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_37:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Producer::@Producer<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_38:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_34]][@out] : <@Producer::@Producer<[]>>, !array.type<4,4 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_39:[0-9a-zA-Z_\.]+]] = function.call @ignore::@ignore(%[[VAL_38]]) : (!array.type<4,4 x !felt.type<"bn128">>) -> !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_33]], %[[VAL_39]] : !felt.type<"bn128">, !felt.type<"bn128">

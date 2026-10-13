@@ -44,13 +44,8 @@ component main = Main();
 // CHECK-NEXT:        struct.member @child$inputs : !pod.type<[]>
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Main::@Main<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = struct.new : <@Main::@Main<[]>>
-// CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = function.call @global::@global::@compute() : () -> !struct.type<@global::@global<[]>>
-// CHECK-NEXT:          %[[VAL_10:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_9]] }  : <[@count: index, @comp: !struct.type<@global::@global<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = function.call @global::@global::@compute() : () -> !struct.type<@global::@global<[]>>
 // CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = pod.new { @comp = %[[VAL_14]] }  : <[@count: index, @comp: !struct.type<@global::@global<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_15]][@comp] : <[@count: index, @comp: !struct.type<@global::@global<[]>>, @params: !pod.type<[]>]>, !struct.type<@global::@global<[]>>
@@ -65,8 +60,6 @@ component main = Main();
 // CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_19]][@out] : <@Main::@Main<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_19]][@child] : <@Main::@Main<[]>>, !struct.type<@global::@global<[]>>
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_19]][@child$inputs] : <@Main::@Main<[]>>, !pod.type<[]>
-// CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@global::@global<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_21]][@out] : <@global::@global<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_20]], %[[VAL_25]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          function.call @global::@global::@constrain(%[[VAL_21]]) : (!struct.type<@global::@global<[]>>) -> ()

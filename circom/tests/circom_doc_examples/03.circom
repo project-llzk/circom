@@ -114,13 +114,9 @@ component main = B(1);
 // CHECK-NEXT:          scf.if %[[VAL_47]] {
 // CHECK-NEXT:            %[[VAL_48:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_49:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:            %[[VAL_50:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_48]], @M = %[[VAL_49]] }  : <[@N: !felt.type<"bn128">, @M: !felt.type<"bn128">]>
-// CHECK-NEXT:            %[[VAL_51:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@A::@A<[@N, 1]>>, @params: !pod.type<[@N: !felt.type<"bn128">, @M: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          } else {
 // CHECK-NEXT:            %[[VAL_52:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:            %[[VAL_53:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:            %[[VAL_54:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_52]], @M = %[[VAL_53]] }  : <[@N: !felt.type<"bn128">, @M: !felt.type<"bn128">]>
-// CHECK-NEXT:            %[[VAL_55:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@A::@A<[0, 1]>>, @params: !pod.type<[@N: !felt.type<"bn128">, @M: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_45]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
