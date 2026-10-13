@@ -620,10 +620,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
                     num_bigint_dig::Sign::Minus,
                     "Felt constants must be non-negative"
                 );
-                let bitlen = value.bits() + 1;
-                self.context
-                    .felt_attr_from_str(bitlen.try_into().unwrap(), value.to_string())
-                    .into()
+                self.context.felt_attr_from_str(value.to_string()).into()
             })
             .collect::<Vec<_>>();
         ArrayAttribute::new(self.context, &attrs).into()
@@ -1190,8 +1187,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         array::new(builder, location, r#type, ctor)
     }
 
-    /// Generate a `felt.const` operation from a BigInt. Returns an `Err` result if unsuccessful
-    /// or if the number of bits required to represent the BigInt does not fit in 32 bits.
+    /// Generate a `felt.const` operation from a BigInt. Returns an `Err` result if unsuccessful.
     pub fn new_felt_const_op<'a>(
         &self,
         builder: &impl OpBuilderLike<'ctx>,
@@ -1201,9 +1197,7 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         // ASSERT: The circom parser always produces non-negative constants. These can be negated
         // via PrefixOp but negative BigInt constants are never created directly.
         assert_ne!(val.sign(), num_bigint_dig::Sign::Minus, "Felt constants must be non-negative");
-        // Increase by one to ensure the value is kept unsigned.
-        let bitlen = val.bits() + 1;
-        let attr = self.context.felt_attr_from_str(bitlen.try_into().unwrap(), val.to_string());
+        let attr = self.context.felt_attr_from_str(val.to_string());
         felt::constant(builder, location, attr).map_err(Into::into)
     }
 
