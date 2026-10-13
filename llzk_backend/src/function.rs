@@ -24,9 +24,9 @@ use llzk::{
             scf::{is_if_op, is_yield_op},
         },
         ArrayType, Attribute, BlockLike as _, BlockRef, FuncDefOpLike as _, FuncDefOpRefMut,
-        IntegerAttribute, LlzkContext, Location, LoopBoundsAttribute, Operation,
-        OperationLike as _, OperationMutLike, OperationRefMut, RegionLike as _, Type, Value,
-        ValueLike as _, WalkOrder, WalkResult,
+        IntegerAttribute, LlzkContext, Location, LoopBoundsAttribute, Operation, OperationLike,
+        OperationMutLike, OperationRefMut, RegionLike as _, Type, Value, ValueLike as _, WalkOrder,
+        WalkResult,
     },
     value_ext::has_uses,
 };
@@ -53,6 +53,11 @@ use crate::{
     try_for_loop_heuristic,
     write_chain::{NoSignalsInfo, SignalWriteInfo},
 };
+
+/// Returns whether an operation is an `llzk.nondet` or `arith.constant`.
+fn is_single_result_constant<'ctx: 'a, 'a>(op: &impl OperationLike<'ctx, 'a>) -> bool {
+    dialect::llzk::is_nondet_op(op) || op.name().as_string_ref().as_str() == Ok("arith.constant")
+}
 
 /// Contains references to information providers.
 ///
@@ -336,10 +341,9 @@ where
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
     ) -> Result<()> {
         self.func.walk_mut(WalkOrder::PreOrder, |mut op| {
-            // Remove any `llzk.nondet` ops from the function whose result value is unused. These
-            // were added, for example, when visiting [Statement::Declaration] but their uses were
-            // later replaced with actual values when visiting [Statement::Substitution], etc.
-            if dialect::llzk::is_nondet_op(&op) && !has_uses(single_result_as_value(op).unwrap()) {
+            // Remove unused constaint-like ops. This includes unused `llzk.nondet` placeholders
+            // and `arith.constant` ops initializing an unused "has return" flag in functions.
+            if is_single_result_constant(&op) && !has_uses(single_result_as_value(op).unwrap()) {
                 OperationMutLike::remove_from_parent(op.deref_mut());
                 return WalkResult::Skip;
             }
