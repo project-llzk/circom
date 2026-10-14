@@ -1240,7 +1240,8 @@ where
             }
             Statement::Assert { meta, arg } => {
                 let cond = arg.gen_llzk_in_block(codegen, function, info)?;
-                function.append_assert(codegen, codegen.location_from_meta(meta), cond)?;
+                let msg = codegen.assert_message(meta, arg);
+                function.append_assert(codegen, codegen.location_from_meta(meta), cond, &msg)?;
                 Ok(false)
             }
             Statement::LogCall { meta, .. } => {

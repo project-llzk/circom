@@ -1573,8 +1573,9 @@ where
                 gen_while(codegen, template, meta, cond, stmt, None)
             }
             Statement::Assert { meta, arg } => {
+                let msg = codegen.assert_message(meta, arg);
                 arg.gen_llzk_in_template(codegen, template)?.and_then_same(|fc, val| {
-                    fc.append_assert(codegen, codegen.location_from_meta(meta), val)
+                    fc.append_assert(codegen, codegen.location_from_meta(meta), val, &msg)
                 })
             }
             Statement::LogCall { meta, .. } => {
