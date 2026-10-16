@@ -1083,11 +1083,11 @@ where
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
+        msg: &str,
     ) -> Result<()> {
         let cond = self.cast_to_bool_if_needed(codegen, location, val)?;
-        let msg = Some("assertion failed");
         let builder = self.builder_at_current_insertion_point(codegen.context);
-        let op = bool::assert(&builder, location, cond, msg)?;
+        let op = bool::assert(&builder, location, cond, Some(msg))?;
         self.append_op_ref_no_result(op)
     }
 

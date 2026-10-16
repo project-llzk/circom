@@ -22,7 +22,7 @@ component main = A();
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.uintdiv %[[VAL_1]], %[[VAL_3]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_4]], %[[VAL_5]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_6]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_6]], "assertion failed in {{.*}}:9:5: c == 0"
 // CHECK-NEXT:          function.return %[[VAL_0]] : !struct.type<@A::@A<[]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_7:[0-9a-zA-Z_\.]+]]: !struct.type<@A::@A<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
@@ -32,7 +32,7 @@ component main = A();
 // CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = felt.uintdiv %[[VAL_8]], %[[VAL_10]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_11]], %[[VAL_12]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_13]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_13]], "assertion failed in {{.*}}:9:5: c == 0"
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

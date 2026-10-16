@@ -1015,6 +1015,37 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         }
     }
 
+    /// Message for the `bool.assert` generated from the circom statement `assert(arg)`:
+    /// `assertion failed in <file>:<line>:<column>: <expr>`, using the same position as
+    /// [Self::location_from_meta]. Whitespace in the expression is collapsed so a multi-line
+    /// expression stays on one line. Falls back to `assertion failed` without a file.
+    pub fn assert_message(&self, meta: &Meta, arg: &Expression) -> String {
+        const BASE: &str = "assertion failed";
+        let Some(file_id) = meta.file_id else {
+            return BASE.to_string();
+        };
+        let files = self.program.get_file_library();
+        let start = meta.file_location().start;
+        let mut msg = format!(
+            "{BASE} in {}:{}:{}",
+            files.get_filename_or_default(&file_id),
+            files.get_line(start, file_id).unwrap_or(0),
+            files.get_column(start, file_id).unwrap_or(0)
+        );
+        let arg_meta = arg.get_meta();
+        let expr = arg_meta
+            .file_id
+            .and_then(|id| files.get_file(&id))
+            .and_then(|file| file.source().get(arg_meta.file_location()))
+            .map(|text| text.split_whitespace().collect::<Vec<_>>().join(" "))
+            .filter(|text| !text.is_empty());
+        if let Some(expr) = expr {
+            msg.push_str(": ");
+            msg.push_str(&expr);
+        }
+        msg
+    }
+
     /// Insert the LLZK free function into the module and return a reference to it.
     pub fn add_function(&self, f: FuncDefOp<'ctx>) -> Result<FuncDefOpRefMut<'ctx, '_>> {
         let f: FuncDefOpRef = self.module.body().append_operation(f.into()).try_into()?;
@@ -2570,7 +2601,8 @@ where
                 }
                 Statement::Assert { meta, arg } => {
                     let val = arg.gen_llzk_in_block(codegen, gen_ctx, Default::default())?;
-                    gen_ctx.append_assert(codegen, codegen.location_from_meta(meta), val)?
+                    let msg = codegen.assert_message(meta, arg);
+                    gen_ctx.append_assert(codegen, codegen.location_from_meta(meta), val, &msg)?
                 }
                 Statement::LogCall { meta, .. } => {
                     codegen.emit_circom_warning(
