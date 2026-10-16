@@ -139,8 +139,6 @@ component main = check_bits(16);
 // CHECK-NEXT:          %[[VAL_84:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_79]][@Num2Bits_[[MEMBER0]]$inputs] : <@check_bits::@check_bits<[@m]>>, !pod.type<[@in: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_85:[0-9a-zA-Z_\.]+]] = poly.read_const @m : index
 // CHECK-NEXT:          %[[VAL_86:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_85]] : index, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_87:[0-9a-zA-Z_\.]+]] = pod.new { @n = %[[VAL_86]] }  : <[@n: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_88:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Num2Bits::@Num2Bits<[@m]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_89:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_84]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_89]], %[[VAL_80]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_90:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_83]][@out] : <@Num2Bits::@Num2Bits<[@m]>>, !array.type<? x !felt.type<"bn128">>

@@ -23,7 +23,6 @@ component main = A();
 // CHECK-NEXT:    poly.template @f {
 // CHECK-NEXT:      poly.param @T_return : !poly.tvar<@T_return>
 // CHECK-NEXT:      function.def @f() -> !poly.tvar<@T_return> attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_0:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
 // CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<6 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_2]] : (!array.type<6 x !felt.type<"bn128">>) -> !poly.tvar<@T_return>
 // CHECK-NEXT:        function.return %[[VAL_3]] : !poly.tvar<@T_return>

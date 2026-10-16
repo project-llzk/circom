@@ -189,8 +189,6 @@ component main = Wrapper();
 // CHECK-NEXT:          } do {
 // CHECK-NEXT:          ^bb0(%[[VAL_115:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
 // CHECK-NEXT:            %[[VAL_116:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_115]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_117:[0-9a-zA-Z_\.]+]] = pod.new { @q = %[[VAL_115]] }  : <[@q: !felt.type<"bn128">]>
-// CHECK-NEXT:            %[[VAL_118:[0-9a-zA-Z_\.]+]] = pod.new(%[[VAL_116]]) : <[@count: index, @comp: !struct.type<@ArrayOp::@ArrayOp<[#[[$ATTR_0]]]>>, @params: !pod.type<[@q: !felt.type<"bn128">]>]>
 // CHECK-NEXT:            %[[VAL_119:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:            %[[VAL_120:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_121:[0-9a-zA-Z_\.]+]] = %[[VAL_119]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
 // CHECK-NEXT:              %[[VAL_122:[0-9a-zA-Z_\.]+]] = felt.const  15 : <"bn128">

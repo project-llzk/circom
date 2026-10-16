@@ -91,8 +91,6 @@ component main = Poseidon(1);
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_143:[0-9a-zA-Z_\.]+]]: !array.type<1 x !felt.type<"bn128">> {function.arg_name = "inputs"}) -> !struct.type<@Poseidon_0::@Poseidon_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_144:[0-9a-zA-Z_\.]+]] = struct.new : <@Poseidon_0::@Poseidon_0<[]>>
-// CHECK-NEXT:          %[[VAL_145:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_146:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          %[[VAL_147:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_3 : !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_159:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          %[[VAL_160:[0-9a-zA-Z_\.]+]] = function.call @POSEIDON_M_0::@POSEIDON_M_0(%[[VAL_159]]) : (!felt.type<"bn128">) -> !array.type<3,3 x !felt.type<"bn128">>
@@ -110,8 +108,6 @@ component main = Poseidon(1);
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_168:[0-9a-zA-Z_\.]+]]: !struct.type<@Poseidon_0::@Poseidon_0<[]>>, %[[VAL_169:[0-9a-zA-Z_\.]+]]: !array.type<1 x !felt.type<"bn128">> {function.arg_name = "inputs"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_170:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_168]][@out] : <@Poseidon_0::@Poseidon_0<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_171:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_172:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          %[[VAL_173:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_3 : !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_185:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          %[[VAL_186:[0-9a-zA-Z_\.]+]] = function.call @POSEIDON_M_0::@POSEIDON_M_0(%[[VAL_185]]) : (!felt.type<"bn128">) -> !array.type<3,3 x !felt.type<"bn128">>

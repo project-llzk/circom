@@ -127,8 +127,6 @@ component main = Good(2);
 // CHECK-NEXT:            scf.condition(%[[VAL_79]]) %[[VAL_78]] : !felt.type<"bn128">
 // CHECK-NEXT:          } do {
 // CHECK-NEXT:          ^bb0(%[[VAL_80:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CHECK-NEXT:            %[[VAL_81:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:            %[[VAL_82:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Mult::@Mult<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_83:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:            %[[VAL_84:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_85:[0-9a-zA-Z_\.]+]] = %[[VAL_83]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
 // CHECK-NEXT:              %[[VAL_86:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">

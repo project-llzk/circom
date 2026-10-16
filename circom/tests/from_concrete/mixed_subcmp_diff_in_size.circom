@@ -168,9 +168,6 @@ component main = BabyPbk();
 // CHECK-NEXT:          %[[VAL_87:[0-9a-zA-Z_\.]+]] = pod.new { @idx_0 = %[[VAL_84]], @idx_1 = %[[VAL_86]] }  : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@SegmentMulFix_0::@SegmentMulFix_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@SegmentMulFix_1::@SegmentMulFix_1<[]>>, @params: !pod.type<[]>]>]>
 // CHECK-NEXT:          %[[VAL_88:[0-9a-zA-Z_\.]+]] = pod.new : <[@idx_0: !pod.type<[@e: !array.type<249 x !felt.type<"bn128">>, @base: !array.type<2 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@e: !array.type<6 x !felt.type<"bn128">>, @base: !array.type<2 x !felt.type<"bn128">>]>]>
 // CHECK-NEXT:          %[[VAL_89:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_90:[0-9a-zA-Z_\.]+]] = felt.const  253 : <"bn128">
-// CHECK-NEXT:          %[[VAL_91:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:          %[[VAL_92:[0-9a-zA-Z_\.]+]] = felt.const  4 : <"bn128">
 // CHECK-NEXT:          %[[VAL_93:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_94:[0-9a-zA-Z_\.]+]]:5 = scf.while (%[[VAL_95:[0-9a-zA-Z_\.]+]] = %[[VAL_73]], %[[VAL_96:[0-9a-zA-Z_\.]+]] = %[[VAL_81]], %[[VAL_97:[0-9a-zA-Z_\.]+]] = %[[VAL_93]], %[[VAL_98:[0-9a-zA-Z_\.]+]] = %[[VAL_87]], %[[VAL_99:[0-9a-zA-Z_\.]+]] = %[[VAL_88]]) : (!array.type<1 x !pod.type<[@count: index, @comp: !struct.type<@Montgomery2Edwards_2::@Montgomery2Edwards_2<[]>>, @params: !pod.type<[]>]>>, !array.type<1 x !pod.type<[@in: !array.type<2 x !felt.type<"bn128">>]>>, !felt.type<"bn128">, !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@SegmentMulFix_0::@SegmentMulFix_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@SegmentMulFix_1::@SegmentMulFix_1<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@e: !array.type<249 x !felt.type<"bn128">>, @base: !array.type<2 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@e: !array.type<6 x !felt.type<"bn128">>, @base: !array.type<2 x !felt.type<"bn128">>]>]>) -> (!array.type<1 x !pod.type<[@count: index, @comp: !struct.type<@Montgomery2Edwards_2::@Montgomery2Edwards_2<[]>>, @params: !pod.type<[]>]>>, !array.type<1 x !pod.type<[@in: !array.type<2 x !felt.type<"bn128">>]>>, !felt.type<"bn128">, !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@SegmentMulFix_0::@SegmentMulFix_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@SegmentMulFix_1::@SegmentMulFix_1<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@e: !array.type<249 x !felt.type<"bn128">>, @base: !array.type<2 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@e: !array.type<6 x !felt.type<"bn128">>, @base: !array.type<2 x !felt.type<"bn128">>]>]>) {
 // CHECK-NEXT:            %[[VAL_100:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
@@ -541,9 +538,6 @@ component main = BabyPbk();
 // CHECK-NEXT:          %[[VAL_370:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_366]][@segments] : <@EscalarMulFix_3::@EscalarMulFix_3<[]>>, !pod.type<[@idx_0: !struct.type<@SegmentMulFix_0::@SegmentMulFix_0<[]>>, @idx_1: !struct.type<@SegmentMulFix_1::@SegmentMulFix_1<[]>>]>
 // CHECK-NEXT:          %[[VAL_371:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_366]][@segments$inputs] : <@EscalarMulFix_3::@EscalarMulFix_3<[]>>, !pod.type<[@idx_0: !pod.type<[@e: !array.type<249 x !felt.type<"bn128">>, @base: !array.type<2 x !felt.type<"bn128">>]>, @idx_1: !pod.type<[@e: !array.type<6 x !felt.type<"bn128">>, @base: !array.type<2 x !felt.type<"bn128">>]>]>
 // CHECK-NEXT:          %[[VAL_372:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_373:[0-9a-zA-Z_\.]+]] = felt.const  253 : <"bn128">
-// CHECK-NEXT:          %[[VAL_374:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:          %[[VAL_375:[0-9a-zA-Z_\.]+]] = felt.const  4 : <"bn128">
 // CHECK-NEXT:          %[[VAL_376:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_377:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_378:[0-9a-zA-Z_\.]+]] = %[[VAL_376]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
 // CHECK-NEXT:            %[[VAL_379:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
@@ -741,12 +735,10 @@ component main = BabyPbk();
 // CHECK-NEXT:        struct.member @dbl : !array.type<2 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_518:[0-9a-zA-Z_\.]+]]: !array.type<249 x !felt.type<"bn128">> {function.arg_name = "e"}, %[[VAL_519:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "base"}) -> !struct.type<@SegmentMulFix_0::@SegmentMulFix_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_520:[0-9a-zA-Z_\.]+]] = struct.new : <@SegmentMulFix_0::@SegmentMulFix_0<[]>>
-// CHECK-NEXT:          %[[VAL_521:[0-9a-zA-Z_\.]+]] = felt.const  83 : <"bn128">
 // CHECK-NEXT:          function.return %[[VAL_520]] : !struct.type<@SegmentMulFix_0::@SegmentMulFix_0<[]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_522:[0-9a-zA-Z_\.]+]]: !struct.type<@SegmentMulFix_0::@SegmentMulFix_0<[]>>, %[[VAL_523:[0-9a-zA-Z_\.]+]]: !array.type<249 x !felt.type<"bn128">> {function.arg_name = "e"}, %[[VAL_524:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "base"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_525:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_522]][@dbl] : <@SegmentMulFix_0::@SegmentMulFix_0<[]>>, !array.type<2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_526:[0-9a-zA-Z_\.]+]] = felt.const  83 : <"bn128">
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
@@ -756,12 +748,10 @@ component main = BabyPbk();
 // CHECK-NEXT:        struct.member @dbl : !array.type<2 x !felt.type<"bn128">> {llzk.pub, signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_527:[0-9a-zA-Z_\.]+]]: !array.type<6 x !felt.type<"bn128">> {function.arg_name = "e"}, %[[VAL_528:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "base"}) -> !struct.type<@SegmentMulFix_1::@SegmentMulFix_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_529:[0-9a-zA-Z_\.]+]] = struct.new : <@SegmentMulFix_1::@SegmentMulFix_1<[]>>
-// CHECK-NEXT:          %[[VAL_530:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          function.return %[[VAL_529]] : !struct.type<@SegmentMulFix_1::@SegmentMulFix_1<[]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_531:[0-9a-zA-Z_\.]+]]: !struct.type<@SegmentMulFix_1::@SegmentMulFix_1<[]>>, %[[VAL_532:[0-9a-zA-Z_\.]+]]: !array.type<6 x !felt.type<"bn128">> {function.arg_name = "e"}, %[[VAL_533:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "base"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_534:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_531]][@dbl] : <@SegmentMulFix_1::@SegmentMulFix_1<[]>>, !array.type<2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_535:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }

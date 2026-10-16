@@ -35,9 +35,6 @@ component main = UnknownLoopComponent();
 // CHECK-NEXT:        struct.member @nb$inputs : !pod.type<[@in: !felt.type<"bn128">]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "num"}) -> !struct.type<@UnknownLoopComponent::@UnknownLoopComponent<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@UnknownLoopComponent::@UnknownLoopComponent<[]>>
-// CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_3]], @params = %[[VAL_2]] }  : <[@count: index, @comp: !struct.type<@nbits::@nbits<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = pod.new : <[@in: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -67,8 +64,6 @@ component main = UnknownLoopComponent();
 // CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_20]][@bits] : <@UnknownLoopComponent::@UnknownLoopComponent<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_20]][@nb] : <@UnknownLoopComponent::@UnknownLoopComponent<[]>>, !struct.type<@nbits::@nbits<[]>>
 // CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_20]][@nb$inputs] : <@UnknownLoopComponent::@UnknownLoopComponent<[]>>, !pod.type<[@in: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@nbits::@nbits<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_24]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:          function.call @nbits::@nbits::@constrain(%[[VAL_23]], %[[VAL_27]]) : (!struct.type<@nbits::@nbits<[]>>, !felt.type<"bn128">) -> ()
 // CHECK-NEXT:          function.return

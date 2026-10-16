@@ -144,14 +144,7 @@ component main = B(1);
 // CHECK-NEXT:          %[[VAL_73:[0-9a-zA-Z_\.]+]] = bool.cmp gt(%[[VAL_68]], %[[VAL_72]]) : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          scf.if %[[VAL_73]] {
 // CHECK-NEXT:            %[[VAL_74:[0-9a-zA-Z_\.]+]] = poly.read_const @N : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_75:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:            %[[VAL_76:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_74]], @M = %[[VAL_75]] }  : <[@N: !felt.type<"bn128">, @M: !felt.type<"bn128">]>
-// CHECK-NEXT:            %[[VAL_77:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@A::@A<[@N, 1]>>, @params: !pod.type<[@N: !felt.type<"bn128">, @M: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          } else {
-// CHECK-NEXT:            %[[VAL_78:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:            %[[VAL_79:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:            %[[VAL_80:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_78]], @M = %[[VAL_79]] }  : <[@N: !felt.type<"bn128">, @M: !felt.type<"bn128">]>
-// CHECK-NEXT:            %[[VAL_81:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@A::@A<[0, 1]>>, @params: !pod.type<[@N: !felt.type<"bn128">, @M: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          }
 // CHECK-NEXT:          %[[VAL_82:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_83:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">

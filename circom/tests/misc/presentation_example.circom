@@ -98,9 +98,6 @@ component main = ComputeValue();
 // CHECK-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_45]][@GetWeight_[[MEMBER0]]$inputs] : <@ComputeValue::@ComputeValue<[]>>, !pod.type<[@inp: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_45]][@GetWeight_[[MEMBER1]]] : <@ComputeValue::@ComputeValue<[]>>, !struct.type<@GetWeight::@GetWeight<[88]>>
 // CHECK-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_45]][@GetWeight_[[MEMBER1]]$inputs] : <@ComputeValue::@ComputeValue<[]>>, !pod.type<[@inp: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = felt.const  99 : <"bn128">
-// CHECK-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = pod.new { @A = %[[VAL_52]] }  : <[@A: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[99]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_55:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_55]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_46]]{{\[}}%[[VAL_56]]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
@@ -111,9 +108,6 @@ component main = ComputeValue();
 // CHECK-NEXT:          %[[VAL_61:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_60]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_62:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_47]]{{\[}}%[[VAL_61]]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_62]], %[[VAL_59]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_63:[0-9a-zA-Z_\.]+]] = felt.const  88 : <"bn128">
-// CHECK-NEXT:          %[[VAL_64:[0-9a-zA-Z_\.]+]] = pod.new { @A = %[[VAL_63]] }  : <[@A: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_65:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[88]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_66:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_67:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_66]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_68:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_46]]{{\[}}%[[VAL_67]]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">

@@ -181,8 +181,6 @@ component main = UnknownLoopIndex(100);
 // CHECK-NEXT:          %[[VAL_72:[0-9a-zA-Z_\.]+]] = bool.cmp le(%[[VAL_66]], %[[VAL_71]]) : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          bool.assert %[[VAL_72]], "assertion failed"
 // CHECK-NEXT:          %[[VAL_73:[0-9a-zA-Z_\.]+]] = poly.read_const @"m_Add_1@[[OFFSET0]]" : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_74:[0-9a-zA-Z_\.]+]] = pod.new { @n = %[[VAL_73]] }  : <[@n: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_75:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Num2Bits::@Num2Bits<[@"m_Add_1@[[OFFSET0]]"]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_76:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_77:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_76]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_78:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_65]]{{\[}}%[[VAL_77]]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
@@ -370,8 +368,6 @@ component main = UnknownLoopIndex(100);
 // CHECK-NEXT:          %[[VAL_213:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_204]][@lt$inputs] : <@UnknownLoopIndex::@UnknownLoopIndex<[@y]>>, !pod.type<[@in: !array.type<2 x !felt.type<"bn128">>]>
 // CHECK-NEXT:          %[[VAL_214:[0-9a-zA-Z_\.]+]] = poly.read_const @y : index
 // CHECK-NEXT:          %[[VAL_215:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_214]] : index, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_216:[0-9a-zA-Z_\.]+]] = pod.new { @m = %[[VAL_215]] }  : <[@m: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_217:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@LessThan::@LessThan<[@y]>>, @params: !pod.type<[@m: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_218:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_213]][@in] : <[@in: !array.type<2 x !felt.type<"bn128">>]>, !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_219:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_220:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_219]] : !felt.type<"bn128">
@@ -387,8 +383,6 @@ component main = UnknownLoopIndex(100);
 // CHECK-NEXT:          constrain.eq %[[VAL_226]], %[[VAL_227]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_228:[0-9a-zA-Z_\.]+]] = poly.read_const @y : index
 // CHECK-NEXT:          %[[VAL_229:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_228]] : index, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_230:[0-9a-zA-Z_\.]+]] = pod.new { @x = %[[VAL_229]] }  : <[@x: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_231:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@CountDown::@CountDown<[@y]>>, @params: !pod.type<[@x: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_232:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_211]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_232]], %[[VAL_205]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_233:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_211]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">

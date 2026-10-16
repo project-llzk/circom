@@ -60,13 +60,7 @@ component main = mult4();
 // CHECK-NEXT:        struct.member @comp2$inputs : !pod.type<[@in: !array.type<2 x !felt.type<"bn128">>]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_19:[0-9a-zA-Z_\.]+]]: !array.type<4 x !felt.type<"bn128">> {function.arg_name = "in"}) -> !struct.type<@mult4::@mult4<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = struct.new : <@mult4::@mult4<[]>>
-// CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_22:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_22]], @params = %[[VAL_21]] }  : <[@count: index, @comp: !struct.type<@mult::@mult<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = pod.new : <[@in: !array.type<2 x !felt.type<"bn128">>]>
-// CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_26]], @params = %[[VAL_25]] }  : <[@count: index, @comp: !struct.type<@mult::@mult<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = pod.new : <[@in: !array.type<2 x !felt.type<"bn128">>]>
 // CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
@@ -167,10 +161,6 @@ component main = mult4();
 // CHECK-NEXT:          %[[VAL_96:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_93]][@comp1$inputs] : <@mult4::@mult4<[]>>, !pod.type<[@in: !array.type<2 x !felt.type<"bn128">>]>
 // CHECK-NEXT:          %[[VAL_97:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_93]][@comp2] : <@mult4::@mult4<[]>>, !struct.type<@mult::@mult<[]>>
 // CHECK-NEXT:          %[[VAL_98:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_93]][@comp2$inputs] : <@mult4::@mult4<[]>>, !pod.type<[@in: !array.type<2 x !felt.type<"bn128">>]>
-// CHECK-NEXT:          %[[VAL_99:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_100:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@mult::@mult<[]>>, @params: !pod.type<[]>]>
-// CHECK-NEXT:          %[[VAL_101:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_102:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@mult::@mult<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_103:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_104:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_103]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_105:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_94]]{{\[}}%[[VAL_104]]] : <4 x !felt.type<"bn128">>, !felt.type<"bn128">

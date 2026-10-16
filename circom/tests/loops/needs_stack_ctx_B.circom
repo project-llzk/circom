@@ -211,8 +211,6 @@ component main = NeedsStackContext(3, 2);
 // CHECK-NEXT:          ^bb0(%[[VAL_121:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
 // CHECK-NEXT:            %[[VAL_122:[0-9a-zA-Z_\.]+]] = poly.read_const @b : index
 // CHECK-NEXT:            %[[VAL_123:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_122]] : index, !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_124:[0-9a-zA-Z_\.]+]] = pod.new { @t = %[[VAL_123]] }  : <[@t: !felt.type<"bn128">]>
-// CHECK-NEXT:            %[[VAL_125:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Ark::@Ark<[@b]>>, @params: !pod.type<[@t: !felt.type<"bn128">]>]>
 // CHECK-NEXT:            %[[VAL_126:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_127:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_121]], %[[VAL_126]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            scf.yield %[[VAL_127]] : !felt.type<"bn128">
