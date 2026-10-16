@@ -331,7 +331,7 @@ component main = ForUnknownIndex(252);
 // CHECK-NEXT:        %[[VAL_196:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:        %[[VAL_197:[0-9a-zA-Z_\.]+]] = poly.read_const @m : !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_198:[0-9a-zA-Z_\.]+]] = bool.cmp le(%[[VAL_197]], %[[VAL_195]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:        bool.assert %[[VAL_198]], "assertion failed"
+// CHECK-NEXT:        bool.assert %[[VAL_198]], "assertion failed in {{.*}}:24:5: m <= 252"
 // CHECK-NEXT:        %[[VAL_199:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_197]], %[[VAL_196]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:        poly.yield %[[VAL_199]] : !felt.type<"bn128">
 // CHECK-NEXT:      }
@@ -346,7 +346,7 @@ component main = ForUnknownIndex(252);
 // CHECK-NEXT:          %[[VAL_204:[0-9a-zA-Z_\.]+]] = pod.new : <[@in: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_205:[0-9a-zA-Z_\.]+]] = felt.const  252 : <"bn128">
 // CHECK-NEXT:          %[[VAL_206:[0-9a-zA-Z_\.]+]] = bool.cmp le(%[[VAL_202]], %[[VAL_205]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_206]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_206]], "assertion failed in {{.*}}:24:5: m <= 252"
 // CHECK-NEXT:          %[[VAL_207:[0-9a-zA-Z_\.]+]] = poly.read_const @"m_Add_1@[[OFFSET0]]" : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_208:[0-9a-zA-Z_\.]+]] = pod.new { @n = %[[VAL_207]] }  : <[@n: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_209:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -394,7 +394,7 @@ component main = ForUnknownIndex(252);
 // CHECK-NEXT:          %[[VAL_242:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_236]][@n2b$inputs] : <@LessThan::@LessThan<[@m]>>, !pod.type<[@in: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_243:[0-9a-zA-Z_\.]+]] = felt.const  252 : <"bn128">
 // CHECK-NEXT:          %[[VAL_244:[0-9a-zA-Z_\.]+]] = bool.cmp le(%[[VAL_238]], %[[VAL_243]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_244]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_244]], "assertion failed in {{.*}}:24:5: m <= 252"
 // CHECK-NEXT:          %[[VAL_245:[0-9a-zA-Z_\.]+]] = poly.read_const @"m_Add_1@[[OFFSET0]]" : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_246:[0-9a-zA-Z_\.]+]] = pod.new { @n = %[[VAL_245]] }  : <[@n: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_247:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Num2Bits::@Num2Bits<[@"m_Add_1@[[OFFSET0]]"]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>

@@ -70,7 +70,7 @@ component main = EarlyReturn();
 // CHECK-NEXT:            %[[VAL_25:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:            %[[VAL_26:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_27:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_25]], %[[VAL_26]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:            bool.assert %[[VAL_27]], "assertion failed"
+// CHECK-NEXT:            bool.assert %[[VAL_27]], "assertion failed in {{.*}}:12:9: 0 == 1"
 // CHECK-NEXT:            %[[VAL_28:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_29:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_14]], %[[VAL_28]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            scf.yield %[[VAL_17]]#0, %[[VAL_21]], %[[VAL_29]] : i1, !poly.tvar<@T_return>, !felt.type<"bn128">
@@ -122,7 +122,7 @@ component main = EarlyReturn();
 // CHECK-NEXT:            %[[VAL_59:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:            %[[VAL_60:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_34]] : (!poly.tvar<@T_arg0>) -> !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_61:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_60]], %[[VAL_59]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:            bool.assert %[[VAL_61]], "assertion failed"
+// CHECK-NEXT:            bool.assert %[[VAL_61]], "assertion failed in {{.*}}:22:9: in == 0"
 // CHECK-NEXT:            %[[VAL_62:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_63:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_48]], %[[VAL_62]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            scf.yield %[[VAL_51]]#0, %[[VAL_55]], %[[VAL_63]] : i1, !poly.tvar<@T_return>, !felt.type<"bn128">

@@ -57,40 +57,40 @@ component main = UnknownIndexOverwriteKnown();
 // CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_28]]{{\[}}%[[VAL_46]]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = felt.const  19 : <"bn128">
 // CHECK-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_47]], %[[VAL_48]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_49]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_49]], "assertion failed in {{.*}}:19:5: arr2[9] == 19"
 // CHECK-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = felt.const  9 : <"bn128">
 // CHECK-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_50]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_28]]{{\[}}%[[VAL_51]]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = felt.const  99 : <"bn128">
 // CHECK-NEXT:          %[[VAL_54:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_52]], %[[VAL_53]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_54]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_54]], "assertion failed in {{.*}}:20:5: arr2[9] == 99"
 // CHECK-NEXT:          %[[VAL_55:[0-9a-zA-Z_\.]+]] = felt.const  9 : <"bn128">
 // CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_55]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_15]]{{\[}}%[[VAL_56]]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_58:[0-9a-zA-Z_\.]+]] = felt.const  9 : <"bn128">
 // CHECK-NEXT:          %[[VAL_59:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_57]], %[[VAL_58]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_59]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_59]], "assertion failed in {{.*}}:22:5: arr1[9] == 09"
 // CHECK-NEXT:          %[[VAL_60:[0-9a-zA-Z_\.]+]] = felt.const  4 : <"bn128">
 // CHECK-NEXT:          %[[VAL_61:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_60]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_62:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_15]]{{\[}}%[[VAL_61]]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_63:[0-9a-zA-Z_\.]+]] = felt.const  4 : <"bn128">
 // CHECK-NEXT:          %[[VAL_64:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_62]], %[[VAL_63]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_64]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_64]], "assertion failed in {{.*}}:23:5: arr1[4] == 04"
 // CHECK-NEXT:          %[[VAL_65:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_66:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_65]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_67:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_41]]{{\[}}%[[VAL_66]]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_68:[0-9a-zA-Z_\.]+]] = felt.const  20 : <"bn128">
 // CHECK-NEXT:          %[[VAL_69:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_67]], %[[VAL_68]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_69]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_69]], "assertion failed in {{.*}}:24:5: arr3[0] == 20"
 // CHECK-NEXT:          %[[VAL_70:[0-9a-zA-Z_\.]+]] = felt.const  7 : <"bn128">
 // CHECK-NEXT:          %[[VAL_71:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_70]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_72:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_41]]{{\[}}%[[VAL_71]]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_73:[0-9a-zA-Z_\.]+]] = felt.const  27 : <"bn128">
 // CHECK-NEXT:          %[[VAL_74:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_72]], %[[VAL_73]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_74]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_74]], "assertion failed in {{.*}}:25:5: arr3[7] == 27"
 // CHECK-NEXT:          %[[VAL_75:[0-9a-zA-Z_\.]+]] = felt.const  46 : <"bn128">
 // CHECK-NEXT:          %[[VAL_76:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_44]], %[[VAL_75]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_76]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_76]], "assertion failed in {{.*}}:27:5: scalar1 == 46"
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@UnknownIndexOverwriteKnown::@UnknownIndexOverwriteKnown<[]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_77:[0-9a-zA-Z_\.]+]]: !struct.type<@UnknownIndexOverwriteKnown::@UnknownIndexOverwriteKnown<[]>>, %[[VAL_78:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
@@ -111,40 +111,40 @@ component main = UnknownIndexOverwriteKnown();
 // CHECK-NEXT:          %[[VAL_125:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_106]]{{\[}}%[[VAL_124]]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_126:[0-9a-zA-Z_\.]+]] = felt.const  19 : <"bn128">
 // CHECK-NEXT:          %[[VAL_127:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_125]], %[[VAL_126]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_127]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_127]], "assertion failed in {{.*}}:19:5: arr2[9] == 19"
 // CHECK-NEXT:          %[[VAL_128:[0-9a-zA-Z_\.]+]] = felt.const  9 : <"bn128">
 // CHECK-NEXT:          %[[VAL_129:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_128]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_130:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_106]]{{\[}}%[[VAL_129]]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_131:[0-9a-zA-Z_\.]+]] = felt.const  99 : <"bn128">
 // CHECK-NEXT:          %[[VAL_132:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_130]], %[[VAL_131]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_132]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_132]], "assertion failed in {{.*}}:20:5: arr2[9] == 99"
 // CHECK-NEXT:          %[[VAL_133:[0-9a-zA-Z_\.]+]] = felt.const  9 : <"bn128">
 // CHECK-NEXT:          %[[VAL_134:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_133]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_135:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_93]]{{\[}}%[[VAL_134]]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_136:[0-9a-zA-Z_\.]+]] = felt.const  9 : <"bn128">
 // CHECK-NEXT:          %[[VAL_137:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_135]], %[[VAL_136]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_137]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_137]], "assertion failed in {{.*}}:22:5: arr1[9] == 09"
 // CHECK-NEXT:          %[[VAL_138:[0-9a-zA-Z_\.]+]] = felt.const  4 : <"bn128">
 // CHECK-NEXT:          %[[VAL_139:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_138]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_140:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_93]]{{\[}}%[[VAL_139]]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_141:[0-9a-zA-Z_\.]+]] = felt.const  4 : <"bn128">
 // CHECK-NEXT:          %[[VAL_142:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_140]], %[[VAL_141]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_142]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_142]], "assertion failed in {{.*}}:23:5: arr1[4] == 04"
 // CHECK-NEXT:          %[[VAL_143:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_144:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_143]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_145:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_119]]{{\[}}%[[VAL_144]]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_146:[0-9a-zA-Z_\.]+]] = felt.const  20 : <"bn128">
 // CHECK-NEXT:          %[[VAL_147:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_145]], %[[VAL_146]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_147]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_147]], "assertion failed in {{.*}}:24:5: arr3[0] == 20"
 // CHECK-NEXT:          %[[VAL_148:[0-9a-zA-Z_\.]+]] = felt.const  7 : <"bn128">
 // CHECK-NEXT:          %[[VAL_149:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_148]] : !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_150:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_119]]{{\[}}%[[VAL_149]]] : <10 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_151:[0-9a-zA-Z_\.]+]] = felt.const  27 : <"bn128">
 // CHECK-NEXT:          %[[VAL_152:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_150]], %[[VAL_151]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_152]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_152]], "assertion failed in {{.*}}:25:5: arr3[7] == 27"
 // CHECK-NEXT:          %[[VAL_153:[0-9a-zA-Z_\.]+]] = felt.const  46 : <"bn128">
 // CHECK-NEXT:          %[[VAL_154:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_122]], %[[VAL_153]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          bool.assert %[[VAL_154]], "assertion failed"
+// CHECK-NEXT:          bool.assert %[[VAL_154]], "assertion failed in {{.*}}:27:5: scalar1 == 46"
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
