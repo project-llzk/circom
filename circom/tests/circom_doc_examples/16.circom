@@ -39,7 +39,6 @@ component main = all(5);
 // CHECK-NEXT:          ^bb0(%[[VAL_9:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
 // CHECK-NEXT:            %[[VAL_10:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_9]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_11:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_9]] }  : <[@N: !felt.type<"bn128">]>
-// CHECK-NEXT:            %[[VAL_12:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:            %[[VAL_13:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_11]][@N] : <[@N: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_14:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_13]] : !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_15:[0-9a-zA-Z_\.]+]] = function.call @fun::@fun::@compute() {(%[[VAL_14]])} : () -> !struct.type<@fun::@fun<[#[[$ATTR_0]]]>>
@@ -75,8 +74,6 @@ component main = all(5);
 // CHECK-NEXT:          } do {
 // CHECK-NEXT:          ^bb0(%[[VAL_36:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
 // CHECK-NEXT:            %[[VAL_37:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_36]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_38:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_36]] }  : <[@N: !felt.type<"bn128">]>
-// CHECK-NEXT:            %[[VAL_39:[0-9a-zA-Z_\.]+]] = pod.new(%[[VAL_37]]) : <[@count: index, @comp: !struct.type<@fun::@fun<[#[[$ATTR_0]]]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
 // CHECK-NEXT:            %[[VAL_40:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_41:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_36]], %[[VAL_40]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            scf.yield %[[VAL_41]] : !felt.type<"bn128">

@@ -259,8 +259,6 @@ component main = Outer();
 // CHECK-NEXT:          } do {
 // CHECK-NEXT:          ^bb0(%[[VAL_162:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
 // CHECK-NEXT:            %[[VAL_163:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_162]] : !felt.type<"bn128">
-// CHECK-NEXT:            %[[VAL_164:[0-9a-zA-Z_\.]+]] = pod.new { @P = %[[VAL_162]] }  : <[@P: !felt.type<"bn128">]>
-// CHECK-NEXT:            %[[VAL_165:[0-9a-zA-Z_\.]+]] = pod.new(%[[VAL_163]]) : <[@count: index, @comp: !struct.type<@Inner::@Inner<[#[[$ATTR_0]]]>>, @params: !pod.type<[@P: !felt.type<"bn128">]>]>
 // CHECK-NEXT:            %[[VAL_166:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:            %[[VAL_167:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_168:[0-9a-zA-Z_\.]+]] = %[[VAL_166]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
 // CHECK-NEXT:              %[[VAL_169:[0-9a-zA-Z_\.]+]] = felt.const  4 : <"bn128">

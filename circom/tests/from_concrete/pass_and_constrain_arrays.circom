@@ -59,8 +59,6 @@ component main = Main();
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @add_1 {
 // CHECK-NEXT:      function.def @add_1(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "x1"}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "y1"}, %[[VAL_2:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "x2"}, %[[VAL_3:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "y2"}) -> !array.type<2 x !felt.type<"bn128">> attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_4:[0-9a-zA-Z_\.]+]] = felt.const  168700 : <"bn128">
-// CHECK-NEXT:        %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  168696 : <"bn128">
 // CHECK-NEXT:        %[[VAL_6:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_13:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_0]], %[[VAL_3]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:        %[[VAL_14:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_1]], %[[VAL_2]] : !felt.type<"bn128">, !felt.type<"bn128">
@@ -98,7 +96,6 @@ component main = Main();
 // CHECK-NEXT:    poly.template @mul_0 {
 // CHECK-NEXT:      function.def @mul_0(%[[VAL_41:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "base"}, %[[VAL_42:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "k"}) -> !array.type<16,2 x !felt.type<"bn128">> attributes {function.allow_non_native_field_ops} {
 // CHECK-NEXT:        %[[VAL_43:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<16,2 x !felt.type<"bn128">>
-// CHECK-NEXT:        %[[VAL_45:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:        %[[VAL_84:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_91:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:        %[[VAL_98:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">

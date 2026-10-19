@@ -307,8 +307,6 @@ component main {public [in]} = MultiplierN(3);
 // CHECK-NEXT:            scf.condition(%[[VAL_194]]) %[[VAL_191]] : !felt.type<"bn128">
 // CHECK-NEXT:          } do {
 // CHECK-NEXT:          ^bb0(%[[VAL_195:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CHECK-NEXT:            %[[VAL_196:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:            %[[VAL_197:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Multiplier2::@Multiplier2<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_198:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_199:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_195]], %[[VAL_198]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            scf.yield %[[VAL_199]] : !felt.type<"bn128">

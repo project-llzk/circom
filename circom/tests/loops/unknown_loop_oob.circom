@@ -34,9 +34,6 @@ component main = UnknownLoopOOB();
 // CHECK-NEXT:        struct.member @a$inputs : !pod.type<[@i: !felt.type<"bn128">]> {signal}
 // CHECK-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "m"}, %[[VAL_1:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "n"}) -> !struct.type<@UnknownLoopOOB::@UnknownLoopOOB<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = struct.new : <@UnknownLoopOOB::@UnknownLoopOOB<[]>>
-// CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_4]], @params = %[[VAL_3]] }  : <[@count: index, @comp: !struct.type<@accumulate::@accumulate<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = pod.new : <[@i: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
 // CHECK-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
@@ -68,8 +65,6 @@ component main = UnknownLoopOOB();
 // CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_23]][@y] : <@UnknownLoopOOB::@UnknownLoopOOB<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_23]][@a] : <@UnknownLoopOOB::@UnknownLoopOOB<[]>>, !struct.type<@accumulate::@accumulate<[]>>
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_23]][@a$inputs] : <@UnknownLoopOOB::@UnknownLoopOOB<[]>>, !pod.type<[@i: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@accumulate::@accumulate<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_28]][@i] : <[@i: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:          function.call @accumulate::@accumulate::@constrain(%[[VAL_27]], %[[VAL_31]]) : (!struct.type<@accumulate::@accumulate<[]>>, !felt.type<"bn128">) -> ()
 // CHECK-NEXT:          function.return

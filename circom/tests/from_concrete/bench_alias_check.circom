@@ -170,7 +170,6 @@ component main = AliasCheck();
 // CHECK-NEXT:          %[[VAL_55:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
 // CHECK-NEXT:          %[[VAL_56:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_55]], @params = %[[VAL_54]] }  : <[@count: index, @comp: !struct.type<@Num2Bits_0::@Num2Bits_0<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:          %[[VAL_57:[0-9a-zA-Z_\.]+]] = pod.new : <[@in: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_58:[0-9a-zA-Z_\.]+]] = felt.const  21888242871839275222246405745257275088548364400416034343698204186575808495616 : <"bn128">
 // CHECK-NEXT:          %[[VAL_59:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_60:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_61:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -179,7 +178,6 @@ component main = AliasCheck();
 // CHECK-NEXT:          %[[VAL_64:[0-9a-zA-Z_\.]+]] = felt.const  340282366920938463463374607431768211455 : <"bn128">
 // CHECK-NEXT:          %[[VAL_65:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_66:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_67:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_68:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_69:[0-9a-zA-Z_\.]+]]:9 = scf.while (%[[VAL_70:[0-9a-zA-Z_\.]+]] = %[[VAL_65]], %[[VAL_71:[0-9a-zA-Z_\.]+]] = %[[VAL_64]], %[[VAL_72:[0-9a-zA-Z_\.]+]] = %[[VAL_59]], %[[VAL_73:[0-9a-zA-Z_\.]+]] = %[[VAL_60]], %[[VAL_74:[0-9a-zA-Z_\.]+]] = %[[VAL_66]], %[[VAL_75:[0-9a-zA-Z_\.]+]] = %[[VAL_68]], %[[VAL_76:[0-9a-zA-Z_\.]+]] = %[[VAL_61]], %[[VAL_77:[0-9a-zA-Z_\.]+]] = %[[VAL_62]], %[[VAL_78:[0-9a-zA-Z_\.]+]] = %[[VAL_63]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">) -> (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">) {
 // CHECK-NEXT:            %[[VAL_79:[0-9a-zA-Z_\.]+]] = felt.const  127 : <"bn128">
@@ -312,7 +310,6 @@ component main = AliasCheck();
 // CHECK-NEXT:          %[[VAL_186:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_182]][@sout] : <@CompConstant_1::@CompConstant_1<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_187:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_182]][@num2bits] : <@CompConstant_1::@CompConstant_1<[]>>, !struct.type<@Num2Bits_0::@Num2Bits_0<[]>>
 // CHECK-NEXT:          %[[VAL_188:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_182]][@num2bits$inputs] : <@CompConstant_1::@CompConstant_1<[]>>, !pod.type<[@in: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_189:[0-9a-zA-Z_\.]+]] = felt.const  21888242871839275222246405745257275088548364400416034343698204186575808495616 : <"bn128">
 // CHECK-NEXT:          %[[VAL_190:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_191:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_192:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -321,7 +318,6 @@ component main = AliasCheck();
 // CHECK-NEXT:          %[[VAL_195:[0-9a-zA-Z_\.]+]] = felt.const  340282366920938463463374607431768211455 : <"bn128">
 // CHECK-NEXT:          %[[VAL_196:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_197:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_198:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_199:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_200:[0-9a-zA-Z_\.]+]]:9 = scf.while (%[[VAL_201:[0-9a-zA-Z_\.]+]] = %[[VAL_196]], %[[VAL_202:[0-9a-zA-Z_\.]+]] = %[[VAL_195]], %[[VAL_203:[0-9a-zA-Z_\.]+]] = %[[VAL_190]], %[[VAL_204:[0-9a-zA-Z_\.]+]] = %[[VAL_191]], %[[VAL_205:[0-9a-zA-Z_\.]+]] = %[[VAL_197]], %[[VAL_206:[0-9a-zA-Z_\.]+]] = %[[VAL_199]], %[[VAL_207:[0-9a-zA-Z_\.]+]] = %[[VAL_192]], %[[VAL_208:[0-9a-zA-Z_\.]+]] = %[[VAL_193]], %[[VAL_209:[0-9a-zA-Z_\.]+]] = %[[VAL_194]]) : (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">) -> (!felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">, !felt.type<"bn128">) {
 // CHECK-NEXT:            %[[VAL_210:[0-9a-zA-Z_\.]+]] = felt.const  127 : <"bn128">
@@ -446,7 +442,6 @@ component main = AliasCheck();
 // CHECK-NEXT:        function.def @compute(%[[VAL_309:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) -> !struct.type<@Num2Bits_0::@Num2Bits_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_310:[0-9a-zA-Z_\.]+]] = struct.new : <@Num2Bits_0::@Num2Bits_0<[]>>
 // CHECK-NEXT:          %[[VAL_311:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<135 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_312:[0-9a-zA-Z_\.]+]] = felt.const  135 : <"bn128">
 // CHECK-NEXT:          %[[VAL_313:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_314:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_315:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
@@ -475,7 +470,6 @@ component main = AliasCheck();
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_336:[0-9a-zA-Z_\.]+]]: !struct.type<@Num2Bits_0::@Num2Bits_0<[]>>, %[[VAL_337:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_338:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_336]][@out] : <@Num2Bits_0::@Num2Bits_0<[]>>, !array.type<135 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_339:[0-9a-zA-Z_\.]+]] = felt.const  135 : <"bn128">
 // CHECK-NEXT:          %[[VAL_340:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:          %[[VAL_341:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:          %[[VAL_342:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">

@@ -70,8 +70,6 @@ component main = Foo(2);
 // CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_30]][@c$inputs] : <@Foo::@Foo<[@N]>>, !pod.type<[@inp: !array.type<@N x !felt.type<"bn128">>]>
 // CHECK-NEXT:          %[[VAL_37:[0-9a-zA-Z_\.]+]] = poly.read_const @N : index
 // CHECK-NEXT:          %[[VAL_38:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_37]] : index, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_39:[0-9a-zA-Z_\.]+]] = pod.new { @N = %[[VAL_38]] }  : <[@N: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_40:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Sum::@Sum<[@N]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_41:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_42:[0-9a-zA-Z_\.]+]] = %[[VAL_34]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
 // CHECK-NEXT:            %[[VAL_43:[0-9a-zA-Z_\.]+]] = bool.cmp le(%[[VAL_42]], %[[VAL_42]]) : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            scf.condition(%[[VAL_43]]) %[[VAL_42]] : !felt.type<"bn128">

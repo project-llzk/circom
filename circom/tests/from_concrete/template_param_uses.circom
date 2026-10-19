@@ -32,7 +32,6 @@ component main = Template([[0, 1], [2, 3]], [1, 0], 2);
 // CHECK-NEXT:      struct.def @Template_0 {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Template_0::@Template_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
 // CHECK-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@Template_0::@Template_0<[]>>
-// CHECK-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_2 : !array.type<2,2 x !felt.type<"bn128">>
@@ -42,7 +41,6 @@ component main = Template([[0, 1], [2, 3]], [1, 0], 2);
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@Template_0::@Template_0<[]>>
 // CHECK-NEXT:        }
 // CHECK-NEXT:        function.def @constrain(%[[VAL_37:[0-9a-zA-Z_\.]+]]: !struct.type<@Template_0::@Template_0<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_38:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
 // CHECK-NEXT:          %[[VAL_39:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_40:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_41:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_2 : !array.type<2,2 x !felt.type<"bn128">>

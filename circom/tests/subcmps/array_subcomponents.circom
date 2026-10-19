@@ -152,8 +152,6 @@ component main {public [in]}= IsEqual(2);
 // CHECK-NEXT:            scf.condition(%[[VAL_92]]) %[[VAL_91]] : !felt.type<"bn128">
 // CHECK-NEXT:          } do {
 // CHECK-NEXT:          ^bb0(%[[VAL_93:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CHECK-NEXT:            %[[VAL_94:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:            %[[VAL_95:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@IsZero::@IsZero<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_96:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_97:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_93]], %[[VAL_96]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            %[[VAL_98:[0-9a-zA-Z_\.]+]] = felt.mul %[[VAL_83]], %[[VAL_97]] : !felt.type<"bn128">, !felt.type<"bn128">

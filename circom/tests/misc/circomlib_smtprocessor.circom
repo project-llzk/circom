@@ -195,8 +195,6 @@ component main = SMTProcessor(2);
 // CHECK-NEXT:            scf.condition(%[[VAL_120]]) %[[VAL_119]] : !felt.type<"bn128">
 // CHECK-NEXT:          } do {
 // CHECK-NEXT:          ^bb0(%[[VAL_121:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CHECK-NEXT:            %[[VAL_122:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:            %[[VAL_123:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@SMTProcessorSM::@SMTProcessorSM<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:            %[[VAL_124:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:            %[[VAL_125:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_121]], %[[VAL_124]]) : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            scf.if %[[VAL_125]] {

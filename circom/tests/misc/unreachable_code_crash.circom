@@ -202,8 +202,6 @@ component main = InvalidArgIndex(3, 2);
 // CHECK-NEXT:              scf.condition(%[[VAL_138]]) %[[VAL_136]] : !felt.type<"bn128">
 // CHECK-NEXT:            } do {
 // CHECK-NEXT:            ^bb0(%[[VAL_139:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CHECK-NEXT:              %[[VAL_140:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:              %[[VAL_141:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@OR::@OR<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:              %[[VAL_142:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:              %[[VAL_143:[0-9a-zA-Z_\.]+]] = felt.sub %[[VAL_120]], %[[VAL_142]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:              %[[VAL_144:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_132]], %[[VAL_143]]) : !felt.type<"bn128">, !felt.type<"bn128">

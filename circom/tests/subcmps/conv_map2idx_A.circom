@@ -124,12 +124,6 @@ component main = ComputeValue();
 // CHECK-NEXT:        function.def @constrain(%[[VAL_72:[0-9a-zA-Z_\.]+]]: !struct.type<@ComputeValue::@ComputeValue<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // CHECK-NEXT:          %[[VAL_73:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_72]][@getWeights] : <@ComputeValue::@ComputeValue<[]>>, !array.type<2 x !struct.type<@GetWeight::@GetWeight<[#[[$ATTR_0]]]>>>
 // CHECK-NEXT:          %[[VAL_74:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_72]][@getWeights$inputs] : <@ComputeValue::@ComputeValue<[]>>, !array.type<2 x !pod.type<[@inp: !felt.type<"bn128">]>>
-// CHECK-NEXT:          %[[VAL_75:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CHECK-NEXT:          %[[VAL_76:[0-9a-zA-Z_\.]+]] = pod.new { @A = %[[VAL_75]] }  : <[@A: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_77:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[0]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>
-// CHECK-NEXT:          %[[VAL_78:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_79:[0-9a-zA-Z_\.]+]] = pod.new { @A = %[[VAL_78]] }  : <[@A: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_80:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@GetWeight::@GetWeight<[1]>>, @params: !pod.type<[@A: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_81:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
 // CHECK-NEXT:          %[[VAL_82:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
 // CHECK-NEXT:          %[[VAL_83:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index

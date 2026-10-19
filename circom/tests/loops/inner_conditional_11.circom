@@ -165,8 +165,6 @@ component main = Poseidon();
 // CHECK-NEXT:            %[[VAL_98:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:            %[[VAL_99:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_97]], %[[VAL_98]]) : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:            scf.if %[[VAL_99]] {
-// CHECK-NEXT:              %[[VAL_100:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:              %[[VAL_101:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:              %[[VAL_102:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
 // CHECK-NEXT:              %[[VAL_103:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_102]] : !felt.type<"bn128">
 // CHECK-NEXT:              %[[VAL_104:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_91]]{{\[}}%[[VAL_103]]] : <2 x !pod.type<[@inp: !felt.type<"bn128">]>>, !pod.type<[@inp: !felt.type<"bn128">]>
@@ -176,8 +174,6 @@ component main = Poseidon();
 // CHECK-NEXT:              %[[VAL_106:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
 // CHECK-NEXT:              %[[VAL_107:[0-9a-zA-Z_\.]+]] = bool.cmp ge(%[[VAL_97]], %[[VAL_106]]) : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:              scf.if %[[VAL_107]] {
-// CHECK-NEXT:                %[[VAL_108:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CHECK-NEXT:                %[[VAL_109:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Sigma::@Sigma<[]>>, @params: !pod.type<[]>]>
 // CHECK-NEXT:                %[[VAL_110:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
 // CHECK-NEXT:                %[[VAL_111:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_110]] : !felt.type<"bn128">
 // CHECK-NEXT:                %[[VAL_112:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_91]]{{\[}}%[[VAL_111]]] : <2 x !pod.type<[@inp: !felt.type<"bn128">]>>, !pod.type<[@inp: !felt.type<"bn128">]>

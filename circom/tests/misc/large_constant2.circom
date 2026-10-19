@@ -90,8 +90,6 @@ component main = Sign();
 // CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_29]][@comp] : <@Sign::@Sign<[]>>, !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>
 // CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_29]][@comp$inputs] : <@Sign::@Sign<[]>>, !pod.type<[@in: !felt.type<"bn128">]>
 // CHECK-NEXT:          %[[VAL_35:[0-9a-zA-Z_\.]+]] = poly.read_const @"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]" : !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = pod.new { @ct = %[[VAL_35]] }  : <[@ct: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_37:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>, @params: !pod.type<[@ct: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_38:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_34]][@in] : <[@in: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:          constrain.eq %[[VAL_38]], %[[VAL_30]] : !felt.type<"bn128">, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_39:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_33]][@out] : <@CompConstant::@CompConstant<[@"10944121435919637611123202872628637544274182200208017171849102093287904247808@[[ID]]"]>>, !felt.type<"bn128">

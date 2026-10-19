@@ -76,9 +76,6 @@ component main = SubCmp();
 // CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_25]][@o] : <@SubCmp::@SubCmp<[]>>, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_25]][@n] : <@SubCmp::@SubCmp<[]>>, !struct.type<@Nop::@Nop<[1]>>
 // CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_25]][@n$inputs] : <@SubCmp::@SubCmp<[]>>, !pod.type<[@i: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CHECK-NEXT:          %[[VAL_31:[0-9a-zA-Z_\.]+]] = pod.new { @n = %[[VAL_30]] }  : <[@n: !felt.type<"bn128">]>
-// CHECK-NEXT:          %[[VAL_32:[0-9a-zA-Z_\.]+]] = pod.new : <[@count: index, @comp: !struct.type<@Nop::@Nop<[1]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          %[[VAL_33:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_29]][@i] : <[@i: !felt.type<"bn128">]>, !felt.type<"bn128">
 // CHECK-NEXT:          function.call @Nop::@Nop::@constrain(%[[VAL_28]], %[[VAL_33]]) : (!struct.type<@Nop::@Nop<[1]>>, !felt.type<"bn128">) -> ()
 // CHECK-NEXT:          function.return
