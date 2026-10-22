@@ -1,4 +1,5 @@
 use super::ir_interface::*;
+use crate::intermediate_representation::translate::OutBoundsCheck;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::wasm_elements::*;
@@ -10,6 +11,7 @@ pub struct LoadBucket {
     pub address_type: AddressType,
     pub src: LocationRule,
     pub context: InstrContext,
+    pub checks: Vec<OutBoundsCheck>
 }
 
 impl IntoInstruction for LoadBucket {
@@ -51,7 +53,36 @@ impl WriteWasm for LoadBucket {
         let mut instructions = vec![];
         if producer.needs_comments() {
             instructions.push(";; load bucket".to_string());
-	}
+	    }
+
+        // Check that the access does not generate an out of bounds exception.
+        if producer.sanity_check_style >= 3{
+            if self.checks.len() > 0 && producer.needs_comments() {
+                instructions.push(";; adding out of bounds check".to_string());
+            }
+            for ob_check in &self.checks{    
+                // generate the access
+                let mut instructions_access = ob_check.access.produce_wasm(producer);
+                instructions.append(&mut instructions_access);
+                // generate the maximum length
+                instructions.push(set_constant(&ob_check.size.to_string()));
+                // check that the access is less than the length
+                instructions.push(ge32_u());
+                instructions.push(add_if());
+                instructions.push(set_constant(&self.message_id.to_string()));
+                instructions.push(set_constant(&self.line.to_string()));
+                instructions.push(call("$buildBufferMessage"));
+                instructions.push(call("$printErrorMessage"));
+                instructions.push(set_constant(&exception_code_out_of_bounds().to_string()));
+                instructions.push(add_return());
+                instructions.push(add_end());
+            }
+            if self.checks.len() > 0 && producer.needs_comments() {
+                instructions.push(";; finished out of bounds check".to_string());
+            }
+        }
+
+
         match &self.src {
             LocationRule::Indexed { location, .. } => {
                 let mut instructions_src = location.produce_wasm(producer);
@@ -319,9 +350,28 @@ impl WriteC for LoadBucket {
 		assert!(false);
                 (vec![], "".to_string())
 	    };
+
         
         
         prologue.append(&mut src_prologue);
+        
+        // Check that the access does not generate an out of bounds exception.
+        if producer.sanity_check_style >= 3{
+            for ob_check in &self.checks{
+                prologue.push(format!("{{"));
+                let (mut index_prologue, index) = ob_check.access.produce_c(producer, parallel);
+                prologue.append(&mut index_prologue);
+                prologue.push(format!("int index = {};", index));
+                let check = format!("index >=0 && index < {}", ob_check.size);         
+                let if_condition = format!("if (!({})) {};", check, build_out_of_bounds_message(self.line));     
+                let assertion = format!("{};", build_call("assert".to_string(), vec![check]));
+                prologue.push(if_condition);
+                prologue.push(assertion);
+                prologue.push(format!("}}"));
+            }
+        }
+
+
         let access = match &self.address_type {
             AddressType::Variable => {
                 if producer.prime_str != "goldilocks" {

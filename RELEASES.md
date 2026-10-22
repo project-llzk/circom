@@ -1,25 +1,38 @@
 # Release notes
 
-## September 26, 2025 circom 2.2.3
+## October 20, 2026 circom 2.2.4
 #### Extensions
-- Extern functions for C++ witness generation are added. More information [here] (https://github.com/iden3/circom/blob/master/mkdocs/docs/circom-language/templates-and-components.md#extern-c-code-in-custom-templates)
-- Safe compilation flag is now replaced by th new compilation option: —sanity_check. More information [here](https://github.com/iden3/circom/blob/master/mkdocs/docs/getting-started/compilation-options.md) 
-- Flag constraint_assert_disabled is now removed (use option —sanity_check 0)
-- Anonymous components and buses are now allowed inside inline arrays. 
+- A new level 3 is added to the option —sanity_check: in addition to the checks of level 2, it introduces out of bounds checks (including negative indexes) in every array read/write and division by zero checks (operators / and \\) in the produced wasm and C++ witness generation code. More information [here](https://github.com/iden3/circom/blob/master/mkdocs/docs/getting-started/compilation-options.md).
 
 #### Improvements
 - Improving documentation.
-- Allowing anonymous components calls inside inline arrays. 
-- Allowing buses inside inline arrays. 
+
+#### Fixed bugs
+- Fixing issues in the produced C++ witness generation code for assignments of size 0.
+- Fixing minor panic by detecting whether the expression of the main component contains tuples or anonymous component calls.
+- Fixing minor panic in the analysis of variable renaming: signal, bus and component names must be unique after executing the template (only variables can be redeclared in different blocks).
+
+
+## October 24, 2025 circom 2.2.3
+#### Extensions
+- Allow extern C++ functions to be used for custom templates in the produced C++ witness generation code. More information [here](https://github.com/iden3/circom/blob/master/mkdocs/docs/circom-language/templates-and-components.md#extern-c-code-in-custom-templates).
+- A new compilation flag is added: —sanity_check. Depending on the selected level (default is 2) introduces more or less sanity checks in the produced wasm or C++ witness generation code. More information [here](https://github.com/iden3/circom/blob/master/mkdocs/docs/getting-started/compilation-options.md).
+- Flag constraint_assert_disabled is now removed (use option —sanity_check 0)
+- Anonymous components and buses are now allowed inside inline arrays. More information [here](https://github.com/iden3/circom/blob/master/mkdocs/docs/circom-language/data-types.md).
+
+#### Improvements
+- Improving documentation.
 - Goldilocks numbers are represented in C++ code using uint64_t.
 
 #### Fixed bugs
 - Errors and warning were swapped in custom-gates analysis for if-then-else statements.
 - Handling assignments of arrays when dimensions are incomplete to avoid errors.
 - Fixing JSON input reading type check in main.cpp (witness generation).
-- Fixing minors in multiple assignments analysis
-- Fixing minor in tag propagation for assignment statements and arrays.
-- Fixing minor in anonymous processing
+- Fixing minor panic in multiple assignments analysis
+- Fixing minor panic in tag propagation for assignment statements and arrays.
+- Fixing minor panic in anonymous processing.
+- Fixing minor issue related to the size of the stack of auxiliary expressions.
+- Fixing minor panic in function calls with buses as parameters. 
 
 
 ## March 11, 2025 circom 2.2.2

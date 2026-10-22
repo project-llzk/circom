@@ -5,12 +5,13 @@ pub enum StatusInput {
     Last,
     NoLast,
     Unknown,
+    SizeZero,
 }
 
 #[derive(Clone)]
 pub enum InputInformation {
     NoInput,
-    Input {status: StatusInput},
+    Input {status: StatusInput, needs_decrement: bool},
 }
 
 impl ToString for InputInformation {
@@ -18,12 +19,17 @@ impl ToString for InputInformation {
         use InputInformation::*;
         match self {
             NoInput => "NO_INPUT".to_string(),
-            Input { status } => {
-                match status {
-                    StatusInput::Last => "LAST".to_string(),
-                    StatusInput::NoLast => "NO_LAST".to_string(),
-                    StatusInput::Unknown => "UNKNOWN".to_string(),
-                }
+            Input { status , needs_decrement} => {
+                format!("status {} needs decrement {}",  
+                    match status {
+                        StatusInput::Last => "LAST",
+                        StatusInput::NoLast => "NO_LAST",
+                        StatusInput::Unknown => "UNKNOWN",
+                        StatusInput::SizeZero => "SIZE_ZERO",
+
+                    },
+                    needs_decrement
+                )
             }
         }
     }
