@@ -92,8 +92,7 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 [[package]]
 name = "bindgen"
 version = "0.73.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "787ef8ef523575546b106a58213d6e6b06198a05c2f757258c68a74273670cfa"
+source = "git+https://github.com/tamird/rust-bindgen?rev=86a8a5e774b5c4fcab9f86caa2767549dec2a97e#86a8a5e774b5c4fcab9f86caa2767549dec2a97e"
 dependencies = [
  "bitflags 2.9.4",
  "cexpr",
@@ -105,7 +104,7 @@ dependencies = [
  "regex",
  "rustc-hash",
  "shlex 2.0.1",
- "syn 2.0.106",
+ "syn 3.0.6",
 ]
 
 [[package]]
@@ -780,7 +779,7 @@ checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
 [[package]]
 name = "llzk"
 version = "0.7.0"
-source = "git+https://github.com/project-llzk/llzk-rs#db5a1d04d32a617d8aaa9f383148d5fc7685d07b"
+source = "git+https://github.com/project-llzk/llzk-rs#9dfe26b5af7ef3f1cf5c40b6ad50095783d6d549"
 dependencies = [
  "llzk-macro",
  "llzk-sys",
@@ -793,7 +792,7 @@ dependencies = [
 [[package]]
 name = "llzk-macro"
 version = "0.3.1"
-source = "git+https://github.com/project-llzk/llzk-rs#db5a1d04d32a617d8aaa9f383148d5fc7685d07b"
+source = "git+https://github.com/project-llzk/llzk-rs#9dfe26b5af7ef3f1cf5c40b6ad50095783d6d549"
 dependencies = [
  "convert_case",
  "proc-macro2",
@@ -805,7 +804,7 @@ dependencies = [
 [[package]]
 name = "llzk-sys"
 version = "30.1.1"
-source = "git+https://github.com/project-llzk/llzk-rs#db5a1d04d32a617d8aaa9f383148d5fc7685d07b"
+source = "git+https://github.com/project-llzk/llzk-rs#9dfe26b5af7ef3f1cf5c40b6ad50095783d6d549"
 dependencies = [
  "anyhow",
  "llzk-sys-build-support",
@@ -815,7 +814,7 @@ dependencies = [
 [[package]]
 name = "llzk-sys-build-support"
 version = "1.0.2"
-source = "git+https://github.com/project-llzk/llzk-rs#db5a1d04d32a617d8aaa9f383148d5fc7685d07b"
+source = "git+https://github.com/project-llzk/llzk-rs#9dfe26b5af7ef3f1cf5c40b6ad50095783d6d549"
 dependencies = [
  "anyhow",
  "bindgen",
@@ -1172,12 +1171,12 @@ dependencies = [
 
 [[package]]
 name = "prettyplease"
-version = "0.2.37"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "479ca8adacdd7ce8f1fb39ce9ecccbfe93a3f1344b3d0d97f20bc0196208f62b"
+checksum = "2bfe0f4c752e450fc2faf62654f1c134747922825d5b04ca717b8874f41a40c0"
 dependencies = [
  "proc-macro2",
- "syn 2.0.106",
+ "syn 3.0.6",
 ]
 
 [[package]]

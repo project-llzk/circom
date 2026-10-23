@@ -1157,7 +1157,7 @@ where
             self.unifiable_cast(codegen, location, val, codegen.index_type())
         } else {
             let builder = self.builder_at_current_insertion_point(codegen.context);
-            let op = cast::toindex(&builder, location, val, None);
+            let op = cast::toindex(&builder, location, val);
             self.append_op_ref_unnamed_result(op)
         }
     }
