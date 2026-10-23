@@ -13,8 +13,7 @@ jobs:
   update:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
     steps:
       - uses: actions/checkout@v6
         with:
@@ -31,10 +30,21 @@ jobs:
           git config --global 'url.https://git@github.com/'.insteadOf 'git@github.com:'
       - name: Run dependency update script
         run: ./scripts/update_llzk_lib.sh
-      - name: Create or update pull request
-        uses: peter-evans/create-pull-request@v8.1.1
+      - name: Create GitHub App token
+        id: app_token
+        uses: actions/create-github-app-token@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          client-id: ${{ secrets.CIRCOM_UPDATE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CIRCOM_UPDATE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+      - name: Create or update pull request
+        id: create_pr
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ steps.app_token.outputs.token }}
           branch: automation/update-llzk-rs
           delete-branch: true
           add-paths: |
@@ -43,4 +53,10 @@ jobs:
           commit-message: 'chore: update llzk-rs'
           title: 'chore: update llzk-rs'
           body: |
-            Updates llzk-rs nix and cargo dependencies using `scripts/update_llzk_lib.sh`.
+            Updated llzk-rs nix and cargo dependencies using `scripts/update_llzk_lib.sh`.
+      - name: Enable squash auto-merge
+        if: steps.create_pr.outputs.pull-request-operation == 'created'
+        env:
+          GH_TOKEN: ${{ steps.app_token.outputs.token }}
+          PR_URL: ${{ steps.create_pr.outputs.pull-request-url }}
+        run: gh pr merge "$PR_URL" --auto --squash
