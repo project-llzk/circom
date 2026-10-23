@@ -1,0 +1,46 @@
+name: Update llzk-rs
+
+on:
+  schedule:
+    - cron: '17 10 * * *' # Daily at 10:17 UTC.
+  workflow_dispatch:
+
+concurrency:
+  group: update-llzk-rs
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: cachix/install-nix-action@v31.11.0
+        with:
+          install_url: https://releases.nixos.org/nix/nix-2.31.2/install
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set Git credentials
+        run: |
+          git config --global 'url.https://api@github.com/'.insteadOf 'https://github.com/'
+          git config --global 'url.https://ssh@github.com/'.insteadOf 'ssh://git@github.com/'
+          git config --global 'url.https://git@github.com/'.insteadOf 'git@github.com:'
+      - name: Run dependency update script
+        run: ./scripts/update_llzk_lib.sh
+      - name: Create or update pull request
+        uses: peter-evans/create-pull-request@v8.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: automation/update-llzk-rs
+          delete-branch: true
+          add-paths: |
+            flake.lock
+            Cargo.lock
+          commit-message: 'chore: update llzk-rs'
+          title: 'chore: update llzk-rs'
+          body: |
+            Updates llzk-rs nix and cargo dependencies using `scripts/update_llzk_lib.sh`.
