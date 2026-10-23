@@ -16,7 +16,7 @@ This repository expects coding agents to use `nix` for builds and command execut
 
 ## Completion requirement
 
-- Always ensure the build is successful before you stop working.
-- If you make changes, finish by running a successful build with `nix`.
+- When the current task changes source code, tests, or build/dependency configuration, run `nix build -L` as the final validation step after all edits, and ensure it succeeds before finishing.
+- Skip builds for questions, explanations, planning, read-only reviews, and documentation-only or instruction-only edits, unless the user explicitly requests a build.
 - **Implementation agents only:** While independently modifying code, do not update "CHECK" lines for FileCheck in ".circom" tests. Tests that fail solely because these expectations require refreshes do not block implementation completion.
 - **Code-review agents:** This implementation constraint is not a review criterion. Do not raise a finding, request a revert, or recommend against a submitted change solely because it updates FileCheck "CHECK" lines in ".circom" tests. Review the correctness of those expectation changes on their technical merits, like any other test change.
