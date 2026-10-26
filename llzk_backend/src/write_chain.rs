@@ -150,23 +150,48 @@ impl<'ast> WriteChain<'ast> {
         }
     }
 
-    /// Writes a value into a field of a mixed subcomponent input pod.
-    fn write_mixed_input_tail<'ctx, 'val>(
+    /// Assign an input field, adapting array shapes before writing into the input pod.
+    fn write_input_field<'ctx, 'blk, 'val>(
         signal_name: &str,
-        tail: &[AccessRef<'_, 'ast>],
         input_record: Value<'ctx, 'val>,
-        input_record_type: PodType<'ctx>,
         val: Value<'ctx, 'val>,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
-        fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>,
         location: Location<'ctx>,
-        signal_write_info: &dyn SignalWriteInfo,
-        subcmp_info: &dyn SubcmpInfo<'ctx>,
-    ) -> Result<()> {
+    ) -> Result<()>
+    where
+        'val: 'blk,
+    {
+        let input_record_type = PodType::try_from(input_record.r#type())?;
         let field_type = input_record_type.record_type(signal_name).ok_or_else(|| {
             anyhow::anyhow!("subcomponent input signal {signal_name} not found: {input_record}")
         })?;
+        let val = fc.cast_or_copy_to_expected_type(codegen, location, val, field_type)?;
+        let builder = fc.builder_at_current_insertion_point(codegen.context);
+        fc.append_op_ref_no_result(codegen.new_pod_write_op(
+            &builder,
+            location,
+            input_record,
+            signal_name,
+            val,
+        ))
+    }
 
+    /// Writes a value into a field of a mixed subcomponent input pod.
+    fn write_mixed_input_tail<'ctx, 'blk, 'val>(
+        signal_name: &str,
+        tail: &[AccessRef<'_, 'ast>],
+        input_record: Value<'ctx, 'val>,
+        val: Value<'ctx, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>,
+        location: Location<'ctx>,
+        signal_write_info: &dyn SignalWriteInfo,
+        subcmp_info: &dyn SubcmpInfo<'ctx>,
+    ) -> Result<()>
+    where
+        'val: 'blk,
+    {
         let field_value = match tail.split_first() {
             Some((AccessRef::Array(indices), rest)) => {
                 if !rest.is_empty() {
@@ -191,17 +216,10 @@ impl<'ast> WriteChain<'ast> {
             Some((AccessRef::Subcmp(_), _)) => {
                 anyhow::bail!("unsupported nested component access after subcomponent input")
             }
-            None => fc.cast_to_expected_type_if_needed(codegen, location, val, field_type)?,
+            None => val,
         };
 
-        let builder = fc.builder_at_current_insertion_point(codegen.context);
-        fc.append_op_ref_no_result(codegen.new_pod_write_op(
-            &builder,
-            location,
-            input_record,
-            signal_name,
-            field_value,
-        ))
+        Self::write_input_field(signal_name, input_record, field_value, codegen, fc, location)
     }
 
     /// Special-case writes through a dynamically indexed mixed subcomponent array.
@@ -209,16 +227,19 @@ impl<'ast> WriteChain<'ast> {
     /// The selected record has a concrete component type, but different records may have
     /// different input pod shapes. Keep those record-specific values inside the dispatch branch
     /// and only merge the uniform parent pods back into the surrounding block.
-    fn try_write_mixed_subcmp<'ctx, 'val>(
+    fn try_write_mixed_subcmp<'ctx, 'blk, 'val>(
         &self,
         val: Value<'ctx, 'val>,
         target: WriteTarget,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
-        fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>,
         location: Location<'ctx>,
         signal_write_info: &dyn SignalWriteInfo,
         subcmp_info: &dyn SubcmpInfo<'ctx>,
-    ) -> Result<bool> {
+    ) -> Result<bool>
+    where
+        'val: 'blk,
+    {
         if target.is_constrain() {
             return Ok(false);
         }
@@ -307,7 +328,6 @@ impl<'ast> WriteChain<'ast> {
                         signal_name,
                         &tail[1..],
                         input_record,
-                        entry.inputs_type(),
                         val,
                         codegen,
                         fc,
@@ -331,7 +351,7 @@ impl<'ast> WriteChain<'ast> {
                         counter,
                         location,
                         codegen,
-                        |fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>| {
+                        |fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>| {
                             let builder = fc.builder_at_current_insertion_point(codegen.context);
                             let params =
                                 fc.append_op_ref_unnamed_result(codegen.new_pod_read_op(
@@ -395,24 +415,27 @@ impl<'ast> WriteChain<'ast> {
     }
 
     /// Handle [Lvalue::Array] case of [`WriteChain::write`].
-    fn write_array<'ctx, 'val>(
+    fn write_array<'ctx, 'blk, 'val>(
         indices: Vec<&Expression>,
         prev: Self,
         val: Value<'ctx, 'val>,
         target: WriteTarget,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
-        fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>,
         location: Location<'ctx>,
         signal_write_info: &dyn SignalWriteInfo,
         subcmp_info: &dyn SubcmpInfo<'ctx>,
-    ) -> Result<()> {
+    ) -> Result<()>
+    where
+        'val: 'blk,
+    {
         prev.lvalue.get_value(
             codegen,
             fc,
             subcmp_info,
             location,
             Some(&prev.ov(subcmp_info)),
-            &|arr_ref: Value<'ctx, 'val>, fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>| {
+            &|arr_ref: Value<'ctx, 'val>, fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>| {
                 let Ok(pod_type) = PodType::try_from(arr_ref.r#type()) else {
                     let index_vals = fc.gen_index_ops(
                         indices.clone(),
@@ -490,17 +513,20 @@ impl<'ast> WriteChain<'ast> {
     }
 
     /// Handle [Lvalue::Subcmp] case of [`WriteChain::write`].
-    fn write_subcmp<'ctx, 'val>(
+    fn write_subcmp<'ctx, 'blk, 'val>(
         name: &str,
         prev: Self,
         val: Value<'ctx, 'val>,
         target: WriteTarget,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
-        fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>,
         location: Location<'ctx>,
         signal_write_info: &dyn SignalWriteInfo,
         subcmp_info: &dyn SubcmpInfo<'ctx>,
-    ) -> Result<()> {
+    ) -> Result<()>
+    where
+        'val: 'blk,
+    {
         let prev_for_compute = prev.clone_for_compute_result();
         let ov = prev.ov(subcmp_info);
         prev.lvalue.get_value::<(), _>(
@@ -510,16 +536,9 @@ impl<'ast> WriteChain<'ast> {
             location,
             Some(&ov),
             &|subcmp_value_inputs: Value<'ctx, 'val>,
-              fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>|
+              fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>|
              -> Result<()> {
-                let builder = fc.builder_at_current_insertion_point(codegen.context);
-                fc.append_op_ref_no_result(codegen.new_pod_write_op(
-                    &builder,
-                    location,
-                    subcmp_value_inputs,
-                    name,
-                    val,
-                ))?;
+                Self::write_input_field(name, subcmp_value_inputs, val, codegen, fc, location)?;
                 prev.clone().write(
                     subcmp_value_inputs,
                     target,
@@ -538,7 +557,8 @@ impl<'ast> WriteChain<'ast> {
             subcmp_info,
             location,
             Some(&prev_for_compute.ov(subcmp_info)),
-            &|subcmp_value: Value<'ctx, 'val>, fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>| {
+            &|subcmp_value: Value<'ctx, 'val>,
+              fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>| {
                 let subcmp_value_inputs = prev_for_compute.lvalue.get_value(
                     codegen,
                     fc,
@@ -546,7 +566,7 @@ impl<'ast> WriteChain<'ast> {
                     location,
                     Some(&ov),
                     &|subcmp_value_inputs: Value<'ctx, 'val>,
-                      _: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>| {
+                      _: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>| {
                         Ok(subcmp_value_inputs)
                     },
                 )?;
@@ -555,7 +575,7 @@ impl<'ast> WriteChain<'ast> {
                     counter,
                     location,
                     codegen,
-                    |fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>| {
+                    |fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>| {
                         let builder = fc.builder_at_current_insertion_point(codegen.context);
                         let params = fc.append_op_ref_unnamed_result(codegen.new_pod_read_op(
                             &builder,
@@ -600,22 +620,25 @@ impl<'ast> WriteChain<'ast> {
     }
 
     /// Emits the write operations.
-    pub fn write<'ctx, 'val>(
+    pub fn write<'ctx, 'blk, 'val>(
         self,
         val: Value<'ctx, 'val>,
         target: WriteTarget,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
-        fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>,
         location: Location<'ctx>,
         signal_write_info: &dyn SignalWriteInfo,
         subcmp_info: &dyn SubcmpInfo<'ctx>,
-    ) -> Result<()> {
+    ) -> Result<()>
+    where
+        'val: 'blk,
+    {
         /// Handle [Lvalue::Root] with [Root::Signal] case.
-        fn write_root_signal<'ctx, 'val>(
+        fn write_root_signal<'ctx, 'blk, 'val>(
             var: String,
             val: Value<'ctx, 'val>,
             target: WriteTarget,
-            fc: &mut FunctionContext<'_, 'ctx, '_, '_, 'val>,
+            fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>,
             location: Location<'ctx>,
             signal_write_info: &dyn SignalWriteInfo,
         ) -> Result<()> {

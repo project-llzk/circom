@@ -1238,22 +1238,58 @@ where
             self.cast_to_bool_if_needed(codegen, location, val)
         } else {
             anyhow::bail!(
-                "Unsupported cast to 'expected' type '{expected}' from value type {}",
+                "Unsupported cast to 'expected' type '{expected}' from value type '{}'",
                 val.r#type()
             )
         }
     }
 
-    /// Copy the values in the source array into the destination array. Assumes both arrays have
-    /// unifiable element types the same number of dimensions, but each dimension may be wider or
-    /// narrower than the destination type.
-    ///
-    /// General overview: create a N-dimensional nested `for` loop to copy. If the indices are
-    /// out-of-bounds, then the array is default-filled. Otherwise, copy elements into destination.
+    /// Return the array types when assignment can copy their overlapping elements.
+    fn array_assignment_types(
+        dst: Type<'ctx>,
+        src: Type<'ctx>,
+    ) -> Option<(ArrayType<'ctx>, ArrayType<'ctx>)> {
+        let dst = ArrayType::try_from(dst).ok()?;
+        let src = ArrayType::try_from(src).ok()?;
+        (dst.num_dims() == src.num_dims() && types_unify(dst.element_type(), src.element_type()))
+            .then_some((dst, src))
+    }
+
+    /// Adapt an assignment value to the destination type. Compatible arrays with different
+    /// shapes are copied into a new destination-sized array; other values use the usual cast.
+    pub fn cast_or_copy_to_expected_type(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+        expected: Type<'ctx>,
+    ) -> Result<Value<'ctx, 'val>>
+    where
+        'val: 'blk,
+    {
+        if val.r#type() != expected {
+            if let Some((dst_ty, src_ty)) = Self::array_assignment_types(expected, val.r#type()) {
+                let builder = self.builder_at_current_insertion_point(codegen.context);
+                let dst = self.append_op_ref_unnamed_result(codegen.new_array_new_op(
+                    &builder,
+                    location,
+                    dst_ty,
+                    ArrayCtor::Empty,
+                ))?;
+                self.copy_into_array(codegen, location, dst, dst_ty, val, src_ty)?;
+                return Ok(dst);
+            }
+        }
+        self.cast_to_expected_type_if_needed(codegen, location, val, expected)
+    }
+
+    /// Copy overlapping elements into the destination using a loop per dimension, leaving
+    /// elements beyond the source bounds unchanged. Both arrays must have the same rank and
+    /// unifiable element types, but their dimension sizes may differ.
     fn copy_into_array(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
-        meta: &Meta,
+        location: Location<'ctx>,
         dst: Value<'ctx, 'val>,
         dst_ty: ArrayType<'ctx>,
         src: Value<'ctx, 'val>,
@@ -1275,8 +1311,6 @@ where
         let src_elem_ty = src_ty.element_type();
         let dst_elem_ty = dst_ty.element_type();
         assert!(types_unify(src_elem_ty, dst_elem_ty));
-
-        let location = codegen.location_from_meta(meta);
 
         let bounds = zip(src_ty.dims(), dst_ty.dims())
             .map(|(src_dim, dest_dim)| {
@@ -1329,7 +1363,7 @@ where
     /// Perform a direct assignment of `rvalue` to `var`. In many cases this is handled
     /// by updating the variable name map to have `var` -> `rvalue`, but special handling
     /// is required during array assignments where `rvalue` is a different width than the
-    /// destination array (this requires 0-filling or truncation).
+    /// destination array (this requires copying the overlapping elements).
     pub fn handle_simple_assignment(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
@@ -1355,25 +1389,18 @@ where
             // Replace existing value reference to rvalue
             return self.block_ctx.set_named_value(var.clone(), rvalue);
         }
-        let existing_arr_ty = ArrayType::try_from(existing.r#type());
-        let rvalue_arr_ty = ArrayType::try_from(rvalue.r#type());
-        if let (Ok(existing_arr_ty), Ok(rvalue_arr_ty)) = (existing_arr_ty, rvalue_arr_ty) {
-            // If the arrays have the same number of dimensions and unifiable element type,
-            // then copy values from the `rvalue` array into the existing array.
-            if existing_arr_ty.num_dims() == rvalue_arr_ty.num_dims()
-                && types_unify(existing_arr_ty.element_type(), rvalue_arr_ty.element_type())
-            {
-                // Copy values from the rvalue into the existing array.
-                // No need to update named value here.
-                return self.copy_into_array(
-                    codegen,
-                    meta,
-                    *existing,
-                    existing_arr_ty,
-                    rvalue,
-                    rvalue_arr_ty,
-                );
-            }
+        if let Some((existing_arr_ty, rvalue_arr_ty)) =
+            Self::array_assignment_types(existing.r#type(), rvalue.r#type())
+        {
+            // Copy into the existing array without changing the named value.
+            return self.copy_into_array(
+                codegen,
+                codegen.location_from_meta(meta),
+                *existing,
+                existing_arr_ty,
+                rvalue,
+                rvalue_arr_ty,
+            );
         }
         if types_unify(existing.r#type(), rvalue.r#type()) {
             let location = codegen.location_from_meta(meta);
