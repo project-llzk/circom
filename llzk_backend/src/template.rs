@@ -1489,11 +1489,7 @@ where
                                         let builder =
                                             fc.builder_at_current_insertion_point(codegen.context);
                                         let write = r#struct::writem(
-                                            &builder,
-                                            location,
-                                            self_val,
-                                            var,
-                                            value,
+                                            &builder, location, self_val, var, value,
                                         )?;
                                         fc.append_op_ref_no_result(write)?;
                                         fc.block_ctx.set_named_value(var.clone(), value)
@@ -1527,16 +1523,22 @@ where
                                 },
                                 |fc, rhv| {
                                     let location = codegen.location_from_meta(meta);
-                                    Lvalue::new(var, Root::Signal, access)
-                                        .get_value(
-                                            codegen,
-                                            fc,
-                                            template,
-                                            location,
-                                            None,
-                                            &|lhv: Value<'ctx,'val>, fc: &mut FunctionContext<'_, 'ctx,'_,'_,'val>| {
+                                    Lvalue::new(var, Root::Signal, access).get_value(
+                                        codegen,
+                                        fc,
+                                        template,
+                                        location,
+                                        None,
+                                        &|lhv: Value<'ctx, 'val>,
+                                          fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>| {
+                                            // Match the destination-sized copy made by the
+                                            // assignment before constraining its value.
+                                            let rhv = fc.cast_or_copy_to_expected_type(
+                                                codegen, location, rhv, lhv.r#type(),
+                                            )?;
                                             fc.append_constrain_eq(codegen, location, lhv, rhv)
-                                        })
+                                        },
+                                    )
                                 },
                             ),
                         }
