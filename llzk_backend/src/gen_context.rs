@@ -50,7 +50,7 @@ use crate::{
     shared::{
         append_tail, is_bool, is_index, new_array_type, new_region_and_block, no_results,
         replace_uses_with_new_block_argument, single_result_as_value, ArrayDimExprKind,
-        ArrayDimension, ExprToPolyBinding, ExprToPolyBindingOutput, LlzkCodegen,
+        ArrayDimension, ExprToPolyBinding, ExprToPolyBindingOutput, LlzkCodegen, TypeSizeExpr,
     },
     subcmp::names::COUNT,
 };
@@ -2100,7 +2100,7 @@ where
         self.gen_simple_scf_for(codegen, location, start, step, end, body_fn)
     }
 
-    /// Generates IR for decreasing the counter of a subcomponent.
+    /// Decrease a subcomponent's counter by the flattened size of the assigned destination.
     ///
     /// Returns a [`Value`] with the updated counter.
     pub fn gen_subcmp_decrease_counter(
@@ -2108,7 +2108,7 @@ where
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         subcmp_memory: Value<'ctx, 'val>,
-        amount: u32,
+        amount: TypeSizeExpr<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
         let builder = self.builder_at_current_insertion_point(codegen.context);
         let counter = self.append_op_ref_unnamed_result(codegen.new_pod_read_op(
@@ -2117,8 +2117,8 @@ where
             COUNT,
             location,
         )?)?;
-        let one = self.append_op_unnamed_result(codegen.new_index_const_op(amount, location))?;
-        let counter = self.append_op_unnamed_result(arith::subi(counter, one, location))?;
+        let amount = amount.to_index_value(codegen, self, location, None)?;
+        let counter = self.append_op_unnamed_result(arith::subi(counter, amount, location))?;
         let builder = self.builder_at_current_insertion_point(codegen.context);
         self.append_op_ref_no_result(codegen.new_pod_write_op(
             &builder,

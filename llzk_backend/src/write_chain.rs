@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::Result;
-use llzk::prelude::{FuncDefOpLike as _, Location, PodType, Value, ValueLike as _};
+use llzk::prelude::{ArrayType, FuncDefOpLike as _, Location, PodType, Value, ValueLike as _};
 use program_structure::ast::{Access, Expression};
 
 use crate::{
@@ -14,7 +14,7 @@ use crate::{
     gen_context::NestedBlockInfo,
     lvalue::{concrete_indices, emit_condition, Combine, CombineEntry, Lvalue, OverrideVar, Root},
     program_ext::ProgramLike,
-    shared::{comp_type, LlzkCodegen},
+    shared::{comp_type, LlzkCodegen, TypeSizeExpr},
     subcmp::{
         names::{COMP, PARAMS},
         SubcmpInfo,
@@ -103,6 +103,8 @@ pub struct WriteChain<'ast> {
     lvalue: Lvalue<'ast>,
     /// If true, means that the write chain is storing the result of a call to compute.
     compute_result: bool,
+    /// Trailing array indices consumed while propagating an indexed write to its input field.
+    input_indices: usize,
 }
 
 /// Borrowed access in source order from a [`Lvalue`].
@@ -117,17 +119,21 @@ enum AccessRef<'a, 'ast> {
 impl<'ast> WriteChain<'ast> {
     /// Creates a new write chain.
     pub fn new(var: &'ast str, op: Root, access: &'ast [Access]) -> Self {
-        Self::from_lvalue(Lvalue::new(var, op, access), false)
+        Self::from_lvalue(Lvalue::new(var, op, access), false, 0)
     }
 
     /// Creates a write chain from a lvalue.
-    fn from_lvalue(lvalue: Lvalue<'ast>, compute_result: bool) -> Self {
-        Self { lvalue, compute_result }
+    fn from_lvalue(lvalue: Lvalue<'ast>, compute_result: bool, input_indices: usize) -> Self {
+        Self { lvalue, compute_result, input_indices }
     }
 
     /// Creates a copy of the chain with the `compute_result` flag set to true.
     pub fn clone_for_compute_result(&self) -> Self {
-        Self { lvalue: self.lvalue.clone(), compute_result: true }
+        Self {
+            lvalue: self.lvalue.clone(),
+            compute_result: true,
+            input_indices: self.input_indices,
+        }
     }
 
     /// Collects the root and source-order accesses for the given [`Lvalue`].
@@ -148,6 +154,34 @@ impl<'ast> WriteChain<'ast> {
                 root
             }
         }
+    }
+
+    /// Count the destination signals assigned by a whole-field or indexed input write.
+    /// Dimensions consumed by indices are excluded, so scalar writes count as one and
+    /// subarray writes count only the remaining dimensions.
+    fn input_write_size<'ctx>(
+        signal_name: &str,
+        input_type: PodType<'ctx>,
+        input_indices: usize,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+    ) -> Result<TypeSizeExpr<'ctx>> {
+        let mut written_type = input_type.record_type(signal_name).ok_or_else(|| {
+            anyhow::anyhow!("subcomponent input signal {signal_name} not found: {input_type}")
+        })?;
+        if input_indices != 0 {
+            let array_type = ArrayType::try_from(written_type)?;
+            let dims = array_type.dims();
+            anyhow::ensure!(
+                input_indices <= dims.len(),
+                "too many indices for input {signal_name}"
+            );
+            written_type = if input_indices == dims.len() {
+                array_type.element_type()
+            } else {
+                ArrayType::new(array_type.element_type().into(), &dims[input_indices..]).into()
+            };
+        }
+        codegen.count_input_signals(written_type)
     }
 
     /// Assign an input field, adapting array shapes before writing into the input pod.
@@ -345,8 +379,22 @@ impl<'ast> WriteChain<'ast> {
                     ))?;
                     fc.block_ctx.set_named_value(inputs_name.clone(), inputs_value)?;
 
-                    let counter =
-                        fc.gen_subcmp_decrease_counter(codegen, location, memory_record, 1)?;
+                    let input_indices = match tail.get(1) {
+                        Some(AccessRef::Array(indices)) => indices.len(),
+                        _ => 0,
+                    };
+                    let written_size = Self::input_write_size(
+                        signal_name,
+                        entry.inputs_type(),
+                        input_indices,
+                        codegen,
+                    )?;
+                    let counter = fc.gen_subcmp_decrease_counter(
+                        codegen,
+                        location,
+                        memory_record,
+                        written_size,
+                    )?;
                     fc.gen_scf_if_is_zero(
                         counter,
                         location,
@@ -444,7 +492,9 @@ impl<'ast> WriteChain<'ast> {
                         InfoProviders { subcmp_info, signal_write_info },
                     )?;
                     fc.append_array_write(codegen, arr_ref, &index_vals, location, val, None)?;
-                    return prev.clone().write(
+                    let mut prev = prev.clone();
+                    prev.input_indices += indices.len();
+                    return prev.write(
                         arr_ref,
                         target,
                         codegen,
@@ -570,7 +620,14 @@ impl<'ast> WriteChain<'ast> {
                         Ok(subcmp_value_inputs)
                     },
                 )?;
-                let counter = fc.gen_subcmp_decrease_counter(codegen, location, subcmp_value, 1)?;
+                let written_size = Self::input_write_size(
+                    name,
+                    subcmp_value_inputs.r#type().try_into()?,
+                    prev.input_indices,
+                    codegen,
+                )?;
+                let counter =
+                    fc.gen_subcmp_decrease_counter(codegen, location, subcmp_value, written_size)?;
                 fc.gen_scf_if_is_zero(
                     counter,
                     location,
@@ -706,7 +763,7 @@ impl<'ast> WriteChain<'ast> {
             }
             Lvalue::Array { indices, prev } => Self::write_array(
                 indices,
-                Self::from_lvalue(*prev, self.compute_result),
+                Self::from_lvalue(*prev, self.compute_result, self.input_indices),
                 val,
                 target,
                 codegen,
@@ -717,7 +774,7 @@ impl<'ast> WriteChain<'ast> {
             ),
             Lvalue::Subcmp { name, prev } => Self::write_subcmp(
                 name,
-                Self::from_lvalue(*prev, self.compute_result),
+                Self::from_lvalue(*prev, self.compute_result, self.input_indices),
                 val,
                 target,
                 codegen,
