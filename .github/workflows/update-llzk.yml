@@ -2,7 +2,7 @@ name: Update llzk-rs
 
 on:
   schedule:
-    - cron: '17 10 * * *' # Daily at 10:17 UTC.
+    - cron: '17 05 * * *' # Daily at 05:17 UTC.
   workflow_dispatch:
 
 concurrency:
