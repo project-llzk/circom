@@ -1433,16 +1433,13 @@ where
                                 // The constrain function just reads that field from "self" struct.
                                 // However, we already inserted these reads at the beginning of the
                                 // constrain function in `gen_template_llzk`.
-                                let signal_type = template.get_signal_type(var)?;
                                 rhe.gen_llzk_in_template(codegen, &template.compute_only())?
                                     .and_then_same(|fc, val| {
                                         let location = codegen.location_from_meta(meta);
-                                        // Cast value to signal type if needed.
-                                        let value = fc.cast_to_expected_type_if_needed(
-                                            codegen,
-                                            location,
-                                            val,
-                                            signal_type,
+                                        let existing = *fc.block_ctx.get_named_value(var)?;
+                                        // Adapt the value to the signal's declared shape.
+                                        let value = fc.cast_or_copy_to_expected_type(
+                                            codegen, location, val, existing,
                                         )?;
                                         // Write value to field of "self" struct.
                                         let self_val = fc.func.self_value_of_compute()?;
@@ -1473,16 +1470,13 @@ where
                     AssignOp::AssignConstraintSignal => {
                         match &access[..] {
                             [] => {
-                                let signal_type = template.get_signal_type(var)?;
                                 rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                     |fc, val| {
                                         let location = codegen.location_from_meta(meta);
-                                        // Cast value to field type if needed.
-                                        let value = fc.cast_to_expected_type_if_needed(
-                                            codegen,
-                                            location,
-                                            val,
-                                            signal_type,
+                                        let existing = *fc.block_ctx.get_named_value(var)?;
+                                        // Adapt the value to the signal's declared shape.
+                                        let value = fc.cast_or_copy_to_expected_type(
+                                            codegen, location, val, existing,
                                         )?;
                                         // Write value to field of "self" struct.
                                         let self_val = fc.func.self_value_of_compute()?;
@@ -1500,12 +1494,12 @@ where
                                         // `gen_template_llzk`) and generate equality constraint
                                         // with 'val'.
                                         let signal_val = *fc.block_ctx.get_named_value(var)?;
-                                        fc.append_constrain_eq(
-                                            codegen,
-                                            codegen.location_from_meta(meta),
-                                            signal_val,
-                                            val,
-                                        )
+                                        let location = codegen.location_from_meta(meta);
+                                        // Match the destination-sized copy made by the assignment.
+                                        let val = fc.copy_array_assignment_if_needed(
+                                            codegen, location, val, signal_val,
+                                        )?;
+                                        fc.append_constrain_eq(codegen, location, signal_val, val)
                                     },
                                 )
                             }
@@ -1533,7 +1527,7 @@ where
                                           fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>| {
                                             // Match the destination-sized copy made by the
                                             // assignment before constraining its value.
-                                            let rhv = fc.cast_or_copy_to_expected_type(
+                                            let rhv = fc.copy_array_assignment_if_needed(
                                                 codegen, location, rhv, lhv,
                                             )?;
                                             fc.append_constrain_eq(codegen, location, lhv, rhv)

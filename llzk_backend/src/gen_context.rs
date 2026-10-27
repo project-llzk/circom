@@ -1245,14 +1245,20 @@ where
     }
 
     /// Return the array types when assignment can copy their overlapping elements.
+    /// Wildcard dimensions must be inferred through casts or constraints, not used as copy bounds.
     fn array_assignment_types(
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         dst: Type<'ctx>,
         src: Type<'ctx>,
     ) -> Option<(ArrayType<'ctx>, ArrayType<'ctx>)> {
         let dst = ArrayType::try_from(dst).ok()?;
         let src = ArrayType::try_from(src).ok()?;
-        (dst.num_dims() == src.num_dims() && types_unify(dst.element_type(), src.element_type()))
-            .then_some((dst, src))
+        let wildcard = codegen.wildcard_attr();
+        (dst.num_dims() == src.num_dims()
+            && types_unify(dst.element_type(), src.element_type())
+            && !dst.dims().contains(&wildcard)
+            && !src.dims().contains(&wildcard))
+        .then_some((dst, src))
     }
 
     /// Adapt an assignment value to the destination type. For compatible arrays with different
@@ -1268,9 +1274,27 @@ where
     where
         'val: 'blk,
     {
+        let val = self.copy_array_assignment_if_needed(codegen, location, val, existing)?;
+        self.cast_to_expected_type_if_needed(codegen, location, val, existing.r#type())
+    }
+
+    /// Copy differing array shapes when their bounds are known. Leave other values unchanged
+    /// so an assignment cast or equality constraint can infer any wildcard dimensions.
+    pub fn copy_array_assignment_if_needed(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+        existing: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>>
+    where
+        'val: 'blk,
+    {
         let expected = existing.r#type();
         if val.r#type() != expected {
-            if let Some((dst_ty, src_ty)) = Self::array_assignment_types(expected, val.r#type()) {
+            if let Some((dst_ty, src_ty)) =
+                Self::array_assignment_types(codegen, expected, val.r#type())
+            {
                 // With no indices, extract copies the whole array. Keep the original value
                 // unchanged because the constrain path still needs it as the LHS operand.
                 let builder = self.builder_at_current_insertion_point(codegen.context);
@@ -1285,7 +1309,7 @@ where
                 return Ok(dst);
             }
         }
-        self.cast_to_expected_type_if_needed(codegen, location, val, expected)
+        Ok(val)
     }
 
     /// Copy overlapping elements into the destination using a loop per dimension, leaving
@@ -1395,7 +1419,7 @@ where
             return self.block_ctx.set_named_value(var.clone(), rvalue);
         }
         if let Some((existing_arr_ty, rvalue_arr_ty)) =
-            Self::array_assignment_types(existing.r#type(), rvalue.r#type())
+            Self::array_assignment_types(codegen, existing.r#type(), rvalue.r#type())
         {
             // Copy into the existing array without changing the named value.
             return self.copy_into_array(
