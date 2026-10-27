@@ -102,13 +102,13 @@ fn signal_assignments_reject_different_array_sizes() {
                 for flags in [&[][..], &["--llzk", "concrete"][..], &["--llzk"][..]] {
                     let (output, _) = compile(&source, flags);
                     let stderr = String::from_utf8_lossy(&output.stderr);
-                    assert!(!output.status.success(), "accepted mismatch: {flags:?}\n{source}");
+                    assert!(!output.status.success(), "accepted mismatch: {:?}\n{}", flags, source);
                     let expected = if flags == ["--llzk"] {
                         "Unsupported cast"
                     } else {
                         "mismatched dimensions"
                     };
-                    assert!(stderr.contains(expected), "{flags:?}\n{source}\n{stderr}");
+                    assert!(stderr.contains(expected), "{:?}\n{}\n{}", flags, source, stderr);
                 }
             }
         }
@@ -133,14 +133,14 @@ fn symbolic_signal_assignments_keep_dimension_unification() {
             component main = Ex(3, 3);
         "#, assignment("out", "in", operator));
         let ir = assert_success(&source, &["--llzk"]);
-        assert!(ir.contains("poly.unifiable_cast"), "{ir}");
+        assert!(ir.contains("poly.unifiable_cast"), "{}", ir);
         assert!(!ir.contains("scf.for") && !ir.contains("array.write"),
-            "signal assignment must unify dimensions, not copy an overlap:\n{ir}");
+            "signal assignment must unify dimensions, not copy an overlap:\n{}", ir);
         for parameters in ["3, 5", "5, 3"] {
             let invalid = source.replace("Ex(3, 3)", &format!("Ex({parameters})"));
             for flags in [&[][..], &["--llzk", "concrete"][..]] {
                 let (output, _) = compile(&invalid, flags);
-                assert!(!output.status.success(), "accepted mismatch:\n{invalid}");
+                assert!(!output.status.success(), "accepted mismatch:\n{}", invalid);
                 assert!(String::from_utf8_lossy(&output.stderr).contains("mismatched dimensions"));
             }
         }
