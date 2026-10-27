@@ -211,6 +211,30 @@ impl<'ast> WriteChain<'ast> {
         ))
     }
 
+    /// Remove concrete return padding before inserting into a signal subarray.
+    /// Adapting the containing field later cannot repair the inserted value's type.
+    fn narrow_indexed_signal_value<'ctx, 'blk, 'val>(
+        arr_ref: Value<'ctx, 'val>,
+        num_indices: usize,
+        val: Value<'ctx, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, 'val>>
+    where
+        'val: 'blk,
+    {
+        let array_type = ArrayType::try_from(arr_ref.r#type())?;
+        let dims = array_type.dims();
+        if num_indices < dims.len() {
+            let expected = ArrayType::new(array_type.element_type().into(), &dims[num_indices..]);
+            fc.narrow_concrete_signal_value(codegen, location, val, expected.into())
+        } else {
+            // Scalar casts and invalid index counts are handled by append_array_write.
+            Ok(val)
+        }
+    }
+
     /// Writes a value into a field of a mixed subcomponent input pod.
     fn write_mixed_input_tail<'ctx, 'blk, 'val>(
         signal_name: &str,
@@ -243,6 +267,14 @@ impl<'ast> WriteChain<'ast> {
                     codegen,
                     location,
                     InfoProviders { subcmp_info, signal_write_info },
+                )?;
+                let val = Self::narrow_indexed_signal_value(
+                    field_value,
+                    index_vals.len(),
+                    val,
+                    codegen,
+                    fc,
+                    location,
                 )?;
                 fc.append_array_write(codegen, field_value, &index_vals, location, val, None)?;
                 field_value
@@ -491,6 +523,20 @@ impl<'ast> WriteChain<'ast> {
                         location,
                         InfoProviders { subcmp_info, signal_write_info },
                     )?;
+                    let val = if !prev.compute_result
+                        && matches!(prev.lvalue.root(), Lvalue::Root { op: Root::Signal, .. })
+                    {
+                        Self::narrow_indexed_signal_value(
+                            arr_ref,
+                            index_vals.len(),
+                            val,
+                            codegen,
+                            fc,
+                            location,
+                        )?
+                    } else {
+                        val
+                    };
                     fc.append_array_write(codegen, arr_ref, &index_vals, location, val, None)?;
                     let mut prev = prev.clone();
                     prev.input_indices += indices.len();

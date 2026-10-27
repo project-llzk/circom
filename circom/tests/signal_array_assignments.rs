@@ -4,13 +4,16 @@
 //! They distinguish invalid source-level shape mismatches from valid assignments
 //! whose function return types have been widened internally by LLZK generation.
 //!
-//! Coverage consists of 124 compiler invocations across three test groups:
+//! Coverage includes:
 //! - 96 rejection cases: four operators, root signals or component inputs, four
 //!   shape pairs, and normal Circom, concrete LLZK, or templated LLZK compilation.
 //! - 20 symbolic-dimension cases: four successful templated compilations with
 //!   equal dimensions, plus 16 normal/concrete rejections with unequal dimensions.
 //! - Eight successful concrete compilations: four operators and two return shapes
 //!   (vector and matrix), each assigning to both a root signal and a component input.
+//! - Indexed assignments of widened vector/matrix returns to root signals and component
+//!   inputs, including dynamic dispatch to mixed components with different input shapes.
+//! - Rejection of real indexed shape mismatches and preservation of symbolic dimensions.
 //!
 //! Normal Circom and `--llzk concrete` run circuit execution, which rejects
 //! mismatched dimensions. Concrete LLZK generation follows that check. Default
@@ -175,6 +178,109 @@ fn concrete_signal_assignments_accept_widened_function_returns() {
             "#, assignment("out", "vector(2)", operator),
                 assignment("child.in", "vector(2)", operator));
             assert_success(&source, &["--llzk", "concrete"]);
+        }
+    }
+}
+
+/// Narrow to the remaining destination dimensions before inserting a padded return value.
+/// Cover one/two consumed indices and vector/matrix subarrays for every signal operator.
+#[test]
+fn concrete_indexed_signal_assignments_accept_widened_function_returns() {
+    for operator in OPERATORS {
+        for (shape, small, large) in [
+            ("[2]", "[1, 2]", "[1, 2, 3, 4]"),
+            ("[1][2]", "[[1, 2]]", "[[1, 2, 3], [4, 5, 6]]"),
+        ] {
+            for (prefix, indices) in [("[1]", "[0]"), ("[1][1]", "[0][0]")] {
+                let source = format!(r#"
+                    pragma circom 2.1.0;
+                    function vector(n) {{
+                        if (n == 2) {{ return {small}; }}
+                        else {{ return {large}; }}
+                    }}
+                    template Sink() {{ signal input in{prefix}{shape}; }}
+                    template Main() {{
+                        signal output out{prefix}{shape};
+                        component child = Sink();
+                        {}
+                        {}
+                    }}
+                    component main = Main();
+                "#, assignment(&format!("out{indices}"), "vector(2)", operator),
+                    assignment(&format!("child.in{indices}"), "vector(2)", operator));
+                assert_success(&source, &[]);
+                assert_success(&source, &["--llzk", "concrete"]);
+            }
+        }
+    }
+}
+
+/// A dynamic component index must narrow inside each branch to that component's row type.
+#[test]
+fn concrete_mixed_indexed_inputs_accept_widened_function_returns() {
+    for operator in OPERATORS {
+        let source = format!(r#"
+            pragma circom 2.1.0;
+            function vector(n) {{
+                if (n == 2) {{ return [1, 2]; }}
+                else if (n == 4) {{ return [1, 2, 3, 4]; }}
+                else {{ return [1, 2, 3, 4, 5, 6]; }}
+            }}
+            template Sink(n) {{ signal input in[1][n]; }}
+            template Main() {{
+                component children[2];
+                children[0] = Sink(2);
+                children[1] = Sink(4);
+                for (var i = 0; i < 2; i++) {{
+                    {}
+                }}
+            }}
+            component main = Main();
+        "#, assignment("children[i].in[0]", "vector(2 * (i + 1))", operator));
+        assert_success(&source, &[]);
+        assert_success(&source, &["--llzk", "concrete"]);
+    }
+}
+
+/// Indexed narrowing must not accept genuine shape mismatches or copy symbolic bounds.
+#[test]
+fn indexed_signal_assignments_preserve_dimension_checks() {
+    for operator in OPERATORS {
+        for component_input in [false, true] {
+            let declarations = if component_input {
+                "component child = Sink(m);"
+            } else {
+                "signal output out[1][m];"
+            };
+            let destination = if component_input { "child.in[0]" } else { "out[0]" };
+            let source = format!(r#"
+                pragma circom 2.1.0;
+                template Sink(m) {{ signal input in[1][m]; }}
+                template Main(n, m) {{
+                    signal input in[n];
+                    {declarations}
+                    {}
+                }}
+                component main = Main(2, 2);
+            "#, assignment(destination, "in", operator));
+            let ir = assert_success(&source, &["--llzk"]);
+            assert!(ir.contains("array.insert"), "{}", ir);
+            assert!(!ir.contains("scf.for"), "symbolic assignment must not copy elements:\n{}", ir);
+            for parameters in ["2, 4", "4, 2"] {
+                let invalid = source.replace("Main(2, 2)", &format!("Main({parameters})"));
+                for flags in [&[][..], &["--llzk", "concrete"][..]] {
+                    let (output, _) = compile(&invalid, flags);
+                    assert!(!output.status.success(), "accepted mismatch: {:?}\n{}", flags, invalid);
+                    assert!(String::from_utf8_lossy(&output.stderr).contains("mismatched dimensions"));
+                }
+                // Literal dimensions must also be rejected by the templated pipeline.
+                let (n, m) = if parameters == "2, 4" { ("2", "4") } else { ("4", "2") };
+                let invalid = invalid.replace("in[n]", &format!("in[{n}]"))
+                    .replace("[m]", &format!("[{m}]"));
+                let (output, _) = compile(&invalid, &["--llzk"]);
+                assert!(!output.status.success(), "accepted mismatch:\n{}", invalid);
+                assert!(String::from_utf8_lossy(&output.stderr).contains("cannot unify array dimensions"));
+            }
         }
     }
 }
