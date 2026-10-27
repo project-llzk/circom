@@ -1261,49 +1261,58 @@ where
         .then_some((dst, src))
     }
 
-    /// Adapt an assignment value to the destination type. For compatible arrays with different
-    /// shapes, copy the destination before overwriting overlapping elements, preserving the rest.
-    /// Other values use the usual cast.
-    pub fn cast_or_copy_to_expected_type(
+    /// Convert a signal assignment value, accounting for widened concrete function returns.
+    /// Signal assignment itself requires equal dimensions, unlike variable assignment.
+    pub fn cast_signal_assignment_value(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
-        existing: Value<'ctx, 'val>,
+        expected: Type<'ctx>,
     ) -> Result<Value<'ctx, 'val>>
     where
         'val: 'blk,
     {
-        let val = self.copy_array_assignment_if_needed(codegen, location, val, existing)?;
-        self.cast_to_expected_type_if_needed(codegen, location, val, existing.r#type())
+        let val = self.narrow_concrete_signal_value(codegen, location, val, expected)?;
+        self.cast_to_expected_type_if_needed(codegen, location, val, expected)
     }
 
-    /// Copy differing array shapes when their bounds are known. Leave other values unchanged
-    /// so an assignment cast or equality constraint can infer any wildcard dimensions.
-    pub fn copy_array_assignment_if_needed(
+    /// Remove padding introduced by concrete function return-type unification. Circom has
+    /// already checked the actual signal assignment dimensions before producing the VCP.
+    /// Only narrow statically sized arrays that cover the entire destination; never preserve
+    /// an unassigned tail or copy symbolic dimensions. Other values retain their type checks.
+    pub fn narrow_concrete_signal_value(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
-        existing: Value<'ctx, 'val>,
+        expected: Type<'ctx>,
     ) -> Result<Value<'ctx, 'val>>
     where
         'val: 'blk,
     {
-        let expected = existing.r#type();
-        if val.r#type() != expected {
+        if codegen.program.is_concrete() && val.r#type() != expected {
             if let Some((dst_ty, src_ty)) =
                 Self::array_assignment_types(codegen, expected, val.r#type())
             {
-                // With no indices, extract copies the whole array. Keep the original value
-                // unchanged because the constrain path still needs it as the LHS operand.
+                let covers_destination =
+                    zip(src_ty.dims(), dst_ty.dims()).all(|(src, dst)| {
+                        match (IntegerAttribute::try_from(src), IntegerAttribute::try_from(dst)) {
+                            (Ok(src), Ok(dst)) => dst.value() >= 0 && src.value() >= dst.value(),
+                            _ => false,
+                        }
+                    });
+                if !covers_destination {
+                    return Ok(val);
+                }
+                // Every destination element is written, including in the constrain function.
+                // The RHS must not depend on the signal value it is being constrained against.
                 let builder = self.builder_at_current_insertion_point(codegen.context);
-                let dst = self.append_op_ref_unnamed_result(array::extract(
+                let dst = self.append_op_ref_unnamed_result(codegen.new_array_new_op(
                     &builder,
                     location,
-                    expected,
-                    existing,
-                    &[],
+                    dst_ty,
+                    ArrayCtor::Empty,
                 ))?;
                 self.copy_into_array(codegen, location, dst, dst_ty, val, src_ty)?;
                 return Ok(dst);

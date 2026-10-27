@@ -1436,10 +1436,11 @@ where
                                 rhe.gen_llzk_in_template(codegen, &template.compute_only())?
                                     .and_then_same(|fc, val| {
                                         let location = codegen.location_from_meta(meta);
-                                        let existing = *fc.block_ctx.get_named_value(var)?;
-                                        // Adapt the value to the signal's declared shape.
-                                        let value = fc.cast_or_copy_to_expected_type(
-                                            codegen, location, val, existing,
+                                        let value = fc.cast_signal_assignment_value(
+                                            codegen,
+                                            location,
+                                            val,
+                                            template.get_signal_type(var)?,
                                         )?;
                                         // Write value to field of "self" struct.
                                         let self_val = fc.func.self_value_of_compute()?;
@@ -1473,10 +1474,11 @@ where
                                 rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                     |fc, val| {
                                         let location = codegen.location_from_meta(meta);
-                                        let existing = *fc.block_ctx.get_named_value(var)?;
-                                        // Adapt the value to the signal's declared shape.
-                                        let value = fc.cast_or_copy_to_expected_type(
-                                            codegen, location, val, existing,
+                                        let value = fc.cast_signal_assignment_value(
+                                            codegen,
+                                            location,
+                                            val,
+                                            template.get_signal_type(var)?,
                                         )?;
                                         // Write value to field of "self" struct.
                                         let self_val = fc.func.self_value_of_compute()?;
@@ -1495,9 +1497,11 @@ where
                                         // with 'val'.
                                         let signal_val = *fc.block_ctx.get_named_value(var)?;
                                         let location = codegen.location_from_meta(meta);
-                                        // Match the destination-sized copy made by the assignment.
-                                        let val = fc.copy_array_assignment_if_needed(
-                                            codegen, location, val, signal_val,
+                                        let val = fc.narrow_concrete_signal_value(
+                                            codegen,
+                                            location,
+                                            val,
+                                            signal_val.r#type(),
                                         )?;
                                         fc.append_constrain_eq(codegen, location, signal_val, val)
                                     },
@@ -1525,10 +1529,8 @@ where
                                         None,
                                         &|lhv: Value<'ctx, 'val>,
                                           fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>| {
-                                            // Match the destination-sized copy made by the
-                                            // assignment before constraining its value.
-                                            let rhv = fc.copy_array_assignment_if_needed(
-                                                codegen, location, rhv, lhv,
+                                            let rhv = fc.narrow_concrete_signal_value(
+                                                codegen, location, rhv, lhv.r#type(),
                                             )?;
                                             fc.append_constrain_eq(codegen, location, lhv, rhv)
                                         },
