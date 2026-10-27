@@ -1255,26 +1255,31 @@ where
             .then_some((dst, src))
     }
 
-    /// Adapt an assignment value to the destination type. Compatible arrays with different
-    /// shapes are copied into a new destination-sized array; other values use the usual cast.
+    /// Adapt an assignment value to the destination type. For compatible arrays with different
+    /// shapes, copy the destination before overwriting overlapping elements, preserving the rest.
+    /// Other values use the usual cast.
     pub fn cast_or_copy_to_expected_type(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         val: Value<'ctx, 'val>,
-        expected: Type<'ctx>,
+        existing: Value<'ctx, 'val>,
     ) -> Result<Value<'ctx, 'val>>
     where
         'val: 'blk,
     {
+        let expected = existing.r#type();
         if val.r#type() != expected {
             if let Some((dst_ty, src_ty)) = Self::array_assignment_types(expected, val.r#type()) {
+                // With no indices, extract copies the whole array. Keep the original value
+                // unchanged because the constrain path still needs it as the LHS operand.
                 let builder = self.builder_at_current_insertion_point(codegen.context);
-                let dst = self.append_op_ref_unnamed_result(codegen.new_array_new_op(
+                let dst = self.append_op_ref_unnamed_result(array::extract(
                     &builder,
                     location,
-                    dst_ty,
-                    ArrayCtor::Empty,
+                    expected,
+                    existing,
+                    &[],
                 ))?;
                 self.copy_into_array(codegen, location, dst, dst_ty, val, src_ty)?;
                 return Ok(dst);

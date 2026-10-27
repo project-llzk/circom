@@ -200,7 +200,18 @@ impl<'ast> WriteChain<'ast> {
         let field_type = input_record_type.record_type(signal_name).ok_or_else(|| {
             anyhow::anyhow!("subcomponent input signal {signal_name} not found: {input_record}")
         })?;
-        let val = fc.cast_or_copy_to_expected_type(codegen, location, val, field_type)?;
+        let val = if val.r#type() != field_type {
+            let builder = fc.builder_at_current_insertion_point(codegen.context);
+            let existing = fc.append_op_ref_unnamed_result(codegen.new_pod_read_op(
+                &builder,
+                input_record,
+                signal_name,
+                location,
+            )?)?;
+            fc.cast_or_copy_to_expected_type(codegen, location, val, existing)?
+        } else {
+            val
+        };
         let builder = fc.builder_at_current_insertion_point(codegen.context);
         fc.append_op_ref_no_result(codegen.new_pod_write_op(
             &builder,

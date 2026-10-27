@@ -1534,7 +1534,7 @@ where
                                             // Match the destination-sized copy made by the
                                             // assignment before constraining its value.
                                             let rhv = fc.cast_or_copy_to_expected_type(
-                                                codegen, location, rhv, lhv.r#type(),
+                                                codegen, location, rhv, lhv,
                                             )?;
                                             fc.append_constrain_eq(codegen, location, lhv, rhv)
                                         },
