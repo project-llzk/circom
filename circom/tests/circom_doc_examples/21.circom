@@ -24,22 +24,7 @@ component main = Ex(3,3);
 // CHECK-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_2]] : index, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = poly.read_const @n : index
 // CHECK-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_4]] : index, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_14:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<@m x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = array.extract %[[VAL_14]][] : <@m x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_15:[0-9a-zA-Z_\.]+]] = poly.read_const @n : index
-// CHECK-NEXT:          %[[VAL_16:[0-9a-zA-Z_\.]+]] = poly.read_const @m : index
-// CHECK-NEXT:          %[[VAL_17:[0-9a-zA-Z_\.]+]] = arith.cmpi ult, %[[VAL_15]], %[[VAL_16]] : index
-// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_17]] -> (index) {
-// CHECK-NEXT:            scf.yield %[[VAL_15]] : index
-// CHECK-NEXT:          } else {
-// CHECK-NEXT:            scf.yield %[[VAL_16]] : index
-// CHECK-NEXT:          }
-// CHECK-NEXT:          %[[VAL_19:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:          %[[VAL_20:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:          scf.for %[[VAL_21:[0-9a-zA-Z_\.]+]] = %[[VAL_19]] to %[[VAL_18]] step %[[VAL_20]] {
-// CHECK-NEXT:            %[[VAL_22:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_0]]{{\[}}%[[VAL_21]]] : <@n x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:            array.write %[[VAL_6]]{{\[}}%[[VAL_21]]] = %[[VAL_22]] : <@m x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:          }
+// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_0]] : (!array.type<@n x !felt.type<"bn128">>) -> !array.type<@m x !felt.type<"bn128">>
 // CHECK-NEXT:          struct.writem %[[VAL_1]][@out] = %[[VAL_6]] : <@Ex::@Ex<[@n, @m]>>, !array.type<@m x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_1]] : !struct.type<@Ex::@Ex<[@n, @m]>>
 // CHECK-NEXT:        }
@@ -49,22 +34,7 @@ component main = Ex(3,3);
 // CHECK-NEXT:          %[[VAL_11:[0-9a-zA-Z_\.]+]] = poly.read_const @n : index
 // CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_11]] : index, !felt.type<"bn128">
 // CHECK-NEXT:          %[[VAL_13:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_7]][@out] : <@Ex::@Ex<[@n, @m]>>, !array.type<@m x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = array.extract %[[VAL_13]][] : <@m x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = poly.read_const @n : index
-// CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = poly.read_const @m : index
-// CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = arith.cmpi ult, %[[VAL_24]], %[[VAL_25]] : index
-// CHECK-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_26]] -> (index) {
-// CHECK-NEXT:            scf.yield %[[VAL_24]] : index
-// CHECK-NEXT:          } else {
-// CHECK-NEXT:            scf.yield %[[VAL_25]] : index
-// CHECK-NEXT:          }
-// CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:          %[[VAL_29:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:          scf.for %[[VAL_30:[0-9a-zA-Z_\.]+]] = %[[VAL_28]] to %[[VAL_27]] step %[[VAL_29]] {
-// CHECK-NEXT:            %[[VAL_31:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_8]]{{\[}}%[[VAL_30]]] : <@n x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:            array.write %[[VAL_23]]{{\[}}%[[VAL_30]]] = %[[VAL_31]] : <@m x !felt.type<"bn128">>, !felt.type<"bn128">
-// CHECK-NEXT:          }
-// CHECK-NEXT:          constrain.eq %[[VAL_13]], %[[VAL_23]] : !array.type<@m x !felt.type<"bn128">>, !array.type<@m x !felt.type<"bn128">>
+// CHECK-NEXT:          constrain.eq %[[VAL_13]], %[[VAL_8]] : !array.type<@m x !felt.type<"bn128">>, !array.type<@n x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
