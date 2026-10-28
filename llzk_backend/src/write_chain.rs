@@ -103,7 +103,7 @@ pub struct WriteChain<'ast> {
     lvalue: Lvalue<'ast>,
     /// If true, means that the write chain is storing the result of a call to compute.
     compute_result: bool,
-    /// Trailing array indices consumed while propagating an indexed write to its input field.
+    /// Number of trailing input-field indices in the original write, excluding component indices.
     input_indices: usize,
 }
 
@@ -119,7 +119,14 @@ enum AccessRef<'a, 'ast> {
 impl<'ast> WriteChain<'ast> {
     /// Creates a new write chain.
     pub fn new(var: &'ast str, op: Root, access: &'ast [Access]) -> Self {
-        Self::from_lvalue(Lvalue::new(var, op, access), false, 0)
+        let lvalue = Lvalue::new(var, op, access);
+        let input_indices = match &lvalue {
+            Lvalue::Array { indices, prev } if matches!(**prev, Lvalue::Subcmp { .. }) => {
+                indices.len()
+            }
+            _ => 0,
+        };
+        Self::from_lvalue(lvalue, false, input_indices)
     }
 
     /// Creates a write chain from a lvalue.
@@ -411,14 +418,10 @@ impl<'ast> WriteChain<'ast> {
                     ))?;
                     fc.block_ctx.set_named_value(inputs_name.clone(), inputs_value)?;
 
-                    let input_indices = match tail.get(1) {
-                        Some(AccessRef::Array(indices)) => indices.len(),
-                        _ => 0,
-                    };
                     let written_size = Self::input_write_size(
                         signal_name,
                         entry.inputs_type(),
-                        input_indices,
+                        self.input_indices,
                         codegen,
                     )?;
                     let counter = fc.gen_subcmp_decrease_counter(
@@ -538,9 +541,7 @@ impl<'ast> WriteChain<'ast> {
                         val
                     };
                     fc.append_array_write(codegen, arr_ref, &index_vals, location, val, None)?;
-                    let mut prev = prev.clone();
-                    prev.input_indices += indices.len();
-                    return prev.write(
+                    return prev.clone().write(
                         arr_ref,
                         target,
                         codegen,
