@@ -75,14 +75,17 @@ fn assert_success(source: &str, flags: &[&str]) -> String {
 
 /// Reject real shape mismatches for both root outputs and child component inputs.
 /// Vectors test smaller/larger sources in both directions; matrices test differing
-/// dimensions despite equal element counts. Normal/concrete compilation must report
-/// `mismatched dimensions`, while templated compilation must reject the static cast.
+/// dimensions despite equal element counts.
 #[test]
 fn signal_assignments_reject_different_array_sizes() {
     // Include crossed dimensions with equal element counts: shape, not just size, matters.
-    for (source_shape, destination_shape) in [
-        ("[3]", "[5]"), ("[5]", "[3]"),
-        ("[2][3]", "[3][2]"), ("[3][2]", "[2][3]"),
+    for (source_shape, destination_shape, lengths) in [
+        ("[3]", "[5]", "Expected length: 5, given 3"),
+        ("[5]", "[3]", "Expected length: 3, given 5"),
+        ("[2][3]", "[3][2]", "Expected length: 3, given 2"),
+        ("[3][2]", "[2][3]", "Expected length: 2, given 3"),
+        ("[2][3]", "[2][5]", "Expected length: 5, given 3"),
+        ("[2][5]", "[2][3]", "Expected length: 3, given 5"),
     ] {
         for operator in OPERATORS {
             for component_input in [false, true] {
@@ -106,12 +109,8 @@ fn signal_assignments_reject_different_array_sizes() {
                     let (output, _) = compile(&source, flags);
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     assert!(!output.status.success(), "accepted mismatch: {:?}\n{}", flags, source);
-                    let expected = if flags == ["--llzk"] {
-                        "Unsupported cast"
-                    } else {
-                        "mismatched dimensions"
-                    };
-                    assert!(stderr.contains(expected), "{:?}\n{}\n{}", flags, source, stderr);
+                    assert!(stderr.contains("Typing error found: mismatched dimensions.")
+                        && stderr.contains(lengths), "{:?}\n{}\n{}", flags, source, stderr);
                 }
             }
         }

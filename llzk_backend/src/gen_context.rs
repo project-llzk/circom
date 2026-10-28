@@ -1237,6 +1237,27 @@ where
         } else if is_bool(expected) {
             self.cast_to_bool_if_needed(codegen, location, val)
         } else {
+            if let (Ok(expected_array), Ok(given_array)) =
+                (ArrayType::try_from(expected), ArrayType::try_from(val.r#type()))
+            {
+                // Match Circom's diagnostic for the first differing concrete dimension.
+                // Negative (wildcard) and symbolic dimensions are not known mismatches.
+                for (expected_dim, given_dim) in zip(expected_array.dims(), given_array.dims()) {
+                    if let (Ok(expected_dim), Ok(given_dim)) = (
+                        IntegerAttribute::try_from(expected_dim),
+                        IntegerAttribute::try_from(given_dim),
+                    ) {
+                        let (expected_len, given_len) = (expected_dim.value(), given_dim.value());
+                        if expected_len >= 0 && given_len >= 0 && expected_len != given_len {
+                            anyhow::bail!(
+                                "Typing error found: mismatched dimensions.\n Expected length: {}, given {}",
+                                expected_len,
+                                given_len
+                            );
+                        }
+                    }
+                }
+            }
             anyhow::bail!(
                 "Unsupported cast to 'expected' type '{expected}' from value type '{}'",
                 val.r#type()
