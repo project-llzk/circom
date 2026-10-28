@@ -1300,8 +1300,9 @@ where
 
     /// Remove padding introduced by concrete function return-type unification. Circom has
     /// already checked the actual signal assignment dimensions before producing the VCP.
-    /// Only narrow statically sized arrays that cover the entire destination; never preserve
-    /// an unassigned tail or copy symbolic dimensions. Other values retain their type checks.
+    /// Only narrow statically sized arrays that cover the entire destination and have at least
+    /// one larger dimension; never preserve an unassigned tail or copy symbolic dimensions.
+    /// Equal shapes retain their normal type unification and casts.
     pub fn narrow_concrete_signal_value(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
@@ -1316,14 +1317,19 @@ where
             if let Some((dst_ty, src_ty)) =
                 Self::array_assignment_types(codegen, expected, val.r#type())
             {
-                let covers_destination =
-                    zip(src_ty.dims(), dst_ty.dims()).all(|(src, dst)| {
-                        match (IntegerAttribute::try_from(src), IntegerAttribute::try_from(dst)) {
-                            (Ok(src), Ok(dst)) => dst.value() >= 0 && src.value() >= dst.value(),
-                            _ => false,
-                        }
-                    });
-                if !covers_destination {
+                let mut needs_narrowing = false;
+                for (src, dst) in zip(src_ty.dims(), dst_ty.dims()) {
+                    let (Ok(src), Ok(dst)) =
+                        (IntegerAttribute::try_from(src), IntegerAttribute::try_from(dst))
+                    else {
+                        return Ok(val);
+                    };
+                    if dst.value() < 0 || src.value() < dst.value() {
+                        return Ok(val);
+                    }
+                    needs_narrowing |= src.value() > dst.value();
+                }
+                if !needs_narrowing {
                     return Ok(val);
                 }
                 // Every destination element is written, including in the constrain function.
