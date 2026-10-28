@@ -5,12 +5,12 @@
 //! whose function return types have been widened internally by LLZK generation.
 //!
 //! Coverage includes:
-//! - 96 rejection cases: four operators, root signals or component inputs, four
-//!   shape pairs, and normal Circom, concrete LLZK, or templated LLZK compilation.
-//! - 20 symbolic-dimension cases: four successful templated compilations with
-//!   equal dimensions, plus 16 normal/concrete rejections with unequal dimensions.
-//! - Eight successful concrete compilations: four operators and two return shapes
-//!   (vector and matrix), each assigning to both a root signal and a component input.
+//! - Rejection of mismatched array shapes across all operators, for root signals and
+//!   component inputs, in normal Circom, concrete LLZK, and templated LLZK compilation.
+//! - Symbolic dimensions: successful templated compilations with equal dimensions,
+//!   plus normal/concrete rejections with unequal dimensions.
+//! - Successful concrete compilations of widened vector and matrix function returns,
+//!   using all operators for both root signals and component inputs.
 //! - Indexed assignments of widened vector/matrix returns to root signals and component
 //!   inputs, including dynamic dispatch to mixed components with different input shapes.
 //! - Rejection of real indexed shape mismatches and preservation of symbolic dimensions.
