@@ -1433,16 +1433,14 @@ where
                                 // The constrain function just reads that field from "self" struct.
                                 // However, we already inserted these reads at the beginning of the
                                 // constrain function in `gen_template_llzk`.
-                                let signal_type = template.get_signal_type(var)?;
                                 rhe.gen_llzk_in_template(codegen, &template.compute_only())?
                                     .and_then_same(|fc, val| {
                                         let location = codegen.location_from_meta(meta);
-                                        // Cast value to signal type if needed.
-                                        let value = fc.cast_to_expected_type_if_needed(
+                                        let value = fc.cast_signal_assignment_value(
                                             codegen,
                                             location,
                                             val,
-                                            signal_type,
+                                            template.get_signal_type(var)?,
                                         )?;
                                         // Write value to field of "self" struct.
                                         let self_val = fc.func.self_value_of_compute()?;
@@ -1473,27 +1471,21 @@ where
                     AssignOp::AssignConstraintSignal => {
                         match &access[..] {
                             [] => {
-                                let signal_type = template.get_signal_type(var)?;
                                 rhe.gen_llzk_in_template(codegen, template)?.and_then(
                                     |fc, val| {
                                         let location = codegen.location_from_meta(meta);
-                                        // Cast value to field type if needed.
-                                        let value = fc.cast_to_expected_type_if_needed(
+                                        let value = fc.cast_signal_assignment_value(
                                             codegen,
                                             location,
                                             val,
-                                            signal_type,
+                                            template.get_signal_type(var)?,
                                         )?;
                                         // Write value to field of "self" struct.
                                         let self_val = fc.func.self_value_of_compute()?;
                                         let builder =
                                             fc.builder_at_current_insertion_point(codegen.context);
                                         let write = r#struct::writem(
-                                            &builder,
-                                            location,
-                                            self_val,
-                                            var,
-                                            value,
+                                            &builder, location, self_val, var, value,
                                         )?;
                                         fc.append_op_ref_no_result(write)?;
                                         fc.block_ctx.set_named_value(var.clone(), value)
@@ -1504,12 +1496,14 @@ where
                                         // `gen_template_llzk`) and generate equality constraint
                                         // with 'val'.
                                         let signal_val = *fc.block_ctx.get_named_value(var)?;
-                                        fc.append_constrain_eq(
+                                        let location = codegen.location_from_meta(meta);
+                                        let val = fc.narrow_concrete_signal_value(
                                             codegen,
-                                            codegen.location_from_meta(meta),
-                                            signal_val,
+                                            location,
                                             val,
-                                        )
+                                            signal_val.r#type(),
+                                        )?;
+                                        fc.append_constrain_eq(codegen, location, signal_val, val)
                                     },
                                 )
                             }
@@ -1527,16 +1521,20 @@ where
                                 },
                                 |fc, rhv| {
                                     let location = codegen.location_from_meta(meta);
-                                    Lvalue::new(var, Root::Signal, access)
-                                        .get_value(
-                                            codegen,
-                                            fc,
-                                            template,
-                                            location,
-                                            None,
-                                            &|lhv: Value<'ctx,'val>, fc: &mut FunctionContext<'_, 'ctx,'_,'_,'val>| {
+                                    Lvalue::new(var, Root::Signal, access).get_value(
+                                        codegen,
+                                        fc,
+                                        template,
+                                        location,
+                                        None,
+                                        &|lhv: Value<'ctx, 'val>,
+                                          fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>| {
+                                            let rhv = fc.narrow_concrete_signal_value(
+                                                codegen, location, rhv, lhv.r#type(),
+                                            )?;
                                             fc.append_constrain_eq(codegen, location, lhv, rhv)
-                                        })
+                                        },
+                                    )
                                 },
                             ),
                         }

@@ -111,7 +111,7 @@ component main = Main();
 // CHECK-NEXT:          %[[VAL_34:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_33]], @params = %[[VAL_32]] }  : <[@count: index, @comp: !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[3]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          pod.write %[[VAL_29]][@inA] = %[[VAL_24]] : <[@inA: !array.type<8,5,3 x !felt.type<"bn128">>, @inB: !array.type<8,3 x !felt.type<"bn128">>]>, !array.type<8,5,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_35:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_34]][@count] : <[@count: index, @comp: !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[3]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, index
-// CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
+// CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = arith.constant 120 : index
 // CHECK-NEXT:          %[[VAL_37:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_35]], %[[VAL_36]] : index
 // CHECK-NEXT:          pod.write %[[VAL_34]][@count] = %[[VAL_37]] : <[@count: index, @comp: !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[3]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, index
 // CHECK-NEXT:          %[[VAL_38:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
@@ -125,7 +125,7 @@ component main = Main();
 // CHECK-NEXT:          }
 // CHECK-NEXT:          pod.write %[[VAL_29]][@inB] = %[[VAL_25]] : <[@inA: !array.type<8,5,3 x !felt.type<"bn128">>, @inB: !array.type<8,3 x !felt.type<"bn128">>]>, !array.type<8,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_44:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_34]][@count] : <[@count: index, @comp: !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[3]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, index
-// CHECK-NEXT:          %[[VAL_45:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
+// CHECK-NEXT:          %[[VAL_45:[0-9a-zA-Z_\.]+]] = arith.constant 24 : index
 // CHECK-NEXT:          %[[VAL_46:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_44]], %[[VAL_45]] : index
 // CHECK-NEXT:          pod.write %[[VAL_34]][@count] = %[[VAL_46]] : <[@count: index, @comp: !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[3]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, index
 // CHECK-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
@@ -150,7 +150,7 @@ component main = Main();
 // CHECK-NEXT:          %[[VAL_61:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_60]], @params = %[[VAL_59]] }  : <[@count: index, @comp: !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[2]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
 // CHECK-NEXT:          pod.write %[[VAL_30]][@inA] = %[[VAL_26]] : <[@inA: !array.type<8,5,2 x !felt.type<"bn128">>, @inB: !array.type<8,2 x !felt.type<"bn128">>]>, !array.type<8,5,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_62:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_61]][@count] : <[@count: index, @comp: !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[2]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, index
-// CHECK-NEXT:          %[[VAL_63:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
+// CHECK-NEXT:          %[[VAL_63:[0-9a-zA-Z_\.]+]] = arith.constant 80 : index
 // CHECK-NEXT:          %[[VAL_64:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_62]], %[[VAL_63]] : index
 // CHECK-NEXT:          pod.write %[[VAL_61]][@count] = %[[VAL_64]] : <[@count: index, @comp: !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[2]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, index
 // CHECK-NEXT:          %[[VAL_65:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
@@ -164,7 +164,7 @@ component main = Main();
 // CHECK-NEXT:          }
 // CHECK-NEXT:          pod.write %[[VAL_30]][@inB] = %[[VAL_27]] : <[@inA: !array.type<8,5,2 x !felt.type<"bn128">>, @inB: !array.type<8,2 x !felt.type<"bn128">>]>, !array.type<8,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          %[[VAL_71:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_61]][@count] : <[@count: index, @comp: !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[2]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, index
-// CHECK-NEXT:          %[[VAL_72:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
+// CHECK-NEXT:          %[[VAL_72:[0-9a-zA-Z_\.]+]] = arith.constant 16 : index
 // CHECK-NEXT:          %[[VAL_73:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_71]], %[[VAL_72]] : index
 // CHECK-NEXT:          pod.write %[[VAL_61]][@count] = %[[VAL_73]] : <[@count: index, @comp: !struct.type<@CallDiffTypeTest::@CallDiffTypeTest<[2]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>, index
 // CHECK-NEXT:          %[[VAL_74:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index

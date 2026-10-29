@@ -50,7 +50,7 @@ use crate::{
     shared::{
         append_tail, is_bool, is_index, new_array_type, new_region_and_block, no_results,
         replace_uses_with_new_block_argument, single_result_as_value, ArrayDimExprKind,
-        ArrayDimension, ExprToPolyBinding, ExprToPolyBindingOutput, LlzkCodegen,
+        ArrayDimension, ExprToPolyBinding, ExprToPolyBindingOutput, LlzkCodegen, TypeSizeExpr,
     },
     subcmp::names::COUNT,
 };
@@ -1237,23 +1237,124 @@ where
         } else if is_bool(expected) {
             self.cast_to_bool_if_needed(codegen, location, val)
         } else {
+            if let (Ok(expected_array), Ok(given_array)) =
+                (ArrayType::try_from(expected), ArrayType::try_from(val.r#type()))
+            {
+                // Match Circom's diagnostic for the first differing concrete dimension.
+                // Negative (wildcard) and symbolic dimensions are not known mismatches.
+                for (expected_dim, given_dim) in zip(expected_array.dims(), given_array.dims()) {
+                    if let (Ok(expected_dim), Ok(given_dim)) = (
+                        IntegerAttribute::try_from(expected_dim),
+                        IntegerAttribute::try_from(given_dim),
+                    ) {
+                        let (expected_len, given_len) = (expected_dim.value(), given_dim.value());
+                        if expected_len >= 0 && given_len >= 0 && expected_len != given_len {
+                            anyhow::bail!(
+                                "Typing error found: mismatched dimensions.\n Expected length: {}, given {}",
+                                expected_len,
+                                given_len
+                            );
+                        }
+                    }
+                }
+            }
             anyhow::bail!(
-                "Unsupported cast to 'expected' type '{expected}' from value type {}",
+                "Unsupported cast to 'expected' type '{expected}' from value type '{}'",
                 val.r#type()
             )
         }
     }
 
-    /// Copy the values in the source array into the destination array. Assumes both arrays have
-    /// unifiable element types the same number of dimensions, but each dimension may be wider or
-    /// narrower than the destination type.
-    ///
-    /// General overview: create a N-dimensional nested `for` loop to copy. If the indices are
-    /// out-of-bounds, then the array is default-filled. Otherwise, copy elements into destination.
+    /// Return the array types when assignment can copy their overlapping elements.
+    /// Wildcard dimensions must be inferred through casts or constraints, not used as copy bounds.
+    fn array_assignment_types(
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        dst: Type<'ctx>,
+        src: Type<'ctx>,
+    ) -> Option<(ArrayType<'ctx>, ArrayType<'ctx>)> {
+        let dst = ArrayType::try_from(dst).ok()?;
+        let src = ArrayType::try_from(src).ok()?;
+        let wildcard = codegen.wildcard_attr();
+        (dst.num_dims() == src.num_dims()
+            && types_unify(dst.element_type(), src.element_type())
+            && !dst.dims().contains(&wildcard)
+            && !src.dims().contains(&wildcard))
+        .then_some((dst, src))
+    }
+
+    /// Convert a signal assignment value, accounting for widened concrete function returns.
+    /// Signal assignment itself requires equal dimensions, unlike variable assignment.
+    pub fn cast_signal_assignment_value(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+        expected: Type<'ctx>,
+    ) -> Result<Value<'ctx, 'val>>
+    where
+        'val: 'blk,
+    {
+        let val = self.narrow_concrete_signal_value(codegen, location, val, expected)?;
+        self.cast_to_expected_type_if_needed(codegen, location, val, expected)
+    }
+
+    /// Remove padding introduced by concrete function return-type unification. Circom has
+    /// already checked the actual signal assignment dimensions before producing the VCP.
+    /// Only narrow statically sized arrays that cover the entire destination and have at least
+    /// one larger dimension; never preserve an unassigned tail or copy symbolic dimensions.
+    /// Equal shapes retain their normal type unification and casts.
+    pub fn narrow_concrete_signal_value(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        location: Location<'ctx>,
+        val: Value<'ctx, 'val>,
+        expected: Type<'ctx>,
+    ) -> Result<Value<'ctx, 'val>>
+    where
+        'val: 'blk,
+    {
+        if codegen.program.is_concrete() && val.r#type() != expected {
+            if let Some((dst_ty, src_ty)) =
+                Self::array_assignment_types(codegen, expected, val.r#type())
+            {
+                let mut needs_narrowing = false;
+                for (src, dst) in zip(src_ty.dims(), dst_ty.dims()) {
+                    let (Ok(src), Ok(dst)) =
+                        (IntegerAttribute::try_from(src), IntegerAttribute::try_from(dst))
+                    else {
+                        return Ok(val);
+                    };
+                    if dst.value() < 0 || src.value() < dst.value() {
+                        return Ok(val);
+                    }
+                    needs_narrowing |= src.value() > dst.value();
+                }
+                if !needs_narrowing {
+                    return Ok(val);
+                }
+                // Every destination element is written, including in the constrain function.
+                // The RHS must not depend on the signal value it is being constrained against.
+                let builder = self.builder_at_current_insertion_point(codegen.context);
+                let dst = self.append_op_ref_unnamed_result(codegen.new_array_new_op(
+                    &builder,
+                    location,
+                    dst_ty,
+                    ArrayCtor::Empty,
+                ))?;
+                self.copy_into_array(codegen, location, dst, dst_ty, val, src_ty)?;
+                return Ok(dst);
+            }
+        }
+        Ok(val)
+    }
+
+    /// Copy overlapping elements into the destination using a loop per dimension, leaving
+    /// elements beyond the source bounds unchanged. Both arrays must have the same rank and
+    /// unifiable element types, but their dimension sizes may differ.
     fn copy_into_array(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
-        meta: &Meta,
+        location: Location<'ctx>,
         dst: Value<'ctx, 'val>,
         dst_ty: ArrayType<'ctx>,
         src: Value<'ctx, 'val>,
@@ -1275,8 +1376,6 @@ where
         let src_elem_ty = src_ty.element_type();
         let dst_elem_ty = dst_ty.element_type();
         assert!(types_unify(src_elem_ty, dst_elem_ty));
-
-        let location = codegen.location_from_meta(meta);
 
         let bounds = zip(src_ty.dims(), dst_ty.dims())
             .map(|(src_dim, dest_dim)| {
@@ -1329,7 +1428,7 @@ where
     /// Perform a direct assignment of `rvalue` to `var`. In many cases this is handled
     /// by updating the variable name map to have `var` -> `rvalue`, but special handling
     /// is required during array assignments where `rvalue` is a different width than the
-    /// destination array (this requires 0-filling or truncation).
+    /// destination array (this requires copying the overlapping elements).
     pub fn handle_simple_assignment(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
@@ -1355,25 +1454,18 @@ where
             // Replace existing value reference to rvalue
             return self.block_ctx.set_named_value(var.clone(), rvalue);
         }
-        let existing_arr_ty = ArrayType::try_from(existing.r#type());
-        let rvalue_arr_ty = ArrayType::try_from(rvalue.r#type());
-        if let (Ok(existing_arr_ty), Ok(rvalue_arr_ty)) = (existing_arr_ty, rvalue_arr_ty) {
-            // If the arrays have the same number of dimensions and unifiable element type,
-            // then copy values from the `rvalue` array into the existing array.
-            if existing_arr_ty.num_dims() == rvalue_arr_ty.num_dims()
-                && types_unify(existing_arr_ty.element_type(), rvalue_arr_ty.element_type())
-            {
-                // Copy values from the rvalue into the existing array.
-                // No need to update named value here.
-                return self.copy_into_array(
-                    codegen,
-                    meta,
-                    *existing,
-                    existing_arr_ty,
-                    rvalue,
-                    rvalue_arr_ty,
-                );
-            }
+        if let Some((existing_arr_ty, rvalue_arr_ty)) =
+            Self::array_assignment_types(codegen, existing.r#type(), rvalue.r#type())
+        {
+            // Copy into the existing array without changing the named value.
+            return self.copy_into_array(
+                codegen,
+                codegen.location_from_meta(meta),
+                *existing,
+                existing_arr_ty,
+                rvalue,
+                rvalue_arr_ty,
+            );
         }
         if types_unify(existing.r#type(), rvalue.r#type()) {
             let location = codegen.location_from_meta(meta);
@@ -2073,7 +2165,7 @@ where
         self.gen_simple_scf_for(codegen, location, start, step, end, body_fn)
     }
 
-    /// Generates IR for decreasing the counter of a subcomponent.
+    /// Decrease a subcomponent's counter by the flattened size of the assigned destination.
     ///
     /// Returns a [`Value`] with the updated counter.
     pub fn gen_subcmp_decrease_counter(
@@ -2081,7 +2173,7 @@ where
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
         subcmp_memory: Value<'ctx, 'val>,
-        amount: u32,
+        amount: TypeSizeExpr<'ctx>,
     ) -> Result<Value<'ctx, 'val>> {
         let builder = self.builder_at_current_insertion_point(codegen.context);
         let counter = self.append_op_ref_unnamed_result(codegen.new_pod_read_op(
@@ -2090,8 +2182,8 @@ where
             COUNT,
             location,
         )?)?;
-        let one = self.append_op_unnamed_result(codegen.new_index_const_op(amount, location))?;
-        let counter = self.append_op_unnamed_result(arith::subi(counter, one, location))?;
+        let amount = amount.to_index_value(codegen, self, location, None)?;
+        let counter = self.append_op_unnamed_result(arith::subi(counter, amount, location))?;
         let builder = self.builder_at_current_insertion_point(codegen.context);
         self.append_op_ref_no_result(codegen.new_pod_write_op(
             &builder,
