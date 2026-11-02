@@ -45,6 +45,10 @@ pub trait WireLike: Clone + std::fmt::Debug {
 /// A trait that allows common handling of the structs used to represent a circom
 /// template at different stages in the compilation process.
 pub trait TemplateLike: std::fmt::Debug {
+    /// Completed execution-time tags, separate from signal storage.
+    fn resolved_tags(&self) -> HashMap<Vec<String>, BigInt> {
+        HashMap::new()
+    }
     /// The type used to represent wires.
     type WireDataType: WireLike;
 
@@ -181,6 +185,9 @@ impl WireLike for WireData {
 }
 
 impl TemplateLike for TemplateInstance {
+    fn resolved_tags(&self) -> HashMap<Vec<String>, BigInt> {
+        self.signals_to_tags.clone()
+    }
     type WireDataType = Wire;
 
     fn get_location<'ctx>(
@@ -273,10 +280,10 @@ impl TemplateLike for TemplateInstance {
                     &bus.name,
                     location,
                     codegen.type_from_dimension_consts(
-                        codegen.struct_type(&bus.name).into(),
+                        codegen.concrete_bus_type(bus.bus_id)?.into(),
                         &bus.lengths,
                     )?,
-                    false,
+                    true,
                 )?,
             }
         }

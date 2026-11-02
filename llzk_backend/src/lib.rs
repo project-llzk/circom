@@ -10,6 +10,8 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::useless_conversion)]
 
+mod bus;
+mod bus_entry;
 mod cleanup_return_tvar;
 mod codegen;
 mod function;
@@ -17,6 +19,7 @@ mod function_ext;
 mod gen_context;
 mod module;
 mod program_ext;
+mod tags;
 #[macro_use]
 mod shared;
 mod lvalue;

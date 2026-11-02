@@ -14,6 +14,7 @@ use num_traits::ToPrimitive;
 use program_structure::ast::Expression;
 
 pub use crate::shared::LlzkConfig;
+use crate::template_ext::{TemplateLike, WireLike};
 use crate::{module::GenerateLLZKInModule, program_ext::ProgramLike, shared, shared::LlzkCodegen};
 
 /// Converts the given big unsigned integer into parts of 64 bit long in least significant order.
@@ -72,6 +73,17 @@ fn new_llzk_module<'ctx>(
     prime: &BigUint,
 ) -> Result<Module<'ctx>> {
     let main_info = program.get_main_component_info();
+    let template = program.get_template_data(&main_info.name);
+    let bus_interface = template
+        .get_inputs()
+        .values()
+        .chain(template.get_outputs().values())
+        .any(|w| matches!(w.get_type(), program_structure::wire_data::WireType::Bus(_)));
+    let main_symbol = if bus_interface {
+        llzk::prelude::SymbolRefAttribute::new_from_str(context, &main_info.name, &["$bus_entry"])
+    } else {
+        shared::double_ref_sym(context, &main_info.name)
+    };
     let params = prepare_main_component_params(main_info.params, prime, context)?;
 
     // Create the LLZK module, using the location of the main component declaration expression.
@@ -80,10 +92,7 @@ fn new_llzk_module<'ctx>(
     let mut ret = LlzkModuleBuilder::create(location, Some("circom"));
     ret.as_operation_mut().set_attribute(
         MAIN_ATTR_NAME.as_ref(),
-        TypeAttribute::new(
-            StructType::new(shared::double_ref_sym(context, main_info.name), &params).into(),
-        )
-        .into(),
+        TypeAttribute::new(StructType::new(main_symbol, &params).into()).into(),
     );
     Ok(ret)
 }
@@ -91,6 +100,20 @@ fn new_llzk_module<'ctx>(
 /// Generate LLZK IR from the given `ProgramArchive` and write it to a file with the given filename.
 #[allow(clippy::result_unit_err)]
 pub fn generate_llzk(program: &impl ProgramLike, config: LlzkConfig) -> Result<(), ()> {
+    if let Some(program) = program.symbolic_program() {
+        if program.buses.is_empty() {
+            return generate_prepared_llzk(program, config);
+        }
+        let prepared = crate::tags::prepare(program, &config.prime).map_err(|err| {
+            eprintln!("{} {err:#}", Color::Red.paint("Failed to analyze compile-time metadata:"));
+        })?;
+        return generate_prepared_llzk(&prepared, config);
+    }
+    generate_prepared_llzk(program, config)
+}
+
+/// Generate IR after symbolic metadata has been resolved.
+fn generate_prepared_llzk(program: &impl ProgramLike, config: LlzkConfig) -> Result<(), ()> {
     let mut ctx = LlzkContext::new();
     ctx.set_field(config.prime_str.as_str());
     let module = new_llzk_module(&ctx, program, &config.prime).map_err(|err| {

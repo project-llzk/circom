@@ -27,3 +27,4 @@ template A(){
 }
 
 component main = A();
+

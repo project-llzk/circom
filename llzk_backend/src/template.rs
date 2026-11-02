@@ -1365,6 +1365,11 @@ where
                 )
             }
             Statement::Substitution { meta, var, access, op, rhe } => {
+                // Bus constructors describe storage already allocated from the declaration.
+                // They never participate in the component compute/constrain lifecycle.
+                if crate::bus::is_constructor(rhe) {
+                    return Ok(());
+                }
                 // Since there's no simple assignment in LLZK, just update the mapped Value
                 // which essentially propagates the assignment.
                 match op {

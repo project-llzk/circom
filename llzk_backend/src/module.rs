@@ -350,15 +350,21 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         codegen.felt_type().into(),
                         true,
                     ),
-                    VariableType::Bus(bus_name, signal_type, ..) => self.visit_signal_or_bus(
-                        codegen,
-                        signal_type,
-                        name,
-                        meta,
-                        dimensions,
-                        codegen.struct_type(bus_name).into(),
-                        false,
-                    ),
+                    VariableType::Bus(bus_name, signal_type, ..) => {
+                        let args =
+                            crate::bus::constructor(codegen.current_body().unwrap_or(&[]), name)
+                                .map_or(&[][..], |(_, args)| args);
+                        let ty = crate::bus::generic_type(codegen, self, bus_name, args)?;
+                        self.visit_signal_or_bus(
+                            codegen,
+                            signal_type,
+                            name,
+                            meta,
+                            dimensions,
+                            ty.into(),
+                            true,
+                        )
+                    }
                     VariableType::Var => {
                         // Create `llzk.nondet` of the appropriate type. When the actual assignment
                         // is processed later, this is replaced with the appropriate value.
@@ -389,7 +395,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         // components unless they appear within a loop. In that case, the anonymous
                         // component is just refactored to the top level, outside the loop.
                         // See: circom/tests/circom_doc_examples/34.circom
-                        todo!("handle AnonymousComponent declaration")
+                        self.visit_component_decl(codegen, meta, name, dimensions)
                     }
                 }
             }
@@ -407,7 +413,26 @@ impl<'ctx> DeclarationInfo<'ctx> {
     ) -> Result<StructType<'ctx>> {
         match expression {
             Expression::Call { meta, id, args, .. } if meta.get_type_knowledge().is_component() => {
-                let dims = self.get_poly_bindings::<StructTemplateParamExprKind>(codegen, args)?;
+                let template = codegen.program.get_template_data(id);
+                let formals = template.get_name_of_params();
+                let mut params = Vec::new();
+                for (formal, arg) in formals.iter().zip(args) {
+                    let attr = if formal.starts_with("$layout$") {
+                        self.get_poly_bindings::<ArrayDimExprKind>(
+                            codegen,
+                            std::slice::from_ref(arg),
+                        )?
+                        .attrs()[0]
+                    } else {
+                        self.get_poly_bindings::<StructTemplateParamExprKind>(
+                            codegen,
+                            std::slice::from_ref(arg),
+                        )?
+                        .attrs()[0]
+                    };
+                    params.push(crate::shared::StructTemplateParam::new(attr));
+                }
+                let dims = crate::shared::StructTemplateParams::from(params);
                 Ok(dims.struct_type_with_concrete_params(codegen, id))
             }
             Expression::ParallelOp { rhe, .. } => {
@@ -487,6 +512,27 @@ impl<'ctx> DeclarationInfo<'ctx> {
         decl_type: Type<'ctx>,
         is_signal: bool,
     ) -> Result<()> {
+        fn dimension_symbols(ty: Type<'_>, result: &mut Vec<String>) {
+            if let Ok(array) = llzk::prelude::ArrayType::try_from(ty) {
+                for dim in array.dims() {
+                    if let Ok(symbol) = FlatSymbolRefAttribute::try_from(dim) {
+                        result.push(symbol.value().to_owned());
+                    }
+                }
+                dimension_symbols(array.element_type(), result);
+            } else if let Ok(pod) = PodType::try_from(ty) {
+                for field in pod.records() {
+                    dimension_symbols(field.r#type(), result);
+                }
+            }
+        }
+        let mut symbols = Vec::new();
+        dimension_symbols(decl_type, &mut symbols);
+        for name in symbols {
+            if let Some(restriction) = self.template_params.get_mut(&name) {
+                *restriction = Some(codegen.index_type());
+            }
+        }
         if SignalType::Input == *signal_type {
             let mut attrs: Vec<NamedAttribute<'_>> = Vec::new();
             if codegen.program.get_main_public_inputs().contains(name) {
@@ -697,10 +743,19 @@ where
     if codegen.config.verbose {
         println!("Generating LLZK for template {}", template_like.get_name());
     }
+    codegen.resolved_tags.replace(template_like.resolved_tags());
     // Collect declarations first to determine struct fields and function parameters.
     let mut declarations: DeclarationInfo<'ctx> =
         codegen.take_template_decl(template_like.get_name())?;
     let subcmps = declarations.complete(codegen)?;
+    let entry_inputs =
+        declarations.inputs.iter().map(|v| (v.name.clone(), v.type_and_loc.0)).collect::<Vec<_>>();
+    let entry_outputs = declarations
+        .struct_fields
+        .iter()
+        .filter(|v| v.public)
+        .map(|v| (v.name.clone(), v.decl_type))
+        .collect::<Vec<_>>();
     let location = template_like.get_location(codegen);
 
     // Generate list of template params for the LLZK template body.
@@ -916,7 +971,17 @@ where
     );
     template_like.gen_preamble(codegen, &template_context)?;
     template_like.get_body().gen_llzk_in_template(codegen, &template_context)?;
-    template_context.finalize(codegen)
+    template_context.finalize(codegen)?;
+    if template_like.get_name() == codegen.program.get_main_component_info().name {
+        crate::bus_entry::generate(
+            codegen,
+            new_template.into(),
+            new_struct,
+            &entry_inputs,
+            &entry_outputs,
+        )?;
+    }
+    Ok(())
 }
 
 /// Generates the prologue related to subcomponents in a template body.
@@ -1008,7 +1073,7 @@ fn collect_inputs<'ast, 'ctx>(
 }
 
 /// Returns whether a type can represent signal storage. PODs and arrays are eligible only when
-/// all of their nested leaves are felts; structs (including bus inputs) are never signals.
+/// all of their nested leaves are felts; component handles are never signals.
 fn is_signal_storage_type(r#type: Type<'_>) -> bool {
     if FeltType::try_from(r#type).is_ok() {
         true

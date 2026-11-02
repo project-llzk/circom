@@ -979,7 +979,59 @@ where
         location: Location<'ctx>,
         lhs: Value<'ctx, 'val>,
         rhs: Value<'ctx, 'val>,
-    ) -> Result<()> {
+    ) -> Result<()>
+    where
+        'val: 'blk,
+    {
+        if let Ok(pod) = PodType::try_from(lhs.r#type()) {
+            let rhs = self.cast_to_expected_type_if_needed(codegen, location, rhs, lhs.r#type())?;
+            for field in pod.records() {
+                let field_name = field.name();
+                let name = field_name.as_string_ref();
+                let builder = self.builder_at_current_insertion_point(codegen.context);
+                let l = self.append_op_ref_unnamed_result(codegen.new_pod_read_op(
+                    &builder,
+                    lhs,
+                    name.as_str()?,
+                    location,
+                )?)?;
+                let builder = self.builder_at_current_insertion_point(codegen.context);
+                let r = self.append_op_ref_unnamed_result(codegen.new_pod_read_op(
+                    &builder,
+                    rhs,
+                    name.as_str()?,
+                    location,
+                )?)?;
+                self.append_constrain_eq(codegen, location, l, r)?;
+            }
+            return Ok(());
+        }
+        if let Ok(array) = ArrayType::try_from(lhs.r#type()) {
+            if PodType::try_from(array.element_type()).is_ok() {
+                let rhs =
+                    self.cast_to_expected_type_if_needed(codegen, location, rhs, lhs.r#type())?;
+                let lengths = (0..array.num_dims())
+                    .map(|n| {
+                        let dimension = array.dims()[usize::try_from(n)?];
+                        if IntegerAttribute::try_from(dimension).is_ok_and(|n| n.value() >= 0)
+                            || FlatSymbolRefAttribute::try_from(dimension).is_ok()
+                        {
+                            return self.array_dim_attr_to_idx_val(codegen, location, dimension);
+                        }
+                        let dim = self.append_op_unnamed_result(
+                            codegen.new_index_const_op(i64::try_from(n)?, location),
+                        )?;
+                        let builder = self.builder_at_current_insertion_point(codegen.context);
+                        self.append_op_ref_unnamed_result(array::len(&builder, location, lhs, dim))
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                return self.gen_loop_nest(codegen, location, &lengths, |bg, indices| {
+                    let l = bg.append_array_read(codegen, lhs, indices, location, None)?;
+                    let r = bg.append_array_read(codegen, rhs, indices, location, None)?;
+                    bg.append_constrain_eq(codegen, location, l, r)
+                });
+            }
+        }
         let (lhs, rhs) = self.unify_constrain_eq_types(codegen, location, lhs, rhs)?;
         let builder = self.builder_at_current_insertion_point(codegen.context);
         let op = constrain::eq(&builder, location, lhs, rhs);
@@ -1259,7 +1311,7 @@ where
                 }
             }
             anyhow::bail!(
-                "Unsupported cast to 'expected' type '{expected}' from value type '{}'",
+                "Unsupported cast at {location} to 'expected' type '{expected}' from value type '{}'",
                 val.r#type()
             )
         }
@@ -2910,6 +2962,18 @@ where
                 )
             }
             Expression::Variable { meta, name, access } => {
+                let mut tag_path = vec![name.clone()];
+                tag_path.extend(access.iter().filter_map(|a| match a {
+                    program_structure::ast::Access::ComponentAccess(field) => Some(field.clone()),
+                    _ => None,
+                }));
+                if let Some(value) = codegen.resolved_tags.borrow().get(&tag_path) {
+                    let location = codegen.location_from_meta(meta);
+                    let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                    return block_gen.append_op_ref_unnamed_result(
+                        codegen.new_felt_const_op(&builder, value, location)?,
+                    );
+                }
                 let lvalue = Lvalue::new(
                     name,
                     if info.subcmp_info.is_subcmp(name) { Root::Signal } else { Root::Var },
@@ -3092,7 +3156,14 @@ where
             }
             #[allow(unused_variables)] // TODO: TEMP
             Expression::BusCall { meta, id, args } => {
-                todo!("Handle BusCall expression")
+                let ty = crate::bus::generic_type(codegen, block_gen, id, args)?;
+                let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                block_gen.append_op_ref_unnamed_result(pod::new(
+                    &builder,
+                    codegen.location_from_meta(meta),
+                    &[],
+                    Some(ty),
+                ))
             }
             Expression::AnonymousComp { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
             Expression::Tuple { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
