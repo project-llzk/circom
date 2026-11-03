@@ -30,4 +30,5 @@ template Main() {
 component main = Main();
 
 // CONCRETE: Component children is created but not all its inputs are initialized
+
 // TEMPLATED: component children[1] requires input tag in.x.size

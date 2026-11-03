@@ -12,11 +12,12 @@ bus B() { signal x; }
 template Main() {
     A() input in;
     B() output out;
+    // CONCRETE: nominal_mismatch.circom":[[@LINE+2]]:{{[0-9]+}}
+    // TEMPLATED: nominal_mismatch.circom":[[@LINE+1]]:{{[0-9]+}}
     out <== in;
 }
 component main = Main();
 
-// CONCRETE-DAG: Expected same type of bus but found different types.
-// CONCRETE-DAG: nominal_mismatch.circom{{.*}}:{{[0-9]+}}:
-// TEMPLATED-DAG: Expected same type of bus but found different types.
-// TEMPLATED-DAG: nominal_mismatch.circom{{.*}}:{{[0-9]+}}:
+// CONCRETE: Expected same type of bus but found different types.
+
+// TEMPLATED: Expected same type of bus but found different types.

@@ -34,4 +34,5 @@ template Main() {
 component main = Main();
 
 // CONCRETE: Missing tag: input signal in requires tag size
+
 // TEMPLATED: component children[0] requires input tag in.size

@@ -25,12 +25,18 @@ component main = Main();
 // CHECK: function.def @constrain(
 // CHECK-NOT: constrain.eq
 // CHECK-NOT: function.return
-// CHECK: struct.readm {{.*}}[@a]
-// CHECK-NOT: constrain.eq
-// CHECK-NOT: function.return
-// CHECK: struct.readm {{.*}}[@b]
-// CHECK-NOT: constrain.eq
-// CHECK-NOT: function.return
-// CHECK: constrain.eq
+// CHECK: %[[A:[a-zA-Z0-9_.-]+]] = struct.readm %[[SELF:[a-zA-Z0-9_.-]+]][@a]
+// CHECK-NEXT: %[[B:[a-zA-Z0-9_.-]+]] = struct.readm %[[SELF]][@b]
+// CHECK-NEXT: %[[AP:[a-zA-Z0-9_.-]+]] = pod.read %[[A]][@points]
+// CHECK-NEXT: %[[ZERO:[a-zA-Z0-9_.-]+]] = felt.const 0 :
+// CHECK-NEXT: %[[I:[a-zA-Z0-9_.-]+]] = cast.toindex %[[ZERO]]
+// CHECK-NEXT: %[[A0:[a-zA-Z0-9_.-]+]] = array.read %[[AP]][%[[I]]]
+// CHECK-NEXT: %[[X:[a-zA-Z0-9_.-]+]] = pod.read %[[A0]][@x]
+// CHECK-NEXT: %[[BP:[a-zA-Z0-9_.-]+]] = pod.read %[[B]][@points]
+// CHECK-NEXT: %[[ONE:[a-zA-Z0-9_.-]+]] = felt.const 1 :
+// CHECK-NEXT: %[[J:[a-zA-Z0-9_.-]+]] = cast.toindex %[[ONE]]
+// CHECK-NEXT: %[[B1:[a-zA-Z0-9_.-]+]] = array.read %[[BP]][%[[J]]]
+// CHECK-NEXT: %[[Y:[a-zA-Z0-9_.-]+]] = pod.read %[[B1]][@y]
+// CHECK-NEXT: constrain.eq %[[X]], %[[Y]]
 // CHECK-NOT: constrain.eq
 // CHECK: function.return

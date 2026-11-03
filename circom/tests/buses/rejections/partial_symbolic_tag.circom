@@ -20,14 +20,12 @@ template Main(N) {
     s <== 3;
     Tagged() a[N];
     a[0].x <== s;
+    // TEMPLATED: partial_symbolic_tag.circom:[[@LINE+1]]:{{[0-9]+}}: tag a.x.size read before all array elements are initialized
     Vec(a.x.size) output out;
     for (var i = 0; i < a.x.size; i++) { out.x[i] <== s; }
 }
 
 component main = Main(2);
 
-// CONCRETE-DAG: Tag value has not been previously initialized
-// CONCRETE-DAG: partial_symbolic_tag.circom{{.*}}:{{[0-9]+}}:
-
-// TEMPLATED-DAG: tag a.x.size read before all array elements are initialized
-// TEMPLATED-DAG: partial_symbolic_tag.circom{{.*}}:{{[0-9]+}}:
+// CONCRETE: Tag value has not been previously initialized
+// CONCRETE: partial_symbolic_tag.circom{{.*}}:{{[0-9]+}}:

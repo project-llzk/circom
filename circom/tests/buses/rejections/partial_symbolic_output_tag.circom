@@ -23,14 +23,12 @@ template Partial(N) {
 
 template Main() {
     component child = Partial(2);
+    // TEMPLATED: partial_symbolic_output_tag.circom:[[@LINE+1]]:{{[0-9]+}}: tag child.out.x.size read before all array elements are initialized
     signal output out[child.out.x.size];
     for (var i = 0; i < child.out.x.size; i++) { out[i] <== child.out.x[0]; }
 }
 
 component main = Main();
 
-// CONCRETE-DAG: Tag value has not been previously initialized
-// CONCRETE-DAG: partial_symbolic_output_tag.circom{{.*}}:{{[0-9]+}}:
-
-// TEMPLATED-DAG: tag child.out.x.size read before all array elements are initialized
-// TEMPLATED-DAG: partial_symbolic_output_tag.circom{{.*}}:{{[0-9]+}}:
+// CONCRETE: Tag value has not been previously initialized
+// CONCRETE: partial_symbolic_output_tag.circom{{.*}}:{{[0-9]+}}:

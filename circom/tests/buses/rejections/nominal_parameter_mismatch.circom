@@ -11,11 +11,10 @@ bus Point(N) { signal x; }
 template Main() {
     Point(2) input in;
     Point(3) output out;
+    // TEMPLATED: nominal_parameter_mismatch.circom:[[@LINE+1]]:{{[0-9]+}}: incompatible parameters for bus Point: 3 and 2
     out <== in;
 }
 component main = Main();
 
-// CONCRETE-DAG: trying to assign a different instance of the bus
-// CONCRETE-DAG: nominal_parameter_mismatch.circom{{.*}}:{{[0-9]+}}:
-// TEMPLATED-DAG: incompatible parameters for bus Point: 3 and 2
-// TEMPLATED-DAG: nominal_parameter_mismatch.circom{{.*}}:{{[0-9]+}}:
+// CONCRETE: trying to assign a different instance of the bus
+// CONCRETE: nominal_parameter_mismatch.circom{{.*}}:{{[0-9]+}}:

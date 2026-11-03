@@ -12,11 +12,10 @@ template Main() {
     signal input in;
     Point() a;
     a.x <== in;
+    // TEMPLATED: late_tag.circom:[[@LINE+1]]:{{[0-9]+}}: tag a.x.size assigned after signal initialization
     a.x.size = 3;
 }
 component main = Main();
 
-// CONCRETE-DAG: tags cannot be assigned to a signal already initialized
-// CONCRETE-DAG: late_tag.circom{{.*}}:{{[0-9]+}}:
-// TEMPLATED-DAG: tag a.x.size assigned after signal initialization
-// TEMPLATED-DAG: late_tag.circom{{.*}}:{{[0-9]+}}:
+// CONCRETE: tags cannot be assigned to a signal already initialized
+// CONCRETE: late_tag.circom{{.*}}:{{[0-9]+}}:

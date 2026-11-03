@@ -15,6 +15,7 @@ template Child() {
 }
 template Main() {
     Point() input in;
+    // TEMPLATED: missing_tag.circom:[[@LINE+1]]:{{[0-9]+}}: component child requires input tag in.binary
     component child = Child();
     child.in <== in;
     signal output out;
@@ -22,7 +23,5 @@ template Main() {
 }
 component main = Main();
 
-// CONCRETE-DAG: input signal in requires tag binary
-// CONCRETE-DAG: missing_tag.circom{{.*}}:{{[0-9]+}}:
-// TEMPLATED-DAG: component child requires input tag in.binary
-// TEMPLATED-DAG: missing_tag.circom{{.*}}:{{[0-9]+}}:
+// CONCRETE: input signal in requires tag binary
+// CONCRETE: missing_tag.circom{{.*}}:{{[0-9]+}}:

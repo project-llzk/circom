@@ -21,13 +21,11 @@ template Main(CHOOSE) {
     else { bound = 2; }
     for (var i = 0; i < bound; i++) { a.x[i] <== s; }
     signal output out;
+    // TEMPLATED: branch_constants_divergent.circom:[[@LINE+1]]:{{[0-9]+}}: tag a.x.size read before all array elements are initialized
     out <== a.x.size;
 }
 
 component main = Main(1);
 
-// CONCRETE-DAG: Tag value has not been previously initialized
-// CONCRETE-DAG: branch_constants_divergent.circom{{.*}}:{{[0-9]+}}:
-
-// TEMPLATED-DAG: tag a.x.size read before all array elements are initialized
-// TEMPLATED-DAG: branch_constants_divergent.circom{{.*}}:{{[0-9]+}}:
+// CONCRETE: Tag value has not been previously initialized
+// CONCRETE: branch_constants_divergent.circom{{.*}}:{{[0-9]+}}:

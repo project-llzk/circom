@@ -23,14 +23,12 @@ template Main(CHOOSE) {
         out <== 0;
     } else {
         for (var i = 0; i < bound; i++) { a.x[i] <== s; }
+        // TEMPLATED: branch_constants_else_state.circom:[[@LINE+1]]:{{[0-9]+}}: tag a.x.size read before all array elements are initialized
         out <== a.x.size;
     }
 }
 
 component main = Main(0);
 
-// CONCRETE-DAG: Tag value has not been previously initialized
-// CONCRETE-DAG: branch_constants_else_state.circom{{.*}}:{{[0-9]+}}:
-
-// TEMPLATED-DAG: tag a.x.size read before all array elements are initialized
-// TEMPLATED-DAG: branch_constants_else_state.circom{{.*}}:{{[0-9]+}}:
+// CONCRETE: Tag value has not been previously initialized
+// CONCRETE: branch_constants_else_state.circom{{.*}}:{{[0-9]+}}:

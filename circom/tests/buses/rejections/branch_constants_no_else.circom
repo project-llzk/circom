@@ -20,13 +20,11 @@ template Main(CHOOSE) {
     if (CHOOSE) { bound = 2; }
     for (var i = 0; i < bound; i++) { a.x[i] <== s; }
     signal output out;
+    // TEMPLATED: branch_constants_no_else.circom:[[@LINE+1]]:{{[0-9]+}}: tag a.x.size read before all array elements are initialized
     out <== a.x.size;
 }
 
 component main = Main(0);
 
-// CONCRETE-DAG: Tag value has not been previously initialized
-// CONCRETE-DAG: branch_constants_no_else.circom{{.*}}:{{[0-9]+}}:
-
-// TEMPLATED-DAG: tag a.x.size read before all array elements are initialized
-// TEMPLATED-DAG: branch_constants_no_else.circom{{.*}}:{{[0-9]+}}:
+// CONCRETE: Tag value has not been previously initialized
+// CONCRETE: branch_constants_no_else.circom{{.*}}:{{[0-9]+}}:

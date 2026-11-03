@@ -15,11 +15,10 @@ template Main() {
     Pair() a;
     a.x[0] <== s;
     signal output out;
+    // TEMPLATED: partial_tag.circom:[[@LINE+1]]:{{[0-9]+}}: tag a.x.size read before all array elements are initialized
     out <== a.x.size;
 }
 component main = Main();
 
-// CONCRETE-DAG: Tag value has not been previously initialized
-// CONCRETE-DAG: partial_tag.circom{{.*}}:{{[0-9]+}}:
-// TEMPLATED-DAG: tag a.x.size read before all array elements are initialized
-// TEMPLATED-DAG: partial_tag.circom{{.*}}:{{[0-9]+}}:
+// CONCRETE: Tag value has not been previously initialized
+// CONCRETE: partial_tag.circom{{.*}}:{{[0-9]+}}:

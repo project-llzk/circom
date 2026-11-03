@@ -72,1631 +72,401 @@ template B(n1, n2, n3){
 
 component main = B(2, 3, 5);
 
-// CONCRETE-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@B_3::@"$bus_entry"<[]>>} {
-// CONCRETE-NEXT:    module @global {
-// CONCRETE-NEXT:      global.def const @array_const_0 : !array.type<3 x !felt.type<"bn128">> = [ 2 : <"bn128">,  3 : <"bn128">,  5 : <"bn128">]
-// CONCRETE-NEXT:    }
-// CONCRETE-NEXT:    poly.template @A_0 {
-// CONCRETE-NEXT:      struct.def @A_0 {
-// CONCRETE-NEXT:        struct.member @out : !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {llzk.pub, signal}
-// CONCRETE-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in"}) -> !struct.type<@A_0::@A_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CONCRETE-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@A_0::@A_0<[]>>
-// CONCRETE-NEXT:          struct.writem %[[VAL_1]][@out] = %[[VAL_0]] : <@A_0::@A_0<[]>>, !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          function.return %[[VAL_1]] : !struct.type<@A_0::@A_0<[]>>
-// CONCRETE-NEXT:        }
-// CONCRETE-NEXT:        function.def @constrain(%[[VAL_2:[0-9a-zA-Z_\.]+]]: !struct.type<@A_0::@A_0<[]>>, %[[VAL_3:[0-9a-zA-Z_\.]+]]: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CONCRETE-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_2]][@out] : <@A_0::@A_0<[]>>, !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CONCRETE-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CONCRETE-NEXT:          scf.for %[[VAL_8:[0-9a-zA-Z_\.]+]] = %[[VAL_6]] to %[[VAL_5]] step %[[VAL_7]] {
-// CONCRETE-NEXT:            %[[VAL_9:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_4]]{{\[}}%[[VAL_8]]] : <2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_10:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_3]]{{\[}}%[[VAL_8]]] : <2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_11:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_9]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_12:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_10]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_11]], %[[VAL_12]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_13:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_9]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_14:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_10]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_15:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_13]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_16:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_14]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_15]], %[[VAL_16]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_17:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_9]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_18:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_10]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_19:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_17]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_20:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_18]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_19]], %[[VAL_20]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_21:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_17]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_22:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_18]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_21]], %[[VAL_22]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:          }
-// CONCRETE-NEXT:          function.return
-// CONCRETE-NEXT:        }
-// CONCRETE-NEXT:      }
-// CONCRETE-NEXT:    }
-// CONCRETE-NEXT:    poly.template @A_1 {
-// CONCRETE-NEXT:      struct.def @A_1 {
-// CONCRETE-NEXT:        struct.member @out : !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {llzk.pub, signal}
-// CONCRETE-NEXT:        function.def @compute(%[[VAL_23:[0-9a-zA-Z_\.]+]]: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in"}) -> !struct.type<@A_1::@A_1<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CONCRETE-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = struct.new : <@A_1::@A_1<[]>>
-// CONCRETE-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CONCRETE-NEXT:          %[[VAL_27:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_28:[0-9a-zA-Z_\.]+]] = %[[VAL_26]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
-// CONCRETE-NEXT:            %[[VAL_29:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
-// CONCRETE-NEXT:            %[[VAL_30:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_28]], %[[VAL_29]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            scf.condition(%[[VAL_30]]) %[[VAL_28]] : !felt.type<"bn128">
-// CONCRETE-NEXT:          } do {
-// CONCRETE-NEXT:          ^bb0(%[[VAL_31:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CONCRETE-NEXT:            %[[VAL_32:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_31]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_33:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_23]]{{\[}}%[[VAL_32]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_34:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_33]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_35:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_31]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_36:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_25]]{{\[}}%[[VAL_35]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_37:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_36]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            pod.write %[[VAL_36]][@a] = %[[VAL_34]] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            array.write %[[VAL_25]]{{\[}}%[[VAL_35]]] = %[[VAL_36]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_38:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_31]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_39:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_23]]{{\[}}%[[VAL_38]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_40:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_39]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_41:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_31]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_42:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_25]]{{\[}}%[[VAL_41]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_43:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_42]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            pod.write %[[VAL_42]][@b] = %[[VAL_40]] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            array.write %[[VAL_25]]{{\[}}%[[VAL_41]]] = %[[VAL_42]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_44:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_31]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_45:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_23]]{{\[}}%[[VAL_44]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_46:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_45]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_47:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_46]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_48:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_31]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_49:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_25]]{{\[}}%[[VAL_48]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_50:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_49]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_51:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_50]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            pod.write %[[VAL_50]][@a] = %[[VAL_47]] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            pod.write %[[VAL_49]][@c] = %[[VAL_50]] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            array.write %[[VAL_25]]{{\[}}%[[VAL_48]]] = %[[VAL_49]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_52:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_31]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_53:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_23]]{{\[}}%[[VAL_52]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_54:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_53]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_55:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_54]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_56:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_31]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_57:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_25]]{{\[}}%[[VAL_56]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_58:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_57]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_59:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_58]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            pod.write %[[VAL_58]][@b] = %[[VAL_55]] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            pod.write %[[VAL_57]][@c] = %[[VAL_58]] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            array.write %[[VAL_25]]{{\[}}%[[VAL_56]]] = %[[VAL_57]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_60:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CONCRETE-NEXT:            %[[VAL_61:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_31]], %[[VAL_60]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            scf.yield %[[VAL_61]] : !felt.type<"bn128">
-// CONCRETE-NEXT:          }
-// CONCRETE-NEXT:          struct.writem %[[VAL_24]][@out] = %[[VAL_25]] : <@A_1::@A_1<[]>>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          function.return %[[VAL_24]] : !struct.type<@A_1::@A_1<[]>>
-// CONCRETE-NEXT:        }
-// CONCRETE-NEXT:        function.def @constrain(%[[VAL_62:[0-9a-zA-Z_\.]+]]: !struct.type<@A_1::@A_1<[]>>, %[[VAL_63:[0-9a-zA-Z_\.]+]]: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CONCRETE-NEXT:          %[[VAL_64:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_62]][@out] : <@A_1::@A_1<[]>>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          %[[VAL_65:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CONCRETE-NEXT:          %[[VAL_66:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_67:[0-9a-zA-Z_\.]+]] = %[[VAL_65]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
-// CONCRETE-NEXT:            %[[VAL_68:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
-// CONCRETE-NEXT:            %[[VAL_69:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_67]], %[[VAL_68]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            scf.condition(%[[VAL_69]]) %[[VAL_67]] : !felt.type<"bn128">
-// CONCRETE-NEXT:          } do {
-// CONCRETE-NEXT:          ^bb0(%[[VAL_70:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CONCRETE-NEXT:            %[[VAL_71:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_70]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_72:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_63]]{{\[}}%[[VAL_71]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_73:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_72]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_74:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_70]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_75:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_64]]{{\[}}%[[VAL_74]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_76:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_75]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_76]], %[[VAL_73]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_77:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_70]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_78:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_63]]{{\[}}%[[VAL_77]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_79:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_78]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_80:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_70]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_81:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_64]]{{\[}}%[[VAL_80]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_82:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_81]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_83:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_82]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_84:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_79]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_83]], %[[VAL_84]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_85:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_70]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_86:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_63]]{{\[}}%[[VAL_85]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_87:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_86]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_88:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_87]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_89:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_70]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_90:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_64]]{{\[}}%[[VAL_89]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_91:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_90]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_92:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_91]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_92]], %[[VAL_88]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_93:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_70]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_94:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_63]]{{\[}}%[[VAL_93]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_95:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_94]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_96:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_95]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_97:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_70]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_98:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_64]]{{\[}}%[[VAL_97]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_99:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_98]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_100:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_99]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_100]], %[[VAL_96]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_101:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CONCRETE-NEXT:            %[[VAL_102:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_70]], %[[VAL_101]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            scf.yield %[[VAL_102]] : !felt.type<"bn128">
-// CONCRETE-NEXT:          }
-// CONCRETE-NEXT:          function.return
-// CONCRETE-NEXT:        }
-// CONCRETE-NEXT:      }
-// CONCRETE-NEXT:    }
-// CONCRETE-NEXT:    poly.template @A_2 {
-// CONCRETE-NEXT:      struct.def @A_2 {
-// CONCRETE-NEXT:        struct.member @out : !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {llzk.pub, signal}
-// CONCRETE-NEXT:        function.def @compute(%[[VAL_103:[0-9a-zA-Z_\.]+]]: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in"}) -> !struct.type<@A_2::@A_2<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CONCRETE-NEXT:          %[[VAL_104:[0-9a-zA-Z_\.]+]] = struct.new : <@A_2::@A_2<[]>>
-// CONCRETE-NEXT:          %[[VAL_105:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          %[[VAL_106:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CONCRETE-NEXT:          %[[VAL_107:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_108:[0-9a-zA-Z_\.]+]] = %[[VAL_106]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
-// CONCRETE-NEXT:            %[[VAL_109:[0-9a-zA-Z_\.]+]] = felt.const  5 : <"bn128">
-// CONCRETE-NEXT:            %[[VAL_110:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_108]], %[[VAL_109]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            scf.condition(%[[VAL_110]]) %[[VAL_108]] : !felt.type<"bn128">
-// CONCRETE-NEXT:          } do {
-// CONCRETE-NEXT:          ^bb0(%[[VAL_111:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CONCRETE-NEXT:            %[[VAL_112:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_111]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_113:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_103]]{{\[}}%[[VAL_112]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_114:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_113]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_115:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_111]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_116:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_105]]{{\[}}%[[VAL_115]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_117:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_116]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            pod.write %[[VAL_116]][@a] = %[[VAL_114]] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            array.write %[[VAL_105]]{{\[}}%[[VAL_115]]] = %[[VAL_116]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_118:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_111]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_119:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_103]]{{\[}}%[[VAL_118]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_120:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_119]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_121:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_111]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_122:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_105]]{{\[}}%[[VAL_121]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_123:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_122]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            pod.write %[[VAL_122]][@b] = %[[VAL_120]] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            array.write %[[VAL_105]]{{\[}}%[[VAL_121]]] = %[[VAL_122]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_124:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_111]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_125:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_103]]{{\[}}%[[VAL_124]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_126:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_125]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_127:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_126]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_128:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_111]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_129:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_105]]{{\[}}%[[VAL_128]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_130:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_129]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_131:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_130]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            pod.write %[[VAL_130]][@a] = %[[VAL_127]] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            pod.write %[[VAL_129]][@c] = %[[VAL_130]] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            array.write %[[VAL_105]]{{\[}}%[[VAL_128]]] = %[[VAL_129]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_132:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_111]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_133:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_103]]{{\[}}%[[VAL_132]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_134:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_133]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_135:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_134]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_136:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_111]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_137:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_105]]{{\[}}%[[VAL_136]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_138:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_137]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_139:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_138]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            pod.write %[[VAL_138]][@b] = %[[VAL_135]] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            pod.write %[[VAL_137]][@c] = %[[VAL_138]] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            array.write %[[VAL_105]]{{\[}}%[[VAL_136]]] = %[[VAL_137]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_140:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CONCRETE-NEXT:            %[[VAL_141:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_111]], %[[VAL_140]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            scf.yield %[[VAL_141]] : !felt.type<"bn128">
-// CONCRETE-NEXT:          }
-// CONCRETE-NEXT:          struct.writem %[[VAL_104]][@out] = %[[VAL_105]] : <@A_2::@A_2<[]>>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          function.return %[[VAL_104]] : !struct.type<@A_2::@A_2<[]>>
-// CONCRETE-NEXT:        }
-// CONCRETE-NEXT:        function.def @constrain(%[[VAL_142:[0-9a-zA-Z_\.]+]]: !struct.type<@A_2::@A_2<[]>>, %[[VAL_143:[0-9a-zA-Z_\.]+]]: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CONCRETE-NEXT:          %[[VAL_144:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_142]][@out] : <@A_2::@A_2<[]>>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          %[[VAL_145:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CONCRETE-NEXT:          %[[VAL_146:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_147:[0-9a-zA-Z_\.]+]] = %[[VAL_145]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
-// CONCRETE-NEXT:            %[[VAL_148:[0-9a-zA-Z_\.]+]] = felt.const  5 : <"bn128">
-// CONCRETE-NEXT:            %[[VAL_149:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_147]], %[[VAL_148]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            scf.condition(%[[VAL_149]]) %[[VAL_147]] : !felt.type<"bn128">
-// CONCRETE-NEXT:          } do {
-// CONCRETE-NEXT:          ^bb0(%[[VAL_150:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CONCRETE-NEXT:            %[[VAL_151:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_150]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_152:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_143]]{{\[}}%[[VAL_151]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_153:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_152]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_154:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_150]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_155:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_144]]{{\[}}%[[VAL_154]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_156:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_155]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_156]], %[[VAL_153]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_157:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_150]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_158:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_143]]{{\[}}%[[VAL_157]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_159:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_158]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_160:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_150]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_161:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_144]]{{\[}}%[[VAL_160]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_162:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_161]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_163:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_162]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_164:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_159]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_163]], %[[VAL_164]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_165:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_150]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_166:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_143]]{{\[}}%[[VAL_165]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_167:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_166]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_168:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_167]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_169:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_150]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_170:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_144]]{{\[}}%[[VAL_169]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_171:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_170]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_172:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_171]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_172]], %[[VAL_168]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_173:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_150]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_174:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_143]]{{\[}}%[[VAL_173]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_175:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_174]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_176:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_175]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_177:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_150]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_178:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_144]]{{\[}}%[[VAL_177]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_179:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_178]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_180:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_179]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_180]], %[[VAL_176]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_181:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CONCRETE-NEXT:            %[[VAL_182:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_150]], %[[VAL_181]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            scf.yield %[[VAL_182]] : !felt.type<"bn128">
-// CONCRETE-NEXT:          }
-// CONCRETE-NEXT:          function.return
-// CONCRETE-NEXT:        }
-// CONCRETE-NEXT:      }
-// CONCRETE-NEXT:    }
-// CONCRETE-NEXT:    poly.template @B_3 {
-// CONCRETE-NEXT:      struct.def @B_3 {
-// CONCRETE-NEXT:        struct.member @out : !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {llzk.pub, signal}
-// CONCRETE-NEXT:        struct.member @aux : !pod.type<[@idx_0: !struct.type<@A_0::@A_0<[]>>, @idx_1: !struct.type<@A_1::@A_1<[]>>, @idx_2: !struct.type<@A_2::@A_2<[]>>]>
-// CONCRETE-NEXT:        struct.member @aux$inputs : !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]> {signal}
-// CONCRETE-NEXT:        function.def @compute(%[[VAL_183:[0-9a-zA-Z_\.]+]]: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in1"}, %[[VAL_184:[0-9a-zA-Z_\.]+]]: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in2"}, %[[VAL_185:[0-9a-zA-Z_\.]+]]: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in3"}) -> !struct.type<@B_3::@B_3<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CONCRETE-NEXT:          %[[VAL_186:[0-9a-zA-Z_\.]+]] = struct.new : <@B_3::@B_3<[]>>
-// CONCRETE-NEXT:          %[[VAL_187:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          %[[VAL_188:[0-9a-zA-Z_\.]+]] = pod.new : <[]>
-// CONCRETE-NEXT:          %[[VAL_189:[0-9a-zA-Z_\.]+]] = arith.constant 8 : index
-// CONCRETE-NEXT:          %[[VAL_190:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_189]], @params = %[[VAL_188]] }  : <[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:          %[[VAL_191:[0-9a-zA-Z_\.]+]] = arith.constant 12 : index
-// CONCRETE-NEXT:          %[[VAL_192:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_191]], @params = %[[VAL_188]] }  : <[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:          %[[VAL_193:[0-9a-zA-Z_\.]+]] = arith.constant 20 : index
-// CONCRETE-NEXT:          %[[VAL_194:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_193]], @params = %[[VAL_188]] }  : <[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:          %[[VAL_195:[0-9a-zA-Z_\.]+]] = pod.new { @idx_0 = %[[VAL_190]], @idx_1 = %[[VAL_192]], @idx_2 = %[[VAL_194]] }  : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>
-// CONCRETE-NEXT:          %[[VAL_196:[0-9a-zA-Z_\.]+]] = pod.new : <[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:          %[[VAL_197:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<3 x !felt.type<"bn128">>
-// CONCRETE-NEXT:          %[[VAL_198:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CONCRETE-NEXT:          %[[VAL_199:[0-9a-zA-Z_\.]+]]:3 = scf.while (%[[VAL_200:[0-9a-zA-Z_\.]+]] = %[[VAL_195]], %[[VAL_201:[0-9a-zA-Z_\.]+]] = %[[VAL_196]], %[[VAL_202:[0-9a-zA-Z_\.]+]] = %[[VAL_198]]) : (!pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !felt.type<"bn128">) -> (!pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !felt.type<"bn128">) {
-// CONCRETE-NEXT:            %[[VAL_203:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
-// CONCRETE-NEXT:            %[[VAL_204:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_202]], %[[VAL_203]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            scf.condition(%[[VAL_204]]) %[[VAL_200]], %[[VAL_201]], %[[VAL_202]] : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:          } do {
-// CONCRETE-NEXT:          ^bb0(%[[VAL_205:[0-9a-zA-Z_\.]+]]: !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, %[[VAL_206:[0-9a-zA-Z_\.]+]]: !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, %[[VAL_207:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CONCRETE-NEXT:            %[[VAL_208:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CONCRETE-NEXT:            %[[VAL_209:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_207]], %[[VAL_208]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_210:[0-9a-zA-Z_\.]+]]:2 = scf.if %[[VAL_209]] -> (!pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>) {
-// CONCRETE-NEXT:              %[[VAL_211:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CONCRETE-NEXT:              %[[VAL_212:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_211]] : !felt.type<"bn128">
-// CONCRETE-NEXT:              %[[VAL_213:[0-9a-zA-Z_\.]+]] = arith.constant true
-// CONCRETE-NEXT:              %[[VAL_214:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:              %[[VAL_215:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_212]], %[[VAL_214]] : index
-// CONCRETE-NEXT:              %[[VAL_216:[0-9a-zA-Z_\.]+]] = bool.and %[[VAL_213]], %[[VAL_215]] : i1, i1
-// CONCRETE-NEXT:              %[[VAL_217:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CONCRETE-NEXT:              %[[VAL_218:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_212]], %[[VAL_217]] : index
-// CONCRETE-NEXT:              %[[VAL_219:[0-9a-zA-Z_\.]+]] = bool.and %[[VAL_213]], %[[VAL_218]] : i1, i1
-// CONCRETE-NEXT:              %[[VAL_220:[0-9a-zA-Z_\.]+]] = bool.not %[[VAL_219]] : i1
-// CONCRETE-NEXT:              bool.assert %[[VAL_220]], "incompatible mixed component bus input"
-// CONCRETE-NEXT:              %[[VAL_221:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CONCRETE-NEXT:              %[[VAL_222:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_212]], %[[VAL_221]] : index
-// CONCRETE-NEXT:              %[[VAL_223:[0-9a-zA-Z_\.]+]] = bool.and %[[VAL_213]], %[[VAL_222]] : i1, i1
-// CONCRETE-NEXT:              %[[VAL_224:[0-9a-zA-Z_\.]+]] = bool.not %[[VAL_223]] : i1
-// CONCRETE-NEXT:              bool.assert %[[VAL_224]], "incompatible mixed component bus input"
-// CONCRETE-NEXT:              %[[VAL_225:[0-9a-zA-Z_\.]+]]:2 = scf.execute_region -> (!pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>) {
-// CONCRETE-NEXT:                %[[VAL_226:[0-9a-zA-Z_\.]+]]:2 = scf.if %[[VAL_216]] -> (!pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>) {
-// CONCRETE-NEXT:                  %[[VAL_227:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_205]][@idx_0] : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:                  %[[VAL_228:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_206]][@idx_0] : <[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// CONCRETE-NEXT:                  %[[VAL_229:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_228]][@in] : <[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                  pod.write %[[VAL_228]][@in] = %[[VAL_183]] : <[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                  pod.write %[[VAL_206]][@idx_0] = %[[VAL_228]] : <[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// CONCRETE-NEXT:                  %[[VAL_230:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_227]][@count] : <[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, index
-// CONCRETE-NEXT:                  %[[VAL_231:[0-9a-zA-Z_\.]+]] = arith.constant 8 : index
-// CONCRETE-NEXT:                  %[[VAL_232:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_230]], %[[VAL_231]] : index
-// CONCRETE-NEXT:                  pod.write %[[VAL_227]][@count] = %[[VAL_232]] : <[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, index
-// CONCRETE-NEXT:                  %[[VAL_233:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:                  %[[VAL_234:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_232]], %[[VAL_233]] : index
-// CONCRETE-NEXT:                  scf.if %[[VAL_234]] {
-// CONCRETE-NEXT:                    %[[VAL_235:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_227]][@params] : <[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, !pod.type<[]>
-// CONCRETE-NEXT:                    %[[VAL_236:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_228]][@in] : <[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                    %[[VAL_237:[0-9a-zA-Z_\.]+]] = function.call @A_0::@A_0::@compute(%[[VAL_236]]) : (!array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !struct.type<@A_0::@A_0<[]>>
-// CONCRETE-NEXT:                    pod.write %[[VAL_227]][@comp] = %[[VAL_237]] : <[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@A_0::@A_0<[]>>
-// CONCRETE-NEXT:                  }
-// CONCRETE-NEXT:                  pod.write %[[VAL_205]][@idx_0] = %[[VAL_227]] : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:                  scf.yield %[[VAL_205]], %[[VAL_206]] : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:                } else {
-// CONCRETE-NEXT:                  %[[VAL_238:[0-9a-zA-Z_\.]+]] = llzk.nondet : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>
-// CONCRETE-NEXT:                  %[[VAL_239:[0-9a-zA-Z_\.]+]] = llzk.nondet : !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:                  scf.yield %[[VAL_238]], %[[VAL_239]] : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:                }
-// CONCRETE-NEXT:                scf.yield %[[VAL_226]]#0, %[[VAL_226]]#1 : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:              }
-// CONCRETE-NEXT:              scf.yield %[[VAL_225]]#0, %[[VAL_225]]#1 : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:            } else {
-// CONCRETE-NEXT:              %[[VAL_240:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CONCRETE-NEXT:              %[[VAL_241:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_207]], %[[VAL_240]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:              %[[VAL_242:[0-9a-zA-Z_\.]+]]:2 = scf.if %[[VAL_241]] -> (!pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>) {
-// CONCRETE-NEXT:                %[[VAL_243:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CONCRETE-NEXT:                %[[VAL_244:[0-9a-zA-Z_\.]+]]:3 = scf.while (%[[VAL_245:[0-9a-zA-Z_\.]+]] = %[[VAL_205]], %[[VAL_246:[0-9a-zA-Z_\.]+]] = %[[VAL_206]], %[[VAL_247:[0-9a-zA-Z_\.]+]] = %[[VAL_243]]) : (!pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !felt.type<"bn128">) -> (!pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !felt.type<"bn128">) {
-// CONCRETE-NEXT:                  %[[VAL_248:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
-// CONCRETE-NEXT:                  %[[VAL_249:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_247]], %[[VAL_248]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:                  scf.condition(%[[VAL_249]]) %[[VAL_245]], %[[VAL_246]], %[[VAL_247]] : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                } do {
-// CONCRETE-NEXT:                ^bb0(%[[VAL_250:[0-9a-zA-Z_\.]+]]: !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, %[[VAL_251:[0-9a-zA-Z_\.]+]]: !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, %[[VAL_252:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CONCRETE-NEXT:                  %[[VAL_253:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_252]] : !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_254:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_184]]{{\[}}%[[VAL_253]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                  %[[VAL_255:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CONCRETE-NEXT:                  %[[VAL_256:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_255]] : !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_257:[0-9a-zA-Z_\.]+]] = arith.constant true
-// CONCRETE-NEXT:                  %[[VAL_258:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:                  %[[VAL_259:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_256]], %[[VAL_258]] : index
-// CONCRETE-NEXT:                  %[[VAL_260:[0-9a-zA-Z_\.]+]] = bool.and %[[VAL_257]], %[[VAL_259]] : i1, i1
-// CONCRETE-NEXT:                  %[[VAL_261:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CONCRETE-NEXT:                  %[[VAL_262:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_256]], %[[VAL_261]] : index
-// CONCRETE-NEXT:                  %[[VAL_263:[0-9a-zA-Z_\.]+]] = bool.and %[[VAL_257]], %[[VAL_262]] : i1, i1
-// CONCRETE-NEXT:                  %[[VAL_264:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CONCRETE-NEXT:                  %[[VAL_265:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_256]], %[[VAL_264]] : index
-// CONCRETE-NEXT:                  %[[VAL_266:[0-9a-zA-Z_\.]+]] = bool.and %[[VAL_257]], %[[VAL_265]] : i1, i1
-// CONCRETE-NEXT:                  %[[VAL_267:[0-9a-zA-Z_\.]+]]:2 = scf.execute_region -> (!pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>) {
-// CONCRETE-NEXT:                    %[[VAL_268:[0-9a-zA-Z_\.]+]]:2 = scf.if %[[VAL_266]] -> (!pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>) {
-// CONCRETE-NEXT:                      %[[VAL_269:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_250]][@idx_2] : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:                      %[[VAL_270:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_251]][@idx_2] : <[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// CONCRETE-NEXT:                      %[[VAL_271:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_270]][@in] : <[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                      %[[VAL_272:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_252]] : !felt.type<"bn128">
-// CONCRETE-NEXT:                      %[[VAL_273:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_271]]{{\[}}%[[VAL_272]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                      array.write %[[VAL_271]]{{\[}}%[[VAL_272]]] = %[[VAL_254]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                      pod.write %[[VAL_270]][@in] = %[[VAL_271]] : <[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                      pod.write %[[VAL_251]][@idx_2] = %[[VAL_270]] : <[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// CONCRETE-NEXT:                      %[[VAL_274:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_269]][@count] : <[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>, index
-// CONCRETE-NEXT:                      %[[VAL_275:[0-9a-zA-Z_\.]+]] = arith.constant 4 : index
-// CONCRETE-NEXT:                      %[[VAL_276:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_274]], %[[VAL_275]] : index
-// CONCRETE-NEXT:                      pod.write %[[VAL_269]][@count] = %[[VAL_276]] : <[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>, index
-// CONCRETE-NEXT:                      %[[VAL_277:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:                      %[[VAL_278:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_276]], %[[VAL_277]] : index
-// CONCRETE-NEXT:                      scf.if %[[VAL_278]] {
-// CONCRETE-NEXT:                        %[[VAL_279:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_269]][@params] : <[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>, !pod.type<[]>
-// CONCRETE-NEXT:                        %[[VAL_280:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_270]][@in] : <[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                        %[[VAL_281:[0-9a-zA-Z_\.]+]] = function.call @A_2::@A_2::@compute(%[[VAL_280]]) : (!array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !struct.type<@A_2::@A_2<[]>>
-// CONCRETE-NEXT:                        pod.write %[[VAL_269]][@comp] = %[[VAL_281]] : <[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>, !struct.type<@A_2::@A_2<[]>>
-// CONCRETE-NEXT:                      }
-// CONCRETE-NEXT:                      pod.write %[[VAL_250]][@idx_2] = %[[VAL_269]] : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:                      scf.yield %[[VAL_250]], %[[VAL_251]] : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:                    } else {
-// CONCRETE-NEXT:                      %[[VAL_282:[0-9a-zA-Z_\.]+]]:2 = scf.if %[[VAL_263]] -> (!pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>) {
-// CONCRETE-NEXT:                        %[[VAL_283:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_250]][@idx_1] : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:                        %[[VAL_284:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_251]][@idx_1] : <[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// CONCRETE-NEXT:                        %[[VAL_285:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_284]][@in] : <[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                        %[[VAL_286:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_252]] : !felt.type<"bn128">
-// CONCRETE-NEXT:                        %[[VAL_287:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_285]]{{\[}}%[[VAL_286]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                        array.write %[[VAL_285]]{{\[}}%[[VAL_286]]] = %[[VAL_254]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                        pod.write %[[VAL_284]][@in] = %[[VAL_285]] : <[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                        pod.write %[[VAL_251]][@idx_1] = %[[VAL_284]] : <[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// CONCRETE-NEXT:                        %[[VAL_288:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_283]][@count] : <[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, index
-// CONCRETE-NEXT:                        %[[VAL_289:[0-9a-zA-Z_\.]+]] = arith.constant 4 : index
-// CONCRETE-NEXT:                        %[[VAL_290:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_288]], %[[VAL_289]] : index
-// CONCRETE-NEXT:                        pod.write %[[VAL_283]][@count] = %[[VAL_290]] : <[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, index
-// CONCRETE-NEXT:                        %[[VAL_291:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:                        %[[VAL_292:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_290]], %[[VAL_291]] : index
-// CONCRETE-NEXT:                        scf.if %[[VAL_292]] {
-// CONCRETE-NEXT:                          %[[VAL_293:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_283]][@params] : <[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, !pod.type<[]>
-// CONCRETE-NEXT:                          %[[VAL_294:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_284]][@in] : <[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                          %[[VAL_295:[0-9a-zA-Z_\.]+]] = function.call @A_1::@A_1::@compute(%[[VAL_294]]) : (!array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !struct.type<@A_1::@A_1<[]>>
-// CONCRETE-NEXT:                          pod.write %[[VAL_283]][@comp] = %[[VAL_295]] : <[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, !struct.type<@A_1::@A_1<[]>>
-// CONCRETE-NEXT:                        }
-// CONCRETE-NEXT:                        pod.write %[[VAL_250]][@idx_1] = %[[VAL_283]] : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:                        scf.yield %[[VAL_250]], %[[VAL_251]] : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:                      } else {
-// CONCRETE-NEXT:                        %[[VAL_296:[0-9a-zA-Z_\.]+]]:2 = scf.if %[[VAL_260]] -> (!pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>) {
-// CONCRETE-NEXT:                          %[[VAL_297:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_250]][@idx_0] : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:                          %[[VAL_298:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_251]][@idx_0] : <[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// CONCRETE-NEXT:                          %[[VAL_299:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_298]][@in] : <[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                          %[[VAL_300:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_252]] : !felt.type<"bn128">
-// CONCRETE-NEXT:                          %[[VAL_301:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_299]]{{\[}}%[[VAL_300]]] : <2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                          array.write %[[VAL_299]]{{\[}}%[[VAL_300]]] = %[[VAL_254]] : <2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                          pod.write %[[VAL_298]][@in] = %[[VAL_299]] : <[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                          pod.write %[[VAL_251]][@idx_0] = %[[VAL_298]] : <[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// CONCRETE-NEXT:                          %[[VAL_302:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_297]][@count] : <[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, index
-// CONCRETE-NEXT:                          %[[VAL_303:[0-9a-zA-Z_\.]+]] = arith.constant 4 : index
-// CONCRETE-NEXT:                          %[[VAL_304:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_302]], %[[VAL_303]] : index
-// CONCRETE-NEXT:                          pod.write %[[VAL_297]][@count] = %[[VAL_304]] : <[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, index
-// CONCRETE-NEXT:                          %[[VAL_305:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:                          %[[VAL_306:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_304]], %[[VAL_305]] : index
-// CONCRETE-NEXT:                          scf.if %[[VAL_306]] {
-// CONCRETE-NEXT:                            %[[VAL_307:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_297]][@params] : <[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, !pod.type<[]>
-// CONCRETE-NEXT:                            %[[VAL_308:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_298]][@in] : <[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                            %[[VAL_309:[0-9a-zA-Z_\.]+]] = function.call @A_0::@A_0::@compute(%[[VAL_308]]) : (!array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !struct.type<@A_0::@A_0<[]>>
-// CONCRETE-NEXT:                            pod.write %[[VAL_297]][@comp] = %[[VAL_309]] : <[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@A_0::@A_0<[]>>
-// CONCRETE-NEXT:                          }
-// CONCRETE-NEXT:                          pod.write %[[VAL_250]][@idx_0] = %[[VAL_297]] : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:                          scf.yield %[[VAL_250]], %[[VAL_251]] : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:                        } else {
-// CONCRETE-NEXT:                          %[[VAL_310:[0-9a-zA-Z_\.]+]] = llzk.nondet : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>
-// CONCRETE-NEXT:                          %[[VAL_311:[0-9a-zA-Z_\.]+]] = llzk.nondet : !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:                          scf.yield %[[VAL_310]], %[[VAL_311]] : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:                        }
-// CONCRETE-NEXT:                        scf.yield %[[VAL_296]]#0, %[[VAL_296]]#1 : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:                      }
-// CONCRETE-NEXT:                      scf.yield %[[VAL_282]]#0, %[[VAL_282]]#1 : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:                    }
-// CONCRETE-NEXT:                    scf.yield %[[VAL_268]]#0, %[[VAL_268]]#1 : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:                  }
-// CONCRETE-NEXT:                  %[[VAL_312:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CONCRETE-NEXT:                  %[[VAL_313:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_252]], %[[VAL_312]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:                  scf.yield %[[VAL_267]]#0, %[[VAL_267]]#1, %[[VAL_313]] : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                }
-// CONCRETE-NEXT:                scf.yield %[[VAL_244]]#0, %[[VAL_244]]#1 : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:              } else {
-// CONCRETE-NEXT:                %[[VAL_314:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CONCRETE-NEXT:                %[[VAL_315:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_314]] : !felt.type<"bn128">
-// CONCRETE-NEXT:                %[[VAL_316:[0-9a-zA-Z_\.]+]] = arith.constant true
-// CONCRETE-NEXT:                %[[VAL_317:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:                %[[VAL_318:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_315]], %[[VAL_317]] : index
-// CONCRETE-NEXT:                %[[VAL_319:[0-9a-zA-Z_\.]+]] = bool.and %[[VAL_316]], %[[VAL_318]] : i1, i1
-// CONCRETE-NEXT:                %[[VAL_320:[0-9a-zA-Z_\.]+]] = bool.not %[[VAL_319]] : i1
-// CONCRETE-NEXT:                bool.assert %[[VAL_320]], "incompatible mixed component bus input"
-// CONCRETE-NEXT:                %[[VAL_321:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CONCRETE-NEXT:                %[[VAL_322:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_315]], %[[VAL_321]] : index
-// CONCRETE-NEXT:                %[[VAL_323:[0-9a-zA-Z_\.]+]] = bool.and %[[VAL_316]], %[[VAL_322]] : i1, i1
-// CONCRETE-NEXT:                %[[VAL_324:[0-9a-zA-Z_\.]+]] = bool.not %[[VAL_323]] : i1
-// CONCRETE-NEXT:                bool.assert %[[VAL_324]], "incompatible mixed component bus input"
-// CONCRETE-NEXT:                %[[VAL_325:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CONCRETE-NEXT:                %[[VAL_326:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_315]], %[[VAL_325]] : index
-// CONCRETE-NEXT:                %[[VAL_327:[0-9a-zA-Z_\.]+]] = bool.and %[[VAL_316]], %[[VAL_326]] : i1, i1
-// CONCRETE-NEXT:                %[[VAL_328:[0-9a-zA-Z_\.]+]]:2 = scf.execute_region -> (!pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>) {
-// CONCRETE-NEXT:                  %[[VAL_329:[0-9a-zA-Z_\.]+]]:2 = scf.if %[[VAL_327]] -> (!pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>) {
-// CONCRETE-NEXT:                    %[[VAL_330:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_205]][@idx_2] : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:                    %[[VAL_331:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_206]][@idx_2] : <[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// CONCRETE-NEXT:                    %[[VAL_332:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_331]][@in] : <[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                    pod.write %[[VAL_331]][@in] = %[[VAL_185]] : <[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                    pod.write %[[VAL_206]][@idx_2] = %[[VAL_331]] : <[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// CONCRETE-NEXT:                    %[[VAL_333:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_330]][@count] : <[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>, index
-// CONCRETE-NEXT:                    %[[VAL_334:[0-9a-zA-Z_\.]+]] = arith.constant 20 : index
-// CONCRETE-NEXT:                    %[[VAL_335:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_333]], %[[VAL_334]] : index
-// CONCRETE-NEXT:                    pod.write %[[VAL_330]][@count] = %[[VAL_335]] : <[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>, index
-// CONCRETE-NEXT:                    %[[VAL_336:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:                    %[[VAL_337:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_335]], %[[VAL_336]] : index
-// CONCRETE-NEXT:                    scf.if %[[VAL_337]] {
-// CONCRETE-NEXT:                      %[[VAL_338:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_330]][@params] : <[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>, !pod.type<[]>
-// CONCRETE-NEXT:                      %[[VAL_339:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_331]][@in] : <[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                      %[[VAL_340:[0-9a-zA-Z_\.]+]] = function.call @A_2::@A_2::@compute(%[[VAL_339]]) : (!array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !struct.type<@A_2::@A_2<[]>>
-// CONCRETE-NEXT:                      pod.write %[[VAL_330]][@comp] = %[[VAL_340]] : <[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>, !struct.type<@A_2::@A_2<[]>>
-// CONCRETE-NEXT:                    }
-// CONCRETE-NEXT:                    pod.write %[[VAL_205]][@idx_2] = %[[VAL_330]] : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:                    scf.yield %[[VAL_205]], %[[VAL_206]] : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:                  } else {
-// CONCRETE-NEXT:                    %[[VAL_341:[0-9a-zA-Z_\.]+]] = llzk.nondet : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>
-// CONCRETE-NEXT:                    %[[VAL_342:[0-9a-zA-Z_\.]+]] = llzk.nondet : !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:                    scf.yield %[[VAL_341]], %[[VAL_342]] : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:                  }
-// CONCRETE-NEXT:                  scf.yield %[[VAL_329]]#0, %[[VAL_329]]#1 : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:                }
-// CONCRETE-NEXT:                scf.yield %[[VAL_328]]#0, %[[VAL_328]]#1 : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:              }
-// CONCRETE-NEXT:              scf.yield %[[VAL_242]]#0, %[[VAL_242]]#1 : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:            }
-// CONCRETE-NEXT:            %[[VAL_343:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_207]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_344:[0-9a-zA-Z_\.]+]] = arith.constant true
-// CONCRETE-NEXT:            %[[VAL_345:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:            %[[VAL_346:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_343]], %[[VAL_345]] : index
-// CONCRETE-NEXT:            %[[VAL_347:[0-9a-zA-Z_\.]+]] = bool.and %[[VAL_344]], %[[VAL_346]] : i1, i1
-// CONCRETE-NEXT:            %[[VAL_348:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CONCRETE-NEXT:            %[[VAL_349:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_343]], %[[VAL_348]] : index
-// CONCRETE-NEXT:            %[[VAL_350:[0-9a-zA-Z_\.]+]] = bool.and %[[VAL_344]], %[[VAL_349]] : i1, i1
-// CONCRETE-NEXT:            %[[VAL_351:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CONCRETE-NEXT:            %[[VAL_352:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_343]], %[[VAL_351]] : index
-// CONCRETE-NEXT:            %[[VAL_353:[0-9a-zA-Z_\.]+]] = bool.and %[[VAL_344]], %[[VAL_352]] : i1, i1
-// CONCRETE-NEXT:            %[[VAL_354:[0-9a-zA-Z_\.]+]] = scf.execute_region -> !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]> {
-// CONCRETE-NEXT:              %[[VAL_355:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_353]] -> (!pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>) {
-// CONCRETE-NEXT:                %[[VAL_356:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_210]]#0[@idx_2] : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:                %[[VAL_357:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_356]][@comp] : <[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>, !struct.type<@A_2::@A_2<[]>>
-// CONCRETE-NEXT:                %[[VAL_358:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_357]][@out] : <@A_2::@A_2<[]>>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                %[[VAL_359:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CONCRETE-NEXT:                %[[VAL_360:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_359]] : !felt.type<"bn128">
-// CONCRETE-NEXT:                %[[VAL_361:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_358]]{{\[}}%[[VAL_360]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                scf.yield %[[VAL_361]] : !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:              } else {
-// CONCRETE-NEXT:                %[[VAL_362:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_350]] -> (!pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>) {
-// CONCRETE-NEXT:                  %[[VAL_363:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_210]]#0[@idx_1] : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:                  %[[VAL_364:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_363]][@comp] : <[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, !struct.type<@A_1::@A_1<[]>>
-// CONCRETE-NEXT:                  %[[VAL_365:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_364]][@out] : <@A_1::@A_1<[]>>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                  %[[VAL_366:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CONCRETE-NEXT:                  %[[VAL_367:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_366]] : !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_368:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_365]]{{\[}}%[[VAL_367]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                  scf.yield %[[VAL_368]] : !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                } else {
-// CONCRETE-NEXT:                  %[[VAL_369:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_347]] -> (!pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>) {
-// CONCRETE-NEXT:                    %[[VAL_370:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_210]]#0[@idx_0] : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:                    %[[VAL_371:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_370]][@comp] : <[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@A_0::@A_0<[]>>
-// CONCRETE-NEXT:                    %[[VAL_372:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_371]][@out] : <@A_0::@A_0<[]>>, !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                    %[[VAL_373:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CONCRETE-NEXT:                    %[[VAL_374:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_373]] : !felt.type<"bn128">
-// CONCRETE-NEXT:                    %[[VAL_375:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_372]]{{\[}}%[[VAL_374]]] : <2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                    scf.yield %[[VAL_375]] : !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                  } else {
-// CONCRETE-NEXT:                    %[[VAL_376:[0-9a-zA-Z_\.]+]] = llzk.nondet : !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                    scf.yield %[[VAL_376]] : !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                  }
-// CONCRETE-NEXT:                  scf.yield %[[VAL_369]] : !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                }
-// CONCRETE-NEXT:                scf.yield %[[VAL_362]] : !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:              }
-// CONCRETE-NEXT:              scf.yield %[[VAL_355]] : !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            }
-// CONCRETE-NEXT:            %[[VAL_377:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_207]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_378:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_187]]{{\[}}%[[VAL_377]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            array.write %[[VAL_187]]{{\[}}%[[VAL_377]]] = %[[VAL_354]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_379:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CONCRETE-NEXT:            %[[VAL_380:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_207]], %[[VAL_379]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            scf.yield %[[VAL_210]]#0, %[[VAL_210]]#1, %[[VAL_380]] : !pod.type<[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:          }
-// CONCRETE-NEXT:          struct.writem %[[VAL_186]][@aux$inputs] = %[[VAL_199]]#1 : <@B_3::@B_3<[]>>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:          %[[VAL_381:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_199]]#0[@idx_0] : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:          %[[VAL_382:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_381]][@comp] : <[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, !struct.type<@A_0::@A_0<[]>>
-// CONCRETE-NEXT:          %[[VAL_383:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_199]]#0[@idx_1] : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:          %[[VAL_384:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_383]][@comp] : <[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, !struct.type<@A_1::@A_1<[]>>
-// CONCRETE-NEXT:          %[[VAL_385:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_199]]#0[@idx_2] : <[@idx_0: !pod.type<[@count: index, @comp: !struct.type<@A_0::@A_0<[]>>, @params: !pod.type<[]>]>, @idx_1: !pod.type<[@count: index, @comp: !struct.type<@A_1::@A_1<[]>>, @params: !pod.type<[]>]>, @idx_2: !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>]>, !pod.type<[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>
-// CONCRETE-NEXT:          %[[VAL_386:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_385]][@comp] : <[@count: index, @comp: !struct.type<@A_2::@A_2<[]>>, @params: !pod.type<[]>]>, !struct.type<@A_2::@A_2<[]>>
-// CONCRETE-NEXT:          %[[VAL_387:[0-9a-zA-Z_\.]+]] = pod.new { @idx_0 = %[[VAL_382]], @idx_1 = %[[VAL_384]], @idx_2 = %[[VAL_386]] }  : <[@idx_0: !struct.type<@A_0::@A_0<[]>>, @idx_1: !struct.type<@A_1::@A_1<[]>>, @idx_2: !struct.type<@A_2::@A_2<[]>>]>
-// CONCRETE-NEXT:          struct.writem %[[VAL_186]][@aux] = %[[VAL_387]] : <@B_3::@B_3<[]>>, !pod.type<[@idx_0: !struct.type<@A_0::@A_0<[]>>, @idx_1: !struct.type<@A_1::@A_1<[]>>, @idx_2: !struct.type<@A_2::@A_2<[]>>]>
-// CONCRETE-NEXT:          struct.writem %[[VAL_186]][@out] = %[[VAL_187]] : <@B_3::@B_3<[]>>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          function.return %[[VAL_186]] : !struct.type<@B_3::@B_3<[]>>
-// CONCRETE-NEXT:        }
-// CONCRETE-NEXT:        function.def @constrain(%[[VAL_388:[0-9a-zA-Z_\.]+]]: !struct.type<@B_3::@B_3<[]>>, %[[VAL_389:[0-9a-zA-Z_\.]+]]: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in1"}, %[[VAL_390:[0-9a-zA-Z_\.]+]]: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in2"}, %[[VAL_391:[0-9a-zA-Z_\.]+]]: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in3"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CONCRETE-NEXT:          %[[VAL_392:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_388]][@out] : <@B_3::@B_3<[]>>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          %[[VAL_393:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_388]][@aux] : <@B_3::@B_3<[]>>, !pod.type<[@idx_0: !struct.type<@A_0::@A_0<[]>>, @idx_1: !struct.type<@A_1::@A_1<[]>>, @idx_2: !struct.type<@A_2::@A_2<[]>>]>
-// CONCRETE-NEXT:          %[[VAL_394:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_388]][@aux$inputs] : <@B_3::@B_3<[]>>, !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
-// CONCRETE-NEXT:          %[[VAL_395:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<3 x !felt.type<"bn128">>
-// CONCRETE-NEXT:          %[[VAL_396:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CONCRETE-NEXT:          %[[VAL_397:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_398:[0-9a-zA-Z_\.]+]] = %[[VAL_396]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
-// CONCRETE-NEXT:            %[[VAL_399:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
-// CONCRETE-NEXT:            %[[VAL_400:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_398]], %[[VAL_399]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            scf.condition(%[[VAL_400]]) %[[VAL_398]] : !felt.type<"bn128">
-// CONCRETE-NEXT:          } do {
-// CONCRETE-NEXT:          ^bb0(%[[VAL_401:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CONCRETE-NEXT:            %[[VAL_402:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CONCRETE-NEXT:            %[[VAL_403:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_401]], %[[VAL_402]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            scf.if %[[VAL_403]] {
-// CONCRETE-NEXT:              %[[VAL_404:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_394]][@idx_0] : <[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// CONCRETE-NEXT:              %[[VAL_405:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_404]][@in] : <[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:              %[[VAL_406:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CONCRETE-NEXT:              %[[VAL_407:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:              %[[VAL_408:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CONCRETE-NEXT:              scf.for %[[VAL_409:[0-9a-zA-Z_\.]+]] = %[[VAL_407]] to %[[VAL_406]] step %[[VAL_408]] {
-// CONCRETE-NEXT:                %[[VAL_410:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_389]]{{\[}}%[[VAL_409]]] : <2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                %[[VAL_411:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_405]]{{\[}}%[[VAL_409]]] : <2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                %[[VAL_412:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_410]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                %[[VAL_413:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_411]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                constrain.eq %[[VAL_412]], %[[VAL_413]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:                %[[VAL_414:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_410]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:                %[[VAL_415:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_411]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:                %[[VAL_416:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_414]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                %[[VAL_417:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_415]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                constrain.eq %[[VAL_416]], %[[VAL_417]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:                %[[VAL_418:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_410]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:                %[[VAL_419:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_411]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:                %[[VAL_420:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_418]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                %[[VAL_421:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_419]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                constrain.eq %[[VAL_420]], %[[VAL_421]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:                %[[VAL_422:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_418]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                %[[VAL_423:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_419]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                constrain.eq %[[VAL_422]], %[[VAL_423]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:              }
-// CONCRETE-NEXT:            } else {
-// CONCRETE-NEXT:              %[[VAL_424:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CONCRETE-NEXT:              %[[VAL_425:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_401]], %[[VAL_424]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:              scf.if %[[VAL_425]] {
-// CONCRETE-NEXT:                %[[VAL_426:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CONCRETE-NEXT:                %[[VAL_427:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_428:[0-9a-zA-Z_\.]+]] = %[[VAL_426]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
-// CONCRETE-NEXT:                  %[[VAL_429:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
-// CONCRETE-NEXT:                  %[[VAL_430:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_428]], %[[VAL_429]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:                  scf.condition(%[[VAL_430]]) %[[VAL_428]] : !felt.type<"bn128">
-// CONCRETE-NEXT:                } do {
-// CONCRETE-NEXT:                ^bb0(%[[VAL_431:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// CONCRETE-NEXT:                  %[[VAL_432:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_431]] : !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_433:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_390]]{{\[}}%[[VAL_432]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                  %[[VAL_434:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_394]][@idx_1] : <[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// CONCRETE-NEXT:                  %[[VAL_435:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_434]][@in] : <[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                  %[[VAL_436:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_431]] : !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_437:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_435]]{{\[}}%[[VAL_436]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                  %[[VAL_438:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_433]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_439:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_437]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                  constrain.eq %[[VAL_438]], %[[VAL_439]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_440:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_433]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:                  %[[VAL_441:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_437]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:                  %[[VAL_442:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_440]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_443:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_441]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                  constrain.eq %[[VAL_442]], %[[VAL_443]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_444:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_433]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:                  %[[VAL_445:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_437]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:                  %[[VAL_446:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_444]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_447:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_445]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                  constrain.eq %[[VAL_446]], %[[VAL_447]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_448:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_444]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_449:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_445]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                  constrain.eq %[[VAL_448]], %[[VAL_449]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_450:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CONCRETE-NEXT:                  %[[VAL_451:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_431]], %[[VAL_450]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:                  scf.yield %[[VAL_451]] : !felt.type<"bn128">
-// CONCRETE-NEXT:                }
-// CONCRETE-NEXT:              } else {
-// CONCRETE-NEXT:                %[[VAL_452:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_394]][@idx_2] : <[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// CONCRETE-NEXT:                %[[VAL_453:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_452]][@in] : <[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                %[[VAL_454:[0-9a-zA-Z_\.]+]] = arith.constant 5 : index
-// CONCRETE-NEXT:                %[[VAL_455:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:                %[[VAL_456:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CONCRETE-NEXT:                scf.for %[[VAL_457:[0-9a-zA-Z_\.]+]] = %[[VAL_455]] to %[[VAL_454]] step %[[VAL_456]] {
-// CONCRETE-NEXT:                  %[[VAL_458:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_391]]{{\[}}%[[VAL_457]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                  %[[VAL_459:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_453]]{{\[}}%[[VAL_457]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                  %[[VAL_460:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_458]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_461:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_459]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                  constrain.eq %[[VAL_460]], %[[VAL_461]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_462:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_458]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:                  %[[VAL_463:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_459]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:                  %[[VAL_464:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_462]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_465:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_463]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                  constrain.eq %[[VAL_464]], %[[VAL_465]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_466:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_458]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:                  %[[VAL_467:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_459]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:                  %[[VAL_468:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_466]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_469:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_467]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                  constrain.eq %[[VAL_468]], %[[VAL_469]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_470:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_466]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_471:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_467]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:                  constrain.eq %[[VAL_470]], %[[VAL_471]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:                }
-// CONCRETE-NEXT:              }
-// CONCRETE-NEXT:            }
-// CONCRETE-NEXT:            %[[VAL_472:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_401]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_473:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_392]]{{\[}}%[[VAL_472]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_474:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_401]] : !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_475:[0-9a-zA-Z_\.]+]] = arith.constant true
-// CONCRETE-NEXT:            %[[VAL_476:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:            %[[VAL_477:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_474]], %[[VAL_476]] : index
-// CONCRETE-NEXT:            %[[VAL_478:[0-9a-zA-Z_\.]+]] = bool.and %[[VAL_475]], %[[VAL_477]] : i1, i1
-// CONCRETE-NEXT:            %[[VAL_479:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CONCRETE-NEXT:            %[[VAL_480:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_474]], %[[VAL_479]] : index
-// CONCRETE-NEXT:            %[[VAL_481:[0-9a-zA-Z_\.]+]] = bool.and %[[VAL_475]], %[[VAL_480]] : i1, i1
-// CONCRETE-NEXT:            %[[VAL_482:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CONCRETE-NEXT:            %[[VAL_483:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_474]], %[[VAL_482]] : index
-// CONCRETE-NEXT:            %[[VAL_484:[0-9a-zA-Z_\.]+]] = bool.and %[[VAL_475]], %[[VAL_483]] : i1, i1
-// CONCRETE-NEXT:            %[[VAL_485:[0-9a-zA-Z_\.]+]] = scf.execute_region -> !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]> {
-// CONCRETE-NEXT:              %[[VAL_486:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_484]] -> (!pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>) {
-// CONCRETE-NEXT:                %[[VAL_487:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_393]][@idx_2] : <[@idx_0: !struct.type<@A_0::@A_0<[]>>, @idx_1: !struct.type<@A_1::@A_1<[]>>, @idx_2: !struct.type<@A_2::@A_2<[]>>]>, !struct.type<@A_2::@A_2<[]>>
-// CONCRETE-NEXT:                %[[VAL_488:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_487]][@out] : <@A_2::@A_2<[]>>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                %[[VAL_489:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CONCRETE-NEXT:                %[[VAL_490:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_489]] : !felt.type<"bn128">
-// CONCRETE-NEXT:                %[[VAL_491:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_488]]{{\[}}%[[VAL_490]]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                scf.yield %[[VAL_491]] : !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:              } else {
-// CONCRETE-NEXT:                %[[VAL_492:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_481]] -> (!pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>) {
-// CONCRETE-NEXT:                  %[[VAL_493:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_393]][@idx_1] : <[@idx_0: !struct.type<@A_0::@A_0<[]>>, @idx_1: !struct.type<@A_1::@A_1<[]>>, @idx_2: !struct.type<@A_2::@A_2<[]>>]>, !struct.type<@A_1::@A_1<[]>>
-// CONCRETE-NEXT:                  %[[VAL_494:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_493]][@out] : <@A_1::@A_1<[]>>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                  %[[VAL_495:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CONCRETE-NEXT:                  %[[VAL_496:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_495]] : !felt.type<"bn128">
-// CONCRETE-NEXT:                  %[[VAL_497:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_494]]{{\[}}%[[VAL_496]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                  scf.yield %[[VAL_497]] : !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                } else {
-// CONCRETE-NEXT:                  %[[VAL_498:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_478]] -> (!pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>) {
-// CONCRETE-NEXT:                    %[[VAL_499:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_393]][@idx_0] : <[@idx_0: !struct.type<@A_0::@A_0<[]>>, @idx_1: !struct.type<@A_1::@A_1<[]>>, @idx_2: !struct.type<@A_2::@A_2<[]>>]>, !struct.type<@A_0::@A_0<[]>>
-// CONCRETE-NEXT:                    %[[VAL_500:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_499]][@out] : <@A_0::@A_0<[]>>, !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:                    %[[VAL_501:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// CONCRETE-NEXT:                    %[[VAL_502:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_501]] : !felt.type<"bn128">
-// CONCRETE-NEXT:                    %[[VAL_503:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_500]]{{\[}}%[[VAL_502]]] : <2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                    scf.yield %[[VAL_503]] : !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                  } else {
-// CONCRETE-NEXT:                    %[[VAL_504:[0-9a-zA-Z_\.]+]] = llzk.nondet : !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                    scf.yield %[[VAL_504]] : !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                  }
-// CONCRETE-NEXT:                  scf.yield %[[VAL_498]] : !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:                }
-// CONCRETE-NEXT:                scf.yield %[[VAL_492]] : !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:              }
-// CONCRETE-NEXT:              scf.yield %[[VAL_486]] : !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            }
-// CONCRETE-NEXT:            %[[VAL_505:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_473]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_506:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_485]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_505]], %[[VAL_506]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_507:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_473]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_508:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_485]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_509:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_507]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_510:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_508]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_509]], %[[VAL_510]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_511:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_473]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_512:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_485]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_513:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_511]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_514:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_512]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_513]], %[[VAL_514]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_515:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_511]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_516:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_512]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_515]], %[[VAL_516]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_517:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// CONCRETE-NEXT:            %[[VAL_518:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_401]], %[[VAL_517]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            scf.yield %[[VAL_518]] : !felt.type<"bn128">
-// CONCRETE-NEXT:          }
-// CONCRETE-NEXT:          %[[VAL_519:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_393]][@idx_0] : <[@idx_0: !struct.type<@A_0::@A_0<[]>>, @idx_1: !struct.type<@A_1::@A_1<[]>>, @idx_2: !struct.type<@A_2::@A_2<[]>>]>, !struct.type<@A_0::@A_0<[]>>
-// CONCRETE-NEXT:          %[[VAL_520:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_394]][@idx_0] : <[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// CONCRETE-NEXT:          %[[VAL_521:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_520]][@in] : <[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          function.call @A_0::@A_0::@constrain(%[[VAL_519]], %[[VAL_521]]) : (!struct.type<@A_0::@A_0<[]>>, !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> ()
-// CONCRETE-NEXT:          %[[VAL_522:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_393]][@idx_1] : <[@idx_0: !struct.type<@A_0::@A_0<[]>>, @idx_1: !struct.type<@A_1::@A_1<[]>>, @idx_2: !struct.type<@A_2::@A_2<[]>>]>, !struct.type<@A_1::@A_1<[]>>
-// CONCRETE-NEXT:          %[[VAL_523:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_394]][@idx_1] : <[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// CONCRETE-NEXT:          %[[VAL_524:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_523]][@in] : <[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          function.call @A_1::@A_1::@constrain(%[[VAL_522]], %[[VAL_524]]) : (!struct.type<@A_1::@A_1<[]>>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> ()
-// CONCRETE-NEXT:          %[[VAL_525:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_393]][@idx_2] : <[@idx_0: !struct.type<@A_0::@A_0<[]>>, @idx_1: !struct.type<@A_1::@A_1<[]>>, @idx_2: !struct.type<@A_2::@A_2<[]>>]>, !struct.type<@A_2::@A_2<[]>>
-// CONCRETE-NEXT:          %[[VAL_526:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_394]][@idx_2] : <[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>, !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// CONCRETE-NEXT:          %[[VAL_527:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_526]][@in] : <[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          function.call @A_2::@A_2::@constrain(%[[VAL_525]], %[[VAL_527]]) : (!struct.type<@A_2::@A_2<[]>>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> ()
-// CONCRETE-NEXT:          function.return
-// CONCRETE-NEXT:        }
-// CONCRETE-NEXT:      }
-// CONCRETE-NEXT:      struct.def @"$bus_entry" {
-// CONCRETE-NEXT:        struct.member @"$component" : !struct.type<@B_3::@B_3<[]>>
-// CONCRETE-NEXT:        struct.member @out.a : !array.type<3 x !felt.type<"bn128">> {llzk.pub, signal}
-// CONCRETE-NEXT:        struct.member @out.b.a : !array.type<3 x !felt.type<"bn128">> {llzk.pub, signal}
-// CONCRETE-NEXT:        struct.member @out.c.a : !array.type<3 x !felt.type<"bn128">> {llzk.pub, signal}
-// CONCRETE-NEXT:        struct.member @out.c.b : !array.type<3 x !felt.type<"bn128">> {llzk.pub, signal}
-// CONCRETE-NEXT:        function.def @compute(%[[VAL_528:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "in1.a"}, %[[VAL_529:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "in1.b.a"}, %[[VAL_530:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "in1.c.a"}, %[[VAL_531:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "in1.c.b"}, %[[VAL_532:[0-9a-zA-Z_\.]+]]: !array.type<3 x !felt.type<"bn128">> {function.arg_name = "in2.a"}, %[[VAL_533:[0-9a-zA-Z_\.]+]]: !array.type<3 x !felt.type<"bn128">> {function.arg_name = "in2.b.a"}, %[[VAL_534:[0-9a-zA-Z_\.]+]]: !array.type<3 x !felt.type<"bn128">> {function.arg_name = "in2.c.a"}, %[[VAL_535:[0-9a-zA-Z_\.]+]]: !array.type<3 x !felt.type<"bn128">> {function.arg_name = "in2.c.b"}, %[[VAL_536:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">> {function.arg_name = "in3.a"}, %[[VAL_537:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">> {function.arg_name = "in3.b.a"}, %[[VAL_538:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">> {function.arg_name = "in3.c.a"}, %[[VAL_539:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">> {function.arg_name = "in3.c.b"}) -> !struct.type<@B_3::@"$bus_entry"<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CONCRETE-NEXT:          %[[VAL_540:[0-9a-zA-Z_\.]+]] = struct.new : <@B_3::@"$bus_entry"<[]>>
-// CONCRETE-NEXT:          %[[VAL_541:[0-9a-zA-Z_\.]+]] = array.new  : <2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          %[[VAL_542:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CONCRETE-NEXT:          %[[VAL_543:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:          %[[VAL_544:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CONCRETE-NEXT:          scf.for %[[VAL_545:[0-9a-zA-Z_\.]+]] = %[[VAL_543]] to %[[VAL_542]] step %[[VAL_544]] {
-// CONCRETE-NEXT:            %[[VAL_546:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_528]]{{\[}}%[[VAL_545]]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_547:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_529]]{{\[}}%[[VAL_545]]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_548:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_547]] }  : <[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_549:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_530]]{{\[}}%[[VAL_545]]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_550:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_531]]{{\[}}%[[VAL_545]]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_551:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_549]], @b = %[[VAL_550]] }  : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_552:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_546]], @b = %[[VAL_548]], @c = %[[VAL_551]] }  : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            array.write %[[VAL_541]]{{\[}}%[[VAL_545]]] = %[[VAL_552]] : <2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:          }
-// CONCRETE-NEXT:          %[[VAL_553:[0-9a-zA-Z_\.]+]] = array.new  : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          %[[VAL_554:[0-9a-zA-Z_\.]+]] = arith.constant 3 : index
-// CONCRETE-NEXT:          %[[VAL_555:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:          %[[VAL_556:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CONCRETE-NEXT:          scf.for %[[VAL_557:[0-9a-zA-Z_\.]+]] = %[[VAL_555]] to %[[VAL_554]] step %[[VAL_556]] {
-// CONCRETE-NEXT:            %[[VAL_558:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_532]]{{\[}}%[[VAL_557]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_559:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_533]]{{\[}}%[[VAL_557]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_560:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_559]] }  : <[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_561:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_534]]{{\[}}%[[VAL_557]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_562:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_535]]{{\[}}%[[VAL_557]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_563:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_561]], @b = %[[VAL_562]] }  : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_564:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_558]], @b = %[[VAL_560]], @c = %[[VAL_563]] }  : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            array.write %[[VAL_553]]{{\[}}%[[VAL_557]]] = %[[VAL_564]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:          }
-// CONCRETE-NEXT:          %[[VAL_565:[0-9a-zA-Z_\.]+]] = array.new  : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          %[[VAL_566:[0-9a-zA-Z_\.]+]] = arith.constant 5 : index
-// CONCRETE-NEXT:          %[[VAL_567:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:          %[[VAL_568:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CONCRETE-NEXT:          scf.for %[[VAL_569:[0-9a-zA-Z_\.]+]] = %[[VAL_567]] to %[[VAL_566]] step %[[VAL_568]] {
-// CONCRETE-NEXT:            %[[VAL_570:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_536]]{{\[}}%[[VAL_569]]] : <5 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_571:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_537]]{{\[}}%[[VAL_569]]] : <5 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_572:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_571]] }  : <[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_573:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_538]]{{\[}}%[[VAL_569]]] : <5 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_574:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_539]]{{\[}}%[[VAL_569]]] : <5 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_575:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_573]], @b = %[[VAL_574]] }  : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_576:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_570]], @b = %[[VAL_572]], @c = %[[VAL_575]] }  : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            array.write %[[VAL_565]]{{\[}}%[[VAL_569]]] = %[[VAL_576]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:          }
-// CONCRETE-NEXT:          %[[VAL_577:[0-9a-zA-Z_\.]+]] = function.call @B_3::@B_3::@compute(%[[VAL_541]], %[[VAL_553]], %[[VAL_565]]) : (!array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !struct.type<@B_3::@B_3<[]>>
-// CONCRETE-NEXT:          struct.writem %[[VAL_540]][@"$component"] = %[[VAL_577]] : <@B_3::@"$bus_entry"<[]>>, !struct.type<@B_3::@B_3<[]>>
-// CONCRETE-NEXT:          %[[VAL_578:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type<"bn128">>
-// CONCRETE-NEXT:          %[[VAL_579:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type<"bn128">>
-// CONCRETE-NEXT:          %[[VAL_580:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type<"bn128">>
-// CONCRETE-NEXT:          %[[VAL_581:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type<"bn128">>
-// CONCRETE-NEXT:          %[[VAL_582:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_577]][@out] : <@B_3::@B_3<[]>>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          %[[VAL_583:[0-9a-zA-Z_\.]+]] = arith.constant 3 : index
-// CONCRETE-NEXT:          %[[VAL_584:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:          %[[VAL_585:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CONCRETE-NEXT:          scf.for %[[VAL_586:[0-9a-zA-Z_\.]+]] = %[[VAL_584]] to %[[VAL_583]] step %[[VAL_585]] {
-// CONCRETE-NEXT:            %[[VAL_587:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_582]]{{\[}}%[[VAL_586]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_588:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_587]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            array.write %[[VAL_578]]{{\[}}%[[VAL_586]]] = %[[VAL_588]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_589:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_587]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_590:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_589]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            array.write %[[VAL_579]]{{\[}}%[[VAL_586]]] = %[[VAL_590]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_591:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_587]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_592:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_591]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            array.write %[[VAL_580]]{{\[}}%[[VAL_586]]] = %[[VAL_592]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_593:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_591]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            array.write %[[VAL_581]]{{\[}}%[[VAL_586]]] = %[[VAL_593]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:          }
-// CONCRETE-NEXT:          struct.writem %[[VAL_540]][@out.a] = %[[VAL_578]] : <@B_3::@"$bus_entry"<[]>>, !array.type<3 x !felt.type<"bn128">>
-// CONCRETE-NEXT:          struct.writem %[[VAL_540]][@out.b.a] = %[[VAL_579]] : <@B_3::@"$bus_entry"<[]>>, !array.type<3 x !felt.type<"bn128">>
-// CONCRETE-NEXT:          struct.writem %[[VAL_540]][@out.c.a] = %[[VAL_580]] : <@B_3::@"$bus_entry"<[]>>, !array.type<3 x !felt.type<"bn128">>
-// CONCRETE-NEXT:          struct.writem %[[VAL_540]][@out.c.b] = %[[VAL_581]] : <@B_3::@"$bus_entry"<[]>>, !array.type<3 x !felt.type<"bn128">>
-// CONCRETE-NEXT:          function.return %[[VAL_540]] : !struct.type<@B_3::@"$bus_entry"<[]>>
-// CONCRETE-NEXT:        }
-// CONCRETE-NEXT:        function.def @constrain(%[[VAL_594:[0-9a-zA-Z_\.]+]]: !struct.type<@B_3::@"$bus_entry"<[]>>, %[[VAL_595:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "in1.a"}, %[[VAL_596:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "in1.b.a"}, %[[VAL_597:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "in1.c.a"}, %[[VAL_598:[0-9a-zA-Z_\.]+]]: !array.type<2 x !felt.type<"bn128">> {function.arg_name = "in1.c.b"}, %[[VAL_599:[0-9a-zA-Z_\.]+]]: !array.type<3 x !felt.type<"bn128">> {function.arg_name = "in2.a"}, %[[VAL_600:[0-9a-zA-Z_\.]+]]: !array.type<3 x !felt.type<"bn128">> {function.arg_name = "in2.b.a"}, %[[VAL_601:[0-9a-zA-Z_\.]+]]: !array.type<3 x !felt.type<"bn128">> {function.arg_name = "in2.c.a"}, %[[VAL_602:[0-9a-zA-Z_\.]+]]: !array.type<3 x !felt.type<"bn128">> {function.arg_name = "in2.c.b"}, %[[VAL_603:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">> {function.arg_name = "in3.a"}, %[[VAL_604:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">> {function.arg_name = "in3.b.a"}, %[[VAL_605:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">> {function.arg_name = "in3.c.a"}, %[[VAL_606:[0-9a-zA-Z_\.]+]]: !array.type<5 x !felt.type<"bn128">> {function.arg_name = "in3.c.b"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CONCRETE-NEXT:          %[[VAL_607:[0-9a-zA-Z_\.]+]] = array.new  : <2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          %[[VAL_608:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CONCRETE-NEXT:          %[[VAL_609:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:          %[[VAL_610:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CONCRETE-NEXT:          scf.for %[[VAL_611:[0-9a-zA-Z_\.]+]] = %[[VAL_609]] to %[[VAL_608]] step %[[VAL_610]] {
-// CONCRETE-NEXT:            %[[VAL_612:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_595]]{{\[}}%[[VAL_611]]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_613:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_596]]{{\[}}%[[VAL_611]]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_614:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_613]] }  : <[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_615:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_597]]{{\[}}%[[VAL_611]]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_616:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_598]]{{\[}}%[[VAL_611]]] : <2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_617:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_615]], @b = %[[VAL_616]] }  : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_618:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_612]], @b = %[[VAL_614]], @c = %[[VAL_617]] }  : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            array.write %[[VAL_607]]{{\[}}%[[VAL_611]]] = %[[VAL_618]] : <2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:          }
-// CONCRETE-NEXT:          %[[VAL_619:[0-9a-zA-Z_\.]+]] = array.new  : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          %[[VAL_620:[0-9a-zA-Z_\.]+]] = arith.constant 3 : index
-// CONCRETE-NEXT:          %[[VAL_621:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:          %[[VAL_622:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CONCRETE-NEXT:          scf.for %[[VAL_623:[0-9a-zA-Z_\.]+]] = %[[VAL_621]] to %[[VAL_620]] step %[[VAL_622]] {
-// CONCRETE-NEXT:            %[[VAL_624:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_599]]{{\[}}%[[VAL_623]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_625:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_600]]{{\[}}%[[VAL_623]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_626:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_625]] }  : <[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_627:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_601]]{{\[}}%[[VAL_623]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_628:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_602]]{{\[}}%[[VAL_623]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_629:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_627]], @b = %[[VAL_628]] }  : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_630:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_624]], @b = %[[VAL_626]], @c = %[[VAL_629]] }  : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            array.write %[[VAL_619]]{{\[}}%[[VAL_623]]] = %[[VAL_630]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:          }
-// CONCRETE-NEXT:          %[[VAL_631:[0-9a-zA-Z_\.]+]] = array.new  : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          %[[VAL_632:[0-9a-zA-Z_\.]+]] = arith.constant 5 : index
-// CONCRETE-NEXT:          %[[VAL_633:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:          %[[VAL_634:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CONCRETE-NEXT:          scf.for %[[VAL_635:[0-9a-zA-Z_\.]+]] = %[[VAL_633]] to %[[VAL_632]] step %[[VAL_634]] {
-// CONCRETE-NEXT:            %[[VAL_636:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_603]]{{\[}}%[[VAL_635]]] : <5 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_637:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_604]]{{\[}}%[[VAL_635]]] : <5 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_638:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_637]] }  : <[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_639:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_605]]{{\[}}%[[VAL_635]]] : <5 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_640:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_606]]{{\[}}%[[VAL_635]]] : <5 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_641:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_639]], @b = %[[VAL_640]] }  : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_642:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_636]], @b = %[[VAL_638]], @c = %[[VAL_641]] }  : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            array.write %[[VAL_631]]{{\[}}%[[VAL_635]]] = %[[VAL_642]] : <5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:          }
-// CONCRETE-NEXT:          %[[VAL_643:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_594]][@"$component"] : <@B_3::@"$bus_entry"<[]>>, !struct.type<@B_3::@B_3<[]>>
-// CONCRETE-NEXT:          function.call @B_3::@B_3::@constrain(%[[VAL_643]], %[[VAL_607]], %[[VAL_619]], %[[VAL_631]]) : (!struct.type<@B_3::@B_3<[]>>, !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> ()
-// CONCRETE-NEXT:          %[[VAL_644:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_594]][@out.a] : <@B_3::@"$bus_entry"<[]>>, !array.type<3 x !felt.type<"bn128">>
-// CONCRETE-NEXT:          %[[VAL_645:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_594]][@out.b.a] : <@B_3::@"$bus_entry"<[]>>, !array.type<3 x !felt.type<"bn128">>
-// CONCRETE-NEXT:          %[[VAL_646:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_594]][@out.c.a] : <@B_3::@"$bus_entry"<[]>>, !array.type<3 x !felt.type<"bn128">>
-// CONCRETE-NEXT:          %[[VAL_647:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_594]][@out.c.b] : <@B_3::@"$bus_entry"<[]>>, !array.type<3 x !felt.type<"bn128">>
-// CONCRETE-NEXT:          %[[VAL_648:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_643]][@out] : <@B_3::@B_3<[]>>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          %[[VAL_649:[0-9a-zA-Z_\.]+]] = array.new  : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// CONCRETE-NEXT:          %[[VAL_650:[0-9a-zA-Z_\.]+]] = arith.constant 3 : index
-// CONCRETE-NEXT:          %[[VAL_651:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:          %[[VAL_652:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CONCRETE-NEXT:          scf.for %[[VAL_653:[0-9a-zA-Z_\.]+]] = %[[VAL_651]] to %[[VAL_650]] step %[[VAL_652]] {
-// CONCRETE-NEXT:            %[[VAL_654:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_644]]{{\[}}%[[VAL_653]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_655:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_645]]{{\[}}%[[VAL_653]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_656:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_655]] }  : <[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_657:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_646]]{{\[}}%[[VAL_653]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_658:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_647]]{{\[}}%[[VAL_653]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_659:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_657]], @b = %[[VAL_658]] }  : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_660:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_654]], @b = %[[VAL_656]], @c = %[[VAL_659]] }  : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            array.write %[[VAL_649]]{{\[}}%[[VAL_653]]] = %[[VAL_660]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:          }
-// CONCRETE-NEXT:          %[[VAL_661:[0-9a-zA-Z_\.]+]] = arith.constant 3 : index
-// CONCRETE-NEXT:          %[[VAL_662:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CONCRETE-NEXT:          %[[VAL_663:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CONCRETE-NEXT:          scf.for %[[VAL_664:[0-9a-zA-Z_\.]+]] = %[[VAL_662]] to %[[VAL_661]] step %[[VAL_663]] {
-// CONCRETE-NEXT:            %[[VAL_665:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_648]]{{\[}}%[[VAL_664]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_666:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_649]]{{\[}}%[[VAL_664]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// CONCRETE-NEXT:            %[[VAL_667:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_665]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_668:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_666]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_667]], %[[VAL_668]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_669:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_665]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_670:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_666]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_671:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_669]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_672:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_670]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_671]], %[[VAL_672]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_673:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_665]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_674:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_666]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// CONCRETE-NEXT:            %[[VAL_675:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_673]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_676:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_674]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_675]], %[[VAL_676]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_677:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_673]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            %[[VAL_678:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_674]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// CONCRETE-NEXT:            constrain.eq %[[VAL_677]], %[[VAL_678]] : !felt.type<"bn128">, !felt.type<"bn128">
-// CONCRETE-NEXT:          }
-// CONCRETE-NEXT:          function.return
-// CONCRETE-NEXT:        }
-// CONCRETE-NEXT:      }
-// CONCRETE-NEXT:    }
-// CONCRETE-NEXT:  }
+// Check bus layouts and leaf equalities; component calls follow input completion.
+// CONCRETE-LABEL: struct.def @A_0 {
+// CONCRETE: struct.member @out : !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
+// CONCRETE: function.def @constrain(
+// CONCRETE: %[[FIELD1:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE1:[a-zA-Z0-9_.-]+]][@out]
+// CONCRETE: %[[ELEMENT1:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD1]]{{\[}}%[[VALUE2:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT2:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE3:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE2]]]
+// CONCRETE: %[[A1:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT1]][@a]
+// CONCRETE: %[[A2:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT2]][@a]
+// CONCRETE: constrain.eq %[[A1]], %[[A2]]
+// CONCRETE: %[[B1:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT1]][@b]
+// CONCRETE: %[[B2:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT2]][@b]
+// CONCRETE: %[[A3:[a-zA-Z0-9_.-]+]] = pod.read %[[B1]][@a]
+// CONCRETE: %[[A4:[a-zA-Z0-9_.-]+]] = pod.read %[[B2]][@a]
+// CONCRETE: constrain.eq %[[A3]], %[[A4]]
+// CONCRETE: %[[C1:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT1]][@c]
+// CONCRETE: %[[C2:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT2]][@c]
+// CONCRETE: %[[A5:[a-zA-Z0-9_.-]+]] = pod.read %[[C1]][@a]
+// CONCRETE: %[[A6:[a-zA-Z0-9_.-]+]] = pod.read %[[C2]][@a]
+// CONCRETE: constrain.eq %[[A5]], %[[A6]]
+// CONCRETE: %[[B3:[a-zA-Z0-9_.-]+]] = pod.read %[[C1]][@b]
+// CONCRETE: %[[B4:[a-zA-Z0-9_.-]+]] = pod.read %[[C2]][@b]
+// CONCRETE: constrain.eq %[[B3]], %[[B4]]
+// CONCRETE: function.return
+// CONCRETE-LABEL: struct.def @A_1 {
+// CONCRETE: struct.member @out : !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
+// CONCRETE: function.def @compute(
+// CONCRETE: pod.write %[[ELEMENT3:[a-zA-Z0-9_.-]+]][@a] = %[[A7:[a-zA-Z0-9_.-]+]]
+// CONCRETE: array.write %[[VALUE4:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE5:[a-zA-Z0-9_.-]+]]] = %[[ELEMENT3]]
+// CONCRETE: pod.write %[[ELEMENT4:[a-zA-Z0-9_.-]+]][@b] = %[[B5:[a-zA-Z0-9_.-]+]]
+// CONCRETE: pod.write %[[ELEMENT5:[a-zA-Z0-9_.-]+]][@c] = %[[C3:[a-zA-Z0-9_.-]+]]
+// CONCRETE: function.return %[[VALUE6:[a-zA-Z0-9_.-]+]]
+// CONCRETE: function.def @constrain(
+// CONCRETE: %[[FIELD2:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE7:[a-zA-Z0-9_.-]+]][@out]
+// CONCRETE: %[[ELEMENT6:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE8:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE9:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[A8:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT6]][@a]
+// CONCRETE: %[[ELEMENT7:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD2]]{{\[}}%[[VALUE10:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[A9:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT7]][@a]
+// CONCRETE: constrain.eq %[[A9]], %[[A8]]
+// CONCRETE: %[[ELEMENT8:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE8]]{{\[}}%[[VALUE11:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[B6:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT8]][@b]
+// CONCRETE: %[[ELEMENT9:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD2]]{{\[}}%[[VALUE12:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[B7:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT9]][@b]
+// CONCRETE: %[[A10:[a-zA-Z0-9_.-]+]] = pod.read %[[B7]][@a]
+// CONCRETE: %[[A11:[a-zA-Z0-9_.-]+]] = pod.read %[[B6]][@a]
+// CONCRETE: constrain.eq %[[A10]], %[[A11]]
+// CONCRETE: %[[ELEMENT10:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE8]]{{\[}}%[[VALUE13:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[C4:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT10]][@c]
+// CONCRETE: %[[B8:[a-zA-Z0-9_.-]+]] = pod.read %[[C4]][@b]
+// CONCRETE: %[[ELEMENT11:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD2]]{{\[}}%[[VALUE14:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[C5:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT11]][@c]
+// CONCRETE: %[[A12:[a-zA-Z0-9_.-]+]] = pod.read %[[C5]][@a]
+// CONCRETE: constrain.eq %[[A12]], %[[B8]]
+// CONCRETE: %[[ELEMENT12:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE8]]{{\[}}%[[VALUE15:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[C6:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT12]][@c]
+// CONCRETE: %[[A13:[a-zA-Z0-9_.-]+]] = pod.read %[[C6]][@a]
+// CONCRETE: %[[ELEMENT13:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD2]]{{\[}}%[[VALUE16:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[C7:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT13]][@c]
+// CONCRETE: %[[B9:[a-zA-Z0-9_.-]+]] = pod.read %[[C7]][@b]
+// CONCRETE: constrain.eq %[[B9]], %[[A13]]
+// CONCRETE: function.return
+// CONCRETE-LABEL: struct.def @A_2 {
+// CONCRETE: struct.member @out : !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
+// CONCRETE: function.def @compute(
+// CONCRETE: pod.write %[[ELEMENT14:[a-zA-Z0-9_.-]+]][@a] = %[[A14:[a-zA-Z0-9_.-]+]]
+// CONCRETE: array.write %[[VALUE17:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE18:[a-zA-Z0-9_.-]+]]] = %[[ELEMENT14]]
+// CONCRETE: pod.write %[[ELEMENT15:[a-zA-Z0-9_.-]+]][@b] = %[[B10:[a-zA-Z0-9_.-]+]]
+// CONCRETE: pod.write %[[ELEMENT16:[a-zA-Z0-9_.-]+]][@c] = %[[C8:[a-zA-Z0-9_.-]+]]
+// CONCRETE: function.return %[[VALUE19:[a-zA-Z0-9_.-]+]]
+// CONCRETE: function.def @constrain(
+// CONCRETE: %[[FIELD3:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE20:[a-zA-Z0-9_.-]+]][@out]
+// CONCRETE: %[[ELEMENT17:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE21:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE22:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[A15:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT17]][@a]
+// CONCRETE: %[[ELEMENT18:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD3]]{{\[}}%[[VALUE23:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[A16:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT18]][@a]
+// CONCRETE: constrain.eq %[[A16]], %[[A15]]
+// CONCRETE: %[[ELEMENT19:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE21]]{{\[}}%[[VALUE24:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[B11:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT19]][@b]
+// CONCRETE: %[[ELEMENT20:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD3]]{{\[}}%[[VALUE25:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[B12:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT20]][@b]
+// CONCRETE: %[[A17:[a-zA-Z0-9_.-]+]] = pod.read %[[B12]][@a]
+// CONCRETE: %[[A18:[a-zA-Z0-9_.-]+]] = pod.read %[[B11]][@a]
+// CONCRETE: constrain.eq %[[A17]], %[[A18]]
+// CONCRETE: %[[ELEMENT21:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE21]]{{\[}}%[[VALUE26:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[C9:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT21]][@c]
+// CONCRETE: %[[B13:[a-zA-Z0-9_.-]+]] = pod.read %[[C9]][@b]
+// CONCRETE: %[[ELEMENT22:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD3]]{{\[}}%[[VALUE27:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[C10:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT22]][@c]
+// CONCRETE: %[[A19:[a-zA-Z0-9_.-]+]] = pod.read %[[C10]][@a]
+// CONCRETE: constrain.eq %[[A19]], %[[B13]]
+// CONCRETE: %[[ELEMENT23:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE21]]{{\[}}%[[VALUE28:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[C11:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT23]][@c]
+// CONCRETE: %[[A20:[a-zA-Z0-9_.-]+]] = pod.read %[[C11]][@a]
+// CONCRETE: %[[ELEMENT24:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD3]]{{\[}}%[[VALUE29:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[C12:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT24]][@c]
+// CONCRETE: %[[B14:[a-zA-Z0-9_.-]+]] = pod.read %[[C12]][@b]
+// CONCRETE: constrain.eq %[[B14]], %[[A20]]
+// CONCRETE: function.return
+// CONCRETE-LABEL: struct.def @B_3 {
+// CONCRETE: struct.member @out : !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
+// CONCRETE: struct.member @aux : !pod.type<[@idx_0: !struct.type<@A_0::@A_0<[]>>, @idx_1: !struct.type<@A_1::@A_1<[]>>, @idx_2: !struct.type<@A_2::@A_2<[]>>]>
+// CONCRETE: struct.member @aux$inputs : !pod.type<[@idx_0: !pod.type<[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_1: !pod.type<[@in: !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, @idx_2: !pod.type<[@in: !array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>]>
+// CONCRETE: function.def @compute(
+// CONCRETE: pod.write %[[IDX_01:[a-zA-Z0-9_.-]+]][@in] = %[[VALUE30:[a-zA-Z0-9_.-]+]] : <[@in: !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
+// CONCRETE: pod.write %[[VALUE31:[a-zA-Z0-9_.-]+]][@idx_0] = %[[IDX_01]]
+// CONCRETE: %[[COUNT1:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_02:[a-zA-Z0-9_.-]+]][@count]
+// CONCRETE: %[[N1:[a-zA-Z0-9_.-]+]] = arith.constant 8 : index
+// CONCRETE: %[[REMAINING1:[a-zA-Z0-9_.-]+]] = arith.subi %[[COUNT1]], %[[N1]]
+// CONCRETE: pod.write %[[IDX_02]][@count] = %[[REMAINING1]]
+// CONCRETE: %[[N2:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
+// CONCRETE: %[[READY1:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[REMAINING1]], %[[N2]]
+// CONCRETE: scf.if %[[READY1]] {
+// CONCRETE: %[[PARAMS1:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_02]][@params]
+// CONCRETE: %[[IN1:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_01]][@in]
+// CONCRETE: %[[CHILD1:[a-zA-Z0-9_.-]+]] = function.call @A_0::@A_0::@compute(%[[IN1]]) : (!array.type<2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !struct.type<@A_0::@A_0<[]>>
+// CONCRETE: pod.write %[[IDX_02]][@comp] = %[[CHILD1]]
+// CONCRETE: %[[CHILD2:[a-zA-Z0-9_.-]+]] = function.call @A_2::@A_2::@compute(%[[IN2:[a-zA-Z0-9_.-]+]]) : (!array.type<5 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !struct.type<@A_2::@A_2<[]>>
+// CONCRETE: %[[CHILD3:[a-zA-Z0-9_.-]+]] = function.call @A_1::@A_1::@compute(%[[IN3:[a-zA-Z0-9_.-]+]]) : (!array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !struct.type<@A_1::@A_1<[]>>
+// CONCRETE: function.return %[[VALUE32:[a-zA-Z0-9_.-]+]]
+// CONCRETE: function.def @constrain(
+// CONCRETE: %[[FIELD4:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE33:[a-zA-Z0-9_.-]+]][@out]
+// CONCRETE: %[[FIELD5:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE33]][@aux]
+// CONCRETE: %[[FIELD6:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE33]][@aux$inputs]
+// CONCRETE: %[[IDX_03:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD6]][@idx_0]
+// CONCRETE: %[[IN4:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_03]][@in]
+// CONCRETE: %[[ELEMENT25:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE34:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE35:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT26:[a-zA-Z0-9_.-]+]] = array.read %[[IN4]]{{\[}}%[[VALUE35]]]
+// CONCRETE: %[[A21:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT25]][@a]
+// CONCRETE: %[[A22:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT26]][@a]
+// CONCRETE: constrain.eq %[[A21]], %[[A22]]
+// CONCRETE: %[[B15:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT25]][@b]
+// CONCRETE: %[[B16:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT26]][@b]
+// CONCRETE: %[[A23:[a-zA-Z0-9_.-]+]] = pod.read %[[B15]][@a]
+// CONCRETE: %[[A24:[a-zA-Z0-9_.-]+]] = pod.read %[[B16]][@a]
+// CONCRETE: constrain.eq %[[A23]], %[[A24]]
+// CONCRETE: %[[C13:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT25]][@c]
+// CONCRETE: %[[C14:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT26]][@c]
+// CONCRETE: %[[A25:[a-zA-Z0-9_.-]+]] = pod.read %[[C13]][@a]
+// CONCRETE: %[[A26:[a-zA-Z0-9_.-]+]] = pod.read %[[C14]][@a]
+// CONCRETE: constrain.eq %[[A25]], %[[A26]]
+// CONCRETE: %[[B17:[a-zA-Z0-9_.-]+]] = pod.read %[[C13]][@b]
+// CONCRETE: %[[B18:[a-zA-Z0-9_.-]+]] = pod.read %[[C14]][@b]
+// CONCRETE: constrain.eq %[[B17]], %[[B18]]
+// CONCRETE: %[[ELEMENT27:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE36:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE37:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[IDX_11:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD6]][@idx_1]
+// CONCRETE: %[[IN5:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_11]][@in]
+// CONCRETE: %[[ELEMENT28:[a-zA-Z0-9_.-]+]] = array.read %[[IN5]]{{\[}}%[[VALUE38:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[A27:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT27]][@a]
+// CONCRETE: %[[A28:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT28]][@a]
+// CONCRETE: constrain.eq %[[A27]], %[[A28]]
+// CONCRETE: %[[B19:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT27]][@b]
+// CONCRETE: %[[B20:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT28]][@b]
+// CONCRETE: %[[A29:[a-zA-Z0-9_.-]+]] = pod.read %[[B19]][@a]
+// CONCRETE: %[[A30:[a-zA-Z0-9_.-]+]] = pod.read %[[B20]][@a]
+// CONCRETE: constrain.eq %[[A29]], %[[A30]]
+// CONCRETE: %[[C15:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT27]][@c]
+// CONCRETE: %[[C16:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT28]][@c]
+// CONCRETE: %[[A31:[a-zA-Z0-9_.-]+]] = pod.read %[[C15]][@a]
+// CONCRETE: %[[A32:[a-zA-Z0-9_.-]+]] = pod.read %[[C16]][@a]
+// CONCRETE: constrain.eq %[[A31]], %[[A32]]
+// CONCRETE: %[[B21:[a-zA-Z0-9_.-]+]] = pod.read %[[C15]][@b]
+// CONCRETE: %[[B22:[a-zA-Z0-9_.-]+]] = pod.read %[[C16]][@b]
+// CONCRETE: constrain.eq %[[B21]], %[[B22]]
+// CONCRETE: %[[IDX_21:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD6]][@idx_2]
+// CONCRETE: %[[IN6:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_21]][@in]
+// CONCRETE: %[[ELEMENT29:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE39:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE40:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT30:[a-zA-Z0-9_.-]+]] = array.read %[[IN6]]{{\[}}%[[VALUE40]]]
+// CONCRETE: %[[A33:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT29]][@a]
+// CONCRETE: %[[A34:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT30]][@a]
+// CONCRETE: constrain.eq %[[A33]], %[[A34]]
+// CONCRETE: %[[B23:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT29]][@b]
+// CONCRETE: %[[B24:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT30]][@b]
+// CONCRETE: %[[A35:[a-zA-Z0-9_.-]+]] = pod.read %[[B23]][@a]
+// CONCRETE: %[[A36:[a-zA-Z0-9_.-]+]] = pod.read %[[B24]][@a]
+// CONCRETE: constrain.eq %[[A35]], %[[A36]]
+// CONCRETE: %[[C17:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT29]][@c]
+// CONCRETE: %[[C18:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT30]][@c]
+// CONCRETE: %[[A37:[a-zA-Z0-9_.-]+]] = pod.read %[[C17]][@a]
+// CONCRETE: %[[A38:[a-zA-Z0-9_.-]+]] = pod.read %[[C18]][@a]
+// CONCRETE: constrain.eq %[[A37]], %[[A38]]
+// CONCRETE: %[[B25:[a-zA-Z0-9_.-]+]] = pod.read %[[C17]][@b]
+// CONCRETE: %[[B26:[a-zA-Z0-9_.-]+]] = pod.read %[[C18]][@b]
+// CONCRETE: constrain.eq %[[B25]], %[[B26]]
+// CONCRETE: %[[ELEMENT31:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD4]]{{\[}}%[[VALUE41:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[IDX_22:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD5]][@idx_2]
+// CONCRETE: %[[FIELD7:[a-zA-Z0-9_.-]+]] = struct.readm %[[IDX_22]][@out]
+// CONCRETE: %[[ELEMENT32:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD7]]{{\[}}%[[VALUE42:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[IDX_12:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD5]][@idx_1]
+// CONCRETE: %[[FIELD8:[a-zA-Z0-9_.-]+]] = struct.readm %[[IDX_12]][@out]
+// CONCRETE: %[[ELEMENT33:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD8]]{{\[}}%[[VALUE43:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[IDX_04:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD5]][@idx_0]
+// CONCRETE: %[[FIELD9:[a-zA-Z0-9_.-]+]] = struct.readm %[[IDX_04]][@out]
+// CONCRETE: %[[ELEMENT34:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD9]]{{\[}}%[[VALUE44:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[A39:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT31]][@a]
+// CONCRETE: %[[A40:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE45:[a-zA-Z0-9_.-]+]][@a]
+// CONCRETE: constrain.eq %[[A39]], %[[A40]]
+// CONCRETE: %[[B27:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT31]][@b]
+// CONCRETE: %[[B28:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE45]][@b]
+// CONCRETE: %[[A41:[a-zA-Z0-9_.-]+]] = pod.read %[[B27]][@a]
+// CONCRETE: %[[A42:[a-zA-Z0-9_.-]+]] = pod.read %[[B28]][@a]
+// CONCRETE: constrain.eq %[[A41]], %[[A42]]
+// CONCRETE: %[[C19:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT31]][@c]
+// CONCRETE: %[[C20:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE45]][@c]
+// CONCRETE: %[[A43:[a-zA-Z0-9_.-]+]] = pod.read %[[C19]][@a]
+// CONCRETE: %[[A44:[a-zA-Z0-9_.-]+]] = pod.read %[[C20]][@a]
+// CONCRETE: constrain.eq %[[A43]], %[[A44]]
+// CONCRETE: %[[B29:[a-zA-Z0-9_.-]+]] = pod.read %[[C19]][@b]
+// CONCRETE: %[[B30:[a-zA-Z0-9_.-]+]] = pod.read %[[C20]][@b]
+// CONCRETE: constrain.eq %[[B29]], %[[B30]]
+// CONCRETE: %[[IDX_05:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD5]][@idx_0]
+// CONCRETE: %[[IDX_06:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD6]][@idx_0]
+// CONCRETE: %[[IN7:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_06]][@in]
+// CONCRETE: %[[IDX_13:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD5]][@idx_1]
+// CONCRETE: %[[IDX_14:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD6]][@idx_1]
+// CONCRETE: %[[IN8:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_14]][@in]
+// CONCRETE: %[[IDX_23:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD5]][@idx_2]
+// CONCRETE: %[[IDX_24:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD6]][@idx_2]
+// CONCRETE: %[[IN9:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_24]][@in]
+// CONCRETE: function.return
 
-// TEMPLATED:       #[[$ATTR_0:[0-9a-zA-Z_\.]+]] = affine_map<(d0) -> (d0)>
-// TEMPLATED-LABEL: module attributes {llzk.lang = "circom", llzk.main = !struct.type<@B::@"$bus_entry"<[2, 3, 5]>>} {
-// TEMPLATED-NEXT:    module @global {
-// TEMPLATED-NEXT:      global.def const @array_const_0 : !array.type<3 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
-// TEMPLATED-NEXT:    }
-// TEMPLATED-NEXT:    poly.template @A {
-// TEMPLATED-NEXT:      poly.param @n : index
-// TEMPLATED-NEXT:      struct.def @A {
-// TEMPLATED-NEXT:        struct.member @out : !array.type<@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {llzk.pub, signal}
-// TEMPLATED-NEXT:        function.def @compute(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !array.type<@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in"}) -> !struct.type<@A::@A<[@n]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// TEMPLATED-NEXT:          %[[VAL_1:[0-9a-zA-Z_\.]+]] = struct.new : <@A::@A<[@n]>>
-// TEMPLATED-NEXT:          %[[VAL_2:[0-9a-zA-Z_\.]+]] = poly.read_const @n : index
-// TEMPLATED-NEXT:          %[[VAL_3:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_2]] : index, !felt.type<"bn128">
-// TEMPLATED-NEXT:          %[[VAL_4:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          %[[VAL_5:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// TEMPLATED-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = felt.umod %[[VAL_3]], %[[VAL_5]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:          %[[VAL_7:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// TEMPLATED-NEXT:          %[[VAL_8:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_6]], %[[VAL_7]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:          %[[VAL_9:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_8]] -> (!array.type<@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) {
-// TEMPLATED-NEXT:            struct.writem %[[VAL_1]][@out] = %[[VAL_0]] : <@A::@A<[@n]>>, !array.type<@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:            scf.yield %[[VAL_0]] : !array.type<@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          } else {
-// TEMPLATED-NEXT:            %[[VAL_10:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// TEMPLATED-NEXT:            %[[VAL_11:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_12:[0-9a-zA-Z_\.]+]] = %[[VAL_10]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
-// TEMPLATED-NEXT:              %[[VAL_13:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_12]], %[[VAL_3]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:              scf.condition(%[[VAL_13]]) %[[VAL_12]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:            } do {
-// TEMPLATED-NEXT:            ^bb0(%[[VAL_14:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// TEMPLATED-NEXT:              %[[VAL_15:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_14]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_16:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_0]]{{\[}}%[[VAL_15]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_17:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_16]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_18:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_14]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_19:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_4]]{{\[}}%[[VAL_18]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_20:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_19]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              pod.write %[[VAL_19]][@a] = %[[VAL_17]] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              array.write %[[VAL_4]]{{\[}}%[[VAL_18]]] = %[[VAL_19]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_21:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_14]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_22:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_0]]{{\[}}%[[VAL_21]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_23:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_22]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              %[[VAL_24:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_14]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_25:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_4]]{{\[}}%[[VAL_24]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_26:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_25]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              pod.write %[[VAL_25]][@b] = %[[VAL_23]] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              array.write %[[VAL_4]]{{\[}}%[[VAL_24]]] = %[[VAL_25]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_27:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_14]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_28:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_0]]{{\[}}%[[VAL_27]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_29:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_28]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              %[[VAL_30:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_29]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_31:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_14]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_32:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_4]]{{\[}}%[[VAL_31]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_33:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_32]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              %[[VAL_34:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_33]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              pod.write %[[VAL_33]][@a] = %[[VAL_30]] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              pod.write %[[VAL_32]][@c] = %[[VAL_33]] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              array.write %[[VAL_4]]{{\[}}%[[VAL_31]]] = %[[VAL_32]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_35:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_14]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_36:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_0]]{{\[}}%[[VAL_35]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_37:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_36]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              %[[VAL_38:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_37]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_39:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_14]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_40:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_4]]{{\[}}%[[VAL_39]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_41:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_40]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              %[[VAL_42:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_41]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              pod.write %[[VAL_41]][@b] = %[[VAL_38]] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              pod.write %[[VAL_40]][@c] = %[[VAL_41]] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              array.write %[[VAL_4]]{{\[}}%[[VAL_39]]] = %[[VAL_40]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_43:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// TEMPLATED-NEXT:              %[[VAL_44:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_14]], %[[VAL_43]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:              scf.yield %[[VAL_44]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:            }
-// TEMPLATED-NEXT:            scf.yield %[[VAL_4]] : !array.type<@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          }
-// TEMPLATED-NEXT:          struct.writem %[[VAL_1]][@out] = %[[VAL_4]] : <@A::@A<[@n]>>, !array.type<@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          function.return %[[VAL_1]] : !struct.type<@A::@A<[@n]>>
-// TEMPLATED-NEXT:        }
-// TEMPLATED-NEXT:        function.def @constrain(%[[VAL_45:[0-9a-zA-Z_\.]+]]: !struct.type<@A::@A<[@n]>>, %[[VAL_46:[0-9a-zA-Z_\.]+]]: !array.type<@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// TEMPLATED-NEXT:          %[[VAL_47:[0-9a-zA-Z_\.]+]] = poly.read_const @n : index
-// TEMPLATED-NEXT:          %[[VAL_48:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_47]] : index, !felt.type<"bn128">
-// TEMPLATED-NEXT:          %[[VAL_49:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_45]][@out] : <@A::@A<[@n]>>, !array.type<@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          %[[VAL_50:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// TEMPLATED-NEXT:          %[[VAL_51:[0-9a-zA-Z_\.]+]] = felt.umod %[[VAL_48]], %[[VAL_50]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:          %[[VAL_52:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// TEMPLATED-NEXT:          %[[VAL_53:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_51]], %[[VAL_52]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:          scf.if %[[VAL_53]] {
-// TEMPLATED-NEXT:            %[[VAL_54:[0-9a-zA-Z_\.]+]] = poly.read_const @n : index
-// TEMPLATED-NEXT:            %[[VAL_55:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:            %[[VAL_56:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// TEMPLATED-NEXT:            scf.for %[[VAL_57:[0-9a-zA-Z_\.]+]] = %[[VAL_55]] to %[[VAL_54]] step %[[VAL_56]] {
-// TEMPLATED-NEXT:              %[[VAL_58:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_49]]{{\[}}%[[VAL_57]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_59:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_46]]{{\[}}%[[VAL_57]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_60:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_58]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_61:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_59]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              constrain.eq %[[VAL_60]], %[[VAL_61]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_62:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_58]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              %[[VAL_63:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_59]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              %[[VAL_64:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_62]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_65:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_63]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              constrain.eq %[[VAL_64]], %[[VAL_65]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_66:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_58]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              %[[VAL_67:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_59]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              %[[VAL_68:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_66]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_69:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_67]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              constrain.eq %[[VAL_68]], %[[VAL_69]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_70:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_66]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_71:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_67]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              constrain.eq %[[VAL_70]], %[[VAL_71]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:            }
-// TEMPLATED-NEXT:          } else {
-// TEMPLATED-NEXT:            %[[VAL_72:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// TEMPLATED-NEXT:            %[[VAL_73:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_74:[0-9a-zA-Z_\.]+]] = %[[VAL_72]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
-// TEMPLATED-NEXT:              %[[VAL_75:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_74]], %[[VAL_48]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:              scf.condition(%[[VAL_75]]) %[[VAL_74]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:            } do {
-// TEMPLATED-NEXT:            ^bb0(%[[VAL_76:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// TEMPLATED-NEXT:              %[[VAL_77:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_76]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_78:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_46]]{{\[}}%[[VAL_77]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_79:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_78]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_80:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_76]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_81:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_49]]{{\[}}%[[VAL_80]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_82:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_81]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              constrain.eq %[[VAL_82]], %[[VAL_79]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_83:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_76]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_84:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_46]]{{\[}}%[[VAL_83]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_85:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_84]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              %[[VAL_86:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_76]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_87:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_49]]{{\[}}%[[VAL_86]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_88:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_87]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              %[[VAL_89:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_88]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_90:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_85]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              constrain.eq %[[VAL_89]], %[[VAL_90]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_91:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_76]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_92:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_46]]{{\[}}%[[VAL_91]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_93:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_92]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              %[[VAL_94:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_93]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_95:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_76]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_96:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_49]]{{\[}}%[[VAL_95]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_97:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_96]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              %[[VAL_98:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_97]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              constrain.eq %[[VAL_98]], %[[VAL_94]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_99:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_76]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_100:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_46]]{{\[}}%[[VAL_99]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_101:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_100]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              %[[VAL_102:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_101]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_103:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_76]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_104:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_49]]{{\[}}%[[VAL_103]]] : <@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_105:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_104]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:              %[[VAL_106:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_105]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              constrain.eq %[[VAL_106]], %[[VAL_102]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_107:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// TEMPLATED-NEXT:              %[[VAL_108:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_76]], %[[VAL_107]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:              scf.yield %[[VAL_108]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:            }
-// TEMPLATED-NEXT:          }
-// TEMPLATED-NEXT:          function.return
-// TEMPLATED-NEXT:        }
-// TEMPLATED-NEXT:      }
-// TEMPLATED-NEXT:    }
-// TEMPLATED-NEXT:    poly.template @B {
-// TEMPLATED-NEXT:      poly.param @n1 : index
-// TEMPLATED-NEXT:      poly.param @n2 : index
-// TEMPLATED-NEXT:      poly.param @n3 : index
-// TEMPLATED-NEXT:      struct.def @B {
-// TEMPLATED-NEXT:        struct.member @out : !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {llzk.pub, signal}
-// TEMPLATED-NEXT:        struct.member @aux : !array.type<3 x !struct.type<@A::@A<[#[[$ATTR_0]]]>>>
-// TEMPLATED-NEXT:        struct.member @aux$inputs : !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>> {signal}
-// TEMPLATED-NEXT:        function.def @compute(%[[VAL_109:[0-9a-zA-Z_\.]+]]: !array.type<@n1 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in1"}, %[[VAL_110:[0-9a-zA-Z_\.]+]]: !array.type<@n2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in2"}, %[[VAL_111:[0-9a-zA-Z_\.]+]]: !array.type<@n3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in3"}) -> !struct.type<@B::@B<[@n1, @n2, @n3]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// TEMPLATED-NEXT:          %[[VAL_112:[0-9a-zA-Z_\.]+]] = struct.new : <@B::@B<[@n1, @n2, @n3]>>
-// TEMPLATED-NEXT:          %[[VAL_113:[0-9a-zA-Z_\.]+]] = poly.read_const @n1 : index
-// TEMPLATED-NEXT:          %[[VAL_114:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_113]] : index, !felt.type<"bn128">
-// TEMPLATED-NEXT:          %[[VAL_115:[0-9a-zA-Z_\.]+]] = poly.read_const @n2 : index
-// TEMPLATED-NEXT:          %[[VAL_116:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_115]] : index, !felt.type<"bn128">
-// TEMPLATED-NEXT:          %[[VAL_117:[0-9a-zA-Z_\.]+]] = poly.read_const @n3 : index
-// TEMPLATED-NEXT:          %[[VAL_118:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_117]] : index, !felt.type<"bn128">
-// TEMPLATED-NEXT:          %[[VAL_119:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          %[[VAL_120:[0-9a-zA-Z_\.]+]] = array.new  : <3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          %[[VAL_121:[0-9a-zA-Z_\.]+]] = array.new  : <3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>
-// TEMPLATED-NEXT:          %[[VAL_122:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<3 x !felt.type<"bn128">>
-// TEMPLATED-NEXT:          %[[VAL_123:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_114]], %[[VAL_116]], %[[VAL_118]] : <3 x !felt.type<"bn128">>
-// TEMPLATED-NEXT:          %[[VAL_124:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// TEMPLATED-NEXT:          %[[VAL_125:[0-9a-zA-Z_\.]+]]:3 = scf.while (%[[VAL_126:[0-9a-zA-Z_\.]+]] = %[[VAL_120]], %[[VAL_127:[0-9a-zA-Z_\.]+]] = %[[VAL_121]], %[[VAL_128:[0-9a-zA-Z_\.]+]] = %[[VAL_124]]) : (!array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !felt.type<"bn128">) -> (!array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !felt.type<"bn128">) {
-// TEMPLATED-NEXT:            %[[VAL_129:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
-// TEMPLATED-NEXT:            %[[VAL_130:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_128]], %[[VAL_129]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:            scf.condition(%[[VAL_130]]) %[[VAL_126]], %[[VAL_127]], %[[VAL_128]] : !array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !felt.type<"bn128">
-// TEMPLATED-NEXT:          } do {
-// TEMPLATED-NEXT:          ^bb0(%[[VAL_131:[0-9a-zA-Z_\.]+]]: !array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, %[[VAL_132:[0-9a-zA-Z_\.]+]]: !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, %[[VAL_133:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// TEMPLATED-NEXT:            %[[VAL_134:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_133]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_135:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_123]]{{\[}}%[[VAL_134]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_136:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_135]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_137:[0-9a-zA-Z_\.]+]] = pod.new { @n = %[[VAL_135]] }  : <[@n: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_138:[0-9a-zA-Z_\.]+]] = arith.constant 4 : index
-// TEMPLATED-NEXT:            %[[VAL_139:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_137]][@n] : <[@n: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_140:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_139]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_141:[0-9a-zA-Z_\.]+]] = arith.muli %[[VAL_138]], %[[VAL_140]] : index
-// TEMPLATED-NEXT:            %[[VAL_142:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:            %[[VAL_143:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_141]], %[[VAL_142]] : index
-// TEMPLATED-NEXT:            %[[VAL_144:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_143]] -> (!struct.type<@A::@A<[#[[$ATTR_0]]]>>) {
-// TEMPLATED-NEXT:              %[[VAL_145:[0-9a-zA-Z_\.]+]] = llzk.nondet : !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// TEMPLATED-NEXT:              %[[VAL_146:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_145]][@in] : <[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:              %[[VAL_147:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_137]][@n] : <[@n: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_148:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_147]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_149:[0-9a-zA-Z_\.]+]] = function.call @A::@A::@compute(%[[VAL_146]]) {(%[[VAL_148]])} : (!array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !struct.type<@A::@A<[#[[$ATTR_0]]]>>
-// TEMPLATED-NEXT:              scf.yield %[[VAL_149]] : !struct.type<@A::@A<[#[[$ATTR_0]]]>>
-// TEMPLATED-NEXT:            } else {
-// TEMPLATED-NEXT:              %[[VAL_150:[0-9a-zA-Z_\.]+]] = llzk.nondet : !struct.type<@A::@A<[#[[$ATTR_0]]]>>
-// TEMPLATED-NEXT:              scf.yield %[[VAL_150]] : !struct.type<@A::@A<[#[[$ATTR_0]]]>>
-// TEMPLATED-NEXT:            }
-// TEMPLATED-NEXT:            %[[VAL_151:[0-9a-zA-Z_\.]+]] = pod.new { @count = %[[VAL_141]], @params = %[[VAL_137]], @comp = %[[VAL_144]] } (%[[VAL_136]]) : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            %[[VAL_152:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_133]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:            array.write %[[VAL_131]]{{\[}}%[[VAL_152]]] = %[[VAL_151]] : <3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            %[[VAL_153:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// TEMPLATED-NEXT:            %[[VAL_154:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_133]], %[[VAL_153]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_155:[0-9a-zA-Z_\.]+]]:2 = scf.if %[[VAL_154]] -> (!array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>) {
-// TEMPLATED-NEXT:              %[[VAL_156:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_133]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_157:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_132]]{{\[}}%[[VAL_156]]] : <3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// TEMPLATED-NEXT:              %[[VAL_158:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_131]]{{\[}}%[[VAL_156]]] : <3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              %[[VAL_159:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_157]][@in] : <[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:              %[[VAL_160:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_109]] : (!array.type<@n1 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:              pod.write %[[VAL_157]][@in] = %[[VAL_160]] : <[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:              %[[VAL_161:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_158]][@count] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, index
-// TEMPLATED-NEXT:              %[[VAL_162:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:              %[[VAL_163:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_161]], %[[VAL_162]] : index
-// TEMPLATED-NEXT:              %[[VAL_164:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// TEMPLATED-NEXT:              %[[VAL_165:[0-9a-zA-Z_\.]+]] = arith.select %[[VAL_163]], %[[VAL_164]], %[[VAL_162]] : index
-// TEMPLATED-NEXT:              %[[VAL_166:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:              %[[VAL_167:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_165]], %[[VAL_166]] : index
-// TEMPLATED-NEXT:              scf.if %[[VAL_167]] {
-// TEMPLATED-NEXT:                %[[VAL_168:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_158]][@count] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, index
-// TEMPLATED-NEXT:                %[[VAL_169:[0-9a-zA-Z_\.]+]] = arith.constant 4 : index
-// TEMPLATED-NEXT:                %[[VAL_170:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_114]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:                %[[VAL_171:[0-9a-zA-Z_\.]+]] = arith.muli %[[VAL_169]], %[[VAL_170]] : index
-// TEMPLATED-NEXT:                %[[VAL_172:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_168]], %[[VAL_171]] : index
-// TEMPLATED-NEXT:                pod.write %[[VAL_158]][@count] = %[[VAL_172]] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, index
-// TEMPLATED-NEXT:                %[[VAL_173:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:                %[[VAL_174:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_172]], %[[VAL_173]] : index
-// TEMPLATED-NEXT:                scf.if %[[VAL_174]] {
-// TEMPLATED-NEXT:                  %[[VAL_175:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_158]][@params] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, !pod.type<[@n: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:                  %[[VAL_176:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_157]][@in] : <[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:                  %[[VAL_177:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_175]][@n] : <[@n: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_178:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_177]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_179:[0-9a-zA-Z_\.]+]] = function.call @A::@A::@compute(%[[VAL_176]]) {(%[[VAL_178]])} : (!array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !struct.type<@A::@A<[#[[$ATTR_0]]]>>
-// TEMPLATED-NEXT:                  pod.write %[[VAL_158]][@comp] = %[[VAL_179]] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, !struct.type<@A::@A<[#[[$ATTR_0]]]>>
-// TEMPLATED-NEXT:                }
-// TEMPLATED-NEXT:              }
-// TEMPLATED-NEXT:              array.write %[[VAL_132]]{{\[}}%[[VAL_156]]] = %[[VAL_157]] : <3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// TEMPLATED-NEXT:              array.write %[[VAL_131]]{{\[}}%[[VAL_156]]] = %[[VAL_158]] : <3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:              scf.yield %[[VAL_131]], %[[VAL_132]] : !array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>
-// TEMPLATED-NEXT:            } else {
-// TEMPLATED-NEXT:              %[[VAL_180:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// TEMPLATED-NEXT:              %[[VAL_181:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_133]], %[[VAL_180]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_182:[0-9a-zA-Z_\.]+]]:2 = scf.if %[[VAL_181]] -> (!array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>) {
-// TEMPLATED-NEXT:                %[[VAL_183:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// TEMPLATED-NEXT:                %[[VAL_184:[0-9a-zA-Z_\.]+]]:3 = scf.while (%[[VAL_185:[0-9a-zA-Z_\.]+]] = %[[VAL_131]], %[[VAL_186:[0-9a-zA-Z_\.]+]] = %[[VAL_132]], %[[VAL_187:[0-9a-zA-Z_\.]+]] = %[[VAL_183]]) : (!array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !felt.type<"bn128">) -> (!array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !felt.type<"bn128">) {
-// TEMPLATED-NEXT:                  %[[VAL_188:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_133]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_189:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_123]]{{\[}}%[[VAL_188]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_190:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_187]], %[[VAL_189]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  scf.condition(%[[VAL_190]]) %[[VAL_185]], %[[VAL_186]], %[[VAL_187]] : !array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                } do {
-// TEMPLATED-NEXT:                ^bb0(%[[VAL_191:[0-9a-zA-Z_\.]+]]: !array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, %[[VAL_192:[0-9a-zA-Z_\.]+]]: !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, %[[VAL_193:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// TEMPLATED-NEXT:                  %[[VAL_194:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_193]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_195:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_110]]{{\[}}%[[VAL_194]]] : <@n2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:                  %[[VAL_196:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_133]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_197:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_192]]{{\[}}%[[VAL_196]]] : <3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// TEMPLATED-NEXT:                  %[[VAL_198:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_191]]{{\[}}%[[VAL_196]]] : <3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:                  %[[VAL_199:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_197]][@in] : <[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:                  %[[VAL_200:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_193]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_201:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_199]]{{\[}}%[[VAL_200]]] : <#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:                  array.write %[[VAL_199]]{{\[}}%[[VAL_200]]] = %[[VAL_195]] : <#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:                  pod.write %[[VAL_197]][@in] = %[[VAL_199]] : <[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:                  %[[VAL_202:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_198]][@count] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, index
-// TEMPLATED-NEXT:                  %[[VAL_203:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:                  %[[VAL_204:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_202]], %[[VAL_203]] : index
-// TEMPLATED-NEXT:                  %[[VAL_205:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// TEMPLATED-NEXT:                  %[[VAL_206:[0-9a-zA-Z_\.]+]] = arith.select %[[VAL_204]], %[[VAL_205]], %[[VAL_203]] : index
-// TEMPLATED-NEXT:                  %[[VAL_207:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:                  %[[VAL_208:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_206]], %[[VAL_207]] : index
-// TEMPLATED-NEXT:                  scf.if %[[VAL_208]] {
-// TEMPLATED-NEXT:                    %[[VAL_209:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_198]][@count] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, index
-// TEMPLATED-NEXT:                    %[[VAL_210:[0-9a-zA-Z_\.]+]] = arith.constant 4 : index
-// TEMPLATED-NEXT:                    %[[VAL_211:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_209]], %[[VAL_210]] : index
-// TEMPLATED-NEXT:                    pod.write %[[VAL_198]][@count] = %[[VAL_211]] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, index
-// TEMPLATED-NEXT:                    %[[VAL_212:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:                    %[[VAL_213:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_211]], %[[VAL_212]] : index
-// TEMPLATED-NEXT:                    scf.if %[[VAL_213]] {
-// TEMPLATED-NEXT:                      %[[VAL_214:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_198]][@params] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, !pod.type<[@n: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:                      %[[VAL_215:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_197]][@in] : <[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:                      %[[VAL_216:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_214]][@n] : <[@n: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                      %[[VAL_217:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_216]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:                      %[[VAL_218:[0-9a-zA-Z_\.]+]] = function.call @A::@A::@compute(%[[VAL_215]]) {(%[[VAL_217]])} : (!array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !struct.type<@A::@A<[#[[$ATTR_0]]]>>
-// TEMPLATED-NEXT:                      pod.write %[[VAL_198]][@comp] = %[[VAL_218]] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, !struct.type<@A::@A<[#[[$ATTR_0]]]>>
-// TEMPLATED-NEXT:                    }
-// TEMPLATED-NEXT:                  }
-// TEMPLATED-NEXT:                  array.write %[[VAL_192]]{{\[}}%[[VAL_196]]] = %[[VAL_197]] : <3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// TEMPLATED-NEXT:                  array.write %[[VAL_191]]{{\[}}%[[VAL_196]]] = %[[VAL_198]] : <3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:                  %[[VAL_219:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_220:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_193]], %[[VAL_219]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  scf.yield %[[VAL_191]], %[[VAL_192]], %[[VAL_220]] : !array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                }
-// TEMPLATED-NEXT:                scf.yield %[[VAL_184]]#0, %[[VAL_184]]#1 : !array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>
-// TEMPLATED-NEXT:              } else {
-// TEMPLATED-NEXT:                %[[VAL_221:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_133]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:                %[[VAL_222:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_132]]{{\[}}%[[VAL_221]]] : <3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// TEMPLATED-NEXT:                %[[VAL_223:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_131]]{{\[}}%[[VAL_221]]] : <3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:                %[[VAL_224:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_222]][@in] : <[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:                %[[VAL_225:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_111]] : (!array.type<@n3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:                pod.write %[[VAL_222]][@in] = %[[VAL_225]] : <[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:                %[[VAL_226:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_223]][@count] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, index
-// TEMPLATED-NEXT:                %[[VAL_227:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:                %[[VAL_228:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_226]], %[[VAL_227]] : index
-// TEMPLATED-NEXT:                %[[VAL_229:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// TEMPLATED-NEXT:                %[[VAL_230:[0-9a-zA-Z_\.]+]] = arith.select %[[VAL_228]], %[[VAL_229]], %[[VAL_227]] : index
-// TEMPLATED-NEXT:                %[[VAL_231:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:                %[[VAL_232:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_230]], %[[VAL_231]] : index
-// TEMPLATED-NEXT:                scf.if %[[VAL_232]] {
-// TEMPLATED-NEXT:                  %[[VAL_233:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_223]][@count] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, index
-// TEMPLATED-NEXT:                  %[[VAL_234:[0-9a-zA-Z_\.]+]] = arith.constant 4 : index
-// TEMPLATED-NEXT:                  %[[VAL_235:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_118]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_236:[0-9a-zA-Z_\.]+]] = arith.muli %[[VAL_234]], %[[VAL_235]] : index
-// TEMPLATED-NEXT:                  %[[VAL_237:[0-9a-zA-Z_\.]+]] = arith.subi %[[VAL_233]], %[[VAL_236]] : index
-// TEMPLATED-NEXT:                  pod.write %[[VAL_223]][@count] = %[[VAL_237]] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, index
-// TEMPLATED-NEXT:                  %[[VAL_238:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:                  %[[VAL_239:[0-9a-zA-Z_\.]+]] = arith.cmpi eq, %[[VAL_237]], %[[VAL_238]] : index
-// TEMPLATED-NEXT:                  scf.if %[[VAL_239]] {
-// TEMPLATED-NEXT:                    %[[VAL_240:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_223]][@params] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, !pod.type<[@n: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:                    %[[VAL_241:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_222]][@in] : <[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:                    %[[VAL_242:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_240]][@n] : <[@n: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                    %[[VAL_243:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_242]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:                    %[[VAL_244:[0-9a-zA-Z_\.]+]] = function.call @A::@A::@compute(%[[VAL_241]]) {(%[[VAL_243]])} : (!array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !struct.type<@A::@A<[#[[$ATTR_0]]]>>
-// TEMPLATED-NEXT:                    pod.write %[[VAL_223]][@comp] = %[[VAL_244]] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, !struct.type<@A::@A<[#[[$ATTR_0]]]>>
-// TEMPLATED-NEXT:                  }
-// TEMPLATED-NEXT:                }
-// TEMPLATED-NEXT:                array.write %[[VAL_132]]{{\[}}%[[VAL_221]]] = %[[VAL_222]] : <3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// TEMPLATED-NEXT:                array.write %[[VAL_131]]{{\[}}%[[VAL_221]]] = %[[VAL_223]] : <3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:                scf.yield %[[VAL_131]], %[[VAL_132]] : !array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>
-// TEMPLATED-NEXT:              }
-// TEMPLATED-NEXT:              scf.yield %[[VAL_182]]#0, %[[VAL_182]]#1 : !array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>
-// TEMPLATED-NEXT:            }
-// TEMPLATED-NEXT:            %[[VAL_245:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_133]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_246:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_155]]#0{{\[}}%[[VAL_245]]] : <3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            %[[VAL_247:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_246]][@comp] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, !struct.type<@A::@A<[#[[$ATTR_0]]]>>
-// TEMPLATED-NEXT:            %[[VAL_248:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_247]][@out] : <@A::@A<[#[[$ATTR_0]]]>>, !array.type<? x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:            %[[VAL_249:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// TEMPLATED-NEXT:            %[[VAL_250:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_249]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_251:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_248]]{{\[}}%[[VAL_250]]] : <? x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            %[[VAL_252:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_133]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_253:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_119]]{{\[}}%[[VAL_252]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            array.write %[[VAL_119]]{{\[}}%[[VAL_252]]] = %[[VAL_251]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            %[[VAL_254:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// TEMPLATED-NEXT:            %[[VAL_255:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_133]], %[[VAL_254]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:            scf.yield %[[VAL_155]]#0, %[[VAL_155]]#1, %[[VAL_255]] : !array.type<3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !felt.type<"bn128">
-// TEMPLATED-NEXT:          }
-// TEMPLATED-NEXT:          struct.writem %[[VAL_112]][@aux$inputs] = %[[VAL_125]]#1 : <@B::@B<[@n1, @n2, @n3]>>, !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>
-// TEMPLATED-NEXT:          %[[VAL_256:[0-9a-zA-Z_\.]+]] = array.new  : <3 x !struct.type<@A::@A<[#[[$ATTR_0]]]>>>
-// TEMPLATED-NEXT:          %[[VAL_257:[0-9a-zA-Z_\.]+]] = arith.constant 3 : index
-// TEMPLATED-NEXT:          %[[VAL_258:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:          %[[VAL_259:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// TEMPLATED-NEXT:          scf.for %[[VAL_260:[0-9a-zA-Z_\.]+]] = %[[VAL_258]] to %[[VAL_257]] step %[[VAL_259]] {
-// TEMPLATED-NEXT:            %[[VAL_261:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_125]]#0{{\[}}%[[VAL_260]]] : <3 x !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            %[[VAL_262:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_261]][@comp] : <[@count: index, @comp: !struct.type<@A::@A<[#[[$ATTR_0]]]>>, @params: !pod.type<[@n: !felt.type<"bn128">]>]>, !struct.type<@A::@A<[#[[$ATTR_0]]]>>
-// TEMPLATED-NEXT:            array.write %[[VAL_256]]{{\[}}%[[VAL_260]]] = %[[VAL_262]] : <3 x !struct.type<@A::@A<[#[[$ATTR_0]]]>>>, !struct.type<@A::@A<[#[[$ATTR_0]]]>>
-// TEMPLATED-NEXT:          }
-// TEMPLATED-NEXT:          struct.writem %[[VAL_112]][@aux] = %[[VAL_256]] : <@B::@B<[@n1, @n2, @n3]>>, !array.type<3 x !struct.type<@A::@A<[#[[$ATTR_0]]]>>>
-// TEMPLATED-NEXT:          struct.writem %[[VAL_112]][@out] = %[[VAL_119]] : <@B::@B<[@n1, @n2, @n3]>>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          function.return %[[VAL_112]] : !struct.type<@B::@B<[@n1, @n2, @n3]>>
-// TEMPLATED-NEXT:        }
-// TEMPLATED-NEXT:        function.def @constrain(%[[VAL_263:[0-9a-zA-Z_\.]+]]: !struct.type<@B::@B<[@n1, @n2, @n3]>>, %[[VAL_264:[0-9a-zA-Z_\.]+]]: !array.type<@n1 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in1"}, %[[VAL_265:[0-9a-zA-Z_\.]+]]: !array.type<@n2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in2"}, %[[VAL_266:[0-9a-zA-Z_\.]+]]: !array.type<@n3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>> {function.arg_name = "in3"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// TEMPLATED-NEXT:          %[[VAL_267:[0-9a-zA-Z_\.]+]] = poly.read_const @n1 : index
-// TEMPLATED-NEXT:          %[[VAL_268:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_267]] : index, !felt.type<"bn128">
-// TEMPLATED-NEXT:          %[[VAL_269:[0-9a-zA-Z_\.]+]] = poly.read_const @n2 : index
-// TEMPLATED-NEXT:          %[[VAL_270:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_269]] : index, !felt.type<"bn128">
-// TEMPLATED-NEXT:          %[[VAL_271:[0-9a-zA-Z_\.]+]] = poly.read_const @n3 : index
-// TEMPLATED-NEXT:          %[[VAL_272:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_271]] : index, !felt.type<"bn128">
-// TEMPLATED-NEXT:          %[[VAL_273:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_263]][@out] : <@B::@B<[@n1, @n2, @n3]>>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          %[[VAL_274:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_263]][@aux] : <@B::@B<[@n1, @n2, @n3]>>, !array.type<3 x !struct.type<@A::@A<[#[[$ATTR_0]]]>>>
-// TEMPLATED-NEXT:          %[[VAL_275:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_263]][@aux$inputs] : <@B::@B<[@n1, @n2, @n3]>>, !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>
-// TEMPLATED-NEXT:          %[[VAL_276:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<3 x !felt.type<"bn128">>
-// TEMPLATED-NEXT:          %[[VAL_277:[0-9a-zA-Z_\.]+]] = array.new %[[VAL_268]], %[[VAL_270]], %[[VAL_272]] : <3 x !felt.type<"bn128">>
-// TEMPLATED-NEXT:          %[[VAL_278:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// TEMPLATED-NEXT:          %[[VAL_279:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_280:[0-9a-zA-Z_\.]+]] = %[[VAL_278]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
-// TEMPLATED-NEXT:            %[[VAL_281:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
-// TEMPLATED-NEXT:            %[[VAL_282:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_280]], %[[VAL_281]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:            scf.condition(%[[VAL_282]]) %[[VAL_280]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:          } do {
-// TEMPLATED-NEXT:          ^bb0(%[[VAL_283:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// TEMPLATED-NEXT:            %[[VAL_284:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_283]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_285:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_277]]{{\[}}%[[VAL_284]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_286:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_285]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_287:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// TEMPLATED-NEXT:            %[[VAL_288:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_283]], %[[VAL_287]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:            scf.if %[[VAL_288]] {
-// TEMPLATED-NEXT:              %[[VAL_289:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_283]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:              %[[VAL_290:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_275]]{{\[}}%[[VAL_289]]] : <3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// TEMPLATED-NEXT:              %[[VAL_291:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_290]][@in] : <[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:              %[[VAL_292:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_291]] : (!array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !array.type<@n1 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:              %[[VAL_293:[0-9a-zA-Z_\.]+]] = poly.read_const @n1 : index
-// TEMPLATED-NEXT:              %[[VAL_294:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:              %[[VAL_295:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// TEMPLATED-NEXT:              scf.for %[[VAL_296:[0-9a-zA-Z_\.]+]] = %[[VAL_294]] to %[[VAL_293]] step %[[VAL_295]] {
-// TEMPLATED-NEXT:                %[[VAL_297:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_264]]{{\[}}%[[VAL_296]]] : <@n1 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:                %[[VAL_298:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_292]]{{\[}}%[[VAL_296]]] : <@n1 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:                %[[VAL_299:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_297]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                %[[VAL_300:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_298]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                constrain.eq %[[VAL_299]], %[[VAL_300]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:                %[[VAL_301:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_297]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:                %[[VAL_302:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_298]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:                %[[VAL_303:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_301]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                %[[VAL_304:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_302]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                constrain.eq %[[VAL_303]], %[[VAL_304]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:                %[[VAL_305:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_297]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:                %[[VAL_306:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_298]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:                %[[VAL_307:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_305]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                %[[VAL_308:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_306]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                constrain.eq %[[VAL_307]], %[[VAL_308]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:                %[[VAL_309:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_305]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                %[[VAL_310:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_306]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                constrain.eq %[[VAL_309]], %[[VAL_310]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:              }
-// TEMPLATED-NEXT:            } else {
-// TEMPLATED-NEXT:              %[[VAL_311:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// TEMPLATED-NEXT:              %[[VAL_312:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_283]], %[[VAL_311]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:              scf.if %[[VAL_312]] {
-// TEMPLATED-NEXT:                %[[VAL_313:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// TEMPLATED-NEXT:                %[[VAL_314:[0-9a-zA-Z_\.]+]] = scf.while (%[[VAL_315:[0-9a-zA-Z_\.]+]] = %[[VAL_313]]) : (!felt.type<"bn128">) -> !felt.type<"bn128"> {
-// TEMPLATED-NEXT:                  %[[VAL_316:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_283]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_317:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_277]]{{\[}}%[[VAL_316]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_318:[0-9a-zA-Z_\.]+]] = bool.cmp lt(%[[VAL_315]], %[[VAL_317]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  scf.condition(%[[VAL_318]]) %[[VAL_315]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:                } do {
-// TEMPLATED-NEXT:                ^bb0(%[[VAL_319:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128">):
-// TEMPLATED-NEXT:                  %[[VAL_320:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_319]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_321:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_265]]{{\[}}%[[VAL_320]]] : <@n2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:                  %[[VAL_322:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_283]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_323:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_275]]{{\[}}%[[VAL_322]]] : <3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// TEMPLATED-NEXT:                  %[[VAL_324:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_323]][@in] : <[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:                  %[[VAL_325:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_319]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_326:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_324]]{{\[}}%[[VAL_325]]] : <#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:                  %[[VAL_327:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_321]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_328:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_326]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  constrain.eq %[[VAL_327]], %[[VAL_328]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_329:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_321]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:                  %[[VAL_330:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_326]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:                  %[[VAL_331:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_329]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_332:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_330]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  constrain.eq %[[VAL_331]], %[[VAL_332]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_333:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_321]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:                  %[[VAL_334:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_326]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:                  %[[VAL_335:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_333]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_336:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_334]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  constrain.eq %[[VAL_335]], %[[VAL_336]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_337:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_333]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_338:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_334]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  constrain.eq %[[VAL_337]], %[[VAL_338]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_339:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_340:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_319]], %[[VAL_339]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  scf.yield %[[VAL_340]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:                }
-// TEMPLATED-NEXT:              } else {
-// TEMPLATED-NEXT:                %[[VAL_341:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_283]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:                %[[VAL_342:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_275]]{{\[}}%[[VAL_341]]] : <3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// TEMPLATED-NEXT:                %[[VAL_343:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_342]][@in] : <[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:                %[[VAL_344:[0-9a-zA-Z_\.]+]] = poly.unifiable_cast %[[VAL_343]] : (!array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !array.type<@n3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:                %[[VAL_345:[0-9a-zA-Z_\.]+]] = poly.read_const @n3 : index
-// TEMPLATED-NEXT:                %[[VAL_346:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:                %[[VAL_347:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// TEMPLATED-NEXT:                scf.for %[[VAL_348:[0-9a-zA-Z_\.]+]] = %[[VAL_346]] to %[[VAL_345]] step %[[VAL_347]] {
-// TEMPLATED-NEXT:                  %[[VAL_349:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_266]]{{\[}}%[[VAL_348]]] : <@n3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:                  %[[VAL_350:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_344]]{{\[}}%[[VAL_348]]] : <@n3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:                  %[[VAL_351:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_349]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_352:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_350]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  constrain.eq %[[VAL_351]], %[[VAL_352]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_353:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_349]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:                  %[[VAL_354:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_350]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:                  %[[VAL_355:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_353]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_356:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_354]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  constrain.eq %[[VAL_355]], %[[VAL_356]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_357:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_349]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:                  %[[VAL_358:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_350]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:                  %[[VAL_359:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_357]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_360:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_358]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  constrain.eq %[[VAL_359]], %[[VAL_360]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_361:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_357]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  %[[VAL_362:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_358]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:                  constrain.eq %[[VAL_361]], %[[VAL_362]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:                }
-// TEMPLATED-NEXT:              }
-// TEMPLATED-NEXT:            }
-// TEMPLATED-NEXT:            %[[VAL_363:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_283]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_364:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_273]]{{\[}}%[[VAL_363]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            %[[VAL_365:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_283]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_366:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_274]]{{\[}}%[[VAL_365]]] : <3 x !struct.type<@A::@A<[#[[$ATTR_0]]]>>>, !struct.type<@A::@A<[#[[$ATTR_0]]]>>
-// TEMPLATED-NEXT:            %[[VAL_367:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_366]][@out] : <@A::@A<[#[[$ATTR_0]]]>>, !array.type<? x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:            %[[VAL_368:[0-9a-zA-Z_\.]+]] = felt.const  0 : <"bn128">
-// TEMPLATED-NEXT:            %[[VAL_369:[0-9a-zA-Z_\.]+]] = cast.toindex %[[VAL_368]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_370:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_367]]{{\[}}%[[VAL_369]]] : <? x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            %[[VAL_371:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_364]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_372:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_370]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            constrain.eq %[[VAL_371]], %[[VAL_372]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_373:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_364]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_374:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_370]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_375:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_373]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_376:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_374]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            constrain.eq %[[VAL_375]], %[[VAL_376]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_377:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_364]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_378:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_370]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_379:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_377]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_380:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_378]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            constrain.eq %[[VAL_379]], %[[VAL_380]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_381:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_377]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_382:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_378]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            constrain.eq %[[VAL_381]], %[[VAL_382]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_383:[0-9a-zA-Z_\.]+]] = felt.const  1 : <"bn128">
-// TEMPLATED-NEXT:            %[[VAL_384:[0-9a-zA-Z_\.]+]] = felt.add %[[VAL_283]], %[[VAL_383]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:            scf.yield %[[VAL_384]] : !felt.type<"bn128">
-// TEMPLATED-NEXT:          }
-// TEMPLATED-NEXT:          %[[VAL_385:[0-9a-zA-Z_\.]+]] = arith.constant 3 : index
-// TEMPLATED-NEXT:          %[[VAL_386:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:          %[[VAL_387:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// TEMPLATED-NEXT:          scf.for %[[VAL_388:[0-9a-zA-Z_\.]+]] = %[[VAL_386]] to %[[VAL_385]] step %[[VAL_387]] {
-// TEMPLATED-NEXT:            %[[VAL_389:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_274]]{{\[}}%[[VAL_388]]] : <3 x !struct.type<@A::@A<[#[[$ATTR_0]]]>>>, !struct.type<@A::@A<[#[[$ATTR_0]]]>>
-// TEMPLATED-NEXT:            %[[VAL_390:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_275]]{{\[}}%[[VAL_388]]] : <3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>, !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>
-// TEMPLATED-NEXT:            %[[VAL_391:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_390]][@in] : <[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:            function.call @A::@A::@constrain(%[[VAL_389]], %[[VAL_391]]) : (!struct.type<@A::@A<[#[[$ATTR_0]]]>>, !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> ()
-// TEMPLATED-NEXT:          }
-// TEMPLATED-NEXT:          function.return
-// TEMPLATED-NEXT:        }
-// TEMPLATED-NEXT:      }
-// TEMPLATED-NEXT:      struct.def @"$bus_entry" {
-// TEMPLATED-NEXT:        struct.member @"$component" : !struct.type<@B::@B<[@n1, @n2, @n3]>>
-// TEMPLATED-NEXT:        struct.member @out.a : !array.type<3 x !felt.type<"bn128">> {llzk.pub, signal}
-// TEMPLATED-NEXT:        struct.member @out.b.a : !array.type<3 x !felt.type<"bn128">> {llzk.pub, signal}
-// TEMPLATED-NEXT:        struct.member @out.c.a : !array.type<3 x !felt.type<"bn128">> {llzk.pub, signal}
-// TEMPLATED-NEXT:        struct.member @out.c.b : !array.type<3 x !felt.type<"bn128">> {llzk.pub, signal}
-// TEMPLATED-NEXT:        function.def @compute(%[[VAL_392:[0-9a-zA-Z_\.]+]]: !array.type<@n1 x !felt.type<"bn128">> {function.arg_name = "in1.a"}, %[[VAL_393:[0-9a-zA-Z_\.]+]]: !array.type<@n1 x !felt.type<"bn128">> {function.arg_name = "in1.b.a"}, %[[VAL_394:[0-9a-zA-Z_\.]+]]: !array.type<@n1 x !felt.type<"bn128">> {function.arg_name = "in1.c.a"}, %[[VAL_395:[0-9a-zA-Z_\.]+]]: !array.type<@n1 x !felt.type<"bn128">> {function.arg_name = "in1.c.b"}, %[[VAL_396:[0-9a-zA-Z_\.]+]]: !array.type<@n2 x !felt.type<"bn128">> {function.arg_name = "in2.a"}, %[[VAL_397:[0-9a-zA-Z_\.]+]]: !array.type<@n2 x !felt.type<"bn128">> {function.arg_name = "in2.b.a"}, %[[VAL_398:[0-9a-zA-Z_\.]+]]: !array.type<@n2 x !felt.type<"bn128">> {function.arg_name = "in2.c.a"}, %[[VAL_399:[0-9a-zA-Z_\.]+]]: !array.type<@n2 x !felt.type<"bn128">> {function.arg_name = "in2.c.b"}, %[[VAL_400:[0-9a-zA-Z_\.]+]]: !array.type<@n3 x !felt.type<"bn128">> {function.arg_name = "in3.a"}, %[[VAL_401:[0-9a-zA-Z_\.]+]]: !array.type<@n3 x !felt.type<"bn128">> {function.arg_name = "in3.b.a"}, %[[VAL_402:[0-9a-zA-Z_\.]+]]: !array.type<@n3 x !felt.type<"bn128">> {function.arg_name = "in3.c.a"}, %[[VAL_403:[0-9a-zA-Z_\.]+]]: !array.type<@n3 x !felt.type<"bn128">> {function.arg_name = "in3.c.b"}) -> !struct.type<@B::@"$bus_entry"<[@n1, @n2, @n3]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// TEMPLATED-NEXT:          %[[VAL_404:[0-9a-zA-Z_\.]+]] = struct.new : <@B::@"$bus_entry"<[@n1, @n2, @n3]>>
-// TEMPLATED-NEXT:          %[[VAL_405:[0-9a-zA-Z_\.]+]] = poly.read_const @n1 : index
-// TEMPLATED-NEXT:          %[[VAL_406:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_405]] : index, !felt.type<"bn128">
-// TEMPLATED-NEXT:          %[[VAL_407:[0-9a-zA-Z_\.]+]] = poly.read_const @n2 : index
-// TEMPLATED-NEXT:          %[[VAL_408:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_407]] : index, !felt.type<"bn128">
-// TEMPLATED-NEXT:          %[[VAL_409:[0-9a-zA-Z_\.]+]] = poly.read_const @n3 : index
-// TEMPLATED-NEXT:          %[[VAL_410:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_409]] : index, !felt.type<"bn128">
-// TEMPLATED-NEXT:          %[[VAL_411:[0-9a-zA-Z_\.]+]] = array.new  : <@n1 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          %[[VAL_412:[0-9a-zA-Z_\.]+]] = poly.read_const @n1 : index
-// TEMPLATED-NEXT:          %[[VAL_413:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:          %[[VAL_414:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// TEMPLATED-NEXT:          scf.for %[[VAL_415:[0-9a-zA-Z_\.]+]] = %[[VAL_413]] to %[[VAL_412]] step %[[VAL_414]] {
-// TEMPLATED-NEXT:            %[[VAL_416:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_392]]{{\[}}%[[VAL_415]]] : <@n1 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_417:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_393]]{{\[}}%[[VAL_415]]] : <@n1 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_418:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_417]] }  : <[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_419:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_394]]{{\[}}%[[VAL_415]]] : <@n1 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_420:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_395]]{{\[}}%[[VAL_415]]] : <@n1 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_421:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_419]], @b = %[[VAL_420]] }  : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_422:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_416]], @b = %[[VAL_418]], @c = %[[VAL_421]] }  : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            array.write %[[VAL_411]]{{\[}}%[[VAL_415]]] = %[[VAL_422]] : <@n1 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:          }
-// TEMPLATED-NEXT:          %[[VAL_423:[0-9a-zA-Z_\.]+]] = array.new  : <@n2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          %[[VAL_424:[0-9a-zA-Z_\.]+]] = poly.read_const @n2 : index
-// TEMPLATED-NEXT:          %[[VAL_425:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:          %[[VAL_426:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// TEMPLATED-NEXT:          scf.for %[[VAL_427:[0-9a-zA-Z_\.]+]] = %[[VAL_425]] to %[[VAL_424]] step %[[VAL_426]] {
-// TEMPLATED-NEXT:            %[[VAL_428:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_396]]{{\[}}%[[VAL_427]]] : <@n2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_429:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_397]]{{\[}}%[[VAL_427]]] : <@n2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_430:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_429]] }  : <[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_431:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_398]]{{\[}}%[[VAL_427]]] : <@n2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_432:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_399]]{{\[}}%[[VAL_427]]] : <@n2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_433:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_431]], @b = %[[VAL_432]] }  : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_434:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_428]], @b = %[[VAL_430]], @c = %[[VAL_433]] }  : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            array.write %[[VAL_423]]{{\[}}%[[VAL_427]]] = %[[VAL_434]] : <@n2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:          }
-// TEMPLATED-NEXT:          %[[VAL_435:[0-9a-zA-Z_\.]+]] = array.new  : <@n3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          %[[VAL_436:[0-9a-zA-Z_\.]+]] = poly.read_const @n3 : index
-// TEMPLATED-NEXT:          %[[VAL_437:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:          %[[VAL_438:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// TEMPLATED-NEXT:          scf.for %[[VAL_439:[0-9a-zA-Z_\.]+]] = %[[VAL_437]] to %[[VAL_436]] step %[[VAL_438]] {
-// TEMPLATED-NEXT:            %[[VAL_440:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_400]]{{\[}}%[[VAL_439]]] : <@n3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_441:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_401]]{{\[}}%[[VAL_439]]] : <@n3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_442:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_441]] }  : <[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_443:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_402]]{{\[}}%[[VAL_439]]] : <@n3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_444:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_403]]{{\[}}%[[VAL_439]]] : <@n3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_445:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_443]], @b = %[[VAL_444]] }  : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_446:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_440]], @b = %[[VAL_442]], @c = %[[VAL_445]] }  : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            array.write %[[VAL_435]]{{\[}}%[[VAL_439]]] = %[[VAL_446]] : <@n3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:          }
-// TEMPLATED-NEXT:          %[[VAL_447:[0-9a-zA-Z_\.]+]] = function.call @B::@B::@compute(%[[VAL_411]], %[[VAL_423]], %[[VAL_435]]) : (!array.type<@n1 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !array.type<@n2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !array.type<@n3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !struct.type<@B::@B<[@n1, @n2, @n3]>>
-// TEMPLATED-NEXT:          struct.writem %[[VAL_404]][@"$component"] = %[[VAL_447]] : <@B::@"$bus_entry"<[@n1, @n2, @n3]>>, !struct.type<@B::@B<[@n1, @n2, @n3]>>
-// TEMPLATED-NEXT:          %[[VAL_448:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type<"bn128">>
-// TEMPLATED-NEXT:          %[[VAL_449:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type<"bn128">>
-// TEMPLATED-NEXT:          %[[VAL_450:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type<"bn128">>
-// TEMPLATED-NEXT:          %[[VAL_451:[0-9a-zA-Z_\.]+]] = llzk.nondet : !array.type<3 x !felt.type<"bn128">>
-// TEMPLATED-NEXT:          %[[VAL_452:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_447]][@out] : <@B::@B<[@n1, @n2, @n3]>>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          %[[VAL_453:[0-9a-zA-Z_\.]+]] = arith.constant 3 : index
-// TEMPLATED-NEXT:          %[[VAL_454:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:          %[[VAL_455:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// TEMPLATED-NEXT:          scf.for %[[VAL_456:[0-9a-zA-Z_\.]+]] = %[[VAL_454]] to %[[VAL_453]] step %[[VAL_455]] {
-// TEMPLATED-NEXT:            %[[VAL_457:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_452]]{{\[}}%[[VAL_456]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            %[[VAL_458:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_457]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            array.write %[[VAL_448]]{{\[}}%[[VAL_456]]] = %[[VAL_458]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_459:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_457]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_460:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_459]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            array.write %[[VAL_449]]{{\[}}%[[VAL_456]]] = %[[VAL_460]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_461:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_457]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_462:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_461]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            array.write %[[VAL_450]]{{\[}}%[[VAL_456]]] = %[[VAL_462]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_463:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_461]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            array.write %[[VAL_451]]{{\[}}%[[VAL_456]]] = %[[VAL_463]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:          }
-// TEMPLATED-NEXT:          struct.writem %[[VAL_404]][@out.a] = %[[VAL_448]] : <@B::@"$bus_entry"<[@n1, @n2, @n3]>>, !array.type<3 x !felt.type<"bn128">>
-// TEMPLATED-NEXT:          struct.writem %[[VAL_404]][@out.b.a] = %[[VAL_449]] : <@B::@"$bus_entry"<[@n1, @n2, @n3]>>, !array.type<3 x !felt.type<"bn128">>
-// TEMPLATED-NEXT:          struct.writem %[[VAL_404]][@out.c.a] = %[[VAL_450]] : <@B::@"$bus_entry"<[@n1, @n2, @n3]>>, !array.type<3 x !felt.type<"bn128">>
-// TEMPLATED-NEXT:          struct.writem %[[VAL_404]][@out.c.b] = %[[VAL_451]] : <@B::@"$bus_entry"<[@n1, @n2, @n3]>>, !array.type<3 x !felt.type<"bn128">>
-// TEMPLATED-NEXT:          function.return %[[VAL_404]] : !struct.type<@B::@"$bus_entry"<[@n1, @n2, @n3]>>
-// TEMPLATED-NEXT:        }
-// TEMPLATED-NEXT:        function.def @constrain(%[[VAL_464:[0-9a-zA-Z_\.]+]]: !struct.type<@B::@"$bus_entry"<[@n1, @n2, @n3]>>, %[[VAL_465:[0-9a-zA-Z_\.]+]]: !array.type<@n1 x !felt.type<"bn128">> {function.arg_name = "in1.a"}, %[[VAL_466:[0-9a-zA-Z_\.]+]]: !array.type<@n1 x !felt.type<"bn128">> {function.arg_name = "in1.b.a"}, %[[VAL_467:[0-9a-zA-Z_\.]+]]: !array.type<@n1 x !felt.type<"bn128">> {function.arg_name = "in1.c.a"}, %[[VAL_468:[0-9a-zA-Z_\.]+]]: !array.type<@n1 x !felt.type<"bn128">> {function.arg_name = "in1.c.b"}, %[[VAL_469:[0-9a-zA-Z_\.]+]]: !array.type<@n2 x !felt.type<"bn128">> {function.arg_name = "in2.a"}, %[[VAL_470:[0-9a-zA-Z_\.]+]]: !array.type<@n2 x !felt.type<"bn128">> {function.arg_name = "in2.b.a"}, %[[VAL_471:[0-9a-zA-Z_\.]+]]: !array.type<@n2 x !felt.type<"bn128">> {function.arg_name = "in2.c.a"}, %[[VAL_472:[0-9a-zA-Z_\.]+]]: !array.type<@n2 x !felt.type<"bn128">> {function.arg_name = "in2.c.b"}, %[[VAL_473:[0-9a-zA-Z_\.]+]]: !array.type<@n3 x !felt.type<"bn128">> {function.arg_name = "in3.a"}, %[[VAL_474:[0-9a-zA-Z_\.]+]]: !array.type<@n3 x !felt.type<"bn128">> {function.arg_name = "in3.b.a"}, %[[VAL_475:[0-9a-zA-Z_\.]+]]: !array.type<@n3 x !felt.type<"bn128">> {function.arg_name = "in3.c.a"}, %[[VAL_476:[0-9a-zA-Z_\.]+]]: !array.type<@n3 x !felt.type<"bn128">> {function.arg_name = "in3.c.b"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// TEMPLATED-NEXT:          %[[VAL_477:[0-9a-zA-Z_\.]+]] = poly.read_const @n1 : index
-// TEMPLATED-NEXT:          %[[VAL_478:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_477]] : index, !felt.type<"bn128">
-// TEMPLATED-NEXT:          %[[VAL_479:[0-9a-zA-Z_\.]+]] = poly.read_const @n2 : index
-// TEMPLATED-NEXT:          %[[VAL_480:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_479]] : index, !felt.type<"bn128">
-// TEMPLATED-NEXT:          %[[VAL_481:[0-9a-zA-Z_\.]+]] = poly.read_const @n3 : index
-// TEMPLATED-NEXT:          %[[VAL_482:[0-9a-zA-Z_\.]+]] = cast.tofelt %[[VAL_481]] : index, !felt.type<"bn128">
-// TEMPLATED-NEXT:          %[[VAL_483:[0-9a-zA-Z_\.]+]] = array.new  : <@n1 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          %[[VAL_484:[0-9a-zA-Z_\.]+]] = poly.read_const @n1 : index
-// TEMPLATED-NEXT:          %[[VAL_485:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:          %[[VAL_486:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// TEMPLATED-NEXT:          scf.for %[[VAL_487:[0-9a-zA-Z_\.]+]] = %[[VAL_485]] to %[[VAL_484]] step %[[VAL_486]] {
-// TEMPLATED-NEXT:            %[[VAL_488:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_465]]{{\[}}%[[VAL_487]]] : <@n1 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_489:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_466]]{{\[}}%[[VAL_487]]] : <@n1 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_490:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_489]] }  : <[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_491:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_467]]{{\[}}%[[VAL_487]]] : <@n1 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_492:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_468]]{{\[}}%[[VAL_487]]] : <@n1 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_493:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_491]], @b = %[[VAL_492]] }  : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_494:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_488]], @b = %[[VAL_490]], @c = %[[VAL_493]] }  : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            array.write %[[VAL_483]]{{\[}}%[[VAL_487]]] = %[[VAL_494]] : <@n1 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:          }
-// TEMPLATED-NEXT:          %[[VAL_495:[0-9a-zA-Z_\.]+]] = array.new  : <@n2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          %[[VAL_496:[0-9a-zA-Z_\.]+]] = poly.read_const @n2 : index
-// TEMPLATED-NEXT:          %[[VAL_497:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:          %[[VAL_498:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// TEMPLATED-NEXT:          scf.for %[[VAL_499:[0-9a-zA-Z_\.]+]] = %[[VAL_497]] to %[[VAL_496]] step %[[VAL_498]] {
-// TEMPLATED-NEXT:            %[[VAL_500:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_469]]{{\[}}%[[VAL_499]]] : <@n2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_501:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_470]]{{\[}}%[[VAL_499]]] : <@n2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_502:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_501]] }  : <[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_503:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_471]]{{\[}}%[[VAL_499]]] : <@n2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_504:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_472]]{{\[}}%[[VAL_499]]] : <@n2 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_505:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_503]], @b = %[[VAL_504]] }  : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_506:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_500]], @b = %[[VAL_502]], @c = %[[VAL_505]] }  : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            array.write %[[VAL_495]]{{\[}}%[[VAL_499]]] = %[[VAL_506]] : <@n2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:          }
-// TEMPLATED-NEXT:          %[[VAL_507:[0-9a-zA-Z_\.]+]] = array.new  : <@n3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          %[[VAL_508:[0-9a-zA-Z_\.]+]] = poly.read_const @n3 : index
-// TEMPLATED-NEXT:          %[[VAL_509:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:          %[[VAL_510:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// TEMPLATED-NEXT:          scf.for %[[VAL_511:[0-9a-zA-Z_\.]+]] = %[[VAL_509]] to %[[VAL_508]] step %[[VAL_510]] {
-// TEMPLATED-NEXT:            %[[VAL_512:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_473]]{{\[}}%[[VAL_511]]] : <@n3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_513:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_474]]{{\[}}%[[VAL_511]]] : <@n3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_514:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_513]] }  : <[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_515:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_475]]{{\[}}%[[VAL_511]]] : <@n3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_516:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_476]]{{\[}}%[[VAL_511]]] : <@n3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_517:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_515]], @b = %[[VAL_516]] }  : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_518:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_512]], @b = %[[VAL_514]], @c = %[[VAL_517]] }  : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            array.write %[[VAL_507]]{{\[}}%[[VAL_511]]] = %[[VAL_518]] : <@n3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:          }
-// TEMPLATED-NEXT:          %[[VAL_519:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_464]][@"$component"] : <@B::@"$bus_entry"<[@n1, @n2, @n3]>>, !struct.type<@B::@B<[@n1, @n2, @n3]>>
-// TEMPLATED-NEXT:          function.call @B::@B::@constrain(%[[VAL_519]], %[[VAL_483]], %[[VAL_495]], %[[VAL_507]]) : (!struct.type<@B::@B<[@n1, @n2, @n3]>>, !array.type<@n1 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !array.type<@n2 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !array.type<@n3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> ()
-// TEMPLATED-NEXT:          %[[VAL_520:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_464]][@out.a] : <@B::@"$bus_entry"<[@n1, @n2, @n3]>>, !array.type<3 x !felt.type<"bn128">>
-// TEMPLATED-NEXT:          %[[VAL_521:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_464]][@out.b.a] : <@B::@"$bus_entry"<[@n1, @n2, @n3]>>, !array.type<3 x !felt.type<"bn128">>
-// TEMPLATED-NEXT:          %[[VAL_522:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_464]][@out.c.a] : <@B::@"$bus_entry"<[@n1, @n2, @n3]>>, !array.type<3 x !felt.type<"bn128">>
-// TEMPLATED-NEXT:          %[[VAL_523:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_464]][@out.c.b] : <@B::@"$bus_entry"<[@n1, @n2, @n3]>>, !array.type<3 x !felt.type<"bn128">>
-// TEMPLATED-NEXT:          %[[VAL_524:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_519]][@out] : <@B::@B<[@n1, @n2, @n3]>>, !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          %[[VAL_525:[0-9a-zA-Z_\.]+]] = array.new  : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
-// TEMPLATED-NEXT:          %[[VAL_526:[0-9a-zA-Z_\.]+]] = arith.constant 3 : index
-// TEMPLATED-NEXT:          %[[VAL_527:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:          %[[VAL_528:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// TEMPLATED-NEXT:          scf.for %[[VAL_529:[0-9a-zA-Z_\.]+]] = %[[VAL_527]] to %[[VAL_526]] step %[[VAL_528]] {
-// TEMPLATED-NEXT:            %[[VAL_530:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_520]]{{\[}}%[[VAL_529]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_531:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_521]]{{\[}}%[[VAL_529]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_532:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_531]] }  : <[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_533:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_522]]{{\[}}%[[VAL_529]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_534:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_523]]{{\[}}%[[VAL_529]]] : <3 x !felt.type<"bn128">>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_535:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_533]], @b = %[[VAL_534]] }  : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_536:[0-9a-zA-Z_\.]+]] = pod.new { @a = %[[VAL_530]], @b = %[[VAL_532]], @c = %[[VAL_535]] }  : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            array.write %[[VAL_525]]{{\[}}%[[VAL_529]]] = %[[VAL_536]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:          }
-// TEMPLATED-NEXT:          %[[VAL_537:[0-9a-zA-Z_\.]+]] = arith.constant 3 : index
-// TEMPLATED-NEXT:          %[[VAL_538:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// TEMPLATED-NEXT:          %[[VAL_539:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// TEMPLATED-NEXT:          scf.for %[[VAL_540:[0-9a-zA-Z_\.]+]] = %[[VAL_538]] to %[[VAL_537]] step %[[VAL_539]] {
-// TEMPLATED-NEXT:            %[[VAL_541:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_524]]{{\[}}%[[VAL_540]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            %[[VAL_542:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_525]]{{\[}}%[[VAL_540]]] : <3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>, !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
-// TEMPLATED-NEXT:            %[[VAL_543:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_541]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_544:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_542]][@a] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            constrain.eq %[[VAL_543]], %[[VAL_544]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_545:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_541]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_546:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_542]][@b] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_547:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_545]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_548:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_546]][@a] : <[@a: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            constrain.eq %[[VAL_547]], %[[VAL_548]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_549:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_541]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_550:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_542]][@c] : <[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
-// TEMPLATED-NEXT:            %[[VAL_551:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_549]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_552:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_550]][@a] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            constrain.eq %[[VAL_551]], %[[VAL_552]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_553:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_549]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            %[[VAL_554:[0-9a-zA-Z_\.]+]] = pod.read %[[VAL_550]][@b] : <[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>, !felt.type<"bn128">
-// TEMPLATED-NEXT:            constrain.eq %[[VAL_553]], %[[VAL_554]] : !felt.type<"bn128">, !felt.type<"bn128">
-// TEMPLATED-NEXT:          }
-// TEMPLATED-NEXT:          function.return
-// TEMPLATED-NEXT:        }
-// TEMPLATED-NEXT:      }
-// TEMPLATED-NEXT:    }
-// TEMPLATED-NEXT:  }
+// TEMPLATED: #[[$ATTR_0:[0-9a-zA-Z_\.]+]] = affine_map<(d0) -> (d0)>
+// TEMPLATED: poly.param @n : index
+// TEMPLATED-LABEL: struct.def @A {
+// TEMPLATED: struct.member @out : !array.type<@n x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
+// TEMPLATED: function.def @compute(
+// TEMPLATED: pod.write %[[ELEMENT1:[a-zA-Z0-9_.-]+]][@a] = %[[A1:[a-zA-Z0-9_.-]+]]
+// TEMPLATED: array.write %[[VALUE1:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE2:[a-zA-Z0-9_.-]+]]] = %[[ELEMENT1]]
+// TEMPLATED: pod.write %[[ELEMENT2:[a-zA-Z0-9_.-]+]][@b] = %[[B1:[a-zA-Z0-9_.-]+]]
+// TEMPLATED: pod.write %[[ELEMENT3:[a-zA-Z0-9_.-]+]][@c] = %[[C1:[a-zA-Z0-9_.-]+]]
+// TEMPLATED: function.return %[[VALUE3:[a-zA-Z0-9_.-]+]]
+// TEMPLATED: function.def @constrain(
+// TEMPLATED: %[[FIELD1:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE4:[a-zA-Z0-9_.-]+]][@out]
+// TEMPLATED: %[[ELEMENT4:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD1]]{{\[}}%[[VALUE5:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT5:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE6:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE5]]]
+// TEMPLATED: %[[A2:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT4]][@a]
+// TEMPLATED: %[[A3:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT5]][@a]
+// TEMPLATED: constrain.eq %[[A2]], %[[A3]]
+// TEMPLATED: %[[B2:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT4]][@b]
+// TEMPLATED: %[[B3:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT5]][@b]
+// TEMPLATED: %[[A4:[a-zA-Z0-9_.-]+]] = pod.read %[[B2]][@a]
+// TEMPLATED: %[[A5:[a-zA-Z0-9_.-]+]] = pod.read %[[B3]][@a]
+// TEMPLATED: constrain.eq %[[A4]], %[[A5]]
+// TEMPLATED: %[[C2:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT4]][@c]
+// TEMPLATED: %[[C3:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT5]][@c]
+// TEMPLATED: %[[A6:[a-zA-Z0-9_.-]+]] = pod.read %[[C2]][@a]
+// TEMPLATED: %[[A7:[a-zA-Z0-9_.-]+]] = pod.read %[[C3]][@a]
+// TEMPLATED: constrain.eq %[[A6]], %[[A7]]
+// TEMPLATED: %[[B4:[a-zA-Z0-9_.-]+]] = pod.read %[[C2]][@b]
+// TEMPLATED: %[[B5:[a-zA-Z0-9_.-]+]] = pod.read %[[C3]][@b]
+// TEMPLATED: constrain.eq %[[B4]], %[[B5]]
+// TEMPLATED: %[[ELEMENT6:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE6]]{{\[}}%[[VALUE7:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[A8:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT6]][@a]
+// TEMPLATED: %[[ELEMENT7:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD1]]{{\[}}%[[VALUE8:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[A9:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT7]][@a]
+// TEMPLATED: constrain.eq %[[A9]], %[[A8]]
+// TEMPLATED: %[[ELEMENT8:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE6]]{{\[}}%[[VALUE9:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[B6:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT8]][@b]
+// TEMPLATED: %[[ELEMENT9:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD1]]{{\[}}%[[VALUE10:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[B7:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT9]][@b]
+// TEMPLATED: %[[A10:[a-zA-Z0-9_.-]+]] = pod.read %[[B7]][@a]
+// TEMPLATED: %[[A11:[a-zA-Z0-9_.-]+]] = pod.read %[[B6]][@a]
+// TEMPLATED: constrain.eq %[[A10]], %[[A11]]
+// TEMPLATED: %[[ELEMENT10:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE6]]{{\[}}%[[VALUE11:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[C4:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT10]][@c]
+// TEMPLATED: %[[B8:[a-zA-Z0-9_.-]+]] = pod.read %[[C4]][@b]
+// TEMPLATED: %[[ELEMENT11:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD1]]{{\[}}%[[VALUE12:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[C5:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT11]][@c]
+// TEMPLATED: %[[A12:[a-zA-Z0-9_.-]+]] = pod.read %[[C5]][@a]
+// TEMPLATED: constrain.eq %[[A12]], %[[B8]]
+// TEMPLATED: %[[ELEMENT12:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE6]]{{\[}}%[[VALUE13:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[C6:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT12]][@c]
+// TEMPLATED: %[[A13:[a-zA-Z0-9_.-]+]] = pod.read %[[C6]][@a]
+// TEMPLATED: %[[ELEMENT13:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD1]]{{\[}}%[[VALUE14:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[C7:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT13]][@c]
+// TEMPLATED: %[[B9:[a-zA-Z0-9_.-]+]] = pod.read %[[C7]][@b]
+// TEMPLATED: constrain.eq %[[B9]], %[[A13]]
+// TEMPLATED: function.return
+// TEMPLATED: poly.param @n1 : index
+// TEMPLATED: poly.param @n2 : index
+// TEMPLATED: poly.param @n3 : index
+// TEMPLATED-LABEL: struct.def @B {
+// TEMPLATED: struct.member @out : !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
+// TEMPLATED: struct.member @aux : !array.type<3 x !struct.type<@A::@A<[#[[$ATTR_0]]]>>>
+// TEMPLATED: struct.member @aux$inputs : !array.type<3 x !pod.type<[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>>
+// TEMPLATED: function.def @compute(
+// TEMPLATED: pod.write %[[ELEMENT14:[a-zA-Z0-9_.-]+]][@in] = %[[VALUE15:[a-zA-Z0-9_.-]+]] : <[@in: !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>]>, !array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>
+// TEMPLATED: %[[COUNT1:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT15:[a-zA-Z0-9_.-]+]][@count]
+// TEMPLATED: %[[N1:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
+// TEMPLATED: %[[READY1:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[COUNT1]], %[[N1]]
+// TEMPLATED: %[[N2:[a-zA-Z0-9_.-]+]] = arith.constant 1 : index
+// TEMPLATED: %[[VALUE16:[a-zA-Z0-9_.-]+]] = arith.select %[[READY1]], %[[N2]], %[[N1]]
+// TEMPLATED: %[[N3:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
+// TEMPLATED: %[[READY2:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[VALUE16]], %[[N3]]
+// TEMPLATED: scf.if %[[READY2]] {
+// TEMPLATED: %[[COUNT2:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT15]][@count]
+// TEMPLATED: %[[N4:[a-zA-Z0-9_.-]+]] = arith.constant 4 : index
+// TEMPLATED: %[[VALUE17:[a-zA-Z0-9_.-]+]] = arith.muli %[[N4]], %[[VALUE18:[a-zA-Z0-9_.-]+]]
+// TEMPLATED: %[[REMAINING1:[a-zA-Z0-9_.-]+]] = arith.subi %[[COUNT2]], %[[VALUE17]]
+// TEMPLATED: pod.write %[[ELEMENT15]][@count] = %[[REMAINING1]]
+// TEMPLATED: %[[N5:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
+// TEMPLATED: %[[READY3:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[REMAINING1]], %[[N5]]
+// TEMPLATED: scf.if %[[READY3]] {
+// TEMPLATED: %[[PARAMS1:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT15]][@params]
+// TEMPLATED: %[[IN1:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT14]][@in]
+// TEMPLATED: %[[N6:[a-zA-Z0-9_.-]+]] = pod.read %[[PARAMS1]][@n]
+// TEMPLATED: %[[CHILD1:[a-zA-Z0-9_.-]+]] = function.call @A::@A::@compute(%[[IN1]]) {(%[[VALUE19:[a-zA-Z0-9_.-]+]])} : (!array.type<#[[$ATTR_0]] x !pod.type<[@a: !felt.type<"bn128">, @b: !pod.type<[@a: !felt.type<"bn128">]>, @c: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>>) -> !struct.type<@A::@A<[#[[$ATTR_0]]]>>
+// TEMPLATED: pod.write %[[ELEMENT15]][@comp] = %[[CHILD1]]
+// TEMPLATED: function.return %[[VALUE20:[a-zA-Z0-9_.-]+]]
+// TEMPLATED: function.def @constrain(
+// TEMPLATED: %[[FIELD2:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE21:[a-zA-Z0-9_.-]+]][@out]
+// TEMPLATED: %[[FIELD3:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE21]][@aux]
+// TEMPLATED: %[[FIELD4:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE21]][@aux$inputs]
+// TEMPLATED: %[[ELEMENT16:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE22:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE23:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT17:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD4]]{{\[}}%[[VALUE24:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[IN2:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT17]][@in]
+// TEMPLATED: %[[ELEMENT18:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE25:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE26:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT19:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE27:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE26]]]
+// TEMPLATED: %[[A14:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT18]][@a]
+// TEMPLATED: %[[A15:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT19]][@a]
+// TEMPLATED: constrain.eq %[[A14]], %[[A15]]
+// TEMPLATED: %[[B10:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT18]][@b]
+// TEMPLATED: %[[B11:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT19]][@b]
+// TEMPLATED: %[[A16:[a-zA-Z0-9_.-]+]] = pod.read %[[B10]][@a]
+// TEMPLATED: %[[A17:[a-zA-Z0-9_.-]+]] = pod.read %[[B11]][@a]
+// TEMPLATED: constrain.eq %[[A16]], %[[A17]]
+// TEMPLATED: %[[C8:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT18]][@c]
+// TEMPLATED: %[[C9:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT19]][@c]
+// TEMPLATED: %[[A18:[a-zA-Z0-9_.-]+]] = pod.read %[[C8]][@a]
+// TEMPLATED: %[[A19:[a-zA-Z0-9_.-]+]] = pod.read %[[C9]][@a]
+// TEMPLATED: constrain.eq %[[A18]], %[[A19]]
+// TEMPLATED: %[[B12:[a-zA-Z0-9_.-]+]] = pod.read %[[C8]][@b]
+// TEMPLATED: %[[B13:[a-zA-Z0-9_.-]+]] = pod.read %[[C9]][@b]
+// TEMPLATED: constrain.eq %[[B12]], %[[B13]]
+// TEMPLATED: %[[ELEMENT20:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE22]]{{\[}}%[[VALUE28:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT21:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE29:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE30:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT22:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD4]]{{\[}}%[[VALUE31:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[IN3:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT22]][@in]
+// TEMPLATED: %[[ELEMENT23:[a-zA-Z0-9_.-]+]] = array.read %[[IN3]]{{\[}}%[[VALUE32:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[A20:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT21]][@a]
+// TEMPLATED: %[[A21:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT23]][@a]
+// TEMPLATED: constrain.eq %[[A20]], %[[A21]]
+// TEMPLATED: %[[B14:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT21]][@b]
+// TEMPLATED: %[[B15:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT23]][@b]
+// TEMPLATED: %[[A22:[a-zA-Z0-9_.-]+]] = pod.read %[[B14]][@a]
+// TEMPLATED: %[[A23:[a-zA-Z0-9_.-]+]] = pod.read %[[B15]][@a]
+// TEMPLATED: constrain.eq %[[A22]], %[[A23]]
+// TEMPLATED: %[[C10:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT21]][@c]
+// TEMPLATED: %[[C11:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT23]][@c]
+// TEMPLATED: %[[A24:[a-zA-Z0-9_.-]+]] = pod.read %[[C10]][@a]
+// TEMPLATED: %[[A25:[a-zA-Z0-9_.-]+]] = pod.read %[[C11]][@a]
+// TEMPLATED: constrain.eq %[[A24]], %[[A25]]
+// TEMPLATED: %[[B16:[a-zA-Z0-9_.-]+]] = pod.read %[[C10]][@b]
+// TEMPLATED: %[[B17:[a-zA-Z0-9_.-]+]] = pod.read %[[C11]][@b]
+// TEMPLATED: constrain.eq %[[B16]], %[[B17]]
+// TEMPLATED: %[[ELEMENT24:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD4]]{{\[}}%[[VALUE33:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[IN4:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT24]][@in]
+// TEMPLATED: %[[ELEMENT25:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE34:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE35:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT26:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE36:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE35]]]
+// TEMPLATED: %[[A26:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT25]][@a]
+// TEMPLATED: %[[A27:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT26]][@a]
+// TEMPLATED: constrain.eq %[[A26]], %[[A27]]
+// TEMPLATED: %[[B18:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT25]][@b]
+// TEMPLATED: %[[B19:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT26]][@b]
+// TEMPLATED: %[[A28:[a-zA-Z0-9_.-]+]] = pod.read %[[B18]][@a]
+// TEMPLATED: %[[A29:[a-zA-Z0-9_.-]+]] = pod.read %[[B19]][@a]
+// TEMPLATED: constrain.eq %[[A28]], %[[A29]]
+// TEMPLATED: %[[C12:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT25]][@c]
+// TEMPLATED: %[[C13:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT26]][@c]
+// TEMPLATED: %[[A30:[a-zA-Z0-9_.-]+]] = pod.read %[[C12]][@a]
+// TEMPLATED: %[[A31:[a-zA-Z0-9_.-]+]] = pod.read %[[C13]][@a]
+// TEMPLATED: constrain.eq %[[A30]], %[[A31]]
+// TEMPLATED: %[[B20:[a-zA-Z0-9_.-]+]] = pod.read %[[C12]][@b]
+// TEMPLATED: %[[B21:[a-zA-Z0-9_.-]+]] = pod.read %[[C13]][@b]
+// TEMPLATED: constrain.eq %[[B20]], %[[B21]]
+// TEMPLATED: %[[ELEMENT27:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD2]]{{\[}}%[[VALUE37:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT28:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD3]]{{\[}}%[[VALUE38:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[FIELD5:[a-zA-Z0-9_.-]+]] = struct.readm %[[ELEMENT28]][@out]
+// TEMPLATED: %[[ELEMENT29:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD5]]{{\[}}%[[VALUE39:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[A32:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT27]][@a]
+// TEMPLATED: %[[A33:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT29]][@a]
+// TEMPLATED: constrain.eq %[[A32]], %[[A33]]
+// TEMPLATED: %[[B22:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT27]][@b]
+// TEMPLATED: %[[B23:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT29]][@b]
+// TEMPLATED: %[[A34:[a-zA-Z0-9_.-]+]] = pod.read %[[B22]][@a]
+// TEMPLATED: %[[A35:[a-zA-Z0-9_.-]+]] = pod.read %[[B23]][@a]
+// TEMPLATED: constrain.eq %[[A34]], %[[A35]]
+// TEMPLATED: %[[C14:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT27]][@c]
+// TEMPLATED: %[[C15:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT29]][@c]
+// TEMPLATED: %[[A36:[a-zA-Z0-9_.-]+]] = pod.read %[[C14]][@a]
+// TEMPLATED: %[[A37:[a-zA-Z0-9_.-]+]] = pod.read %[[C15]][@a]
+// TEMPLATED: constrain.eq %[[A36]], %[[A37]]
+// TEMPLATED: %[[B24:[a-zA-Z0-9_.-]+]] = pod.read %[[C14]][@b]
+// TEMPLATED: %[[B25:[a-zA-Z0-9_.-]+]] = pod.read %[[C15]][@b]
+// TEMPLATED: constrain.eq %[[B24]], %[[B25]]
+// TEMPLATED: %[[ELEMENT30:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD3]]{{\[}}%[[VALUE40:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT31:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD4]]{{\[}}%[[VALUE40]]]
+// TEMPLATED: %[[IN5:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT31]][@in]
+// TEMPLATED: function.return

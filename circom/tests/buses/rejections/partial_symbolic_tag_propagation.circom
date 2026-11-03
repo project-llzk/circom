@@ -25,6 +25,7 @@ template Main(N) {
     s <== 3;
     Tagged(N) a;
     a.x[0] <== s;
+    // TEMPLATED: partial_symbolic_tag_propagation.circom:[[@LINE+1]]:{{[0-9]+}}: component child requires a value for tag in.size
     component child = Expand();
     child.in <== a.x[0];
     signal output out;
@@ -33,8 +34,5 @@ template Main(N) {
 
 component main = Main(2);
 
-// CONCRETE-DAG: Tag value has not been previously initialized
-// CONCRETE-DAG: partial_symbolic_tag_propagation.circom{{.*}}:{{[0-9]+}}:
-
-// TEMPLATED-DAG: component child requires a value for tag in.size
-// TEMPLATED-DAG: partial_symbolic_tag_propagation.circom{{.*}}:{{[0-9]+}}:
+// CONCRETE: Tag value has not been previously initialized
+// CONCRETE: partial_symbolic_tag_propagation.circom{{.*}}:{{[0-9]+}}:

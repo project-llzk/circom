@@ -34,5 +34,5 @@ template Main() {
 
 component main = Main();
 
-// CONCRETE-DAG: Missing tag: input signal in requires tag size
-// CONCRETE-DAG: component_array_missing_tag.circom{{.*}}:{{[0-9]+}}:
+// CONCRETE: Missing tag: input signal in requires tag size
+// CONCRETE: component_array_missing_tag.circom{{.*}}:{{[0-9]+}}:

@@ -11,11 +11,10 @@ bus Vec(N) { signal x[N]; }
 template Main() {
     Vec(2) input in;
     Vec(3) output out;
+    // TEMPLATED: shape_mismatch.circom:[[@LINE+1]]:{{[0-9]+}}: incompatible parameters for bus Vec: 3 and 2
     out <== in;
 }
 component main = Main();
 
-// CONCRETE-DAG: trying to assign a different instance of the bus
-// CONCRETE-DAG: shape_mismatch.circom{{.*}}:{{[0-9]+}}:
-// TEMPLATED-DAG: incompatible parameters for bus Vec: 3 and 2
-// TEMPLATED-DAG: shape_mismatch.circom{{.*}}:{{[0-9]+}}:
+// CONCRETE: trying to assign a different instance of the bus
+// CONCRETE: shape_mismatch.circom{{.*}}:{{[0-9]+}}:

@@ -1,9 +1,9 @@
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir -p %t/concrete %t/templated
 // RUN: %circom --stabilize --llzk=concrete --llzk_plaintext --llzk_strip_debug_info -o %t/concrete %s > %t/concrete.stdout
-// RUN: FileCheck %s --input-file %t/concrete/*_llzk/*.llzk
+// RUN: FileCheck %s --input-file %t/concrete/*_llzk/*.llzk --implicit-check-not=arith.subi
 // RUN: %circom --stabilize --llzk=templated --llzk_plaintext --llzk_strip_debug_info -o %t/templated %s > %t/templated.stdout
-// RUN: FileCheck %s --input-file %t/templated/*_llzk/*.llzk
+// RUN: FileCheck %s --input-file %t/templated/*_llzk/*.llzk --implicit-check-not=arith.subi
 // END.
 
 // Empty inputs complete without decrementing an input counter.
@@ -24,5 +24,15 @@ template Main() {
 }
 component main = Main();
 
-// CHECK: module attributes
-// CHECK-NOT: arith.subi
+// CHECK-LABEL: struct.def @Main{{(_[0-9]+)?}} {
+// CHECK: struct.member @child$inputs : !pod.type<[@in: !pod.type<[@x: !array.type<0 x !felt.type
+// CHECK: function.def @compute(
+// CHECK-NOT: scf.if
+// CHECK: function.call @Empty{{(_[0-9]+)?}}::@Empty{{(_[0-9]+)?}}::@compute(
+// CHECK: %[[CHILD:[a-zA-Z0-9_.-]+]] = pod.new { @comp = %{{[a-zA-Z0-9_.-]+}} }
+// CHECK-NOT: function.call
+// CHECK: %[[RESULT:[a-zA-Z0-9_.-]+]] = pod.read %[[CHILD]][@comp]
+// CHECK-NEXT: %[[OUT:[a-zA-Z0-9_.-]+]] = struct.readm %[[RESULT]][@out]
+// CHECK-NEXT: struct.writem {{.*}}[@out] = %[[OUT]]
+// CHECK-NOT: function.call
+// CHECK: function.return
