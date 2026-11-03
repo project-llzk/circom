@@ -48,6 +48,8 @@ struct Summary {
     required_values: HashSet<String>,
     /// Derived output tags, including unknown values.
     outputs: BTreeMap<String, Tag>,
+    /// Known output capacities, preserving completion evidence at component call sites.
+    output_capacities: BTreeMap<String, (Vec<usize>, usize, usize)>,
     /// Body with tag reads lowered and metadata assignments removed.
     body: Statement,
 }
@@ -92,6 +94,7 @@ struct Analysis<'a> {
     /// Nominal bus identities, including nested fields and component interfaces.
     identities: BTreeMap<String, NominalBus>,
     /// Known scalar-leaf capacities and remaining assignments for array-wide tags.
+    /// Missing symbolic capacities do not establish completion.
     capacities: BTreeMap<String, (Vec<usize>, usize, usize)>,
     /// Known local scalar values, used only to determine fixed loop trip counts.
     constants: HashMap<String, Expression>,
@@ -321,7 +324,7 @@ impl Analysis<'_> {
                             || self
                                 .capacities
                                 .get(owner)
-                                .is_none_or(|(_, _, remaining)| *remaining == 0),
+                                .is_some_and(|(_, _, remaining)| *remaining == 0),
                         "tag {key} read before all array elements are initialized"
                     );
                     let value =
@@ -399,7 +402,7 @@ impl Analysis<'_> {
                         let complete = self
                             .capacities
                             .get(owner)
-                            .is_none_or(|(_, _, remaining)| *remaining == 0);
+                            .is_some_and(|(_, _, remaining)| *remaining == 0);
                         if tag.explicit || complete {
                             Some((suffix.to_owned(), tag.clone()))
                         } else if tag.declared {
@@ -568,6 +571,9 @@ impl Analysis<'_> {
                     },
                 );
                 self.buses.insert(format!("{name}.{path}"));
+            }
+            for (path, capacity) in &component.summary.output_capacities {
+                self.capacities.insert(format!("{name}.{path}"), capacity.clone());
             }
             for (path, tag) in &component.summary.outputs {
                 let mut tag = tag.clone();
@@ -929,6 +935,11 @@ fn analyze(
         .into_iter()
         .filter(|(key, _)| template.get_outputs().keys().any(|output| below(key, output)))
         .collect();
+    let output_capacities = analysis
+        .capacities
+        .into_iter()
+        .filter(|(key, _)| template.get_outputs().keys().any(|output| below(key, output)))
+        .collect();
     let buses = analysis
         .identities
         .into_iter()
@@ -946,6 +957,7 @@ fn analyze(
         inputs: analysis.inputs,
         required_values: analysis.required,
         outputs,
+        output_capacities,
         body,
     };
     summaries.insert(name.to_owned(), summary);
