@@ -143,6 +143,22 @@ fn statements<'a>(stmt: &'a Statement, out: &mut Vec<&'a Statement>) {
     }
 }
 
+/// Inspect a constructor beneath any parallel annotations, preserving the AST wrappers.
+fn unwrap_parallel(expr: &Expression) -> &Expression {
+    match expr {
+        Expression::ParallelOp { rhe, .. } => unwrap_parallel(rhe),
+        _ => expr,
+    }
+}
+
+/// Rewrite a constructor beneath any parallel annotations, preserving the AST wrappers.
+fn unwrap_parallel_mut(expr: &mut Expression) -> &mut Expression {
+    match expr {
+        Expression::ParallelOp { rhe, .. } => unwrap_parallel_mut(rhe),
+        _ => expr,
+    }
+}
+
 impl Analysis<'_> {
     /// Populate declared tags, recursively including bus fields in their source order.
     fn declare(
@@ -585,7 +601,7 @@ impl Analysis<'_> {
                         self.expression(index)?;
                     }
                 }
-                if let Expression::Call { id, args, meta } = rhe {
+                if let Expression::Call { id, args, meta } = unwrap_parallel(rhe) {
                     if let Some(summary) = self.summaries.get(id) {
                         self.components.insert(
                             var.clone(),
@@ -767,9 +783,11 @@ fn append_arguments(stmt: &mut Statement, arguments: &HashMap<usize, Vec<Express
                 append_arguments(stmt, arguments);
             }
         }
-        Statement::Substitution { rhe: Expression::Call { meta, args, .. }, .. } => {
-            if let Some(extra) = arguments.get(&meta.start) {
-                args.extend(extra.iter().cloned());
+        Statement::Substitution { rhe, .. } => {
+            if let Expression::Call { meta, args, .. } = unwrap_parallel_mut(rhe) {
+                if let Some(extra) = arguments.get(&meta.start) {
+                    args.extend(extra.iter().cloned());
+                }
             }
         }
         Statement::IfThenElse { if_case, else_case, .. } => {
@@ -799,9 +817,11 @@ fn analyze(
     let mut all = Vec::new();
     statements(template.get_body(), &mut all);
     for stmt in &all {
-        if let Statement::Substitution { rhe: Expression::Call { id, .. }, .. } = stmt {
-            if program.templates.contains_key(id) {
-                analyze(id, program, prime, summaries, active)?;
+        if let Statement::Substitution { rhe, .. } = stmt {
+            if let Expression::Call { id, .. } = unwrap_parallel(rhe) {
+                if program.templates.contains_key(id) {
+                    analyze(id, program, prime, summaries, active)?;
+                }
             }
         }
     }
@@ -993,8 +1013,10 @@ fn prepare_layout_params(mut program: ProgramArchive, prime: &BigUint) -> Result
             let mut all = Vec::new();
             statements(template.get_body(), &mut all);
             for stmt in all {
-                if let Statement::Substitution { rhe: Expression::Call { id, args, .. }, .. } = stmt
-                {
+                if let Statement::Substitution { rhe, .. } = stmt {
+                    let Expression::Call { id, args, .. } = unwrap_parallel(rhe) else {
+                        continue;
+                    };
                     if let Some(callee) = previous.get(id) {
                         let bindings = program.templates[id]
                             .get_name_of_params()
@@ -1051,7 +1073,10 @@ fn prepare_layout_params(mut program: ProgramArchive, prime: &BigUint) -> Result
                     }
                 }
             }
-            Statement::Substitution { rhe: Expression::Call { id, args, .. }, .. } => {
+            Statement::Substitution { rhe, .. } => {
+                let Expression::Call { id, args, .. } = unwrap_parallel_mut(rhe) else {
+                    return;
+                };
                 if let Some(derived) = extras.get(id) {
                     let bindings = templates[id]
                         .get_name_of_params()
@@ -1138,8 +1163,14 @@ fn prepare_main_arrays(program: &ProgramArchive) -> Result<ProgramArchive> {
     }
     let old = &program.templates[id];
     let reused = program.templates.values().any(|template| {
-        let mut all = Vec::new(); statements(template.get_body(), &mut all);
-        all.iter().any(|stmt| matches!(stmt, Statement::Substitution { rhe: Expression::Call { id: callee, .. }, .. } if callee == id))
+        let mut all = Vec::new();
+        statements(template.get_body(), &mut all);
+        all.iter().any(|stmt| match stmt {
+            Statement::Substitution { rhe, .. } => {
+                matches!(unwrap_parallel(rhe), Expression::Call { id: callee, .. } if callee == id)
+            }
+            _ => false,
+        })
     });
     let destination = if reused { format!("{id}$main_arrays") } else { id.clone() };
     let mut params = Vec::new();
