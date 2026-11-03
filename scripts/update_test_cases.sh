@@ -54,6 +54,7 @@ for f in $positional; do
   name=$(basename "$f" .circom)
   target/debug/circom --stabilize --llzk_plaintext --llzk_strip_debug_info --llzk "$llzk_type" -o $o "$f"
   sed '/\/\/ CHECK-*/d' "$f" > "$f".updated
-  python3 $LLZKLIB_HOME/scripts/generate-test-checks.py "$o/${name}_llzk/$name.llzk" | grep '^// CHECK-' >> "$f".updated
+  # Keep plain CHECK: directives that define attribute aliases as well as CHECK-* directives.
+  python3 $LLZKLIB_HOME/scripts/generate-test-checks.py "$o/${name}_llzk/$name.llzk" | grep -E '^// CHECK(:|-)' >> "$f".updated
   mv "$f".updated "$f"
 done
