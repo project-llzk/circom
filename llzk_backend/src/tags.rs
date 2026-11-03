@@ -91,8 +91,8 @@ struct Analysis<'a> {
     component_roots: HashSet<String>,
     /// Component roots whose interfaces carry tags and require per-instance analysis.
     tagged_components: HashSet<String>,
-    /// Component instances keyed by their indexed paths.
-    components: HashMap<String, Component>,
+    /// Constructor occurrences keyed by their indexed component paths.
+    components: HashMap<String, Vec<Component>>,
     /// Number of analyzed constructor occurrences at each source position.
     constructors: HashMap<usize, usize>,
     /// Nominal bus identities, including nested fields and component interfaces.
@@ -625,7 +625,10 @@ impl Analysis<'_> {
 
     /// Substitute actual tag values into a callee's derived output tags.
     fn refresh_components(&mut self) -> Result<()> {
-        for (name, component) in &self.components {
+        for (name, components) in &self.components {
+            // Propagate from the current constructor, retaining earlier branch occurrences
+            // so every call receives its hidden tag arguments during the final rewrite.
+            let component = components.last().expect("component has a constructor");
             let mut bindings = component
                 .summary
                 .params
@@ -797,15 +800,12 @@ impl Analysis<'_> {
                         let occurrence = self.constructors.entry(meta.start).or_default();
                         let position = (meta.start, *occurrence);
                         *occurrence += 1;
-                        self.components.insert(
-                            dst,
-                            Component {
-                                source: meta.clone(),
-                                summary: summary.clone(),
-                                args: args.clone(),
-                                position,
-                            },
-                        );
+                        self.components.entry(dst).or_default().push(Component {
+                            source: meta.clone(),
+                            summary: summary.clone(),
+                            args: args.clone(),
+                            position,
+                        });
                         self.refresh_components()?;
                         return Ok(());
                     }
@@ -1075,7 +1075,11 @@ fn analyze(
         .statement(&mut body)
         .with_context(|| format!("template {name}, source {:?}", template.get_param_location()))?;
     let mut arguments = HashMap::new();
-    for (component_name, component) in &analysis.components {
+    for (component_name, component) in analysis
+        .components
+        .iter()
+        .flat_map(|(name, components)| components.iter().map(move |component| (name, component)))
+    {
         let mut args = Vec::new();
         for path in component.summary.inputs.keys() {
             let key = format!("{component_name}.{path}");
