@@ -132,9 +132,11 @@ impl<'ast> WriteChain<'ast> {
         'val: 'blk,
     {
         let Some((access, tail)) = accesses.split_first() else {
+            // Count destination leaves, excluding any padding removed from the RHS below.
+            // Templated destinations may have affine dimensions, so fall back to the RHS.
             let count = codegen
-                .count_input_signals(rhs.r#type())
-                .or_else(|_| codegen.count_input_signals(value.r#type()))?;
+                .count_input_signals(value.r#type())
+                .or_else(|_| codegen.count_input_signals(rhs.r#type()))?;
             let rhs = fc.cast_signal_assignment_value(codegen, location, rhs, value.r#type())?;
             return Ok((rhs, count));
         };
