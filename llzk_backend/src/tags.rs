@@ -73,6 +73,8 @@ struct Analysis<'a> {
     prime: &'a BigUint,
     /// Available callee summaries.
     summaries: &'a HashMap<String, Summary>,
+    /// Compile-time template parameters, including lowered input tags.
+    params: Vec<String>,
     /// Tags indexed by component instance and array-wide field paths.
     tags: BTreeMap<String, Tag>,
     /// Bus paths, to distinguish bus-copy propagation from scalar assignment rules.
@@ -149,6 +151,24 @@ fn unwrap_parallel_mut(expr: &mut Expression) -> &mut Expression {
     }
 }
 
+/// Whether an expression can be represented using only compile-time parameters.
+fn depends_only_on(expr: &Expression, params: &[String]) -> bool {
+    match expr {
+        Expression::Number(..) => true,
+        Expression::Variable { name, access, .. } => access.is_empty() && params.contains(name),
+        Expression::InfixOp { lhe, rhe, .. } => {
+            depends_only_on(lhe, params) && depends_only_on(rhe, params)
+        }
+        Expression::PrefixOp { rhe, .. } => depends_only_on(rhe, params),
+        Expression::InlineSwitchOp { cond, if_true, if_false, .. } => {
+            depends_only_on(cond, params)
+                && depends_only_on(if_true, params)
+                && depends_only_on(if_false, params)
+        }
+        _ => false,
+    }
+}
+
 impl Analysis<'_> {
     /// Preserve component indices, but keep signal and bus tags array-wide.
     fn path(&self, name: &str, access: &[Access]) -> Result<String> {
@@ -208,6 +228,7 @@ impl Analysis<'_> {
             let value = if input {
                 let param = format!("$tag${}", key.replace('.', "$"));
                 self.inputs.insert(key.clone(), param.clone());
+                self.params.push(param.clone());
                 Some(Expression::Variable { meta: meta.clone(), name: param, access: vec![] })
             } else {
                 None
@@ -688,17 +709,20 @@ impl Analysis<'_> {
                     self.statement(other)?;
                 }
                 let else_tags = self.tags.clone();
+                let compile_time = depends_only_on(cond, &self.params);
                 for (key, mut tag) in then_tags {
                     if let Some(other) = else_tags.get(&key) {
                         if !self.same(&tag.value, &other.value) {
-                            tag.value = tag.value.zip(other.value.clone()).map(|(a, b)| {
-                                Expression::InlineSwitchOp {
-                                    meta: meta.clone(),
-                                    cond: Box::new(cond.clone()),
-                                    if_true: Box::new(a),
-                                    if_false: Box::new(b),
-                                }
-                            });
+                            // Divergent runtime tags cannot become hidden layout parameters.
+                            tag.value =
+                                tag.value.zip(other.value.clone()).filter(|_| compile_time).map(
+                                    |(a, b)| Expression::InlineSwitchOp {
+                                        meta: meta.clone(),
+                                        cond: Box::new(cond.clone()),
+                                        if_true: Box::new(a),
+                                        if_false: Box::new(b),
+                                    },
+                                );
                         }
                         self.tags.insert(key, tag);
                     }
@@ -845,6 +869,7 @@ fn analyze(
         program,
         prime,
         summaries,
+        params: template.get_name_of_params().clone(),
         tags: BTreeMap::new(),
         buses: HashSet::new(),
         initialized: HashSet::new(),
@@ -978,22 +1003,6 @@ pub(crate) fn prepare(program: &ProgramArchive, prime: &BigUint) -> Result<Progr
 /// Make derived dimensions explicit parameters so substitution can cross component boundaries
 /// without referring to a `poly.expr` owned by another template.
 fn prepare_layout_params(mut program: ProgramArchive, prime: &BigUint) -> Result<ProgramArchive> {
-    fn depends_only_on(expr: &Expression, params: &[String]) -> bool {
-        match expr {
-            Expression::Number(..) => true,
-            Expression::Variable { name, access, .. } => access.is_empty() && params.contains(name),
-            Expression::InfixOp { lhe, rhe, .. } => {
-                depends_only_on(lhe, params) && depends_only_on(rhe, params)
-            }
-            Expression::PrefixOp { rhe, .. } => depends_only_on(rhe, params),
-            Expression::InlineSwitchOp { cond, if_true, if_false, .. } => {
-                depends_only_on(cond, params)
-                    && depends_only_on(if_true, params)
-                    && depends_only_on(if_false, params)
-            }
-            _ => false,
-        }
-    }
     let mut extras = HashMap::<String, BTreeMap<String, Expression>>::new();
     for (name, template) in &program.templates {
         let mut all = Vec::new();
