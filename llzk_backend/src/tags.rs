@@ -704,13 +704,16 @@ impl Analysis<'_> {
                 let old_tags = self.tags.clone();
                 let old_initialized = self.initialized.clone();
                 let old_capacities = self.capacities.clone();
+                let old_constants = self.constants.clone();
                 self.statement(if_case)?;
                 let then_tags = self.tags.clone();
                 let then_init = self.initialized.clone();
                 let then_capacities = self.capacities.clone();
+                let then_constants = self.constants.clone();
                 self.tags = old_tags;
                 self.initialized = old_initialized;
                 self.capacities = old_capacities;
+                self.constants = old_constants;
                 if let Some(other) = else_case {
                     self.statement(other)?;
                 }
@@ -739,6 +742,12 @@ impl Analysis<'_> {
                         *remaining = (*remaining).max(*other);
                     }
                 }
+                // A local remains constant only when both paths agree on its value.
+                self.constants.retain(|name, value| {
+                    then_constants.get(name).is_some_and(|other| {
+                        crate::bus::expression_key(other) == crate::bus::expression_key(value)
+                    })
+                });
             }
             Statement::While { cond, stmt, .. } => {
                 self.expression(cond)?;
