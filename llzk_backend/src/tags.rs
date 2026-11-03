@@ -172,6 +172,43 @@ fn depends_only_on(expr: &Expression, params: &[String]) -> bool {
     }
 }
 
+/// Whether an expression references any of the exact variable names in `names`.
+fn references_any(expr: &Expression, names: &HashSet<String>) -> bool {
+    match expr {
+        Expression::Variable { name, access, .. } => {
+            names.contains(name)
+                || access.iter().any(|access| match access {
+                    Access::ArrayAccess(index) => references_any(index, names),
+                    Access::ComponentAccess(_) => false,
+                })
+        }
+        Expression::InfixOp { lhe, rhe, .. } => {
+            references_any(lhe, names) || references_any(rhe, names)
+        }
+        Expression::PrefixOp { rhe, .. } | Expression::ParallelOp { rhe, .. } => {
+            references_any(rhe, names)
+        }
+        Expression::InlineSwitchOp { cond, if_true, if_false, .. } => {
+            references_any(cond, names)
+                || references_any(if_true, names)
+                || references_any(if_false, names)
+        }
+        Expression::Call { args, .. } | Expression::BusCall { args, .. } => {
+            args.iter().any(|arg| references_any(arg, names))
+        }
+        Expression::AnonymousComp { params, signals, .. } => {
+            params.iter().chain(signals).any(|expr| references_any(expr, names))
+        }
+        Expression::ArrayInLine { values, .. } | Expression::Tuple { values, .. } => {
+            values.iter().any(|value| references_any(value, names))
+        }
+        Expression::UniformArray { value, dimension, .. } => {
+            references_any(value, names) || references_any(dimension, names)
+        }
+        Expression::Number(..) => false,
+    }
+}
+
 impl Analysis<'_> {
     /// Preserve component indices, but keep signal and bus tags array-wide.
     fn path(&self, name: &str, access: &[Access]) -> Result<String> {
@@ -581,8 +618,7 @@ impl Analysis<'_> {
                     .value
                     .and_then(|value| {
                         let value = crate::bus::substitute(&value, &bindings);
-                        let text = crate::shared::gen_poly_expr_name(&value);
-                        (!missing.iter().any(|param| text.contains(param))).then_some(value)
+                        (!references_any(&value, &missing)).then_some(value)
                     })
                     .map(|value| self.normalize(value))
                     .transpose()?;
