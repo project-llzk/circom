@@ -938,6 +938,11 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
             })
             .collect();
         self.template_param_requirements.replace(requirements);
+        // Symbolic bus dimensions can reference poly.expr bindings owned by the discarded
+        // declarations. Rebuild those layouts together with their bindings in the next pass.
+        self.bus_layouts
+            .borrow_mut()
+            .retain(|identity, _| matches!(identity, crate::bus::BusIdentity::Concrete(_)));
     }
 
     /// Remove and return the inferred index restrictions for one template.
@@ -2962,6 +2967,9 @@ pub fn gen_poly_expr_name(expr: &Expression) -> String {
             }
             Expression::InlineSwitchOp { cond, if_true, if_false, .. } => {
                 format!("{}?{}:{}", visit(cond), visit(if_true), visit(if_false))
+            }
+            Expression::Call { id, .. } if id == crate::bus::ARRAY_ACCESS => {
+                crate::bus::expression_key(expr)
             }
             Expression::Call { id, args, .. } => {
                 format!("{id}({})", args.iter().map(visit).collect::<Vec<_>>().join(","))

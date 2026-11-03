@@ -3107,6 +3107,18 @@ where
                 let value = value.gen_llzk_in_block(codegen, block_gen, info)?;
                 block_gen.generate_uniform_array(codegen, location, value, &dim)
             }
+            Expression::Call { meta, id, args } if id == crate::bus::ARRAY_ACCESS => {
+                let location = codegen.location_from_meta(meta);
+                let array = args[0].gen_llzk_in_block(codegen, block_gen, info)?;
+                let indices = args[1..]
+                    .iter()
+                    .map(|index| {
+                        let value = index.gen_llzk_in_block(codegen, block_gen, info)?;
+                        block_gen.cast_to_index_if_needed(codegen, location, value)
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                block_gen.append_array_read(codegen, array, &indices, location, None)
+            }
             Expression::Call { meta, id, args } => {
                 let location = codegen.location_from_meta(meta);
                 let target_function_data = codegen.program.get_function_data(id)?;

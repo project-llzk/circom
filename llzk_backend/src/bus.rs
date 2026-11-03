@@ -3,6 +3,7 @@
 use crate::shared::{ArrayDimExprKind, ExprToPolyBinding};
 use anyhow::{anyhow, Context, Result};
 use llzk::prelude::{PodRecordAttribute, PodType};
+use num_traits::ToPrimitive;
 use program_structure::ast::{Access, Expression, Meta, Statement, VariableType};
 use std::collections::HashMap;
 
@@ -281,6 +282,59 @@ pub(crate) fn constructor<'a>(
     None
 }
 
+/// Backend-only call representing indexing an expression, which Circom's AST only permits
+/// on variables. The name cannot collide with a source-level function identifier.
+pub(crate) const ARRAY_ACCESS: &str = "$bus_array_access";
+
+/// Apply indices in caller scope, selecting literal elements without materializing the array.
+/// Other array-valued expressions retain their indices for normal LLZK array-read lowering.
+fn index_expression(actual: &Expression, indices: &[Expression]) -> Expression {
+    let Some((index, rest)) = indices.split_first() else {
+        return actual.clone();
+    };
+    match actual {
+        Expression::Variable { meta, name, access } => {
+            let mut access = access.clone();
+            access.extend(indices.iter().cloned().map(Access::ArrayAccess));
+            return Expression::Variable { meta: meta.clone(), name: name.clone(), access };
+        }
+        Expression::ArrayInLine { values, .. } => {
+            if let Expression::Number(_, index) = index {
+                if let Some(value) = index.to_usize().and_then(|index| values.get(index)) {
+                    return index_expression(value, rest);
+                }
+            }
+        }
+        Expression::UniformArray { value, dimension, .. } => {
+            if let (Expression::Number(_, index), Expression::Number(_, dimension)) =
+                (index, dimension.as_ref())
+            {
+                if index.to_usize().zip(dimension.to_usize()).is_some_and(|(i, n)| i < n) {
+                    return index_expression(value, rest);
+                }
+            }
+        }
+        Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
+            return Expression::InlineSwitchOp {
+                meta: meta.clone(),
+                cond: cond.clone(),
+                if_true: Box::new(index_expression(if_true, indices)),
+                if_false: Box::new(index_expression(if_false, indices)),
+            };
+        }
+        Expression::Call { id, args, .. } if id == ARRAY_ACCESS => {
+            let combined = args[1..].iter().chain(indices).cloned().collect::<Vec<_>>();
+            return index_expression(&args[0], &combined);
+        }
+        _ => {}
+    }
+    Expression::Call {
+        meta: actual.get_meta().clone(),
+        id: ARRAY_ACCESS.to_owned(),
+        args: std::iter::once(actual.clone()).chain(indices.iter().cloned()).collect(),
+    }
+}
+
 /// Substitute expressions before creating polymorphic bindings, preserving the caller's scope.
 pub(crate) fn substitute(expr: &Expression, bindings: &HashMap<String, Expression>) -> Expression {
     let mut expr = expr.clone();
@@ -303,6 +357,17 @@ pub(crate) fn substitute(expr: &Expression, bindings: &HashMap<String, Expressio
                 let mut combined = prefix.clone();
                 combined.append(access);
                 *access = combined;
+            } else if let Some(actual) = bindings.get(name) {
+                let indices = access
+                    .iter()
+                    .map(|item| match item {
+                        Access::ArrayAccess(index) => Some(index.clone()),
+                        Access::ComponentAccess(_) => None,
+                    })
+                    .collect::<Option<Vec<_>>>();
+                if let Some(indices) = indices {
+                    return index_expression(actual, &indices);
+                }
             }
         }
         Expression::InfixOp { lhe, rhe, .. } => {
@@ -314,6 +379,10 @@ pub(crate) fn substitute(expr: &Expression, bindings: &HashMap<String, Expressio
             **cond = substitute(cond, bindings);
             **if_true = substitute(if_true, bindings);
             **if_false = substitute(if_false, bindings);
+        }
+        Expression::Call { id, args, .. } if id == ARRAY_ACCESS => {
+            let args = args.iter().map(|arg| substitute(arg, bindings)).collect::<Vec<_>>();
+            return index_expression(&args[0], &args[1..]);
         }
         Expression::Call { args, .. } | Expression::BusCall { args, .. } => {
             for arg in args {
