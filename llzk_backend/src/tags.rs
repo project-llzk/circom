@@ -73,7 +73,7 @@ struct Analysis<'a> {
     prime: &'a BigUint,
     /// Available callee summaries.
     summaries: &'a HashMap<String, Summary>,
-    /// Tags indexed by array-wide field paths.
+    /// Tags indexed by component instance and array-wide field paths.
     tags: BTreeMap<String, Tag>,
     /// Bus paths, to distinguish bus-copy propagation from scalar assignment rules.
     buses: HashSet<String>,
@@ -83,7 +83,9 @@ struct Analysis<'a> {
     inputs: BTreeMap<String, String>,
     /// Input values used by metadata expressions.
     required: HashSet<String>,
-    /// Component instances.
+    /// Component variable roots, whose indices distinguish metadata instances.
+    component_roots: HashSet<String>,
+    /// Component instances keyed by their indexed paths.
     components: HashMap<String, Component>,
     /// Nominal bus identities, including nested fields and component interfaces.
     identities: BTreeMap<String, NominalBus>,
@@ -91,18 +93,6 @@ struct Analysis<'a> {
     capacities: BTreeMap<String, (Vec<usize>, usize, usize)>,
     /// Known local scalar values, used only to determine fixed loop trip counts.
     constants: HashMap<String, Expression>,
-}
-
-/// Array indexing does not change the tag identity of a signal or bus array.
-fn path(name: &str, access: &[Access]) -> String {
-    let mut path = name.to_owned();
-    for access in access {
-        if let Access::ComponentAccess(field) = access {
-            path.push('.');
-            path.push_str(field);
-        }
-    }
-    path
 }
 
 /// Whether a path is contained in a subtree.
@@ -160,6 +150,27 @@ fn unwrap_parallel_mut(expr: &mut Expression) -> &mut Expression {
 }
 
 impl Analysis<'_> {
+    /// Preserve component indices, but keep signal and bus tags array-wide.
+    fn path(&self, name: &str, access: &[Access]) -> Result<String> {
+        let mut path = name.to_owned();
+        let mut component = self.component_roots.contains(name);
+        for access in access {
+            match access {
+                Access::ComponentAccess(field) => {
+                    component = false;
+                    path.push('.');
+                    path.push_str(field);
+                }
+                Access::ArrayAccess(index) if component => {
+                    let index = self.normalize(index.clone())?;
+                    path.push_str(&format!("[{}]", crate::bus::expression_key(&index)));
+                }
+                Access::ArrayAccess(_) => {}
+            }
+        }
+        Ok(path)
+    }
+
     /// Populate declared tags, recursively including bus fields in their source order.
     fn declare(
         &mut self,
@@ -173,6 +184,10 @@ impl Analysis<'_> {
     ) -> Result<Option<usize>> {
         let tags = match xtype {
             VariableType::Signal(_, tags) | VariableType::Bus(_, _, tags) => tags,
+            VariableType::Component | VariableType::AnonymousComponent => {
+                self.component_roots.insert(name.to_owned());
+                return Ok(Some(0));
+            }
             _ => return Ok(Some(0)),
         };
         let dimensions = dimensions
@@ -272,7 +287,12 @@ impl Analysis<'_> {
     fn expression(&mut self, expr: &mut Expression) -> Result<()> {
         match expr {
             Expression::Variable { name, access, .. } => {
-                let key = path(name, access);
+                for access in access.iter_mut() {
+                    if let Access::ArrayAccess(index) = access {
+                        self.expression(index)?;
+                    }
+                }
+                let key = self.path(name, access)?;
                 if let Some(tag) = self.tags.get(&key) {
                     let owner = key.rsplit_once('.').expect("tag path").0;
                     ensure!(
@@ -288,11 +308,6 @@ impl Analysis<'_> {
                     self.mark_required(&value);
                     *expr = value;
                     return Ok(());
-                }
-                for access in access {
-                    if let Access::ArrayAccess(index) = access {
-                        self.expression(index)?;
-                    }
                 }
             }
             Expression::InfixOp { lhe, rhe, .. } => {
@@ -351,10 +366,10 @@ impl Analysis<'_> {
     }
 
     /// Obtain the tags of a data expression; arithmetic deliberately drops tags.
-    fn source_tags(&self, expr: &Expression) -> BTreeMap<String, Tag> {
-        match expr {
+    fn source_tags(&self, expr: &Expression) -> Result<BTreeMap<String, Tag>> {
+        Ok(match expr {
             Expression::Variable { name, access, .. } => {
-                let prefix = format!("{}.", path(name, access));
+                let prefix = format!("{}.", self.path(name, access)?);
                 self.tags
                     .iter()
                     .filter_map(|(key, tag)| {
@@ -376,11 +391,12 @@ impl Analysis<'_> {
                     })
                     .collect()
             }
-            Expression::UniformArray { value, .. } => self.source_tags(value),
+            Expression::UniformArray { value, .. } => self.source_tags(value)?,
             Expression::ArrayInLine { values, .. } => {
-                let mut tags = values.first().map(|v| self.source_tags(v)).unwrap_or_default();
+                let mut tags =
+                    values.first().map(|v| self.source_tags(v)).transpose()?.unwrap_or_default();
                 for value in values.iter().skip(1) {
-                    let other = self.source_tags(value);
+                    let other = self.source_tags(value)?;
                     tags.retain(|key, tag| {
                         other.get(key).is_some_and(|t| self.same(&tag.value, &t.value))
                     });
@@ -388,7 +404,7 @@ impl Analysis<'_> {
                 tags
             }
             _ => BTreeMap::new(),
-        }
+        })
     }
 
     /// Consume scalar leaves once, updating array-wide tag completion of enclosing buses.
@@ -421,7 +437,7 @@ impl Analysis<'_> {
         match expr {
             Expression::Variable { name, access, meta } => {
                 if let (Some(lhs), Some(rhs)) =
-                    (self.identities.get(dst), self.identities.get(&path(name, access)))
+                    (self.identities.get(dst), self.identities.get(&self.path(name, access)?))
                 {
                     ensure!(
                         lhs.definition == rhs.definition,
@@ -573,7 +589,12 @@ impl Analysis<'_> {
                 }
             }
             Statement::Substitution { var, access, op, rhe, .. } => {
-                let dst = path(var, access);
+                for access in access.iter_mut() {
+                    if let Access::ArrayAccess(index) = access {
+                        self.expression(index)?;
+                    }
+                }
+                let dst = self.path(var, access)?;
                 if *op == AssignOp::AssignVar && self.tags.contains_key(&dst) {
                     self.expression(rhe)?;
                     let value = self.normalize(rhe.clone())?;
@@ -596,15 +617,10 @@ impl Analysis<'_> {
                     return Ok(());
                 }
                 self.expression(rhe)?;
-                for access in access.iter_mut() {
-                    if let Access::ArrayAccess(index) = access {
-                        self.expression(index)?;
-                    }
-                }
                 if let Expression::Call { id, args, meta } = unwrap_parallel(rhe) {
                     if let Some(summary) = self.summaries.get(id) {
                         self.components.insert(
-                            var.clone(),
+                            dst,
                             Component {
                                 source: meta.clone(),
                                 summary: summary.clone(),
@@ -620,7 +636,7 @@ impl Analysis<'_> {
                     self.compatibility(&dst, rhe, &mut checks)?;
                     let tags =
                         if *op == AssignOp::AssignConstraintSignal || self.buses.contains(&dst) {
-                            self.source_tags(rhe)
+                            self.source_tags(rhe)?
                         } else {
                             BTreeMap::new()
                         };
@@ -641,7 +657,7 @@ impl Analysis<'_> {
                 self.expression(lhe)?;
                 self.expression(rhe)?;
                 if let Expression::Variable { name, access, .. } = lhe {
-                    self.compatibility(&path(name, access), rhe, &mut checks)?;
+                    self.compatibility(&self.path(name, access)?, rhe, &mut checks)?;
                 }
             }
             Statement::IfThenElse { cond, if_case, else_case, .. } => {
@@ -834,6 +850,7 @@ fn analyze(
         initialized: HashSet::new(),
         inputs: BTreeMap::new(),
         required: HashSet::new(),
+        component_roots: HashSet::new(),
         components: HashMap::new(),
         identities: BTreeMap::new(),
         capacities: BTreeMap::new(),
