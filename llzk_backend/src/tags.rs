@@ -63,8 +63,8 @@ struct Component {
     summary: Summary,
     /// Ordinary arguments in caller scope.
     args: Vec<Expression>,
-    /// Constructor source position for rewriting the call.
-    position: usize,
+    /// Source position and occurrence, distinguishing copies made for fixed loops.
+    position: (usize, usize),
 }
 
 /// Analysis state for one template.
@@ -89,8 +89,12 @@ struct Analysis<'a> {
     required: HashSet<String>,
     /// Component variable roots, whose indices distinguish metadata instances.
     component_roots: HashSet<String>,
+    /// Component roots whose interfaces carry tags and require per-instance analysis.
+    tagged_components: HashSet<String>,
     /// Component instances keyed by their indexed paths.
     components: HashMap<String, Component>,
+    /// Number of analyzed constructor occurrences at each source position.
+    constructors: HashMap<usize, usize>,
     /// Nominal bus identities, including nested fields and component interfaces.
     identities: BTreeMap<String, NominalBus>,
     /// Known scalar-leaf capacities and remaining assignments for array-wide tags.
@@ -98,6 +102,10 @@ struct Analysis<'a> {
     capacities: BTreeMap<String, (Vec<usize>, usize, usize)>,
     /// Known local scalar values, used only to determine fixed loop trip counts.
     constants: HashMap<String, Expression>,
+    /// Induction values substituted while expanding fixed loops with tagged components.
+    iterations: HashMap<String, Expression>,
+    /// Fresh identities for declarations copied into expanded loop iterations.
+    next_declaration: usize,
 }
 
 /// Whether a path is contained in a subtree.
@@ -207,6 +215,40 @@ fn references_any(expr: &Expression, names: &HashSet<String>) -> bool {
         }
         Expression::Number(..) => false,
     }
+}
+
+/// Whether any statement reads or writes a tagged component.
+fn uses_components(stmt: &Statement, names: &HashSet<String>) -> bool {
+    let mut all = Vec::new();
+    statements(stmt, &mut all);
+    all.into_iter().any(|stmt| match stmt {
+        Statement::Substitution { var, access, rhe, .. } => {
+            names.contains(var)
+                || references_any(rhe, names)
+                || access.iter().any(|access| match access {
+                    Access::ArrayAccess(index) => references_any(index, names),
+                    Access::ComponentAccess(_) => false,
+                })
+        }
+        Statement::Declaration { dimensions, .. } => {
+            dimensions.iter().any(|expr| references_any(expr, names))
+        }
+        Statement::IfThenElse { cond, .. } | Statement::While { cond, .. } => {
+            references_any(cond, names)
+        }
+        Statement::ConstraintEquality { lhe, rhe, .. }
+        | Statement::MultSubstitution { lhe, rhe, .. } => {
+            references_any(lhe, names) || references_any(rhe, names)
+        }
+        Statement::Assert { arg, .. }
+        | Statement::Return { value: arg, .. }
+        | Statement::UnderscoreSubstitution { rhe: arg, .. } => references_any(arg, names),
+        Statement::LogCall { args, .. } => args.iter().any(|arg| match arg {
+            LogArgument::LogExp(expr) => references_any(expr, names),
+            LogArgument::LogStr(_) => false,
+        }),
+        _ => false,
+    })
 }
 
 impl Analysis<'_> {
@@ -348,6 +390,12 @@ impl Analysis<'_> {
     fn expression(&mut self, expr: &mut Expression) -> Result<()> {
         match expr {
             Expression::Variable { name, access, .. } => {
+                if access.is_empty() {
+                    if let Some(value) = self.iterations.get(name) {
+                        *expr = value.clone();
+                        return Ok(());
+                    }
+                }
                 for access in access.iter_mut() {
                     if let Access::ArrayAccess(index) = access {
                         self.expression(index)?;
@@ -628,6 +676,66 @@ impl Analysis<'_> {
         Ok(())
     }
 
+    /// Recognize a fixed increasing loop with an invariant bound and one trailing step.
+    fn fixed_loop(
+        &self,
+        cond: &Expression,
+        stmt: &Statement,
+    ) -> Result<Option<(String, i64, i64)>> {
+        let Expression::InfixOp { lhe, infix_op: ExpressionInfixOpcode::Lesser, rhe, .. } = cond
+        else {
+            return Ok(None);
+        };
+        let Expression::Variable { name, access, .. } = lhe.as_ref() else {
+            return Ok(None);
+        };
+        let Statement::Block { stmts, .. } = stmt else {
+            return Ok(None);
+        };
+        let Some(Statement::Substitution {
+            var,
+            access: step_access,
+            op: AssignOp::AssignVar,
+            rhe: step,
+            ..
+        }) = stmts.last()
+        else {
+            return Ok(None);
+        };
+        let unit_step = matches!(step, Expression::InfixOp { lhe, infix_op: ExpressionInfixOpcode::Add, rhe, .. }
+            if matches!(lhe.as_ref(), Expression::Variable { name: n, access, .. } if n == name && access.is_empty())
+                && matches!(rhe.as_ref(), Expression::Number(_, n) if n == &1.into()));
+        if !access.is_empty() || var != name || !step_access.is_empty() || !unit_step {
+            return Ok(None);
+        }
+        let mut all = Vec::new();
+        statements(stmt, &mut all);
+        let writes = all
+            .iter()
+            .filter_map(|stmt| match stmt {
+                Statement::Substitution { var, .. } => Some(var.clone()),
+                Statement::Declaration { name, .. } => Some(name.clone()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        if writes.iter().filter(|var| *var == name).count() != 1
+            || references_any(rhe, &writes.into_iter().collect())
+        {
+            return Ok(None);
+        }
+        let start = self
+            .constants
+            .get(name)
+            .map(|expr| crate::shared::try_compute_as_i64(expr, self.prime))
+            .transpose()?
+            .flatten();
+        let end = crate::shared::try_compute_as_i64(
+            &crate::bus::substitute(rhe, &self.constants),
+            self.prime,
+        )?;
+        Ok(start.zip(end).map(|(start, end)| (name.clone(), start, end)))
+    }
+
     /// Process statements in source order and remove metadata-only assignments.
     fn statement(&mut self, stmt: &mut Statement) -> Result<()> {
         let meta = stmt.get_meta().clone();
@@ -646,7 +754,11 @@ impl Analysis<'_> {
                     self.statement(stmt)?;
                 }
             }
-            Statement::Declaration { dimensions, .. } => {
+            Statement::Declaration { meta, dimensions, .. } => {
+                if !self.iterations.is_empty() {
+                    meta.elem_id = self.next_declaration;
+                    self.next_declaration += 1;
+                }
                 for dim in dimensions {
                     self.expression(dim)?;
                 }
@@ -682,13 +794,16 @@ impl Analysis<'_> {
                 self.expression(rhe)?;
                 if let Expression::Call { id, args, meta } = unwrap_parallel(rhe) {
                     if let Some(summary) = self.summaries.get(id) {
+                        let occurrence = self.constructors.entry(meta.start).or_default();
+                        let position = (meta.start, *occurrence);
+                        *occurrence += 1;
                         self.components.insert(
                             dst,
                             Component {
                                 source: meta.clone(),
                                 summary: summary.clone(),
                                 args: args.clone(),
-                                position: meta.start,
+                                position,
                             },
                         );
                         self.refresh_components()?;
@@ -785,51 +900,40 @@ impl Analysis<'_> {
                     })
                 });
             }
-            Statement::While { cond, stmt, .. } => {
+            Statement::While { cond, stmt: loop_body, .. } => {
                 self.expression(cond)?;
-                // The parser represents a for-loop as initialization plus while, with the
-                // increment at the end. Fixed increasing loops consume their leaves on
-                // every iteration, while retaining the original symbolic loop in the IR.
-                let trips = if let Expression::InfixOp {
-                    lhe,
-                    infix_op: ExpressionInfixOpcode::Lesser,
-                    rhe,
-                    ..
-                } = cond
-                {
-                    if let Expression::Variable { name, access, .. } = lhe.as_ref() {
-                        let start = self
-                            .constants
-                            .get(name)
-                            .map(|e| crate::shared::try_compute_as_i64(e, self.prime))
-                            .transpose()?
-                            .flatten();
-                        let end = crate::shared::try_compute_as_i64(
-                            &crate::bus::substitute(rhe, &self.constants),
-                            self.prime,
-                        )?;
-                        let mut body = Vec::new();
-                        statements(stmt, &mut body);
-                        let unit_step = body.iter().rev().find_map(|stmt| if let Statement::Substitution { var, rhe, .. } = stmt { (var == name).then_some(rhe) } else { None })
-                            .is_some_and(|expr| matches!(expr, Expression::InfixOp { lhe, infix_op: ExpressionInfixOpcode::Add, rhe, .. } if matches!(lhe.as_ref(), Expression::Variable { name: n, .. } if n == name) && matches!(rhe.as_ref(), Expression::Number(_, n) if n == &1.into())));
-                        start
-                            .zip(end)
-                            .filter(|_| access.is_empty() && unit_step)
-                            .map(|(start, end)| usize::try_from((end - start).max(0)))
-                            .transpose()?
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                };
+                let fixed = self.fixed_loop(cond, loop_body)?;
+                let trips = fixed
+                    .as_ref()
+                    .map(|(_, start, end)| usize::try_from(end.saturating_sub(*start).max(0)))
+                    .transpose()?;
                 if trips == Some(0) {
-                    **stmt = Statement::Block { meta: meta.clone(), stmts: vec![] };
+                    **loop_body = Statement::Block { meta: meta.clone(), stmts: vec![] };
                     return Ok(());
                 }
+                if let Some((name, start, end)) = fixed {
+                    if uses_components(loop_body, &self.tagged_components) {
+                        // Each iteration gets concrete component paths and its own rewritten
+                        // constructors. Keep the source metadata for accurate diagnostics.
+                        let mut iterations = Vec::new();
+                        for value in start..end {
+                            self.iterations.insert(
+                                name.clone(),
+                                Expression::Number(meta.clone(), value.into()),
+                            );
+                            let mut iteration = (**loop_body).clone();
+                            self.statement(&mut iteration)?;
+                            iterations.push(iteration);
+                        }
+                        self.iterations.remove(&name);
+                        *stmt = Statement::Block { meta, stmts: iterations };
+                        return Ok(());
+                    }
+                }
+                // Other fixed loops can account for all leaves without expanding the IR.
                 let before = self.capacities.clone();
                 let constants = self.constants.clone();
-                self.statement(stmt)?;
+                self.statement(loop_body)?;
                 for (owner, (_, _, remaining)) in &mut self.capacities {
                     if let Some((_, _, initial)) = before.get(owner) {
                         if let Some(trips) = trips {
@@ -866,28 +970,34 @@ impl Analysis<'_> {
 }
 
 /// Append the compile-time tag arguments at the original constructor locations.
-fn append_arguments(stmt: &mut Statement, arguments: &HashMap<usize, Vec<Expression>>) {
+fn append_arguments(
+    stmt: &mut Statement,
+    arguments: &HashMap<(usize, usize), Vec<Expression>>,
+    occurrences: &mut HashMap<usize, usize>,
+) {
     match stmt {
         Statement::Block { stmts, .. }
         | Statement::InitializationBlock { initializations: stmts, .. } => {
             for stmt in stmts {
-                append_arguments(stmt, arguments);
+                append_arguments(stmt, arguments, occurrences);
             }
         }
         Statement::Substitution { rhe, .. } => {
             if let Expression::Call { meta, args, .. } = unwrap_parallel_mut(rhe) {
-                if let Some(extra) = arguments.get(&meta.start) {
+                let occurrence = occurrences.entry(meta.start).or_default();
+                if let Some(extra) = arguments.get(&(meta.start, *occurrence)) {
                     args.extend(extra.iter().cloned());
                 }
+                *occurrence += 1;
             }
         }
         Statement::IfThenElse { if_case, else_case, .. } => {
-            append_arguments(if_case, arguments);
+            append_arguments(if_case, arguments, occurrences);
             if let Some(stmt) = else_case {
-                append_arguments(stmt, arguments);
+                append_arguments(stmt, arguments, occurrences);
             }
         }
-        Statement::While { stmt, .. } => append_arguments(stmt, arguments),
+        Statement::While { stmt, .. } => append_arguments(stmt, arguments, occurrences),
         _ => {}
     }
 }
@@ -927,10 +1037,26 @@ fn analyze(
         inputs: BTreeMap::new(),
         required: HashSet::new(),
         component_roots: HashSet::new(),
+        tagged_components: all
+            .iter()
+            .filter_map(|stmt| {
+                let Statement::Substitution { var, rhe, .. } = stmt else {
+                    return None;
+                };
+                let Expression::Call { id, .. } = unwrap_parallel(rhe) else {
+                    return None;
+                };
+                let summary = summaries.get(id)?;
+                (!summary.inputs.is_empty() || !summary.outputs.is_empty()).then(|| var.clone())
+            })
+            .collect(),
         components: HashMap::new(),
+        constructors: HashMap::new(),
         identities: BTreeMap::new(),
         capacities: BTreeMap::new(),
         constants: HashMap::new(),
+        iterations: HashMap::new(),
+        next_declaration: all.iter().map(|stmt| stmt.get_meta().elem_id).max().unwrap_or(0) + 1,
     };
     for stmt in &all {
         if let Statement::Declaration { name, xtype, meta, dimensions, .. } = stmt {
@@ -974,7 +1100,7 @@ fn analyze(
             analysis.mark_required(expr);
         }
     }
-    append_arguments(&mut body, &arguments);
+    append_arguments(&mut body, &arguments, &mut HashMap::new());
     let outputs = analysis
         .tags
         .into_iter()

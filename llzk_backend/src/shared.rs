@@ -2530,7 +2530,7 @@ where
                         // Use the pre-computed type from DeclarationInfo (seeded into the
                         // BlockContextStack root) to avoid triggering recursive
                         // gen_template_poly_expr calls for non-constant dimension expressions.
-                        let qualified_key = format!("{}@{}", name, meta.start);
+                        let qualified_key = format!("{}@{}#{}", name, meta.start, meta.elem_id);
                         if let Some(ty) = gen_ctx.get_var_decl_types().get(&qualified_key) {
                             let builder =
                                 gen_ctx.builder_at_current_insertion_point(codegen.context);
