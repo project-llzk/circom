@@ -106,8 +106,8 @@ impl FlowState {
         self.clone()
     }
 
-    /// Join a then-branch endpoint into this else-branch endpoint. An absent else
-    /// branch uses the incoming state, so its facts participate in the same join.
+    /// Join an analyzed path into its alternative. An absent else branch or a
+    /// possibly empty loop uses the incoming state as the alternative.
     fn merge(&mut self, then_state: Self, cond: &Expression, params: &[String], meta: &Meta) {
         let Self { tags, initialized, capacities, constants } = then_state;
         let compile_time = depends_only_on(cond, params);
@@ -1113,23 +1113,26 @@ impl Analysis<'_> {
                         return Ok(());
                     }
                 }
-                // Other fixed loops can account for all leaves without expanding the IR.
-                let before = self.flow.capacities.clone();
-                let constants = self.flow.constants.clone();
+                let incoming = self.flow.fork();
                 self.statement(loop_body)?;
                 if let Some(trips) = trips {
+                    // Other fixed loops account for all leaves without expanding the IR.
                     for (owner, capacity) in &mut self.flow.capacities {
-                        if let Some(initial) = before.get(owner) {
+                        if let Some(initial) = incoming.capacities.get(owner) {
                             capacity.repeat(initial, trips);
                         }
                     }
+                    self.flow.constants.retain(|name, value| {
+                        incoming.constants.get(name).is_some_and(|old| {
+                            crate::shared::gen_poly_expr_name(old)
+                                == crate::shared::gen_poly_expr_name(value)
+                        })
+                    });
+                } else {
+                    // An unknown trip count may be zero, so body effects are conditional.
+                    let body_state = std::mem::replace(&mut self.flow, incoming);
+                    self.flow.merge(body_state, cond, &self.params, &meta);
                 }
-                self.flow.constants.retain(|name, value| {
-                    constants.get(name).is_some_and(|old| {
-                        crate::shared::gen_poly_expr_name(old)
-                            == crate::shared::gen_poly_expr_name(value)
-                    })
-                });
             }
             Statement::Assert { arg, .. } => self.expression(arg)?,
             Statement::LogCall { args, .. } => {
