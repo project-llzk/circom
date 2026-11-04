@@ -792,6 +792,10 @@ impl Analysis<'_> {
                 }
             }
             Expression::UniformArray { value, .. } => self.compatibility(dst, value, checks)?,
+            Expression::InlineSwitchOp { if_true, if_false, .. } => {
+                self.compatibility(dst, if_true, checks)?;
+                self.compatibility(dst, if_false, checks)?;
+            }
             _ => {}
         }
         Ok(())
