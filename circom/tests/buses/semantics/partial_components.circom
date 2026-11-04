@@ -34,6 +34,8 @@ component main = Main();
 
 // Each component starts with four inputs; x and y writes each consume one.
 // Check the leaf-to-parent updates and only compute when the remainder is zero.
+// Follow each index comparison into its dispatch arm. The else labels bound the
+// arm's checks so its writes cannot match in another arm or after the dispatch.
 // CONCRETE-LABEL: struct.def @Main_2 {
 // CONCRETE: struct.member @children : !pod.type<[@idx_0: !struct.type<@Sum_0::@Sum_0<[]>>, @idx_1: !struct.type<@Sum_1::@Sum_1<[]>>]>
 // CONCRETE: struct.member @children$inputs : !pod.type<[@idx_0: !pod.type<[@in: !pod.type<[@points: !array.type<2 x !pod.type<[@x: !felt.type<"bn128">, @y: !felt.type<"bn128">]>>]>]>, @idx_1: !pod.type<[@in: !pod.type<[@points: !array.type<2 x !pod.type<[@x: !felt.type<"bn128">, @y: !felt.type<"bn128">]>>]>]>]>
@@ -47,10 +49,13 @@ component main = Main();
 // CONCRETE: %[[VALUE4:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE5:[a-zA-Z0-9_.-]+]]
 // CONCRETE: %[[N3:[a-zA-Z0-9_.-]+]] = arith.constant true
 // CONCRETE: %[[N4:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
-// CONCRETE: %[[READY1:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[VALUE4]], %[[N4]]
+// CONCRETE: %[[X_IS_0:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[VALUE4]], %[[N4]]
+// CONCRETE: %[[X_DISPATCH_0:[a-zA-Z0-9_.-]+]] = bool.and %[[N3]], %[[X_IS_0]]
 // CONCRETE: %[[N5:[a-zA-Z0-9_.-]+]] = arith.constant 1 : index
-// CONCRETE: %[[READY2:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[VALUE4]], %[[N5]]
-// CONCRETE: %[[IDX_11:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE6:[a-zA-Z0-9_.-]+]][@idx_1]
+// CONCRETE: %[[X_IS_1:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[VALUE4]], %[[N5]]
+// CONCRETE: %[[X_DISPATCH_1:[a-zA-Z0-9_.-]+]] = bool.and %[[N3]], %[[X_IS_1]]
+// CONCRETE: scf.if %[[X_DISPATCH_1]] -> {{.*}} {
+// CONCRETE-NEXT: %[[IDX_11:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE6:[a-zA-Z0-9_.-]+]][@idx_1]
 // CONCRETE: %[[IDX_12:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE7:[a-zA-Z0-9_.-]+]][@idx_1]
 // CONCRETE: %[[IN1:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_12]][@in]
 // CONCRETE: %[[POINTS1:[a-zA-Z0-9_.-]+]] = pod.read %[[IN1]][@points]
@@ -73,8 +78,12 @@ component main = Main();
 // CONCRETE: %[[IN2:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_12]][@in]
 // CONCRETE: %[[CHILD1:[a-zA-Z0-9_.-]+]] = function.call @Sum_1::@Sum_1::@compute(%[[IN2]]) : (!pod.type<[@points: !array.type<2 x !pod.type<[@x: !felt.type<"bn128">, @y: !felt.type<"bn128">]>>]>) -> !struct.type<@Sum_1::@Sum_1<[]>>
 // CONCRETE: pod.write %[[IDX_11]][@comp] = %[[CHILD1]]
-// CONCRETE: pod.write %[[VALUE6]][@idx_1] = %[[IDX_11]]
-// CONCRETE: %[[IDX_01:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE6]][@idx_0]
+// CONCRETE-NEXT: }
+// CONCRETE-NEXT: pod.write %[[VALUE6]][@idx_1] = %[[IDX_11]]
+// CONCRETE-NEXT: scf.yield %[[VALUE6]], %[[VALUE7]]
+// CONCRETE-LABEL: } else {
+// CONCRETE-NEXT: scf.if %[[X_DISPATCH_0]] -> {{.*}} {
+// CONCRETE-NEXT: %[[IDX_01:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE6]][@idx_0]
 // CONCRETE: %[[IDX_02:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE7]][@idx_0]
 // CONCRETE: %[[IN3:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_02]][@in]
 // CONCRETE: %[[POINTS2:[a-zA-Z0-9_.-]+]] = pod.read %[[IN3]][@points]
@@ -97,16 +106,22 @@ component main = Main();
 // CONCRETE: %[[IN4:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_02]][@in]
 // CONCRETE: %[[CHILD2:[a-zA-Z0-9_.-]+]] = function.call @Sum_0::@Sum_0::@compute(%[[IN4]]) : (!pod.type<[@points: !array.type<2 x !pod.type<[@x: !felt.type<"bn128">, @y: !felt.type<"bn128">]>>]>) -> !struct.type<@Sum_0::@Sum_0<[]>>
 // CONCRETE: pod.write %[[IDX_01]][@comp] = %[[CHILD2]]
-// CONCRETE: pod.write %[[VALUE6]][@idx_0] = %[[IDX_01]]
+// CONCRETE-NEXT: }
+// CONCRETE-NEXT: pod.write %[[VALUE6]][@idx_0] = %[[IDX_01]]
+// CONCRETE-NEXT: scf.yield %[[VALUE6]], %[[VALUE7]]
+// CONCRETE-LABEL: } else {
 // CONCRETE: %[[VALUE11:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE12:[a-zA-Z0-9_.-]+]]
 // CONCRETE: %[[ELEMENT4:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE3]]{{\[}}%[[VALUE11]]]
 // CONCRETE: %[[VALUE13:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE5]]
 // CONCRETE: %[[N10:[a-zA-Z0-9_.-]+]] = arith.constant true
 // CONCRETE: %[[N11:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
-// CONCRETE: %[[READY5:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[VALUE13]], %[[N11]]
+// CONCRETE: %[[Y_IS_0:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[VALUE13]], %[[N11]]
+// CONCRETE: %[[Y_DISPATCH_0:[a-zA-Z0-9_.-]+]] = bool.and %[[N10]], %[[Y_IS_0]]
 // CONCRETE: %[[N12:[a-zA-Z0-9_.-]+]] = arith.constant 1 : index
-// CONCRETE: %[[READY6:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[VALUE13]], %[[N12]]
-// CONCRETE: %[[IDX_13:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE14:[a-zA-Z0-9_.-]+]]#0[@idx_1]
+// CONCRETE: %[[Y_IS_1:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[VALUE13]], %[[N12]]
+// CONCRETE: %[[Y_DISPATCH_1:[a-zA-Z0-9_.-]+]] = bool.and %[[N10]], %[[Y_IS_1]]
+// CONCRETE: scf.if %[[Y_DISPATCH_1]] -> {{.*}} {
+// CONCRETE-NEXT: %[[IDX_13:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE14:[a-zA-Z0-9_.-]+]]#0[@idx_1]
 // CONCRETE: %[[IDX_14:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE14]]#1[@idx_1]
 // CONCRETE: %[[IN5:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_14]][@in]
 // CONCRETE: %[[POINTS3:[a-zA-Z0-9_.-]+]] = pod.read %[[IN5]][@points]
@@ -129,8 +144,12 @@ component main = Main();
 // CONCRETE: %[[IN6:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_14]][@in]
 // CONCRETE: %[[CHILD3:[a-zA-Z0-9_.-]+]] = function.call @Sum_1::@Sum_1::@compute(%[[IN6]]) : (!pod.type<[@points: !array.type<2 x !pod.type<[@x: !felt.type<"bn128">, @y: !felt.type<"bn128">]>>]>) -> !struct.type<@Sum_1::@Sum_1<[]>>
 // CONCRETE: pod.write %[[IDX_13]][@comp] = %[[CHILD3]]
-// CONCRETE: pod.write %[[VALUE14]]#0[@idx_1] = %[[IDX_13]]
-// CONCRETE: %[[IDX_03:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE14]]#0[@idx_0]
+// CONCRETE-NEXT: }
+// CONCRETE-NEXT: pod.write %[[VALUE14]]#0[@idx_1] = %[[IDX_13]]
+// CONCRETE-NEXT: scf.yield %[[VALUE14]]#0, %[[VALUE14]]#1
+// CONCRETE-LABEL: } else {
+// CONCRETE-NEXT: scf.if %[[Y_DISPATCH_0]] -> {{.*}} {
+// CONCRETE-NEXT: %[[IDX_03:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE14]]#0[@idx_0]
 // CONCRETE: %[[IDX_04:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE14]]#1[@idx_0]
 // CONCRETE: %[[IN7:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_04]][@in]
 // CONCRETE: %[[POINTS4:[a-zA-Z0-9_.-]+]] = pod.read %[[IN7]][@points]
@@ -153,7 +172,10 @@ component main = Main();
 // CONCRETE: %[[IN8:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_04]][@in]
 // CONCRETE: %[[CHILD4:[a-zA-Z0-9_.-]+]] = function.call @Sum_0::@Sum_0::@compute(%[[IN8]]) : (!pod.type<[@points: !array.type<2 x !pod.type<[@x: !felt.type<"bn128">, @y: !felt.type<"bn128">]>>]>) -> !struct.type<@Sum_0::@Sum_0<[]>>
 // CONCRETE: pod.write %[[IDX_03]][@comp] = %[[CHILD4]]
-// CONCRETE: pod.write %[[VALUE14]]#0[@idx_0] = %[[IDX_03]]
+// CONCRETE-NEXT: }
+// CONCRETE-NEXT: pod.write %[[VALUE14]]#0[@idx_0] = %[[IDX_03]]
+// CONCRETE-NEXT: scf.yield %[[VALUE14]]#0, %[[VALUE14]]#1
+// CONCRETE-LABEL: } else {
 // CONCRETE: %[[IDX_05:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE17:[a-zA-Z0-9_.-]+]]#0[@idx_0]
 // CONCRETE: %[[COMP1:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_05]][@comp]
 // CONCRETE: %[[IDX_15:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE17]]#0[@idx_1]
