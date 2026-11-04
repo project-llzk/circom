@@ -18,29 +18,43 @@ pub(crate) enum BusIdentity {
     Symbolic { definition: String, arguments: Vec<String>, scope: usize },
 }
 
+/// Source-level nominal identity, retaining arguments for tag propagation and compatibility.
+#[derive(Clone, Debug)]
+pub(crate) struct NominalBus {
+    /// Bus definition name, independent of its structural POD representation.
+    pub(crate) definition: String,
+    /// Constructor arguments substituted into the enclosing template's scope.
+    pub(crate) arguments: Vec<Expression>,
+}
+
 /// One field in declaration order, with source metadata kept outside the POD type.
 #[derive(Clone, Debug)]
-struct BusField<D> {
+pub(crate) struct BusField<D, I> {
     /// Source field name, independent of the variable owning the bus.
-    name: String,
+    pub(crate) name: String,
     /// Array dimensions surrounding the scalar or nested bus.
-    dimensions: Vec<D>,
+    pub(crate) dimensions: Vec<D>,
+    /// Declared tags (unavailable in executed layouts); never lowered as POD records.
+    pub(crate) tags: Vec<String>,
     /// Nested bus, or `None` for a scalar signal.
-    nested: Option<Box<BusLayout<D>>>,
+    pub(crate) nested: Option<Box<BusLayout<D, I>>>,
     /// Generic field declaration location (the VCP has no field source locations).
-    source: Option<Meta>,
+    pub(crate) source: Option<Meta>,
 }
 
-/// Shared data-only layout; identity never becomes a signal or component handle.
+/// Shared field description; identity and tags never become signal or component handles.
 #[derive(Clone, Debug)]
-struct BusLayout<D> {
+pub(crate) struct BusLayout<D, I> {
     /// Definition and parameter identity used for caching, separately from POD unification.
-    identity: BusIdentity,
+    pub(crate) identity: I,
     /// Ordered records of this bus.
-    fields: Vec<BusField<D>>,
+    pub(crate) fields: Vec<BusField<D, I>>,
 }
 
-impl BusLayout<usize> {
+/// A bus and all its nested fields instantiated in the caller's symbolic scope.
+pub(crate) type InstantiatedBus = BusLayout<Expression, NominalBus>;
+
+impl BusLayout<usize, BusIdentity> {
     /// Recover an executed layout without relying on alphabetical map order.
     fn concrete(program: &impl ProgramLike, id: usize) -> Result<Self> {
         let bus = program
@@ -57,6 +71,7 @@ impl BusLayout<usize> {
                     Ok(BusField {
                         name: name.clone(),
                         dimensions: field.dimensions.clone(),
+                        tags: vec![],
                         source: None,
                         nested: field
                             .bus_id
@@ -96,13 +111,12 @@ impl BusLayout<usize> {
     }
 }
 
-impl BusLayout<Expression> {
+impl InstantiatedBus {
     /// Instantiate a definition in caller scope before creating any polymorphic bindings.
-    fn symbolic(
+    pub(crate) fn instantiate(
         program: &impl ProgramLike,
         name: &str,
         args: &[Expression],
-        scope: usize,
     ) -> Result<Self> {
         let bus =
             program.bus_definition(name).ok_or_else(|| anyhow!("unknown bus definition {name}"))?;
@@ -125,34 +139,44 @@ impl BusLayout<Expression> {
             let Statement::Declaration { name, xtype, dimensions, meta, .. } = decl else {
                 unreachable!()
             };
-            let nested = match xtype {
-                VariableType::Signal(..) => None,
-                VariableType::Bus(bus_name, ..) => {
+            let (tags, nested) = match xtype {
+                VariableType::Signal(_, tags) => (tags, None),
+                VariableType::Bus(bus_name, _, tags) => {
                     let args =
                         constructor(bus.get_body_as_vec(), name).map_or(&[][..], |(_, args)| args);
                     let args = args.iter().map(|e| substitute(e, &params)).collect::<Vec<_>>();
-                    Some(Box::new(Self::symbolic(program, bus_name, &args, scope)?))
+                    (tags, Some(Box::new(Self::instantiate(program, bus_name, &args)?)))
                 }
                 _ => continue,
             };
             fields.push(BusField {
                 name: name.clone(),
                 dimensions: dimensions.iter().map(|e| substitute(e, &params)).collect(),
+                tags: tags.clone(),
                 nested,
                 source: Some(meta.clone()),
             });
         }
         Ok(Self {
-            identity: BusIdentity::Symbolic {
-                definition: name.to_owned(),
-                arguments: args
-                    .iter()
-                    .map(|arg| format!("{}@{}", expression_key(arg), arg.get_meta().start))
-                    .collect(),
-                scope,
-            },
+            identity: NominalBus { definition: name.to_owned(), arguments: args.to_vec() },
             fields,
         })
+    }
+
+    /// Collect dimensions in declaration order, visiting each field before its nested bus.
+    pub(crate) fn dimensions(&self) -> Vec<Expression> {
+        /// Append dimensions without rebuilding declarations or parameter bindings.
+        fn collect(bus: &InstantiatedBus, out: &mut Vec<Expression>) {
+            for field in &bus.fields {
+                out.extend(field.dimensions.iter().cloned());
+                if let Some(nested) = &field.nested {
+                    collect(nested, out);
+                }
+            }
+        }
+        let mut result = Vec::new();
+        collect(self, &mut result);
+        result
     }
 
     /// Lower substituted dimensions through the existing polymorphic-expression machinery.
@@ -161,7 +185,17 @@ impl BusLayout<Expression> {
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         bindings: &impl ExprToPolyBinding<'ctx, 'val>,
     ) -> Result<PodType<'ctx>> {
-        if let Some(ty) = codegen.bus_layouts.borrow().get(&self.identity) {
+        let identity = BusIdentity::Symbolic {
+            definition: self.identity.definition.clone(),
+            arguments: self
+                .identity
+                .arguments
+                .iter()
+                .map(|arg| format!("{}@{}", expression_key(arg), arg.get_meta().start))
+                .collect(),
+            scope: codegen.current_body().map_or(0, |body| body.as_ptr() as usize),
+        };
+        if let Some(ty) = codegen.bus_layouts.borrow().get(&identity) {
             return Ok(*ty);
         }
         let names = bindings
@@ -206,7 +240,7 @@ impl BusLayout<Expression> {
             ));
         }
         let ty = PodType::new(codegen.context, &records);
-        codegen.bus_layouts.borrow_mut().insert(self.identity.clone(), ty);
+        codegen.bus_layouts.borrow_mut().insert(identity, ty);
         Ok(ty)
     }
 }
@@ -410,8 +444,7 @@ pub(crate) fn generic_type<'ctx: 'val, 'val>(
     name: &str,
     args: &[Expression],
 ) -> Result<PodType<'ctx>> {
-    let scope = codegen.current_body().map_or(0, |body| body.as_ptr() as usize);
-    BusLayout::symbolic(codegen.program, name, args, scope)?.lower(codegen, bindings)
+    InstantiatedBus::instantiate(codegen.program, name, args)?.lower(codegen, bindings)
 }
 
 /// Stable name for a derived dimension parameter within its enclosing template scope.
@@ -477,38 +510,5 @@ pub(crate) fn dimensions(
     name: &str,
     args: &[Expression],
 ) -> Result<Vec<Expression>> {
-    let bus = program.bus_definition(name).ok_or_else(|| anyhow!("unknown bus {name}"))?;
-    let params = bus
-        .get_name_of_params()
-        .iter()
-        .cloned()
-        .zip(args.iter().cloned())
-        .collect::<HashMap<_, _>>();
-    fn walk(stmt: &Statement, out: &mut Vec<Statement>) {
-        match stmt {
-            Statement::Block { stmts, .. }
-            | Statement::InitializationBlock { initializations: stmts, .. } => {
-                for s in stmts {
-                    walk(s, out);
-                }
-            }
-            Statement::Declaration { .. } => out.push(stmt.clone()),
-            _ => {}
-        }
-    }
-    let mut decls = Vec::new();
-    walk(bus.get_body(), &mut decls);
-    let mut result = Vec::new();
-    for decl in decls {
-        if let Statement::Declaration { name, xtype, dimensions: dims, .. } = decl {
-            result.extend(dims.iter().map(|e| substitute(e, &params)));
-            if let VariableType::Bus(nested, ..) = xtype {
-                let args =
-                    constructor(bus.get_body_as_vec(), &name).map_or(&[][..], |(_, args)| args);
-                let args = args.iter().map(|e| substitute(e, &params)).collect::<Vec<_>>();
-                result.extend(dimensions(program, &nested, &args)?);
-            }
-        }
-    }
-    Ok(result)
+    Ok(InstantiatedBus::instantiate(program, name, args)?.dimensions())
 }

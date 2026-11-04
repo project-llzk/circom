@@ -13,14 +13,7 @@ use program_structure::{
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::convert::TryFrom;
 
-/// Nominal identity remains independent of the structural POD representation.
-#[derive(Clone, Debug)]
-struct NominalBus {
-    /// Bus definition name.
-    definition: String,
-    /// Constructor arguments in the enclosing template's scope.
-    arguments: Vec<Expression>,
-}
+use crate::bus::{InstantiatedBus, NominalBus};
 
 /// A tag's declaration, optional value, and assignment state.
 #[derive(Clone, Debug)]
@@ -420,7 +413,7 @@ impl Analysis<'_> {
         Ok(path)
     }
 
-    /// Populate declared tags, recursively including bus fields in their source order.
+    /// Instantiate bus metadata once before populating declared tags and capacities.
     fn declare(
         &mut self,
         name: &str,
@@ -429,16 +422,36 @@ impl Analysis<'_> {
         meta: &Meta,
         arguments: &[Expression],
         dimensions: &[Expression],
-        parent_dimensions: Option<&[usize]>,
-    ) -> Result<Option<usize>> {
+    ) -> Result<()> {
         let tags = match xtype {
             VariableType::Signal(_, tags) | VariableType::Bus(_, _, tags) => tags,
             VariableType::Component | VariableType::AnonymousComponent => {
                 self.component_roots.insert(name.to_owned());
-                return Ok(Some(0));
+                return Ok(());
             }
-            _ => return Ok(Some(0)),
+            _ => return Ok(()),
         };
+        let bus = match xtype {
+            VariableType::Bus(bus, ..) => {
+                Some(InstantiatedBus::instantiate(self.program, bus, arguments)?)
+            }
+            _ => None,
+        };
+        self.declare_field(name, tags, input, meta, bus.as_ref(), dimensions, Some(&[]))?;
+        Ok(())
+    }
+
+    /// Populate tags and scalar-leaf capacities from the shared instantiated fields.
+    fn declare_field(
+        &mut self,
+        name: &str,
+        tags: &[String],
+        input: bool,
+        meta: &Meta,
+        bus: Option<&InstantiatedBus>,
+        dimensions: &[Expression],
+        parent_dimensions: Option<&[usize]>,
+    ) -> Result<Option<usize>> {
         let dimensions = dimensions
             .iter()
             .map(|dim| {
@@ -466,41 +479,21 @@ impl Analysis<'_> {
                 .tags
                 .insert(key, Tag { declared: true, explicit: input, value, initialized: input });
         }
-        if let VariableType::Bus(bus, ..) = xtype {
+        if let Some(bus) = bus {
             leaves = Some(0usize);
             self.buses.insert(name.to_owned());
-            self.identities.insert(
-                name.to_owned(),
-                NominalBus { definition: bus.clone(), arguments: arguments.to_vec() },
-            );
-            let bus = self.program.buses.get(bus).ok_or_else(|| anyhow!("unknown bus {bus}"))?;
-            let bindings =
-                bus.get_name_of_params().iter().cloned().zip(arguments.iter().cloned()).collect();
-            let mut decls = Vec::new();
-            statements(bus.get_body(), &mut decls);
-            for stmt in decls {
-                if let Statement::Declaration { name: field, xtype, meta, dimensions, .. } = stmt {
-                    let args = crate::bus::constructor(bus.get_body_as_vec(), field)
-                        .map_or(&[][..], |(_, args)| args);
-                    let args = args
-                        .iter()
-                        .map(|arg| crate::bus::substitute(arg, &bindings))
-                        .collect::<Vec<_>>();
-                    let dimensions = dimensions
-                        .iter()
-                        .map(|dim| crate::bus::substitute(dim, &bindings))
-                        .collect::<Vec<_>>();
-                    let field = self.declare(
-                        &format!("{name}.{field}"),
-                        xtype,
-                        input,
-                        meta,
-                        &args,
-                        &dimensions,
-                        all_dimensions.as_deref(),
-                    )?;
-                    leaves = leaves.zip(field).and_then(|(a, b)| a.checked_add(b));
-                }
+            self.identities.insert(name.to_owned(), bus.identity.clone());
+            for field in &bus.fields {
+                let field = self.declare_field(
+                    &format!("{name}.{}", field.name),
+                    &field.tags,
+                    input,
+                    field.source.as_ref().expect("generic source"),
+                    field.nested.as_deref(),
+                    &field.dimensions,
+                    all_dimensions.as_deref(),
+                )?;
+                leaves = leaves.zip(field).and_then(|(a, b)| a.checked_add(b));
             }
         }
         let capacity = if let Some((dims, leaves)) = all_dimensions.zip(leaves) {
@@ -1150,7 +1143,7 @@ fn analyze(
             );
             let args = crate::bus::constructor(template.get_body_as_vec(), name)
                 .map_or(&[][..], |(_, args)| args);
-            analysis.declare(name, xtype, input, meta, args, dimensions, Some(&[]))?;
+            analysis.declare(name, xtype, input, meta, args, dimensions)?;
         }
     }
     let mut body = template.get_body().clone();
