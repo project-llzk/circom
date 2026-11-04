@@ -2727,8 +2727,7 @@ where
         dimension.transform(|val| self.cast_to_index_if_needed(codegen, location, val))
     }
 
-    /// Handle a [program_structure::ast::Statement::Declaration] by generating a nondet felt value
-    /// with the given dimensions and declaring it in the current block context.
+    /// Declare storage using a prepared aggregate type, or felt storage with the given dimensions.
     pub fn gen_declaration(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
@@ -2738,6 +2737,18 @@ where
     ) -> Result<()> {
         if self.block_ctx.is_name_present(name) {
             return Ok(());
+        }
+        let key = format!("{}@{}#{}", name, meta.start, meta.elem_id);
+        if let Some(ty) =
+            self.var_decl_types.get(&key).filter(|ty| crate::bus_entry::contains_bus(**ty))
+        {
+            let builder = self.builder_at_current_insertion_point(codegen.context);
+            let value = single_result_as_value(codegen.new_nondet_at_location(
+                &builder,
+                codegen.location_from_meta(meta),
+                *ty,
+            ))?;
+            return self.block_ctx.declare_value_ensure_not_present(name, value);
         }
         // If generating from VCP, there are cases where the `sugar_cleaner` added new
         // declarations that only have `MemoryKnowledge` but not `dimensions` in the AST. So

@@ -263,24 +263,7 @@ impl<'ast> WriteChain<'ast> {
                 complete, one, zero, location,
             ))?;
             fc.gen_scf_if_is_zero(complete, location, codegen, |fc| {
-                let counter = fc.gen_subcmp_decrease_counter(codegen, location, memory, count)?;
-                fc.gen_scf_if_is_zero(counter, location, codegen, |fc| {
-                    let builder = fc.builder_at_current_insertion_point(codegen.context);
-                    let params = fc.append_op_ref_unnamed_result(
-                        codegen.new_pod_read_op(&builder, memory, PARAMS, location)?,
-                    )?;
-                    let instance = fc.gen_compute_call(
-                        comp_type(memory.r#type().try_into()?)?.try_into()?,
-                        inputs,
-                        params,
-                        location,
-                        codegen,
-                    )?;
-                    let builder = fc.builder_at_current_insertion_point(codegen.context);
-                    fc.append_op_ref_no_result(
-                        codegen.new_pod_write_op(&builder, location, memory, COMP, instance),
-                    )
-                })
+                Self::complete_subcmp_write(memory, inputs, count, codegen, fc, location)
             })?;
         }
         if !indices.is_empty() {
@@ -363,6 +346,39 @@ impl<'ast> WriteChain<'ast> {
             };
         }
         codegen.count_input_signals(written_type)
+    }
+
+    /// Decrement a component's pending inputs and store its instance when complete.
+    /// Callers retain their dispatch, zero-input guards, and parent aggregate writeback.
+    fn complete_subcmp_write<'ctx, 'blk, 'val>(
+        memory: Value<'ctx, 'val>,
+        inputs: Value<'ctx, 'val>,
+        written_size: TypeSizeExpr<'ctx>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>,
+        location: Location<'ctx>,
+    ) -> Result<()>
+    where
+        'val: 'blk,
+    {
+        let counter = fc.gen_subcmp_decrease_counter(codegen, location, memory, written_size)?;
+        fc.gen_scf_if_is_zero(counter, location, codegen, |fc| {
+            let builder = fc.builder_at_current_insertion_point(codegen.context);
+            let params = fc.append_op_ref_unnamed_result(
+                codegen.new_pod_read_op(&builder, memory, PARAMS, location)?,
+            )?;
+            let instance = fc.gen_compute_call(
+                comp_type(memory.r#type().try_into()?)?.try_into()?,
+                inputs,
+                params,
+                location,
+                codegen,
+            )?;
+            let builder = fc.builder_at_current_insertion_point(codegen.context);
+            fc.append_op_ref_no_result(
+                codegen.new_pod_write_op(&builder, location, memory, COMP, instance),
+            )
+        })
     }
 
     /// Assign an input field, removing concrete function return padding when needed.
@@ -666,41 +682,13 @@ impl<'ast> WriteChain<'ast> {
                         return Ok(());
                     }
 
-                    let counter = fc.gen_subcmp_decrease_counter(
-                        codegen,
-                        location,
+                    Self::complete_subcmp_write(
                         memory_record,
+                        input_record,
                         written_size,
-                    )?;
-                    fc.gen_scf_if_is_zero(
-                        counter,
-                        location,
                         codegen,
-                        |fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>| {
-                            let builder = fc.builder_at_current_insertion_point(codegen.context);
-                            let params =
-                                fc.append_op_ref_unnamed_result(codegen.new_pod_read_op(
-                                    &builder,
-                                    memory_record,
-                                    PARAMS,
-                                    location,
-                                )?)?;
-                            let subcmp_instance = fc.gen_compute_call(
-                                entry.struct_type(),
-                                input_record,
-                                params,
-                                location,
-                                codegen,
-                            )?;
-                            let builder = fc.builder_at_current_insertion_point(codegen.context);
-                            fc.append_op_ref_no_result(codegen.new_pod_write_op(
-                                &builder,
-                                location,
-                                memory_record,
-                                COMP,
-                                subcmp_instance,
-                            ))
-                        },
+                        fc,
+                        location,
                     )?;
                     let builder = fc.builder_at_current_insertion_point(codegen.context);
                     fc.append_op_ref_no_result(codegen.new_pod_write_op(
@@ -915,40 +903,13 @@ impl<'ast> WriteChain<'ast> {
                     prev.input_indices,
                     codegen,
                 )?;
-                let counter =
-                    fc.gen_subcmp_decrease_counter(codegen, location, subcmp_value, written_size)?;
-                fc.gen_scf_if_is_zero(
-                    counter,
-                    location,
+                Self::complete_subcmp_write(
+                    subcmp_value,
+                    subcmp_value_inputs,
+                    written_size,
                     codegen,
-                    |fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>| {
-                        let builder = fc.builder_at_current_insertion_point(codegen.context);
-                        let params = fc.append_op_ref_unnamed_result(codegen.new_pod_read_op(
-                            &builder,
-                            subcmp_value,
-                            PARAMS,
-                            location,
-                        )?)?;
-                        let struct_type =
-                            comp_type(subcmp_value.r#type().try_into()?)?.try_into()?;
-
-                        let subcmp_instance = fc.gen_compute_call(
-                            struct_type,
-                            subcmp_value_inputs,
-                            params,
-                            location,
-                            codegen,
-                        )?;
-                        let builder = fc.builder_at_current_insertion_point(codegen.context);
-                        fc.append_op_ref_no_result(codegen.new_pod_write_op(
-                            &builder,
-                            location,
-                            subcmp_value,
-                            COMP,
-                            subcmp_instance,
-                        ))?;
-                        Ok(())
-                    },
+                    fc,
+                    location,
                 )?;
                 // Persist the decremented count regardless of whether this input completed
                 // the subcomponent. If it did, this also stores the computed instance.
@@ -1009,29 +970,6 @@ impl<'ast> WriteChain<'ast> {
         // If we are writing into a variable annotated as a subcomponent and we are
         // writing in the constraint function skip the whole chain.
         if let Lvalue::Root { var, op: Root::Var, .. } = self.lvalue.root() {
-            // The concrete sugar cleaner describes bus-valued temporaries with flattened
-            // felt dimensions. Recover their aggregate type from the first bus element.
-            if var.ends_with("_auto") && crate::bus_entry::contains_bus(val.r#type()) {
-                let old = *fc.block_ctx.get_named_value(var)?;
-                if !crate::bus_entry::contains_bus(old.r#type()) {
-                    if let Lvalue::Array { indices, .. } = &self.lvalue {
-                        let old_type = ArrayType::try_from(old.r#type())?;
-                        let mut dims = old_type.dims()[..indices.len()].to_vec();
-                        let element = if let Ok(array) = ArrayType::try_from(val.r#type()) {
-                            dims.extend(array.dims());
-                            array.element_type()
-                        } else {
-                            val.r#type()
-                        };
-                        let ty = ArrayType::new(element, &dims);
-                        let builder = fc.builder_at_current_insertion_point(codegen.context);
-                        let value = fc.append_op_ref_unnamed_result(
-                            codegen.new_nondet_at_location(&builder, location, ty.into()),
-                        )?;
-                        fc.block_ctx.set_named_value((*var).to_owned(), value)?;
-                    }
-                }
-            }
             if target.is_constrain() && subcmp_info.is_subcmp(var) {
                 return Ok(());
             }

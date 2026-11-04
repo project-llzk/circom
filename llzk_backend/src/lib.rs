@@ -26,6 +26,7 @@ mod lvalue;
 mod subcmp;
 mod template;
 mod template_ext;
+mod temporary_types;
 mod traversal;
 mod write_chain;
 

@@ -747,6 +747,25 @@ where
     // Collect declarations first to determine struct fields and function parameters.
     let mut declarations: DeclarationInfo<'ctx> =
         codegen.take_template_decl(template_like.get_name())?;
+    if codegen.program.is_concrete() {
+        // All template interfaces are available now, including forward component references.
+        let scope = declarations
+            .decl_inits
+            .iter()
+            .filter(|(key, _)| declarations.decl_key_to_name.get(*key) == Some(*key))
+            .map(|(name, ty)| (name.clone(), *ty))
+            .collect();
+        crate::temporary_types::recover(
+            template_like.get_body(),
+            &scope,
+            &mut declarations.var_decl_types,
+            &declarations.subcmp_decls,
+            codegen,
+        )?;
+        for (key, ty) in &declarations.var_decl_types {
+            declarations.decl_inits.insert(key.clone(), *ty);
+        }
+    }
     let subcmps = declarations.complete(codegen)?;
     let entry_inputs =
         declarations.inputs.iter().map(|v| (v.name.clone(), v.type_and_loc.0)).collect::<Vec<_>>();
