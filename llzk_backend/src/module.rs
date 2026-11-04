@@ -81,7 +81,7 @@ pub struct DeclarationInfo<'ctx> {
     inputs: Vec<InputSignalInfo<'ctx>>,
     /// Output and Intermediate declarations to use as LLZK struct fields.
     struct_fields: Vec<MemberInfo<'ctx>>,
-    /// Map declaration-qualified key (`name@meta_start#elem_id`) to its LLZK declaration type.
+    /// Map a declaration-qualified key (see [`shared::declaration_key`]) to its LLZK declaration type.
     /// A declaration-qualified key allows the same circom variable name to appear in multiple
     /// scopes without collision (e.g., an outer scope followed by an inner scope or both branches
     /// of an if/else).
@@ -110,8 +110,8 @@ pub struct DeclarationInfo<'ctx> {
     /// from `codegen` when the vistor is done.
     new_sym_bindings: Option<PendingPolyBindings<'ctx>>,
     /// Pre-computed LLZK types for `var` declarations, keyed by the same declaration-qualified
-    /// key (`name@meta_start#elem_id`) used in `decl_inits` so that the same circom variable name in
-    /// different scopes will map to each distinct type. Used by `poly.expr` body generation.
+    /// key used in `decl_inits` so that the same circom variable name in different scopes will
+    /// map to each distinct type. Used by `poly.expr` body generation.
     var_decl_types: HashMap<String, Type<'ctx>>,
 }
 
@@ -373,9 +373,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         self.record_direct_dimension_params(codegen, &dimensions);
                         let var_type =
                             dimensions.type_from_dimension_exprs(codegen.felt_type().into());
-                        // Include the element identity to distinguish expanded loop copies
-                        // while preserving their source positions for diagnostics.
-                        let qualified_key = format!("{}@{}#{}", name, meta.start, meta.elem_id);
+                        let qualified_key = shared::declaration_key(name, meta);
                         self.var_decl_types.insert(qualified_key.clone(), var_type);
                         self.declared_var_names.insert(name.clone());
                         let old = self.decl_inits.insert(qualified_key.clone(), var_type);

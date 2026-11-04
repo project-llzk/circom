@@ -181,6 +181,14 @@ enum DeclInfo<'ctx> {
     },
 }
 
+/// Construct a declaration-qualified key (`name@start#elem_id`) for collection and lookup.
+/// Source positions distinguish same-named declarations in different scopes; element identities
+/// distinguish expanded loop copies that share a source position.
+#[inline]
+pub(crate) fn declaration_key(name: &str, meta: &Meta) -> String {
+    format!("{}@{}#{}", name, meta.start, meta.elem_id)
+}
+
 /// Convert circom location information to MLIR location.
 pub fn location<'ctx>(
     context: &'ctx LlzkContext,
@@ -2535,7 +2543,7 @@ where
                         // Use the pre-computed type from DeclarationInfo (seeded into the
                         // BlockContextStack root) to avoid triggering recursive
                         // gen_template_poly_expr calls for non-constant dimension expressions.
-                        let qualified_key = format!("{}@{}#{}", name, meta.start, meta.elem_id);
+                        let qualified_key = declaration_key(name, meta);
                         if let Some(ty) = gen_ctx.get_var_decl_types().get(&qualified_key) {
                             let builder =
                                 gen_ctx.builder_at_current_insertion_point(codegen.context);

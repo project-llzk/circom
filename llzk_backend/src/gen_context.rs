@@ -2738,7 +2738,7 @@ where
         if self.block_ctx.is_name_present(name) {
             return Ok(());
         }
-        let key = format!("{}@{}#{}", name, meta.start, meta.elem_id);
+        let key = shared::declaration_key(name, meta);
         if let Some(ty) =
             self.var_decl_types.get(&key).filter(|ty| crate::bus_entry::contains_bus(**ty))
         {

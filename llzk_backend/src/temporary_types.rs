@@ -9,7 +9,7 @@ use program_structure::ast::{Access, AssignOp, Expression, Statement, VariableTy
 use crate::{
     bus_entry::contains_bus,
     program_ext::ProgramLike,
-    shared::{get_name_tail, try_compute_as_i64, LlzkCodegen},
+    shared::{declaration_key, get_name_tail, try_compute_as_i64, LlzkCodegen},
     subcmp::SubcmpDeclInfo,
 };
 
@@ -119,7 +119,7 @@ fn collect<'ast, 'ctx>(
                 is_constant,
                 ..
             } => {
-                let key = format!("{}@{}#{}", name, meta.start, meta.elem_id);
+                let key = declaration_key(name, meta);
                 let memory = meta.get_memory_knowledge();
                 // rmv_sugar emits constant vars with no source dimensions; their concrete
                 // dimensions live in MemoryKnowledge. Source array declarations have explicit
