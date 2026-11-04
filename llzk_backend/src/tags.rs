@@ -1190,6 +1190,7 @@ fn analyze(
     prime: &BigUint,
     summaries: &mut HashMap<String, AnalyzedTemplate>,
     active: &mut HashSet<String>,
+    callee_first: &mut Vec<String>,
 ) -> Result<()> {
     if summaries.contains_key(name) {
         return Ok(());
@@ -1202,7 +1203,7 @@ fn analyze(
         if let Statement::Substitution { rhe, .. } = stmt {
             if let Expression::Call { id, .. } = unwrap_parallel(rhe) {
                 if program.templates.contains_key(id) {
-                    analyze(id, program, prime, summaries, active)?;
+                    analyze(id, program, prime, summaries, active, callee_first)?;
                 }
             }
         }
@@ -1317,6 +1318,7 @@ fn analyze(
     };
     summaries.insert(name.to_owned(), AnalyzedTemplate { summary, body });
     active.remove(name);
+    callee_first.push(name.to_owned());
     Ok(())
 }
 
@@ -1325,10 +1327,11 @@ pub(crate) fn prepare(program: &ProgramArchive, prime: &BigUint) -> Result<Progr
     let program = prepare_main_arrays(program)?;
     let program = &program;
     let mut summaries = HashMap::new();
+    let mut callee_first = Vec::new();
     let mut names = program.templates.keys().cloned().collect::<Vec<_>>();
     names.sort();
     for name in names {
-        analyze(&name, program, prime, &mut summaries, &mut HashSet::new())?;
+        analyze(&name, program, prime, &mut summaries, &mut HashSet::new(), &mut callee_first)?;
     }
     let mut result = program.clone();
     for (name, AnalyzedTemplate { summary, body }) in summaries {
@@ -1364,27 +1367,53 @@ pub(crate) fn prepare(program: &ProgramArchive, prime: &BigUint) -> Result<Progr
         }
         result.templates.insert(name, template);
     }
-    prepare_layout_params(result, prime)
+    prepare_layout_params(result, prime, &callee_first)
 }
 
 /// Make derived dimensions explicit parameters so substitution can cross component boundaries
 /// without referring to a `poly.expr` owned by another template.
-fn prepare_layout_params(mut program: ProgramArchive, prime: &BigUint) -> Result<ProgramArchive> {
+fn prepare_layout_params(
+    mut program: ProgramArchive,
+    prime: &BigUint,
+    callee_first: &[String],
+) -> Result<ProgramArchive> {
     let mut extras = HashMap::<String, BTreeMap<String, Expression>>::new();
-    for (name, template) in &program.templates {
+    // Reuse tag analysis's dependency order: every callee's derived dimensions are
+    // complete before forwarding them through its caller, even without local buses.
+    for name in callee_first {
+        let template = &program.templates[name];
         let mut all = Vec::new();
         statements(template.get_body(), &mut all);
         let mut expressions = Vec::new();
         for stmt in all {
-            if let Statement::Declaration { name, xtype, dimensions, .. } = stmt {
-                if matches!(xtype, VariableType::Signal(..) | VariableType::Bus(..)) {
-                    expressions.extend(dimensions.iter().cloned());
+            match stmt {
+                Statement::Declaration { name, xtype, dimensions, .. } => {
+                    if matches!(xtype, VariableType::Signal(..) | VariableType::Bus(..)) {
+                        expressions.extend(dimensions.iter().cloned());
+                    }
+                    if let VariableType::Bus(bus, ..) = xtype {
+                        let args = crate::bus::constructor(template.get_body_as_vec(), name)
+                            .map_or(&[][..], |(_, args)| args);
+                        expressions.extend(crate::bus::dimensions(&program, bus, args)?);
+                    }
                 }
-                if let VariableType::Bus(bus, ..) = xtype {
-                    let args = crate::bus::constructor(template.get_body_as_vec(), name)
-                        .map_or(&[][..], |(_, args)| args);
-                    expressions.extend(crate::bus::dimensions(&program, bus, args)?);
+                Statement::Substitution { rhe, .. } => {
+                    let Expression::Call { id, args, .. } = unwrap_parallel(rhe) else {
+                        continue;
+                    };
+                    if let Some(callee) = program.templates.get(id) {
+                        let bindings = callee
+                            .get_name_of_params()
+                            .iter()
+                            .cloned()
+                            .zip(args.iter().cloned())
+                            .collect();
+                        expressions.extend(
+                            extras[id].values().map(|expr| crate::bus::substitute(expr, &bindings)),
+                        );
+                    }
                 }
+                _ => {}
             }
         }
         let mut derived = BTreeMap::new();
@@ -1397,45 +1426,6 @@ fn prepare_layout_params(mut program: ProgramArchive, prime: &BigUint) -> Result
             }
         }
         extras.insert(name.clone(), derived);
-    }
-    // Forward derived dimensions through intermediate components even when the caller
-    // does not itself declare a bus with that shape.
-    loop {
-        let previous = extras.clone();
-        for (name, template) in &program.templates {
-            let mut all = Vec::new();
-            statements(template.get_body(), &mut all);
-            for stmt in all {
-                if let Statement::Substitution { rhe, .. } = stmt {
-                    let Expression::Call { id, args, .. } = unwrap_parallel(rhe) else {
-                        continue;
-                    };
-                    if let Some(callee) = previous.get(id) {
-                        let bindings = program.templates[id]
-                            .get_name_of_params()
-                            .iter()
-                            .cloned()
-                            .zip(args.iter().cloned())
-                            .collect();
-                        for expr in callee.values() {
-                            let expr = crate::bus::substitute(expr, &bindings);
-                            if !matches!(expr, Expression::Variable { ref access, .. } if access.is_empty())
-                                && depends_only_on(&expr, template.get_name_of_params())
-                                && crate::shared::try_compute_biguint(&expr, prime)?.is_none()
-                            {
-                                extras
-                                    .get_mut(name)
-                                    .expect("template exists")
-                                    .insert(crate::bus::layout_param_name(&expr), expr);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        if extras.iter().all(|(name, values)| values.len() == previous[name].len()) {
-            break;
-        }
     }
     fn rewrite(
         stmt: &mut Statement,
