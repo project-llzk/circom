@@ -98,9 +98,6 @@ pub(crate) fn literal_array_dimensions_and_values(
                 return None;
             };
             let dimension = dimension.to_usize()?;
-            if dimension == 0 {
-                return None;
-            }
             let capacity = element_values.len().checked_mul(dimension)?;
             let mut flattened = Vec::with_capacity(capacity);
             for _ in 0..dimension {
