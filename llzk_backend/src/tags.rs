@@ -35,6 +35,144 @@ struct Tag {
     initialized: bool,
 }
 
+/// Scalar-leaf accounting for array-wide tag completion.
+#[derive(Clone, Debug)]
+enum Capacity {
+    /// Symbolic dimensions or leaf counts provide no evidence of completion.
+    Unknown,
+    Known {
+        /// All enclosing array dimensions, from outermost to innermost.
+        dimensions: Vec<usize>,
+        /// Scalar leaves in one element, including nested bus fields.
+        scalar_leaves: usize,
+        /// Scalar leaves still awaiting assignment.
+        remaining: usize,
+    },
+}
+
+impl Capacity {
+    fn is_complete(&self) -> bool {
+        matches!(self, Self::Known { remaining: 0, .. })
+    }
+
+    /// Leaves covered by an assignment after indexing the outer dimensions.
+    fn assigned_leaves(&self, indices: usize) -> Option<usize> {
+        match self {
+            Self::Known { dimensions, scalar_leaves, .. } => {
+                Some(dimensions.iter().skip(indices).product::<usize>() * scalar_leaves)
+            }
+            Self::Unknown => None,
+        }
+    }
+
+    fn consume(&mut self, assigned: usize) {
+        if let Self::Known { remaining, .. } = self {
+            *remaining = remaining.saturating_sub(assigned);
+        }
+    }
+
+    /// Completion must hold on both paths; unknown evidence stays unknown.
+    fn merge(&mut self, other: &Self) {
+        match (self, other) {
+            (Self::Known { remaining, .. }, Self::Known { remaining: other, .. }) => {
+                *remaining = (*remaining).max(*other);
+            }
+            (capacity, _) => *capacity = Self::Unknown,
+        }
+    }
+
+    /// Account for all iterations after analyzing one fixed-loop body.
+    fn repeat(&mut self, before: &Self, trips: usize) {
+        if let (Self::Known { remaining, .. }, Self::Known { remaining: initial, .. }) =
+            (self, before)
+        {
+            *remaining =
+                initial.saturating_sub(initial.saturating_sub(*remaining).saturating_mul(trips));
+        }
+    }
+}
+
+/// Facts that must be forked when analyzing alternative control-flow paths.
+/// Constructor occurrences deliberately live outside this state: every analyzed
+/// occurrence must survive so the final rewrite can add its hidden tag arguments.
+#[derive(Clone, Default)]
+struct FlowState {
+    /// Tags indexed by component instance and array-wide field paths.
+    tags: BTreeMap<String, Tag>,
+    /// Paths assigned on any analyzed path, preventing late tag assignments.
+    initialized: HashSet<String>,
+    /// Known or unknown scalar-leaf completion for array-wide tags.
+    capacities: BTreeMap<String, Capacity>,
+    /// Known local scalar values, used only to determine fixed loop trip counts.
+    constants: HashMap<String, Expression>,
+}
+
+impl FlowState {
+    /// Start an alternative path with exactly the same incoming facts.
+    fn fork(&self) -> Self {
+        self.clone()
+    }
+
+    /// Join a then-branch endpoint into this else-branch endpoint. An absent else
+    /// branch uses the incoming state, so its facts participate in the same join.
+    fn merge(&mut self, then_state: Self, cond: &Expression, params: &[String], meta: &Meta) {
+        let Self { tags, initialized, capacities, constants } = then_state;
+        let compile_time = depends_only_on(cond, params);
+        for (key, mut tag) in tags {
+            if let Some(other) = self.tags.get(&key) {
+                if !same_value(&tag.value, &other.value) {
+                    // Divergent runtime tags cannot become hidden layout parameters.
+                    tag.value = tag.value.zip(other.value.clone()).filter(|_| compile_time).map(
+                        |(a, b)| Expression::InlineSwitchOp {
+                            meta: meta.clone(),
+                            cond: Box::new(cond.clone()),
+                            if_true: Box::new(a),
+                            if_false: Box::new(b),
+                        },
+                    );
+                }
+                self.tags.insert(key, tag);
+            }
+        }
+        // A write on either path prevents a later explicit tag assignment.
+        self.initialized.extend(initialized);
+        for (owner, capacity) in &mut self.capacities {
+            if let Some(other) = capacities.get(owner) {
+                capacity.merge(other);
+            }
+        }
+        // A local remains constant only when both paths agree on its value.
+        self.constants.retain(|name, value| {
+            constants.get(name).is_some_and(|other| {
+                crate::bus::expression_key(other) == crate::bus::expression_key(value)
+            })
+        });
+    }
+
+    /// Only proven completion permits reading a propagated tag value.
+    fn is_complete(&self, owner: &str) -> bool {
+        self.capacities.get(owner).is_some_and(Capacity::is_complete)
+    }
+
+    /// Consume scalar leaves, updating completion of enclosing and nested buses.
+    fn initialize(&mut self, dst: &str, access: &[Access]) {
+        let indices = access.iter().filter(|a| matches!(a, Access::ArrayAccess(_))).count();
+        let assigned = self.capacities.get(dst).and_then(|c| c.assigned_leaves(indices));
+        for (owner, capacity) in &mut self.capacities {
+            let count = if below(owner, dst) {
+                capacity.assigned_leaves(indices)
+            } else if below(dst, owner) {
+                assigned
+            } else {
+                None
+            };
+            if let Some(count) = count {
+                capacity.consume(count);
+            }
+        }
+    }
+}
+
 /// Summary consumed at component call sites before generating any types.
 #[derive(Clone, Debug)]
 struct Summary {
@@ -48,8 +186,8 @@ struct Summary {
     required_values: HashSet<String>,
     /// Derived output tags, including unknown values.
     outputs: BTreeMap<String, Tag>,
-    /// Known output capacities, preserving completion evidence at component call sites.
-    output_capacities: BTreeMap<String, (Vec<usize>, usize, usize)>,
+    /// Output capacities, preserving unknown completion at component call sites.
+    output_capacities: BTreeMap<String, Capacity>,
     /// Body with tag reads lowered and metadata assignments removed.
     body: Statement,
 }
@@ -77,12 +215,10 @@ struct Analysis<'a> {
     summaries: &'a HashMap<String, Summary>,
     /// Compile-time template parameters, including lowered input tags.
     params: Vec<String>,
-    /// Tags indexed by component instance and array-wide field paths.
-    tags: BTreeMap<String, Tag>,
+    /// Facts local to the current control-flow path.
+    flow: FlowState,
     /// Bus paths, to distinguish bus-copy propagation from scalar assignment rules.
     buses: HashSet<String>,
-    /// Initialized signal paths.
-    initialized: HashSet<String>,
     /// Input tag parameter names.
     inputs: BTreeMap<String, String>,
     /// Input values used by metadata expressions.
@@ -91,17 +227,13 @@ struct Analysis<'a> {
     component_roots: HashSet<String>,
     /// Component roots whose interfaces carry tags and require per-instance analysis.
     tagged_components: HashSet<String>,
-    /// Constructor occurrences keyed by their indexed component paths.
+    /// All constructor occurrences, accumulated across branches and fixed loops.
+    /// Keyed by their indexed component paths; never restored with `flow`.
     components: HashMap<String, Vec<Component>>,
     /// Number of analyzed constructor occurrences at each source position.
     constructors: HashMap<usize, usize>,
     /// Nominal bus identities, including nested fields and component interfaces.
     identities: BTreeMap<String, NominalBus>,
-    /// Known scalar-leaf capacities and remaining assignments for array-wide tags.
-    /// Missing symbolic capacities do not establish completion.
-    capacities: BTreeMap<String, (Vec<usize>, usize, usize)>,
-    /// Known local scalar values, used only to determine fixed loop trip counts.
-    constants: HashMap<String, Expression>,
     /// Induction values substituted while expanding fixed loops with tagged components.
     iterations: HashMap<String, Expression>,
     /// Fresh identities for declarations copied into expanded loop iterations.
@@ -251,6 +383,15 @@ fn uses_components(stmt: &Statement, names: &HashSet<String>) -> bool {
     })
 }
 
+/// Compare expressions without source-position metadata.
+fn same_value(lhs: &Option<Expression>, rhs: &Option<Expression>) -> bool {
+    match (lhs, rhs) {
+        (None, None) => true,
+        (Some(a), Some(b)) => crate::bus::expression_key(a) == crate::bus::expression_key(b),
+        _ => false,
+    }
+}
+
 impl Analysis<'_> {
     /// Preserve component indices, but keep signal and bus tags array-wide.
     fn path(&self, name: &str, access: &[Access]) -> Result<String> {
@@ -315,7 +456,8 @@ impl Analysis<'_> {
             } else {
                 None
             };
-            self.tags
+            self.flow
+                .tags
                 .insert(key, Tag { declared: true, explicit: input, value, initialized: input });
         }
         if let VariableType::Bus(bus, ..) = xtype {
@@ -355,13 +497,20 @@ impl Analysis<'_> {
                 }
             }
         }
-        if let Some((dims, leaves)) = all_dimensions.zip(leaves) {
+        let capacity = if let Some((dims, leaves)) = all_dimensions.zip(leaves) {
             let total = dims
                 .iter()
                 .try_fold(leaves, |n, d| n.checked_mul(*d))
                 .ok_or_else(|| anyhow!("bus signal size overflow"))?;
-            self.capacities.insert(name.to_owned(), (dims, leaves, if input { 0 } else { total }));
-        }
+            Capacity::Known {
+                dimensions: dims,
+                scalar_leaves: leaves,
+                remaining: if input { 0 } else { total },
+            }
+        } else {
+            Capacity::Unknown
+        };
+        self.flow.capacities.insert(name.to_owned(), capacity);
         Ok(dimensions
             .as_ref()
             .zip(leaves)
@@ -374,15 +523,6 @@ impl Analysis<'_> {
             Ok(Expression::Number(expr.get_meta().clone(), value.into()))
         } else {
             Ok(expr)
-        }
-    }
-
-    /// Compare expressions without source-position metadata.
-    fn same(&self, lhs: &Option<Expression>, rhs: &Option<Expression>) -> bool {
-        match (lhs, rhs) {
-            (None, None) => true,
-            (Some(a), Some(b)) => crate::bus::expression_key(a) == crate::bus::expression_key(b),
-            _ => false,
         }
     }
 
@@ -402,14 +542,10 @@ impl Analysis<'_> {
                     }
                 }
                 let key = self.path(name, access)?;
-                if let Some(tag) = self.tags.get(&key) {
+                if let Some(tag) = self.flow.tags.get(&key) {
                     let owner = key.rsplit_once('.').expect("tag path").0;
                     ensure!(
-                        tag.explicit
-                            || self
-                                .capacities
-                                .get(owner)
-                                .is_some_and(|(_, _, remaining)| *remaining == 0),
+                        tag.explicit || self.flow.is_complete(owner),
                         "tag {key} read before all array elements are initialized"
                     );
                     let value =
@@ -479,16 +615,13 @@ impl Analysis<'_> {
         Ok(match expr {
             Expression::Variable { name, access, .. } => {
                 let prefix = format!("{}.", self.path(name, access)?);
-                self.tags
+                self.flow
+                    .tags
                     .iter()
                     .filter_map(|(key, tag)| {
                         let suffix = key.strip_prefix(&prefix)?;
                         let owner = key.rsplit_once('.').expect("tag path").0;
-                        let complete = self
-                            .capacities
-                            .get(owner)
-                            .is_some_and(|(_, _, remaining)| *remaining == 0);
-                        if tag.explicit || complete {
+                        if tag.explicit || self.flow.is_complete(owner) {
                             Some((suffix.to_owned(), tag.clone()))
                         } else if tag.declared {
                             let mut tag = tag.clone();
@@ -507,32 +640,13 @@ impl Analysis<'_> {
                 for value in values.iter().skip(1) {
                     let other = self.source_tags(value)?;
                     tags.retain(|key, tag| {
-                        other.get(key).is_some_and(|t| self.same(&tag.value, &t.value))
+                        other.get(key).is_some_and(|t| same_value(&tag.value, &t.value))
                     });
                 }
                 tags
             }
             _ => BTreeMap::new(),
         })
-    }
-
-    /// Consume scalar leaves once, updating array-wide tag completion of enclosing buses.
-    fn initialize(&mut self, dst: &str, access: &[Access]) {
-        let indices = access.iter().filter(|a| matches!(a, Access::ArrayAccess(_))).count();
-        let assigned = self
-            .capacities
-            .get(dst)
-            .map(|(dims, leaves, _)| dims.iter().skip(indices).product::<usize>() * leaves);
-        for (owner, (dims, leaves, remaining)) in &mut self.capacities {
-            if below(owner, dst) {
-                *remaining = remaining
-                    .saturating_sub(dims.iter().skip(indices).product::<usize>() * *leaves);
-            } else if below(dst, owner) {
-                if let Some(assigned) = assigned {
-                    *remaining = remaining.saturating_sub(assigned);
-                }
-            }
-        }
     }
 
     /// Check nominal compatibility even when two instantiated buses have identical PODs.
@@ -557,7 +671,7 @@ impl Analysis<'_> {
                     for (a, b) in lhs.arguments.iter().zip(&rhs.arguments) {
                         let a = self.normalize(a.clone())?;
                         let b = self.normalize(b.clone())?;
-                        if self.same(&Some(a.clone()), &Some(b.clone())) {
+                        if same_value(&Some(a.clone()), &Some(b.clone())) {
                             continue;
                         }
                         if let (Expression::Number(_, a), Expression::Number(_, b)) = (&a, &b) {
@@ -594,15 +708,20 @@ impl Analysis<'_> {
     /// Propagate tags with Circom's declared/explicit/initialized rules.
     fn assign(&mut self, dst: &str, source: BTreeMap<String, Tag>) {
         let prefix = format!("{dst}.");
-        let keys =
-            self.tags.keys().filter(|key| key.starts_with(&prefix)).cloned().collect::<Vec<_>>();
+        let keys = self
+            .flow
+            .tags
+            .keys()
+            .filter(|key| key.starts_with(&prefix))
+            .cloned()
+            .collect::<Vec<_>>();
         for key in keys {
-            let mut tag = self.tags.remove(&key).expect("collected key");
+            let mut tag = self.flow.tags.remove(&key).expect("collected key");
             let incoming = source.get(&key[prefix.len()..]);
             if !tag.explicit {
                 if !tag.initialized {
                     tag.value = incoming.and_then(|t| t.value.clone());
-                } else if incoming.is_none_or(|t| !self.same(&tag.value, &t.value)) {
+                } else if incoming.is_none_or(|t| !same_value(&tag.value, &t.value)) {
                     if !tag.declared {
                         continue;
                     }
@@ -610,17 +729,17 @@ impl Analysis<'_> {
                 }
             }
             tag.initialized = true;
-            self.tags.insert(key, tag);
+            self.flow.tags.insert(key, tag);
         }
-        if !self.initialized.contains(dst) {
+        if !self.flow.initialized.contains(dst) {
             for (suffix, mut tag) in source {
                 tag.declared = false;
                 tag.explicit = false;
                 tag.initialized = true;
-                self.tags.entry(format!("{prefix}{suffix}")).or_insert(tag);
+                self.flow.tags.entry(format!("{prefix}{suffix}")).or_insert(tag);
             }
         }
-        self.initialized.insert(dst.to_owned());
+        self.flow.initialized.insert(dst.to_owned());
     }
 
     /// Substitute actual tag values into a callee's derived output tags.
@@ -639,7 +758,7 @@ impl Analysis<'_> {
             let mut missing = HashSet::new();
             for (path, param) in &component.summary.inputs {
                 if let Some(value) =
-                    self.tags.get(&format!("{name}.{path}")).and_then(|t| t.value.clone())
+                    self.flow.tags.get(&format!("{name}.{path}")).and_then(|t| t.value.clone())
                 {
                     bindings.insert(param.clone(), value);
                 } else {
@@ -661,7 +780,7 @@ impl Analysis<'_> {
                 self.buses.insert(format!("{name}.{path}"));
             }
             for (path, capacity) in &component.summary.output_capacities {
-                self.capacities.insert(format!("{name}.{path}"), capacity.clone());
+                self.flow.capacities.insert(format!("{name}.{path}"), capacity.clone());
             }
             for (path, tag) in &component.summary.outputs {
                 let mut tag = tag.clone();
@@ -673,7 +792,7 @@ impl Analysis<'_> {
                     })
                     .map(|value| self.normalize(value))
                     .transpose()?;
-                self.tags.insert(format!("{name}.{path}"), tag);
+                self.flow.tags.insert(format!("{name}.{path}"), tag);
             }
         }
         Ok(())
@@ -727,13 +846,14 @@ impl Analysis<'_> {
             return Ok(None);
         }
         let start = self
+            .flow
             .constants
             .get(name)
             .map(|expr| crate::shared::try_compute_as_i64(expr, self.prime))
             .transpose()?
             .flatten();
         let end = crate::shared::try_compute_as_i64(
-            &crate::bus::substitute(rhe, &self.constants),
+            &crate::bus::substitute(rhe, &self.flow.constants),
             self.prime,
         )?;
         Ok(start.zip(end).map(|(start, end)| (name.clone(), start, end)))
@@ -773,18 +893,19 @@ impl Analysis<'_> {
                     }
                 }
                 let dst = self.path(var, access)?;
-                if *op == AssignOp::AssignVar && self.tags.contains_key(&dst) {
+                if *op == AssignOp::AssignVar && self.flow.tags.contains_key(&dst) {
                     self.expression(rhe)?;
                     let value = self.normalize(rhe.clone())?;
                     let owner = dst.rsplit_once('.').expect("tag path").0;
                     ensure!(
                         !self
+                            .flow
                             .initialized
                             .iter()
                             .any(|path| below(path, owner) || below(owner, path)),
                         "tag {dst} assigned after signal initialization"
                     );
-                    let tag = self.tags.get_mut(&dst).expect("tag exists");
+                    let tag = self.flow.tags.get_mut(&dst).expect("tag exists");
                     ensure!(
                         tag.declared && !tag.explicit,
                         "tag {dst} is not assignable or was assigned twice"
@@ -819,15 +940,16 @@ impl Analysis<'_> {
                             BTreeMap::new()
                         };
                     self.assign(&dst, tags);
-                    self.initialize(&dst, access);
+                    self.flow.initialize(&dst, access);
                     self.refresh_components()?;
                 } else if access.is_empty() && !crate::bus::is_constructor(rhe) {
-                    let value = crate::bus::substitute(rhe, &self.constants);
+                    let value = crate::bus::substitute(rhe, &self.flow.constants);
                     if let Some(value) = crate::shared::try_compute_biguint(&value, self.prime)? {
-                        self.constants
+                        self.flow
+                            .constants
                             .insert(var.clone(), Expression::Number(meta.clone(), value.into()));
                     } else {
-                        self.constants.remove(var);
+                        self.flow.constants.remove(var);
                     }
                 }
             }
@@ -852,53 +974,13 @@ impl Analysis<'_> {
                     *stmt = chosen;
                     return Ok(());
                 }
-                let old_tags = self.tags.clone();
-                let old_initialized = self.initialized.clone();
-                let old_capacities = self.capacities.clone();
-                let old_constants = self.constants.clone();
+                let incoming = self.flow.fork();
                 self.statement(if_case)?;
-                let then_tags = self.tags.clone();
-                let then_init = self.initialized.clone();
-                let then_capacities = self.capacities.clone();
-                let then_constants = self.constants.clone();
-                self.tags = old_tags;
-                self.initialized = old_initialized;
-                self.capacities = old_capacities;
-                self.constants = old_constants;
+                let then_state = std::mem::replace(&mut self.flow, incoming);
                 if let Some(other) = else_case {
                     self.statement(other)?;
                 }
-                let else_tags = self.tags.clone();
-                let compile_time = depends_only_on(cond, &self.params);
-                for (key, mut tag) in then_tags {
-                    if let Some(other) = else_tags.get(&key) {
-                        if !self.same(&tag.value, &other.value) {
-                            // Divergent runtime tags cannot become hidden layout parameters.
-                            tag.value =
-                                tag.value.zip(other.value.clone()).filter(|_| compile_time).map(
-                                    |(a, b)| Expression::InlineSwitchOp {
-                                        meta: meta.clone(),
-                                        cond: Box::new(cond.clone()),
-                                        if_true: Box::new(a),
-                                        if_false: Box::new(b),
-                                    },
-                                );
-                        }
-                        self.tags.insert(key, tag);
-                    }
-                }
-                self.initialized.extend(then_init);
-                for (owner, (_, _, remaining)) in &mut self.capacities {
-                    if let Some((_, _, other)) = then_capacities.get(owner) {
-                        *remaining = (*remaining).max(*other);
-                    }
-                }
-                // A local remains constant only when both paths agree on its value.
-                self.constants.retain(|name, value| {
-                    then_constants.get(name).is_some_and(|other| {
-                        crate::bus::expression_key(other) == crate::bus::expression_key(value)
-                    })
-                });
+                self.flow.merge(then_state, cond, &self.params, &meta);
             }
             Statement::While { cond, stmt: loop_body, .. } => {
                 self.expression(cond)?;
@@ -931,19 +1013,17 @@ impl Analysis<'_> {
                     }
                 }
                 // Other fixed loops can account for all leaves without expanding the IR.
-                let before = self.capacities.clone();
-                let constants = self.constants.clone();
+                let before = self.flow.capacities.clone();
+                let constants = self.flow.constants.clone();
                 self.statement(loop_body)?;
-                for (owner, (_, _, remaining)) in &mut self.capacities {
-                    if let Some((_, _, initial)) = before.get(owner) {
-                        if let Some(trips) = trips {
-                            *remaining = initial.saturating_sub(
-                                initial.saturating_sub(*remaining).saturating_mul(trips),
-                            );
+                if let Some(trips) = trips {
+                    for (owner, capacity) in &mut self.flow.capacities {
+                        if let Some(initial) = before.get(owner) {
+                            capacity.repeat(initial, trips);
                         }
                     }
                 }
-                self.constants.retain(|name, value| {
+                self.flow.constants.retain(|name, value| {
                     constants.get(name).is_some_and(|old| {
                         crate::shared::gen_poly_expr_name(old)
                             == crate::shared::gen_poly_expr_name(value)
@@ -1031,9 +1111,8 @@ fn analyze(
         prime,
         summaries,
         params: template.get_name_of_params().clone(),
-        tags: BTreeMap::new(),
+        flow: FlowState::default(),
         buses: HashSet::new(),
-        initialized: HashSet::new(),
         inputs: BTreeMap::new(),
         required: HashSet::new(),
         component_roots: HashSet::new(),
@@ -1053,8 +1132,6 @@ fn analyze(
         components: HashMap::new(),
         constructors: HashMap::new(),
         identities: BTreeMap::new(),
-        capacities: BTreeMap::new(),
-        constants: HashMap::new(),
         iterations: HashMap::new(),
         next_declaration: all.iter().map(|stmt| stmt.get_meta().elem_id).max().unwrap_or(0) + 1,
     };
@@ -1084,7 +1161,7 @@ fn analyze(
         for path in component.summary.inputs.keys() {
             let key = format!("{component_name}.{path}");
             let location = source_location(program, &component.source);
-            let tag = analysis.tags.get(&key).ok_or_else(|| {
+            let tag = analysis.flow.tags.get(&key).ok_or_else(|| {
                 anyhow!("{location}: component {component_name} requires input tag {path}")
             })?;
             if component.summary.required_values.contains(path) {
@@ -1106,11 +1183,13 @@ fn analyze(
     }
     append_arguments(&mut body, &arguments, &mut HashMap::new());
     let outputs = analysis
+        .flow
         .tags
         .into_iter()
         .filter(|(key, _)| template.get_outputs().keys().any(|output| below(key, output)))
         .collect();
     let output_capacities = analysis
+        .flow
         .capacities
         .into_iter()
         .filter(|(key, _)| template.get_outputs().keys().any(|output| below(key, output)))
