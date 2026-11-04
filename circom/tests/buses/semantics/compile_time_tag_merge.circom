@@ -6,7 +6,7 @@
 // RUN: FileCheck %s --input-file %t/templated/*_llzk/*.llzk --check-prefix=TEMPLATED
 // END.
 
-// Literal, template-parameter, and constant-tag conditions preserve tag values
+// Local-constant, template-parameter, and constant-tag conditions preserve tag values
 // for both component and local bus layouts.
 
 pragma circom 2.2.3;
@@ -29,10 +29,12 @@ template Main(N) {
     right.x <== 7;
 
     Tagged() zero;
-    if (0) { zero <-- left; }
+    var choose = 0;
+    if (choose) { zero <-- left; }
     else { zero <-- right; }
     Tagged() one;
-    if (1) { one <-- left; }
+    choose = 1;
+    if (choose) { one <-- left; }
     else { one <-- right; }
     Tagged() param;
     if (N != 0) { param <-- left; }

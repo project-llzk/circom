@@ -96,7 +96,7 @@ struct FlowState {
     initialized: HashSet<String>,
     /// Known or unknown scalar-leaf completion for array-wide tags.
     capacities: BTreeMap<String, Capacity>,
-    /// Known local scalar values, used only to determine fixed loop trip counts.
+    /// Known local scalar values, used to resolve compile-time control flow.
     constants: HashMap<String, Expression>,
 }
 
@@ -1071,7 +1071,8 @@ impl Analysis<'_> {
             }
             Statement::IfThenElse { cond, if_case, else_case, .. } => {
                 self.expression(cond)?;
-                if let Some(value) = crate::shared::try_compute_biguint(cond, self.prime)? {
+                let condition = crate::bus::substitute(cond, &self.flow.constants);
+                if let Some(value) = crate::shared::try_compute_biguint(&condition, self.prime)? {
                     let mut chosen = if value != 0u32.into() {
                         (**if_case).clone()
                     } else {
@@ -1122,6 +1123,19 @@ impl Analysis<'_> {
                     }
                 }
                 let incoming = self.flow.fork();
+                // A retained loop body must be valid for every iteration, so its
+                // writes invalidate incoming constants before branch selection.
+                let mut body_statements = Vec::new();
+                statements(loop_body, &mut body_statements);
+                for stmt in body_statements {
+                    match stmt {
+                        Statement::Substitution { var, .. }
+                        | Statement::Declaration { name: var, .. } => {
+                            self.flow.constants.remove(var);
+                        }
+                        _ => {}
+                    }
+                }
                 self.statement(loop_body)?;
                 if let Some(trips) = trips {
                     // Other fixed loops account for all leaves without expanding the IR.
