@@ -26,7 +26,7 @@ component main = B();
 // CONCRETE-LABEL: struct.def @B_0 {
 // CONCRETE: struct.member @out : !pod.type<[@x: !felt.type<"bn128">, @y: !felt.type<"bn128">]>
 // CONCRETE: function.def @constrain(
-// CONCRETE: %[[FIELD1:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE1:[a-zA-Z0-9_.-]+]][@out]
+// CONCRETE: %[[FIELD1:[a-zA-Z0-9_.-]+]] = struct.readm %{{[a-zA-Z0-9_.-]+}}[@out]
 // CONCRETE: %[[X1:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD1]][@x]
 // CONCRETE: %[[X2:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE2:[a-zA-Z0-9_.-]+]][@x]
 // CONCRETE: constrain.eq %[[X1]], %[[X2]]
@@ -38,7 +38,7 @@ component main = B();
 // TEMPLATED-LABEL: struct.def @B {
 // TEMPLATED: struct.member @out : !pod.type<[@x: !felt.type<"bn128">, @y: !felt.type<"bn128">]>
 // TEMPLATED: function.def @constrain(
-// TEMPLATED: %[[FIELD1:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE1:[a-zA-Z0-9_.-]+]][@out]
+// TEMPLATED: %[[FIELD1:[a-zA-Z0-9_.-]+]] = struct.readm %{{[a-zA-Z0-9_.-]+}}[@out]
 // TEMPLATED: %[[X1:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD1]][@x]
 // TEMPLATED: %[[X2:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE2:[a-zA-Z0-9_.-]+]][@x]
 // TEMPLATED: constrain.eq %[[X1]], %[[X2]]

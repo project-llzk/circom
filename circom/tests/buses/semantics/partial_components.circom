@@ -41,10 +41,10 @@ component main = Main();
 // CONCRETE: struct.member @children$inputs : !pod.type<[@idx_0: !pod.type<[@in: !pod.type<[@points: !array.type<2 x !pod.type<[@x: !felt.type<"bn128">, @y: !felt.type<"bn128">]>>]>]>, @idx_1: !pod.type<[@in: !pod.type<[@points: !array.type<2 x !pod.type<[@x: !felt.type<"bn128">, @y: !felt.type<"bn128">]>>]>]>]>
 // CONCRETE: function.def @compute(
 // CONCRETE: %[[N1:[a-zA-Z0-9_.-]+]] = arith.constant 4 : index
-// CONCRETE: %[[STATE1:[a-zA-Z0-9_.-]+]] = pod.new { @count = %[[N1]], @params = %[[POD1:[a-zA-Z0-9_.-]+]] }  : <[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>
+// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = pod.new { @count = %[[N1]], @params = %[[POD1:[a-zA-Z0-9_.-]+]] }  : <[@count: index, @comp: !struct.type<@Sum_0::@Sum_0<[]>>, @params: !pod.type<[]>]>
 // CONCRETE: %[[N2:[a-zA-Z0-9_.-]+]] = arith.constant 4 : index
-// CONCRETE: %[[STATE2:[a-zA-Z0-9_.-]+]] = pod.new { @count = %[[N2]], @params = %[[POD1]] }  : <[@count: index, @comp: !struct.type<@Sum_1::@Sum_1<[]>>, @params: !pod.type<[]>]>
-// CONCRETE: %[[VALUE1:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE2:[a-zA-Z0-9_.-]+]]
+// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = pod.new { @count = %[[N2]], @params = %[[POD1]] }  : <[@count: index, @comp: !struct.type<@Sum_1::@Sum_1<[]>>, @params: !pod.type<[]>]>
+// CONCRETE: %[[VALUE1:[a-zA-Z0-9_.-]+]] = cast.toindex %{{[a-zA-Z0-9_.-]+}}
 // CONCRETE: %[[ELEMENT1:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE3:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE1]]]
 // CONCRETE: %[[VALUE4:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE5:[a-zA-Z0-9_.-]+]]
 // CONCRETE: %[[N3:[a-zA-Z0-9_.-]+]] = arith.constant true
@@ -61,7 +61,7 @@ component main = Main();
 // CONCRETE: %[[POINTS1:[a-zA-Z0-9_.-]+]] = pod.read %[[IN1]][@points]
 // CONCRETE: %[[VALUE8:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE9:[a-zA-Z0-9_.-]+]]
 // CONCRETE: %[[ELEMENT2:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS1]]{{\[}}%[[VALUE8]]]
-// CONCRETE: %[[X1:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT2]][@x]
+// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[ELEMENT2]][@x]
 // CONCRETE: pod.write %[[ELEMENT2]][@x] = %[[ELEMENT1]]
 // CONCRETE: array.write %[[POINTS1]]{{\[}}%[[VALUE8]]] = %[[ELEMENT2]]
 // CONCRETE: pod.write %[[IN1]][@points] = %[[POINTS1]]
@@ -74,7 +74,7 @@ component main = Main();
 // CONCRETE: %[[N7:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
 // CONCRETE: %[[READY3:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[REMAINING1]], %[[N7]]
 // CONCRETE: scf.if %[[READY3]] {
-// CONCRETE: %[[PARAMS1:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_11]][@params]
+// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[IDX_11]][@params]
 // CONCRETE: %[[IN2:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_12]][@in]
 // CONCRETE: %[[CHILD1:[a-zA-Z0-9_.-]+]] = function.call @Sum_1::@Sum_1::@compute(%[[IN2]]) : (!pod.type<[@points: !array.type<2 x !pod.type<[@x: !felt.type<"bn128">, @y: !felt.type<"bn128">]>>]>) -> !struct.type<@Sum_1::@Sum_1<[]>>
 // CONCRETE: pod.write %[[IDX_11]][@comp] = %[[CHILD1]]
@@ -89,7 +89,7 @@ component main = Main();
 // CONCRETE: %[[POINTS2:[a-zA-Z0-9_.-]+]] = pod.read %[[IN3]][@points]
 // CONCRETE: %[[VALUE10:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE9]]
 // CONCRETE: %[[ELEMENT3:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS2]]{{\[}}%[[VALUE10]]]
-// CONCRETE: %[[X2:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT3]][@x]
+// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[ELEMENT3]][@x]
 // CONCRETE: pod.write %[[ELEMENT3]][@x] = %[[ELEMENT1]]
 // CONCRETE: array.write %[[POINTS2]]{{\[}}%[[VALUE10]]] = %[[ELEMENT3]]
 // CONCRETE: pod.write %[[IN3]][@points] = %[[POINTS2]]
@@ -102,7 +102,7 @@ component main = Main();
 // CONCRETE: %[[N9:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
 // CONCRETE: %[[READY4:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[REMAINING2]], %[[N9]]
 // CONCRETE: scf.if %[[READY4]] {
-// CONCRETE: %[[PARAMS2:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_01]][@params]
+// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[IDX_01]][@params]
 // CONCRETE: %[[IN4:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_02]][@in]
 // CONCRETE: %[[CHILD2:[a-zA-Z0-9_.-]+]] = function.call @Sum_0::@Sum_0::@compute(%[[IN4]]) : (!pod.type<[@points: !array.type<2 x !pod.type<[@x: !felt.type<"bn128">, @y: !felt.type<"bn128">]>>]>) -> !struct.type<@Sum_0::@Sum_0<[]>>
 // CONCRETE: pod.write %[[IDX_01]][@comp] = %[[CHILD2]]
@@ -110,7 +110,7 @@ component main = Main();
 // CONCRETE-NEXT: pod.write %[[VALUE6]][@idx_0] = %[[IDX_01]]
 // CONCRETE-NEXT: scf.yield %[[VALUE6]], %[[VALUE7]]
 // CONCRETE-LABEL: } else {
-// CONCRETE: %[[VALUE11:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE12:[a-zA-Z0-9_.-]+]]
+// CONCRETE: %[[VALUE11:[a-zA-Z0-9_.-]+]] = cast.toindex %{{[a-zA-Z0-9_.-]+}}
 // CONCRETE: %[[ELEMENT4:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE3]]{{\[}}%[[VALUE11]]]
 // CONCRETE: %[[VALUE13:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE5]]
 // CONCRETE: %[[N10:[a-zA-Z0-9_.-]+]] = arith.constant true
@@ -127,7 +127,7 @@ component main = Main();
 // CONCRETE: %[[POINTS3:[a-zA-Z0-9_.-]+]] = pod.read %[[IN5]][@points]
 // CONCRETE: %[[VALUE15:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE9]]
 // CONCRETE: %[[ELEMENT5:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS3]]{{\[}}%[[VALUE15]]]
-// CONCRETE: %[[Y1:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT5]][@y]
+// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[ELEMENT5]][@y]
 // CONCRETE: pod.write %[[ELEMENT5]][@y] = %[[ELEMENT4]]
 // CONCRETE: array.write %[[POINTS3]]{{\[}}%[[VALUE15]]] = %[[ELEMENT5]]
 // CONCRETE: pod.write %[[IN5]][@points] = %[[POINTS3]]
@@ -140,7 +140,7 @@ component main = Main();
 // CONCRETE: %[[N14:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
 // CONCRETE: %[[READY7:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[REMAINING3]], %[[N14]]
 // CONCRETE: scf.if %[[READY7]] {
-// CONCRETE: %[[PARAMS3:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_13]][@params]
+// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[IDX_13]][@params]
 // CONCRETE: %[[IN6:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_14]][@in]
 // CONCRETE: %[[CHILD3:[a-zA-Z0-9_.-]+]] = function.call @Sum_1::@Sum_1::@compute(%[[IN6]]) : (!pod.type<[@points: !array.type<2 x !pod.type<[@x: !felt.type<"bn128">, @y: !felt.type<"bn128">]>>]>) -> !struct.type<@Sum_1::@Sum_1<[]>>
 // CONCRETE: pod.write %[[IDX_13]][@comp] = %[[CHILD3]]
@@ -155,7 +155,7 @@ component main = Main();
 // CONCRETE: %[[POINTS4:[a-zA-Z0-9_.-]+]] = pod.read %[[IN7]][@points]
 // CONCRETE: %[[VALUE16:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE9]]
 // CONCRETE: %[[ELEMENT6:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS4]]{{\[}}%[[VALUE16]]]
-// CONCRETE: %[[Y2:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT6]][@y]
+// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[ELEMENT6]][@y]
 // CONCRETE: pod.write %[[ELEMENT6]][@y] = %[[ELEMENT4]]
 // CONCRETE: array.write %[[POINTS4]]{{\[}}%[[VALUE16]]] = %[[ELEMENT6]]
 // CONCRETE: pod.write %[[IN7]][@points] = %[[POINTS4]]
@@ -168,7 +168,7 @@ component main = Main();
 // CONCRETE: %[[N16:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
 // CONCRETE: %[[READY8:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[REMAINING4]], %[[N16]]
 // CONCRETE: scf.if %[[READY8]] {
-// CONCRETE: %[[PARAMS4:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_03]][@params]
+// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[IDX_03]][@params]
 // CONCRETE: %[[IN8:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_04]][@in]
 // CONCRETE: %[[CHILD4:[a-zA-Z0-9_.-]+]] = function.call @Sum_0::@Sum_0::@compute(%[[IN8]]) : (!pod.type<[@points: !array.type<2 x !pod.type<[@x: !felt.type<"bn128">, @y: !felt.type<"bn128">]>>]>) -> !struct.type<@Sum_0::@Sum_0<[]>>
 // CONCRETE: pod.write %[[IDX_03]][@comp] = %[[CHILD4]]
@@ -177,14 +177,14 @@ component main = Main();
 // CONCRETE-NEXT: scf.yield %[[VALUE14]]#0, %[[VALUE14]]#1
 // CONCRETE-LABEL: } else {
 // CONCRETE: %[[IDX_05:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE17:[a-zA-Z0-9_.-]+]]#0[@idx_0]
-// CONCRETE: %[[COMP1:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_05]][@comp]
+// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[IDX_05]][@comp]
 // CONCRETE: %[[IDX_15:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE17]]#0[@idx_1]
-// CONCRETE: %[[COMP2:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_15]][@comp]
+// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[IDX_15]][@comp]
 // CONCRETE: %[[IDX_06:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE17]]#0[@idx_0]
-// CONCRETE: %[[COMP3:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_06]][@comp]
+// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[IDX_06]][@comp]
 // CONCRETE: %[[IDX_16:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE17]]#0[@idx_1]
-// CONCRETE: %[[COMP4:[a-zA-Z0-9_.-]+]] = pod.read %[[IDX_16]][@comp]
-// CONCRETE: function.return %[[VALUE18:[a-zA-Z0-9_.-]+]]
+// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[IDX_16]][@comp]
+// CONCRETE: function.return %{{[a-zA-Z0-9_.-]+}}
 
 // TEMPLATED: #[[$ATTR_0:[0-9a-zA-Z_\.]+]] = affine_map<(d0) -> (d0)>
 // TEMPLATED-LABEL: struct.def @Main {
@@ -192,14 +192,14 @@ component main = Main();
 // TEMPLATED: struct.member @children$inputs : !array.type<2 x !pod.type<[@in: !pod.type<[@points: !array.type<2 x !pod.type<[@x: !felt.type<"bn128">, @y: !felt.type<"bn128">]>>]>]>>
 // TEMPLATED: function.def @compute(
 // TEMPLATED: %[[N1:[a-zA-Z0-9_.-]+]] = arith.constant 4 : index
-// TEMPLATED: %[[STATE1:[a-zA-Z0-9_.-]+]] = pod.new { @count = %[[N1]], @params = %[[POD1:[a-zA-Z0-9_.-]+]] }  : <[@count: index, @comp: !struct.type<@Sum::@Sum<[2]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
-// TEMPLATED: %[[VALUE1:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE2:[a-zA-Z0-9_.-]+]]
-// TEMPLATED: array.write %[[VALUE3:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE1]]] = %[[VALUE4:[a-zA-Z0-9_.-]+]]
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = pod.new { @count = %[[N1]], @params = %{{[a-zA-Z0-9_.-]+}} }  : <[@count: index, @comp: !struct.type<@Sum::@Sum<[2]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
+// TEMPLATED: %[[VALUE1:[a-zA-Z0-9_.-]+]] = cast.toindex %{{[a-zA-Z0-9_.-]+}}
+// TEMPLATED: array.write %[[VALUE3:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE1]]] = %{{[a-zA-Z0-9_.-]+}}
 // TEMPLATED: %[[N2:[a-zA-Z0-9_.-]+]] = arith.constant 4 : index
-// TEMPLATED: %[[STATE2:[a-zA-Z0-9_.-]+]] = pod.new { @count = %[[N2]], @params = %[[POD2:[a-zA-Z0-9_.-]+]] }  : <[@count: index, @comp: !struct.type<@Sum::@Sum<[3]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
-// TEMPLATED: %[[VALUE5:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE6:[a-zA-Z0-9_.-]+]]
-// TEMPLATED: array.write %[[VALUE3]]{{\[}}%[[VALUE5]]] = %[[VALUE7:[a-zA-Z0-9_.-]+]]
-// TEMPLATED: %[[VALUE8:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE9:[a-zA-Z0-9_.-]+]]
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = pod.new { @count = %[[N2]], @params = %{{[a-zA-Z0-9_.-]+}} }  : <[@count: index, @comp: !struct.type<@Sum::@Sum<[3]>>, @params: !pod.type<[@N: !felt.type<"bn128">]>]>
+// TEMPLATED: %[[VALUE5:[a-zA-Z0-9_.-]+]] = cast.toindex %{{[a-zA-Z0-9_.-]+}}
+// TEMPLATED: array.write %[[VALUE3]]{{\[}}%[[VALUE5]]] = %{{[a-zA-Z0-9_.-]+}}
+// TEMPLATED: %[[VALUE8:[a-zA-Z0-9_.-]+]] = cast.toindex %{{[a-zA-Z0-9_.-]+}}
 // TEMPLATED: %[[ELEMENT1:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE10:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE8]]]
 // TEMPLATED: %[[VALUE11:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE12:[a-zA-Z0-9_.-]+]]
 // TEMPLATED: %[[ELEMENT2:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE13:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE11]]]
@@ -208,7 +208,7 @@ component main = Main();
 // TEMPLATED: %[[POINTS1:[a-zA-Z0-9_.-]+]] = pod.read %[[IN1]][@points]
 // TEMPLATED: %[[VALUE15:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE16:[a-zA-Z0-9_.-]+]]
 // TEMPLATED: %[[ELEMENT4:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS1]]{{\[}}%[[VALUE15]]]
-// TEMPLATED: %[[X1:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT4]][@x]
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[ELEMENT4]][@x]
 // TEMPLATED: pod.write %[[ELEMENT4]][@x] = %[[ELEMENT1]]
 // TEMPLATED: array.write %[[POINTS1]]{{\[}}%[[VALUE15]]] = %[[ELEMENT4]]
 // TEMPLATED: pod.write %[[IN1]][@points] = %[[POINTS1]]
@@ -236,7 +236,7 @@ component main = Main();
 // TEMPLATED: pod.write %[[ELEMENT3]][@comp] = %[[CHILD1]]
 // TEMPLATED: array.write %[[VALUE13]]{{\[}}%[[VALUE11]]] = %[[ELEMENT2]]
 // TEMPLATED: array.write %[[VALUE14]]{{\[}}%[[VALUE11]]] = %[[ELEMENT3]]
-// TEMPLATED: %[[VALUE19:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE20:[a-zA-Z0-9_.-]+]]
+// TEMPLATED: %[[VALUE19:[a-zA-Z0-9_.-]+]] = cast.toindex %{{[a-zA-Z0-9_.-]+}}
 // TEMPLATED: %[[ELEMENT5:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE10]]{{\[}}%[[VALUE19]]]
 // TEMPLATED: %[[VALUE21:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE12]]
 // TEMPLATED: %[[ELEMENT6:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE13]]{{\[}}%[[VALUE21]]]
@@ -245,7 +245,7 @@ component main = Main();
 // TEMPLATED: %[[POINTS2:[a-zA-Z0-9_.-]+]] = pod.read %[[IN3]][@points]
 // TEMPLATED: %[[VALUE22:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE16]]
 // TEMPLATED: %[[ELEMENT8:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS2]]{{\[}}%[[VALUE22]]]
-// TEMPLATED: %[[Y1:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT8]][@y]
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[ELEMENT8]][@y]
 // TEMPLATED: pod.write %[[ELEMENT8]][@y] = %[[ELEMENT5]]
 // TEMPLATED: array.write %[[POINTS2]]{{\[}}%[[VALUE22]]] = %[[ELEMENT8]]
 // TEMPLATED: pod.write %[[IN3]][@points] = %[[POINTS2]]
@@ -273,16 +273,16 @@ component main = Main();
 // TEMPLATED: pod.write %[[ELEMENT7]][@comp] = %[[CHILD2]]
 // TEMPLATED: array.write %[[VALUE13]]{{\[}}%[[VALUE21]]] = %[[ELEMENT6]]
 // TEMPLATED: array.write %[[VALUE14]]{{\[}}%[[VALUE21]]] = %[[ELEMENT7]]
-// TEMPLATED: %[[VALUE25:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE26:[a-zA-Z0-9_.-]+]]
+// TEMPLATED: %[[VALUE25:[a-zA-Z0-9_.-]+]] = cast.toindex %{{[a-zA-Z0-9_.-]+}}
 // TEMPLATED: %[[ELEMENT9:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE27:[a-zA-Z0-9_.-]+]]#0{{\[}}%[[VALUE25]]]
-// TEMPLATED: %[[COMP1:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT9]][@comp]
-// TEMPLATED: %[[VALUE28:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE29:[a-zA-Z0-9_.-]+]]
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[ELEMENT9]][@comp]
+// TEMPLATED: %[[VALUE28:[a-zA-Z0-9_.-]+]] = cast.toindex %{{[a-zA-Z0-9_.-]+}}
 // TEMPLATED: %[[ELEMENT10:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE27]]#0{{\[}}%[[VALUE28]]]
-// TEMPLATED: %[[COMP2:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT10]][@comp]
-// TEMPLATED: %[[N15:[a-zA-Z0-9_.-]+]] = arith.constant 2 : index
-// TEMPLATED: %[[N16:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
-// TEMPLATED: %[[N17:[a-zA-Z0-9_.-]+]] = arith.constant 1 : index
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[ELEMENT10]][@comp]
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = arith.constant 2 : index
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = arith.constant 0 : index
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = arith.constant 1 : index
 // TEMPLATED: %[[ELEMENT11:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE27]]#0{{\[}}%[[VALUE30:[a-zA-Z0-9_.-]+]]]
 // TEMPLATED: %[[COMP3:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT11]][@comp]
-// TEMPLATED: array.write %[[VALUE31:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE30]]] = %[[COMP3]]
-// TEMPLATED: function.return %[[VALUE32:[a-zA-Z0-9_.-]+]]
+// TEMPLATED: array.write %{{[a-zA-Z0-9_.-]+}}{{\[}}%[[VALUE30]]] = %[[COMP3]]
+// TEMPLATED: function.return %{{[a-zA-Z0-9_.-]+}}

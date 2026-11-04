@@ -53,10 +53,10 @@ component main = Main();
 // CONCRETE: struct.member @out : !array.type<3 x !felt.type<"bn128">>
 // CONCRETE: struct.member @children : !array.type<2,2 x !struct.type<@Child_0::@Child_0<[]>>>
 // CONCRETE: function.def @compute(
-// CONCRETE: %[[STATE1:[a-zA-Z0-9_.-]+]] = pod.new { @count = %[[N1:[a-zA-Z0-9_.-]+]], @params = %[[POD1:[a-zA-Z0-9_.-]+]] }  : <[@count: index, @comp: !struct.type<@Child_0::@Child_0<[]>>, @params: !pod.type<[]>]>
-// CONCRETE: array.write %[[VALUE1:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE2:[a-zA-Z0-9_.-]+]], %[[VALUE3:[a-zA-Z0-9_.-]+]]] = %[[STATE1]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@Child_0::@Child_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Child_0::@Child_0<[]>>, @params: !pod.type<[]>]>
-// CONCRETE: %[[CHILD1:[a-zA-Z0-9_.-]+]] = function.call @Child_0::@Child_0::@compute(%[[IN1:[a-zA-Z0-9_.-]+]]) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Child_0::@Child_0<[]>>
-// CONCRETE: function.return %[[VALUE4:[a-zA-Z0-9_.-]+]]
+// CONCRETE: %[[STATE1:[a-zA-Z0-9_.-]+]] = pod.new { @count = %{{[a-zA-Z0-9_.-]+}}, @params = %{{[a-zA-Z0-9_.-]+}} }  : <[@count: index, @comp: !struct.type<@Child_0::@Child_0<[]>>, @params: !pod.type<[]>]>
+// CONCRETE: array.write %{{[a-zA-Z0-9_.-]+}}{{\[}}%{{[a-zA-Z0-9_.-]+}}, %{{[a-zA-Z0-9_.-]+}}] = %[[STATE1]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@Child_0::@Child_0<[]>>, @params: !pod.type<[]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Child_0::@Child_0<[]>>, @params: !pod.type<[]>]>
+// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = function.call @Child_0::@Child_0::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Child_0::@Child_0<[]>>
+// CONCRETE: function.return %{{[a-zA-Z0-9_.-]+}}
 
 // TEMPLATED: poly.param @"$tag$in$x$size"
 // TEMPLATED-LABEL: struct.def @Child {
@@ -64,16 +64,16 @@ component main = Main();
 // TEMPLATED: struct.member @out : !array.type<3 x !felt.type<"bn128">>
 // TEMPLATED: struct.member @children : !array.type<2,2 x !struct.type<@Child::@Child<[3]>>>
 // TEMPLATED: function.def @compute(
-// TEMPLATED: %[[STATE1:[a-zA-Z0-9_.-]+]] = pod.new { @count = %[[N1:[a-zA-Z0-9_.-]+]], @params = %[[POD1:[a-zA-Z0-9_.-]+]] }  : <[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>
-// TEMPLATED: array.write %[[VALUE1:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE2:[a-zA-Z0-9_.-]+]], %[[VALUE3:[a-zA-Z0-9_.-]+]]] = %[[STATE1]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>
-// TEMPLATED: %[[STATE2:[a-zA-Z0-9_.-]+]] = pod.new { @count = %[[N2:[a-zA-Z0-9_.-]+]], @params = %[[POD2:[a-zA-Z0-9_.-]+]] }  : <[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>
-// TEMPLATED: array.write %[[VALUE1]]{{\[}}%[[VALUE4:[a-zA-Z0-9_.-]+]], %[[VALUE5:[a-zA-Z0-9_.-]+]]] = %[[STATE2]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>
-// TEMPLATED: %[[STATE3:[a-zA-Z0-9_.-]+]] = pod.new { @count = %[[N3:[a-zA-Z0-9_.-]+]], @params = %[[POD3:[a-zA-Z0-9_.-]+]] }  : <[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>
-// TEMPLATED: array.write %[[VALUE1]]{{\[}}%[[VALUE6:[a-zA-Z0-9_.-]+]], %[[VALUE7:[a-zA-Z0-9_.-]+]]] = %[[STATE3]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>
-// TEMPLATED: %[[STATE4:[a-zA-Z0-9_.-]+]] = pod.new { @count = %[[N4:[a-zA-Z0-9_.-]+]], @params = %[[POD4:[a-zA-Z0-9_.-]+]] }  : <[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>
-// TEMPLATED: array.write %[[VALUE1]]{{\[}}%[[VALUE8:[a-zA-Z0-9_.-]+]], %[[VALUE9:[a-zA-Z0-9_.-]+]]] = %[[STATE4]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>
-// TEMPLATED: %[[CHILD1:[a-zA-Z0-9_.-]+]] = function.call @Child::@Child::@compute(%[[IN1:[a-zA-Z0-9_.-]+]]) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Child::@Child<[3]>>
-// TEMPLATED: %[[CHILD2:[a-zA-Z0-9_.-]+]] = function.call @Child::@Child::@compute(%[[IN2:[a-zA-Z0-9_.-]+]]) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Child::@Child<[3]>>
-// TEMPLATED: %[[CHILD3:[a-zA-Z0-9_.-]+]] = function.call @Child::@Child::@compute(%[[IN3:[a-zA-Z0-9_.-]+]]) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Child::@Child<[3]>>
-// TEMPLATED: %[[CHILD4:[a-zA-Z0-9_.-]+]] = function.call @Child::@Child::@compute(%[[IN4:[a-zA-Z0-9_.-]+]]) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Child::@Child<[3]>>
-// TEMPLATED: function.return %[[VALUE10:[a-zA-Z0-9_.-]+]]
+// TEMPLATED: %[[STATE1:[a-zA-Z0-9_.-]+]] = pod.new { @count = %{{[a-zA-Z0-9_.-]+}}, @params = %{{[a-zA-Z0-9_.-]+}} }  : <[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>
+// TEMPLATED: array.write %[[VALUE1:[a-zA-Z0-9_.-]+]]{{\[}}%{{[a-zA-Z0-9_.-]+}}, %{{[a-zA-Z0-9_.-]+}}] = %[[STATE1]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>
+// TEMPLATED: %[[STATE2:[a-zA-Z0-9_.-]+]] = pod.new { @count = %{{[a-zA-Z0-9_.-]+}}, @params = %{{[a-zA-Z0-9_.-]+}} }  : <[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>
+// TEMPLATED: array.write %[[VALUE1]]{{\[}}%{{[a-zA-Z0-9_.-]+}}, %{{[a-zA-Z0-9_.-]+}}] = %[[STATE2]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>
+// TEMPLATED: %[[STATE3:[a-zA-Z0-9_.-]+]] = pod.new { @count = %{{[a-zA-Z0-9_.-]+}}, @params = %{{[a-zA-Z0-9_.-]+}} }  : <[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>
+// TEMPLATED: array.write %[[VALUE1]]{{\[}}%{{[a-zA-Z0-9_.-]+}}, %{{[a-zA-Z0-9_.-]+}}] = %[[STATE3]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>
+// TEMPLATED: %[[STATE4:[a-zA-Z0-9_.-]+]] = pod.new { @count = %{{[a-zA-Z0-9_.-]+}}, @params = %{{[a-zA-Z0-9_.-]+}} }  : <[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>
+// TEMPLATED: array.write %[[VALUE1]]{{\[}}%{{[a-zA-Z0-9_.-]+}}, %{{[a-zA-Z0-9_.-]+}}] = %[[STATE4]] : <2,2 x !pod.type<[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>>, !pod.type<[@count: index, @comp: !struct.type<@Child::@Child<[3]>>, @params: !pod.type<[@"$tag$in$x$size": !felt.type<"bn128">]>]>
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = function.call @Child::@Child::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Child::@Child<[3]>>
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = function.call @Child::@Child::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Child::@Child<[3]>>
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = function.call @Child::@Child::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Child::@Child<[3]>>
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = function.call @Child::@Child::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Child::@Child<[3]>>
+// TEMPLATED: function.return %{{[a-zA-Z0-9_.-]+}}

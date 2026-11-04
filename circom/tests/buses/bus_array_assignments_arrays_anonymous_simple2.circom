@@ -38,7 +38,7 @@ component main = A();
 // CONCRETE: struct.member @B_[[MEMBER0:[0-9]+_[0-9]+]] : !struct.type<@B_0::@B_0<[]>>
 // CONCRETE: struct.member @B_[[MEMBER0]]$inputs : !pod.type<[@in: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
 // CONCRETE: function.def @compute(
-// CONCRETE: pod.write %[[POD1:[a-zA-Z0-9_.-]+]][@in] = %[[VALUE1:[a-zA-Z0-9_.-]+]] : <[@in: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
+// CONCRETE: pod.write %[[POD1:[a-zA-Z0-9_.-]+]][@in] = %{{[a-zA-Z0-9_.-]+}} : <[@in: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
 // CONCRETE: %[[COUNT1:[a-zA-Z0-9_.-]+]] = pod.read %[[STATE1:[a-zA-Z0-9_.-]+]][@count]
 // CONCRETE: %[[N1:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
 // CONCRETE: %[[READY1:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[COUNT1]], %[[N1]]
@@ -54,11 +54,11 @@ component main = A();
 // CONCRETE: %[[N5:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
 // CONCRETE: %[[READY3:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[REMAINING1]], %[[N5]]
 // CONCRETE: scf.if %[[READY3]] {
-// CONCRETE: %[[PARAMS1:[a-zA-Z0-9_.-]+]] = pod.read %[[STATE1]][@params]
+// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[STATE1]][@params]
 // CONCRETE: %[[IN1:[a-zA-Z0-9_.-]+]] = pod.read %[[POD1]][@in]
 // CONCRETE: %[[CHILD1:[a-zA-Z0-9_.-]+]] = function.call @B_0::@B_0::@compute(%[[IN1]]) : (!pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>) -> !struct.type<@B_0::@B_0<[]>>
 // CONCRETE: pod.write %[[STATE1]][@comp] = %[[CHILD1]]
-// CONCRETE: function.return %[[VALUE3:[a-zA-Z0-9_.-]+]]
+// CONCRETE: function.return %{{[a-zA-Z0-9_.-]+}}
 // CONCRETE: function.def @constrain(
 // CONCRETE: %[[FIELD1:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE4:[a-zA-Z0-9_.-]+]][@out]
 // CONCRETE: %[[FIELD2:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE4]][@B_[[MEMBER0]]]
@@ -71,7 +71,7 @@ component main = A();
 // CONCRETE: %[[B2:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE5]][@b]
 // CONCRETE: constrain.eq %[[B1]], %[[B2]]
 // CONCRETE: %[[A3:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE6:[a-zA-Z0-9_.-]+]][@a]
-// CONCRETE: %[[ELEMENT1:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE7:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE8:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT1:[a-zA-Z0-9_.-]+]] = array.read %{{[a-zA-Z0-9_.-]+}}{{\[}}%[[VALUE8:[a-zA-Z0-9_.-]+]]]
 // CONCRETE: %[[ELEMENT2:[a-zA-Z0-9_.-]+]] = array.read %[[A3]]{{\[}}%[[VALUE8]]]
 // CONCRETE: %[[A4:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT1]][@a]
 // CONCRETE: %[[A5:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT2]][@a]
@@ -80,7 +80,7 @@ component main = A();
 // CONCRETE: %[[B4:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT2]][@b]
 // CONCRETE: constrain.eq %[[B3]], %[[B4]]
 // CONCRETE: %[[FIELD4:[a-zA-Z0-9_.-]+]] = struct.readm %[[FIELD2]][@out]
-// CONCRETE: %[[ELEMENT3:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE9:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE10:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT3:[a-zA-Z0-9_.-]+]] = array.read %{{[a-zA-Z0-9_.-]+}}{{\[}}%[[VALUE10:[a-zA-Z0-9_.-]+]]]
 // CONCRETE: %[[ELEMENT4:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD4]]{{\[}}%[[VALUE10]]]
 // CONCRETE: %[[A6:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT3]][@a]
 // CONCRETE: %[[A7:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT4]][@a]
@@ -88,40 +88,40 @@ component main = A();
 // CONCRETE: %[[B5:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT3]][@b]
 // CONCRETE: %[[B6:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT4]][@b]
 // CONCRETE: constrain.eq %[[B5]], %[[B6]]
-// CONCRETE: %[[ELEMENT5:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD1]]{{\[}}%[[VALUE11:[a-zA-Z0-9_.-]+]], %[[VALUE12:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT5:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD1]]{{\[}}%{{[a-zA-Z0-9_.-]+}}, %{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[A8:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT5]][@a]
 // CONCRETE: %[[A9:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE6]][@a]
-// CONCRETE: %[[ELEMENT6:[a-zA-Z0-9_.-]+]] = array.read %[[A9]]{{\[}}%[[VALUE13:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT6:[a-zA-Z0-9_.-]+]] = array.read %[[A9]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[A10:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT6]][@a]
 // CONCRETE: constrain.eq %[[A8]], %[[A10]]
-// CONCRETE: %[[ELEMENT7:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD1]]{{\[}}%[[VALUE14:[a-zA-Z0-9_.-]+]], %[[VALUE15:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT7:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD1]]{{\[}}%{{[a-zA-Z0-9_.-]+}}, %{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[A11:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT7]][@a]
 // CONCRETE: %[[A12:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE5]][@a]
 // CONCRETE: constrain.eq %[[A11]], %[[A12]]
-// CONCRETE: %[[IN3:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD3]][@in]
+// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[FIELD3]][@in]
 // CONCRETE: function.return
 // CONCRETE-LABEL: struct.def @B_0 {
 // CONCRETE: struct.member @out : !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>>
 // CONCRETE: function.def @compute(
-// CONCRETE: array.write %[[VALUE16:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE17:[a-zA-Z0-9_.-]+]]] = %[[VALUE18:[a-zA-Z0-9_.-]+]]
-// CONCRETE: function.return %[[VALUE19:[a-zA-Z0-9_.-]+]]
+// CONCRETE: array.write %{{[a-zA-Z0-9_.-]+}}{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %{{[a-zA-Z0-9_.-]+}}
+// CONCRETE: function.return %{{[a-zA-Z0-9_.-]+}}
 // CONCRETE: function.def @constrain(
-// CONCRETE: %[[FIELD5:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE20:[a-zA-Z0-9_.-]+]][@out]
-// CONCRETE: %[[ELEMENT8:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD5]]{{\[}}%[[VALUE21:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[FIELD5:[a-zA-Z0-9_.-]+]] = struct.readm %{{[a-zA-Z0-9_.-]+}}[@out]
+// CONCRETE: %[[ELEMENT8:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD5]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[A13:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT8]][@a]
 // CONCRETE: %[[A14:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE22:[a-zA-Z0-9_.-]+]][@a]
 // CONCRETE: constrain.eq %[[A13]], %[[A14]]
 // CONCRETE: %[[B7:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT8]][@b]
 // CONCRETE: %[[B8:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE22]][@b]
 // CONCRETE: constrain.eq %[[B7]], %[[B8]]
-// CONCRETE: %[[ELEMENT9:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD5]]{{\[}}%[[VALUE23:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT9:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD5]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[A15:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT9]][@a]
 // CONCRETE: %[[A16:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE22]][@a]
 // CONCRETE: constrain.eq %[[A15]], %[[A16]]
 // CONCRETE: %[[B9:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT9]][@b]
 // CONCRETE: %[[B10:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE22]][@b]
 // CONCRETE: constrain.eq %[[B9]], %[[B10]]
-// CONCRETE: %[[ELEMENT10:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD5]]{{\[}}%[[VALUE24:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT10:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD5]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[A17:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT10]][@a]
 // CONCRETE: %[[A18:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE22]][@a]
 // CONCRETE: constrain.eq %[[A17]], %[[A18]]
@@ -135,7 +135,7 @@ component main = A();
 // TEMPLATED: struct.member @B_[[MEMBER0:[0-9]+_[0-9]+]] : !struct.type<@B::@B<[]>>
 // TEMPLATED: struct.member @B_[[MEMBER0]]$inputs : !pod.type<[@in: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>
 // TEMPLATED: function.def @compute(
-// TEMPLATED: pod.write %[[POD1:[a-zA-Z0-9_.-]+]][@in] = %[[VALUE1:[a-zA-Z0-9_.-]+]] : <[@in: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
+// TEMPLATED: pod.write %[[POD1:[a-zA-Z0-9_.-]+]][@in] = %{{[a-zA-Z0-9_.-]+}} : <[@in: !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>]>, !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>
 // TEMPLATED: %[[COUNT1:[a-zA-Z0-9_.-]+]] = pod.read %[[STATE1:[a-zA-Z0-9_.-]+]][@count]
 // TEMPLATED: %[[N1:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
 // TEMPLATED: %[[READY1:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[COUNT1]], %[[N1]]
@@ -151,11 +151,11 @@ component main = A();
 // TEMPLATED: %[[N5:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
 // TEMPLATED: %[[READY3:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[REMAINING1]], %[[N5]]
 // TEMPLATED: scf.if %[[READY3]] {
-// TEMPLATED: %[[PARAMS1:[a-zA-Z0-9_.-]+]] = pod.read %[[STATE1]][@params]
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[STATE1]][@params]
 // TEMPLATED: %[[IN1:[a-zA-Z0-9_.-]+]] = pod.read %[[POD1]][@in]
 // TEMPLATED: %[[CHILD1:[a-zA-Z0-9_.-]+]] = function.call @B::@B::@compute(%[[IN1]]) : (!pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>) -> !struct.type<@B::@B<[]>>
 // TEMPLATED: pod.write %[[STATE1]][@comp] = %[[CHILD1]]
-// TEMPLATED: function.return %[[VALUE3:[a-zA-Z0-9_.-]+]]
+// TEMPLATED: function.return %{{[a-zA-Z0-9_.-]+}}
 // TEMPLATED: function.def @constrain(
 // TEMPLATED: %[[FIELD1:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE4:[a-zA-Z0-9_.-]+]][@out]
 // TEMPLATED: %[[FIELD2:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE4]][@B_[[MEMBER0]]]
@@ -167,34 +167,34 @@ component main = A();
 // TEMPLATED: %[[B1:[a-zA-Z0-9_.-]+]] = pod.read %[[IN2]][@b]
 // TEMPLATED: %[[B2:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE5]][@b]
 // TEMPLATED: constrain.eq %[[B1]], %[[B2]]
-// TEMPLATED: %[[A3:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE6:[a-zA-Z0-9_.-]+]][@a]
-// TEMPLATED: %[[FIELD4:[a-zA-Z0-9_.-]+]] = struct.readm %[[FIELD2]][@out]
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[VALUE6:[a-zA-Z0-9_.-]+]][@a]
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = struct.readm %[[FIELD2]][@out]
 // TEMPLATED: %[[ELEMENT1:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD1]]{{\[}}%[[VALUE7:[a-zA-Z0-9_.-]+]], %[[VALUE8:[a-zA-Z0-9_.-]+]]]
-// TEMPLATED: %[[ELEMENT2:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE9:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE7]], %[[VALUE8]]]
+// TEMPLATED: %[[ELEMENT2:[a-zA-Z0-9_.-]+]] = array.read %{{[a-zA-Z0-9_.-]+}}{{\[}}%[[VALUE7]], %[[VALUE8]]]
 // TEMPLATED: %[[A4:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT1]][@a]
 // TEMPLATED: %[[A5:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT2]][@a]
 // TEMPLATED: constrain.eq %[[A4]], %[[A5]]
 // TEMPLATED: %[[B3:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT1]][@b]
 // TEMPLATED: %[[B4:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT2]][@b]
 // TEMPLATED: constrain.eq %[[B3]], %[[B4]]
-// TEMPLATED: %[[ELEMENT3:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD1]]{{\[}}%[[VALUE10:[a-zA-Z0-9_.-]+]], %[[VALUE11:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT3:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD1]]{{\[}}%{{[a-zA-Z0-9_.-]+}}, %{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[A6:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT3]][@a]
 // TEMPLATED: %[[A7:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE6]][@a]
-// TEMPLATED: %[[ELEMENT4:[a-zA-Z0-9_.-]+]] = array.read %[[A7]]{{\[}}%[[VALUE12:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT4:[a-zA-Z0-9_.-]+]] = array.read %[[A7]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[A8:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT4]][@a]
 // TEMPLATED: constrain.eq %[[A6]], %[[A8]]
-// TEMPLATED: %[[ELEMENT5:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD1]]{{\[}}%[[VALUE13:[a-zA-Z0-9_.-]+]], %[[VALUE14:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT5:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD1]]{{\[}}%{{[a-zA-Z0-9_.-]+}}, %{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[A9:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT5]][@a]
 // TEMPLATED: %[[A10:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE5]][@a]
 // TEMPLATED: constrain.eq %[[A9]], %[[A10]]
-// TEMPLATED: %[[IN3:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD3]][@in]
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[FIELD3]][@in]
 // TEMPLATED: function.return
 // TEMPLATED-LABEL: struct.def @B {
 // TEMPLATED: struct.member @out : !array.type<3 x !pod.type<[@a: !felt.type<"bn128">, @b: !felt.type<"bn128">]>>
 // TEMPLATED: function.def @constrain(
-// TEMPLATED: %[[FIELD5:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE15:[a-zA-Z0-9_.-]+]][@out]
+// TEMPLATED: %[[FIELD5:[a-zA-Z0-9_.-]+]] = struct.readm %{{[a-zA-Z0-9_.-]+}}[@out]
 // TEMPLATED: %[[ELEMENT6:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD5]]{{\[}}%[[VALUE16:[a-zA-Z0-9_.-]+]]]
-// TEMPLATED: %[[ELEMENT7:[a-zA-Z0-9_.-]+]] = array.read %[[VALUE17:[a-zA-Z0-9_.-]+]]{{\[}}%[[VALUE16]]]
+// TEMPLATED: %[[ELEMENT7:[a-zA-Z0-9_.-]+]] = array.read %{{[a-zA-Z0-9_.-]+}}{{\[}}%[[VALUE16]]]
 // TEMPLATED: %[[A11:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT6]][@a]
 // TEMPLATED: %[[A12:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT7]][@a]
 // TEMPLATED: constrain.eq %[[A11]], %[[A12]]

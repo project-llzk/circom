@@ -56,19 +56,19 @@ component main = Main();
 
 // Build both elements of the reversed Pair row, then insert both matrix rows.
 // CONCRETE: %[[REVERSED:[a-zA-Z0-9_.-]+]] = llzk.nondet : !array.type<2 x [[PAIR]]>
-// CONCRETE: %[[ELEMENT1:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX1:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT1:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[POINTS1:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT1]][@points]
-// CONCRETE: %[[ELEMENT2:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS1]]{{\[}}%[[INDEX2:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT2:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS1]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[POS1:[a-zA-Z0-9_.-]+]] = felt.const  0 : <"bn128">
 // CONCRETE: %[[INDEX3:[a-zA-Z0-9_.-]+]] = cast.toindex %[[POS1]]
 // CONCRETE: array.write %[[REVERSED]]{{\[}}%[[INDEX3]]] = %[[ELEMENT2]] : <2 x [[PAIR]]>, [[PAIR]]
-// CONCRETE: %[[ELEMENT3:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX4:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT3:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[POINTS2:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT3]][@points]
-// CONCRETE: %[[ELEMENT4:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS2]]{{\[}}%[[INDEX5:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT4:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS2]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[POS2:[a-zA-Z0-9_.-]+]] = felt.const  1 : <"bn128">
 // CONCRETE: %[[INDEX6:[a-zA-Z0-9_.-]+]] = cast.toindex %[[POS2]]
 // CONCRETE: array.write %[[REVERSED]]{{\[}}%[[INDEX6]]] = %[[ELEMENT4]] : <2 x [[PAIR]]>, [[PAIR]]
-// CONCRETE: %[[ELEMENT5:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX7:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT5:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[POINTS3:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT5]][@points]
 // CONCRETE: %[[POS3:[a-zA-Z0-9_.-]+]] = felt.const  0 : <"bn128">
 // CONCRETE: %[[INDEX8:[a-zA-Z0-9_.-]+]] = cast.toindex %[[POS3]]
@@ -96,7 +96,7 @@ component main = Main();
 // CONCRETE: %[[POS7:[a-zA-Z0-9_.-]+]] = felt.const  0 : <"bn128">
 // CONCRETE: %[[INDEX12:[a-zA-Z0-9_.-]+]] = cast.toindex %[[POS7]]
 // CONCRETE: array.insert %[[COPIED:[a-zA-Z0-9_.-]+]]{{\[}}%[[INDEX12]]] = %[[CHILD_OUTPUTS]] : <2,2 x [[PAIR]]>, <2 x [[PAIR]]>
-// CONCRETE: %[[ELEMENT6:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX13:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT6:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[POINTS4:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT6]][@points]
 // CONCRETE: %[[POS8:[a-zA-Z0-9_.-]+]] = felt.const  1 : <"bn128">
 // CONCRETE: %[[INDEX14:[a-zA-Z0-9_.-]+]] = cast.toindex %[[POS8]]
@@ -106,20 +106,20 @@ component main = Main();
 // CONCRETE: scf.while
 // CONCRETE: ^bb0(%[[ROW_I:[a-zA-Z0-9_.-]+]]: !felt.type<"bn128">):
 // CONCRETE: %[[FORWARD_ROWS:[a-zA-Z0-9_.-]+]] = llzk.nondet : !array.type<2 x [[ROW]]>
-// CONCRETE: %[[ELEMENT7:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX15:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT7:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[POS9:[a-zA-Z0-9_.-]+]] = felt.const  0 : <"bn128">
 // CONCRETE: %[[INDEX16:[a-zA-Z0-9_.-]+]] = cast.toindex %[[POS9]]
 // CONCRETE: array.write %[[FORWARD_ROWS]]{{\[}}%[[INDEX16]]] = %[[ELEMENT7]] : <2 x [[ROW]]>, [[ROW]]
-// CONCRETE: %[[ELEMENT8:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX17:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT8:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[POS10:[a-zA-Z0-9_.-]+]] = felt.const  1 : <"bn128">
 // CONCRETE: %[[INDEX18:[a-zA-Z0-9_.-]+]] = cast.toindex %[[POS10]]
 // CONCRETE: array.write %[[FORWARD_ROWS]]{{\[}}%[[INDEX18]]] = %[[ELEMENT8]] : <2 x [[ROW]]>, [[ROW]]
 // CONCRETE: %[[REVERSED_ROWS:[a-zA-Z0-9_.-]+]] = llzk.nondet : !array.type<2 x [[ROW]]>
-// CONCRETE: %[[ELEMENT9:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX19:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT9:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[POS11:[a-zA-Z0-9_.-]+]] = felt.const  0 : <"bn128">
 // CONCRETE: %[[INDEX20:[a-zA-Z0-9_.-]+]] = cast.toindex %[[POS11]]
 // CONCRETE: array.write %[[REVERSED_ROWS]]{{\[}}%[[INDEX20]]] = %[[ELEMENT9]] : <2 x [[ROW]]>, [[ROW]]
-// CONCRETE: %[[ELEMENT10:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX21:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT10:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[POS12:[a-zA-Z0-9_.-]+]] = felt.const  1 : <"bn128">
 // CONCRETE: %[[INDEX22:[a-zA-Z0-9_.-]+]] = cast.toindex %[[POS12]]
 // CONCRETE: array.write %[[REVERSED_ROWS]]{{\[}}%[[INDEX22]]] = %[[ELEMENT10]] : <2 x [[ROW]]>, [[ROW]]
@@ -136,15 +136,15 @@ component main = Main();
 // CONCRETE: scf.while
 // CONCRETE: ^bb0(%[[PAIR_I:[a-zA-Z0-9_.-]+]]: !felt.type<"bn128">):
 // CONCRETE: %[[PAIR_ROW:[a-zA-Z0-9_.-]+]] = llzk.nondet : !array.type<2 x [[PAIR]]>
-// CONCRETE: %[[ELEMENT11:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX27:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT11:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[POINTS5:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT11]][@points]
-// CONCRETE: %[[ELEMENT12:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS5]]{{\[}}%[[INDEX28:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT12:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS5]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[POS15:[a-zA-Z0-9_.-]+]] = felt.const  0 : <"bn128">
 // CONCRETE: %[[INDEX29:[a-zA-Z0-9_.-]+]] = cast.toindex %[[POS15]]
 // CONCRETE: array.write %[[PAIR_ROW]]{{\[}}%[[INDEX29]]] = %[[ELEMENT12]] : <2 x [[PAIR]]>, [[PAIR]]
-// CONCRETE: %[[ELEMENT13:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX30:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT13:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[POINTS6:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT13]][@points]
-// CONCRETE: %[[ELEMENT14:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS6]]{{\[}}%[[INDEX31:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT14:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS6]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[POS16:[a-zA-Z0-9_.-]+]] = felt.const  1 : <"bn128">
 // CONCRETE: %[[INDEX32:[a-zA-Z0-9_.-]+]] = cast.toindex %[[POS16]]
 // CONCRETE: array.write %[[PAIR_ROW]]{{\[}}%[[INDEX32]]] = %[[ELEMENT14]] : <2 x [[PAIR]]>, [[PAIR]]
@@ -152,7 +152,7 @@ component main = Main();
 // CONCRETE: %[[POS17:[a-zA-Z0-9_.-]+]] = felt.const  0 : <"bn128">
 // CONCRETE: %[[INDEX34:[a-zA-Z0-9_.-]+]] = cast.toindex %[[POS17]]
 // CONCRETE: array.insert %[[PAIR_CUBES:[a-zA-Z0-9_.-]+]]{{\[}}%[[INDEX33]], %[[INDEX34]]] = %[[PAIR_ROW]] : <2,2,2 x [[PAIR]]>, <2 x [[PAIR]]>
-// CONCRETE: %[[ELEMENT15:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX35:[a-zA-Z0-9_.-]+]]]
+// CONCRETE: %[[ELEMENT15:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // CONCRETE: %[[POINTS7:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT15]][@points]
 // CONCRETE: %[[INDEX36:[a-zA-Z0-9_.-]+]] = cast.toindex %[[PAIR_I]]
 // CONCRETE: %[[POS18:[a-zA-Z0-9_.-]+]] = felt.const  1 : <"bn128">
@@ -168,14 +168,14 @@ component main = Main();
 // CONCRETE: struct.writem %[[SELF]][@pair_cubes] = %[[PAIR_CUBES]]
 
 // Nested Pair literals retain their element and matrix types.
-// TEMPLATED: %[[ELEMENT1:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX1:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT1:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[POINTS1:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT1]][@points]
-// TEMPLATED: %[[ELEMENT2:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX2:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT2:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[POINTS2:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT2]][@points]
-// TEMPLATED: %[[ELEMENT3:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS2]]{{\[}}%[[INDEX3:[a-zA-Z0-9_.-]+]]]
-// TEMPLATED: %[[ELEMENT4:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX4:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT3:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS2]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
+// TEMPLATED: %[[ELEMENT4:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[POINTS3:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT4]][@points]
-// TEMPLATED: %[[ELEMENT5:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS3]]{{\[}}%[[INDEX5:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT5:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS3]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[REVERSED:[a-zA-Z0-9_.-]+]] = array.new %[[ELEMENT3]], %[[ELEMENT5]] : <2 x [[PAIR]]>
 // TEMPLATED: %[[MATRIX:[a-zA-Z0-9_.-]+]] = array.new  : <2,2 x [[PAIR]]>
 // TEMPLATED: %[[INDEX6:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
@@ -187,14 +187,14 @@ component main = Main();
 // TEMPLATED: function.call @Forward::@Forward::@compute(
 
 // The copied row is constructed from both component outputs.
-// TEMPLATED: %[[ELEMENT6:[a-zA-Z0-9_.-]+]] = array.read %[[TEMP1:[a-zA-Z0-9_.-]+]]{{\[}}%[[INDEX8:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT6:[a-zA-Z0-9_.-]+]] = array.read %[[TEMP1:[a-zA-Z0-9_.-]+]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[CHILD1:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT6]][@comp]
 // TEMPLATED: %[[OUTPUT1:[a-zA-Z0-9_.-]+]] = struct.readm %[[CHILD1]][@out]
-// TEMPLATED: %[[ELEMENT7:[a-zA-Z0-9_.-]+]] = array.read %[[TEMP1]]{{\[}}%[[INDEX9:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT7:[a-zA-Z0-9_.-]+]] = array.read %[[TEMP1]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[CHILD2:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT7]][@comp]
 // TEMPLATED: %[[OUTPUT2:[a-zA-Z0-9_.-]+]] = struct.readm %[[CHILD2]][@out]
 // TEMPLATED: %[[CHILD_OUTPUTS:[a-zA-Z0-9_.-]+]] = array.new %[[OUTPUT1]], %[[OUTPUT2]] : <2 x [[PAIR]]>
-// TEMPLATED: %[[ELEMENT8:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX10:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT8:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[POINTS4:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT8]][@points]
 // TEMPLATED: %[[COPIED:[a-zA-Z0-9_.-]+]] = array.new  : <2,2 x [[PAIR]]>
 // TEMPLATED: %[[INDEX11:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
@@ -206,11 +206,11 @@ component main = Main();
 // Each Row loop iteration builds two rows and inserts a complete matrix.
 // TEMPLATED: scf.while
 // TEMPLATED: ^bb0(%[[ROW_I:[a-zA-Z0-9_.-]+]]: !felt.type<"bn128">):
-// TEMPLATED: %[[ELEMENT9:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX13:[a-zA-Z0-9_.-]+]]]
-// TEMPLATED: %[[ELEMENT10:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX14:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT9:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
+// TEMPLATED: %[[ELEMENT10:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[FORWARD_ROWS:[a-zA-Z0-9_.-]+]] = array.new %[[ELEMENT9]], %[[ELEMENT10]] : <2 x [[ROW]]>
-// TEMPLATED: %[[ELEMENT11:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX15:[a-zA-Z0-9_.-]+]]]
-// TEMPLATED: %[[ELEMENT12:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX16:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT11:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
+// TEMPLATED: %[[ELEMENT12:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[REVERSED_ROWS:[a-zA-Z0-9_.-]+]] = array.new %[[ELEMENT11]], %[[ELEMENT12]] : <2 x [[ROW]]>
 // TEMPLATED: %[[ROW_MATRIX:[a-zA-Z0-9_.-]+]] = array.new  : <2,2 x [[ROW]]>
 // TEMPLATED: %[[INDEX17:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
@@ -223,14 +223,14 @@ component main = Main();
 // The sibling loop builds a Pair matrix with the same source variable name.
 // TEMPLATED: scf.while
 // TEMPLATED: ^bb0(%[[PAIR_I:[a-zA-Z0-9_.-]+]]: !felt.type<"bn128">):
-// TEMPLATED: %[[ELEMENT13:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX20:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT13:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[POINTS5:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT13]][@points]
-// TEMPLATED: %[[ELEMENT14:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS5]]{{\[}}%[[INDEX21:[a-zA-Z0-9_.-]+]]]
-// TEMPLATED: %[[ELEMENT15:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX22:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT14:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS5]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
+// TEMPLATED: %[[ELEMENT15:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[POINTS6:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT15]][@points]
-// TEMPLATED: %[[ELEMENT16:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS6]]{{\[}}%[[INDEX23:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT16:[a-zA-Z0-9_.-]+]] = array.read %[[POINTS6]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[PAIR_ROW:[a-zA-Z0-9_.-]+]] = array.new %[[ELEMENT14]], %[[ELEMENT16]] : <2 x [[PAIR]]>
-// TEMPLATED: %[[ELEMENT17:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%[[INDEX24:[a-zA-Z0-9_.-]+]]]
+// TEMPLATED: %[[ELEMENT17:[a-zA-Z0-9_.-]+]] = array.read %[[ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[POINTS7:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT17]][@points]
 // TEMPLATED: %[[PAIR_MATRIX:[a-zA-Z0-9_.-]+]] = array.new  : <2,2 x [[PAIR]]>
 // TEMPLATED: %[[INDEX25:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
@@ -259,38 +259,38 @@ component main = Main();
 
 // Constraint generation must recover the same temporary element/subarray types.
 // CONCRETE: %[[C_REVERSED:[a-zA-Z0-9_.-]+]] = llzk.nondet : !array.type<2 x [[PAIR]]>
-// CONCRETE: array.write %[[C_REVERSED]]{{\[}}%[[C_INDEX1:[a-zA-Z0-9_.-]+]]] = %[[C_ELEMENT1:[a-zA-Z0-9_.-]+]] : <2 x [[PAIR]]>, [[PAIR]]
-// CONCRETE: array.write %[[C_REVERSED]]{{\[}}%[[C_INDEX2:[a-zA-Z0-9_.-]+]]] = %[[C_ELEMENT2:[a-zA-Z0-9_.-]+]] : <2 x [[PAIR]]>, [[PAIR]]
+// CONCRETE: array.write %[[C_REVERSED]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %{{[a-zA-Z0-9_.-]+}} : <2 x [[PAIR]]>, [[PAIR]]
+// CONCRETE: array.write %[[C_REVERSED]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %{{[a-zA-Z0-9_.-]+}} : <2 x [[PAIR]]>, [[PAIR]]
 // CONCRETE: %[[C_CHILD_OUTPUTS:[a-zA-Z0-9_.-]+]] = llzk.nondet : !array.type<2 x [[PAIR]]>
-// CONCRETE: array.write %[[C_CHILD_OUTPUTS]]{{\[}}%[[C_INDEX3:[a-zA-Z0-9_.-]+]]] = %[[C_OUTPUT1:[a-zA-Z0-9_.-]+]] : <2 x [[PAIR]]>, [[PAIR]]
-// CONCRETE: array.write %[[C_CHILD_OUTPUTS]]{{\[}}%[[C_INDEX4:[a-zA-Z0-9_.-]+]]] = %[[C_OUTPUT2:[a-zA-Z0-9_.-]+]] : <2 x [[PAIR]]>, [[PAIR]]
+// CONCRETE: array.write %[[C_CHILD_OUTPUTS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %{{[a-zA-Z0-9_.-]+}} : <2 x [[PAIR]]>, [[PAIR]]
+// CONCRETE: array.write %[[C_CHILD_OUTPUTS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %{{[a-zA-Z0-9_.-]+}} : <2 x [[PAIR]]>, [[PAIR]]
 // CONCRETE: %[[C_FORWARD_ROWS:[a-zA-Z0-9_.-]+]] = llzk.nondet : !array.type<2 x [[ROW]]>
-// CONCRETE: array.write %[[C_FORWARD_ROWS]]{{\[}}%[[C_INDEX5:[a-zA-Z0-9_.-]+]]] = %[[C_ELEMENT3:[a-zA-Z0-9_.-]+]] : <2 x [[ROW]]>, [[ROW]]
-// CONCRETE: array.write %[[C_FORWARD_ROWS]]{{\[}}%[[C_INDEX6:[a-zA-Z0-9_.-]+]]] = %[[C_ELEMENT4:[a-zA-Z0-9_.-]+]] : <2 x [[ROW]]>, [[ROW]]
+// CONCRETE: array.write %[[C_FORWARD_ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %{{[a-zA-Z0-9_.-]+}} : <2 x [[ROW]]>, [[ROW]]
+// CONCRETE: array.write %[[C_FORWARD_ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %{{[a-zA-Z0-9_.-]+}} : <2 x [[ROW]]>, [[ROW]]
 // CONCRETE: %[[C_REVERSED_ROWS:[a-zA-Z0-9_.-]+]] = llzk.nondet : !array.type<2 x [[ROW]]>
-// CONCRETE: array.write %[[C_REVERSED_ROWS]]{{\[}}%[[C_INDEX7:[a-zA-Z0-9_.-]+]]] = %[[C_ELEMENT5:[a-zA-Z0-9_.-]+]] : <2 x [[ROW]]>, [[ROW]]
-// CONCRETE: array.write %[[C_REVERSED_ROWS]]{{\[}}%[[C_INDEX8:[a-zA-Z0-9_.-]+]]] = %[[C_ELEMENT6:[a-zA-Z0-9_.-]+]] : <2 x [[ROW]]>, [[ROW]]
+// CONCRETE: array.write %[[C_REVERSED_ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %{{[a-zA-Z0-9_.-]+}} : <2 x [[ROW]]>, [[ROW]]
+// CONCRETE: array.write %[[C_REVERSED_ROWS]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %{{[a-zA-Z0-9_.-]+}} : <2 x [[ROW]]>, [[ROW]]
 // CONCRETE: %[[C_PAIR_ROW:[a-zA-Z0-9_.-]+]] = llzk.nondet : !array.type<2 x [[PAIR]]>
-// CONCRETE: array.write %[[C_PAIR_ROW]]{{\[}}%[[C_INDEX9:[a-zA-Z0-9_.-]+]]] = %[[C_ELEMENT7:[a-zA-Z0-9_.-]+]] : <2 x [[PAIR]]>, [[PAIR]]
-// CONCRETE: array.write %[[C_PAIR_ROW]]{{\[}}%[[C_INDEX10:[a-zA-Z0-9_.-]+]]] = %[[C_ELEMENT8:[a-zA-Z0-9_.-]+]] : <2 x [[PAIR]]>, [[PAIR]]
+// CONCRETE: array.write %[[C_PAIR_ROW]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %{{[a-zA-Z0-9_.-]+}} : <2 x [[PAIR]]>, [[PAIR]]
+// CONCRETE: array.write %[[C_PAIR_ROW]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %{{[a-zA-Z0-9_.-]+}} : <2 x [[PAIR]]>, [[PAIR]]
 
 // Constraint generation must recover the same temporary element/subarray types.
-// TEMPLATED: %[[C_REVERSED:[a-zA-Z0-9_.-]+]] = array.new %[[C_ELEMENT1:[a-zA-Z0-9_.-]+]], %[[C_ELEMENT2:[a-zA-Z0-9_.-]+]] : <2 x [[PAIR]]>
+// TEMPLATED: %[[C_REVERSED:[a-zA-Z0-9_.-]+]] = array.new %{{[a-zA-Z0-9_.-]+}}, %{{[a-zA-Z0-9_.-]+}} : <2 x [[PAIR]]>
 // TEMPLATED: %[[C_MATRIX:[a-zA-Z0-9_.-]+]] = array.new  : <2,2 x [[PAIR]]>
-// TEMPLATED: array.insert %[[C_MATRIX]]{{\[}}%[[C_INDEX1:[a-zA-Z0-9_.-]+]]] = %[[C_POINTS1:[a-zA-Z0-9_.-]+]] : <2,2 x [[PAIR]]>, <2 x [[PAIR]]>
-// TEMPLATED: array.insert %[[C_MATRIX]]{{\[}}%[[C_INDEX2:[a-zA-Z0-9_.-]+]]] = %[[C_REVERSED]] : <2,2 x [[PAIR]]>, <2 x [[PAIR]]>
-// TEMPLATED: %[[C_CHILD_OUTPUTS:[a-zA-Z0-9_.-]+]] = array.new %[[C_OUTPUT1:[a-zA-Z0-9_.-]+]], %[[C_OUTPUT2:[a-zA-Z0-9_.-]+]] : <2 x [[PAIR]]>
+// TEMPLATED: array.insert %[[C_MATRIX]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %{{[a-zA-Z0-9_.-]+}} : <2,2 x [[PAIR]]>, <2 x [[PAIR]]>
+// TEMPLATED: array.insert %[[C_MATRIX]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %[[C_REVERSED]] : <2,2 x [[PAIR]]>, <2 x [[PAIR]]>
+// TEMPLATED: %[[C_CHILD_OUTPUTS:[a-zA-Z0-9_.-]+]] = array.new %{{[a-zA-Z0-9_.-]+}}, %{{[a-zA-Z0-9_.-]+}} : <2 x [[PAIR]]>
 // TEMPLATED: %[[C_COPIED:[a-zA-Z0-9_.-]+]] = array.new  : <2,2 x [[PAIR]]>
-// TEMPLATED: array.insert %[[C_COPIED]]{{\[}}%[[C_INDEX3:[a-zA-Z0-9_.-]+]]] = %[[C_CHILD_OUTPUTS]] : <2,2 x [[PAIR]]>, <2 x [[PAIR]]>
-// TEMPLATED: array.insert %[[C_COPIED]]{{\[}}%[[C_INDEX4:[a-zA-Z0-9_.-]+]]] = %[[C_POINTS2:[a-zA-Z0-9_.-]+]] : <2,2 x [[PAIR]]>, <2 x [[PAIR]]>
-// TEMPLATED: %[[C_FORWARD_ROWS:[a-zA-Z0-9_.-]+]] = array.new %[[C_ELEMENT3:[a-zA-Z0-9_.-]+]], %[[C_ELEMENT4:[a-zA-Z0-9_.-]+]] : <2 x [[ROW]]>
-// TEMPLATED: %[[C_REVERSED_ROWS:[a-zA-Z0-9_.-]+]] = array.new %[[C_ELEMENT5:[a-zA-Z0-9_.-]+]], %[[C_ELEMENT6:[a-zA-Z0-9_.-]+]] : <2 x [[ROW]]>
+// TEMPLATED: array.insert %[[C_COPIED]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %[[C_CHILD_OUTPUTS]] : <2,2 x [[PAIR]]>, <2 x [[PAIR]]>
+// TEMPLATED: array.insert %[[C_COPIED]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %{{[a-zA-Z0-9_.-]+}} : <2,2 x [[PAIR]]>, <2 x [[PAIR]]>
+// TEMPLATED: %[[C_FORWARD_ROWS:[a-zA-Z0-9_.-]+]] = array.new %{{[a-zA-Z0-9_.-]+}}, %{{[a-zA-Z0-9_.-]+}} : <2 x [[ROW]]>
+// TEMPLATED: %[[C_REVERSED_ROWS:[a-zA-Z0-9_.-]+]] = array.new %{{[a-zA-Z0-9_.-]+}}, %{{[a-zA-Z0-9_.-]+}} : <2 x [[ROW]]>
 // TEMPLATED: %[[C_ROW_MATRIX:[a-zA-Z0-9_.-]+]] = array.new  : <2,2 x [[ROW]]>
-// TEMPLATED: array.insert %[[C_ROW_MATRIX]]{{\[}}%[[C_INDEX5:[a-zA-Z0-9_.-]+]]] = %[[C_FORWARD_ROWS]] : <2,2 x [[ROW]]>, <2 x [[ROW]]>
-// TEMPLATED: array.insert %[[C_ROW_MATRIX]]{{\[}}%[[C_INDEX6:[a-zA-Z0-9_.-]+]]] = %[[C_REVERSED_ROWS]] : <2,2 x [[ROW]]>, <2 x [[ROW]]>
-// TEMPLATED: %[[C_PAIR_ROW:[a-zA-Z0-9_.-]+]] = array.new %[[C_ELEMENT7:[a-zA-Z0-9_.-]+]], %[[C_ELEMENT8:[a-zA-Z0-9_.-]+]] : <2 x [[PAIR]]>
+// TEMPLATED: array.insert %[[C_ROW_MATRIX]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %[[C_FORWARD_ROWS]] : <2,2 x [[ROW]]>, <2 x [[ROW]]>
+// TEMPLATED: array.insert %[[C_ROW_MATRIX]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %[[C_REVERSED_ROWS]] : <2,2 x [[ROW]]>, <2 x [[ROW]]>
+// TEMPLATED: %[[C_PAIR_ROW:[a-zA-Z0-9_.-]+]] = array.new %{{[a-zA-Z0-9_.-]+}}, %{{[a-zA-Z0-9_.-]+}} : <2 x [[PAIR]]>
 // TEMPLATED: %[[C_PAIR_MATRIX:[a-zA-Z0-9_.-]+]] = array.new  : <2,2 x [[PAIR]]>
-// TEMPLATED: array.insert %[[C_PAIR_MATRIX]]{{\[}}%[[C_INDEX7:[a-zA-Z0-9_.-]+]]] = %[[C_PAIR_ROW]] : <2,2 x [[PAIR]]>, <2 x [[PAIR]]>
-// TEMPLATED: array.insert %[[C_PAIR_MATRIX]]{{\[}}%[[C_INDEX8:[a-zA-Z0-9_.-]+]]] = %[[C_POINTS3:[a-zA-Z0-9_.-]+]] : <2,2 x [[PAIR]]>, <2 x [[PAIR]]>
+// TEMPLATED: array.insert %[[C_PAIR_MATRIX]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %[[C_PAIR_ROW]] : <2,2 x [[PAIR]]>, <2 x [[PAIR]]>
+// TEMPLATED: array.insert %[[C_PAIR_MATRIX]]{{\[}}%{{[a-zA-Z0-9_.-]+}}] = %{{[a-zA-Z0-9_.-]+}} : <2,2 x [[PAIR]]>, <2 x [[PAIR]]>
 
 // CHECK-LABEL: function.return
