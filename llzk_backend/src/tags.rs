@@ -295,7 +295,7 @@ struct Analysis<'a> {
     constructors: HashMap<usize, usize>,
     /// Nominal bus identities of local fields; component identities are instantiated on use.
     identities: BTreeMap<String, NominalBus>,
-    /// Induction values substituted while expanding fixed loops with tagged components.
+    /// Induction values substituted while expanding fixed loops that access tags.
     iterations: HashMap<String, Expression>,
     /// Fresh identities for declarations copied into expanded loop iterations.
     next_declaration: usize,
@@ -410,8 +410,8 @@ fn references_any(expr: &Expression, names: &HashSet<String>) -> bool {
     }
 }
 
-/// Whether any statement reads or writes a tagged component.
-fn uses_components(stmt: &Statement, names: &HashSet<String>) -> bool {
+/// Whether any statement reads or writes one of the given variable roots.
+fn uses_variables(stmt: &Statement, names: &HashSet<String>) -> bool {
     let mut all = Vec::new();
     statements(stmt, &mut all);
     all.into_iter().any(|stmt| match stmt {
@@ -926,6 +926,33 @@ impl Analysis<'_> {
         Ok(())
     }
 
+    /// Keep simple array-wide transfers compact; analyze varying metadata per iteration.
+    fn needs_iteration_analysis(&self, stmt: &Statement, induction: &str) -> bool {
+        if uses_variables(stmt, &self.tagged_components) {
+            return true;
+        }
+        let mut all = Vec::new();
+        statements(stmt, &mut all);
+        // Signal and bus tag paths are array-wide, so straight-line signal writes
+        // can repeat their leaf counts. Branches, nested loops, and local or tag
+        // assignments can change the transfer from one induction value to the next.
+        // fixed_loop has already verified the sole write to the induction variable.
+        if all.iter().all(|stmt| match stmt {
+            Statement::Block { .. } | Statement::InitializationBlock { .. } => true,
+            Statement::Substitution { var, op, .. } => op.is_signal_operator() || var == induction,
+            _ => false,
+        }) {
+            return false;
+        }
+        let roots = self
+            .flow
+            .tags
+            .keys()
+            .filter_map(|path| path.split_once('.').map(|(root, _)| root.to_owned()))
+            .collect();
+        uses_variables(stmt, &roots)
+    }
+
     /// Recognize a fixed increasing loop with an invariant bound and one trailing step.
     fn fixed_loop(
         &self,
@@ -1153,9 +1180,11 @@ impl Analysis<'_> {
                     return Ok(());
                 }
                 if let Some((name, start, end)) = fixed {
-                    if uses_components(loop_body, &self.tagged_components) {
-                        // Each iteration gets concrete component paths and its own rewritten
-                        // constructors. Keep the source metadata for accurate diagnostics.
+                    if self.needs_iteration_analysis(loop_body, &name) {
+                        // Resolve each iteration before merging branches: tag propagation and
+                        // completion can depend on the induction value even without components.
+                        // This also gives components concrete paths and separate constructors.
+                        // Keep the source metadata for accurate diagnostics.
                         let mut iterations = Vec::new();
                         for value in start..end {
                             self.iterations.insert(
