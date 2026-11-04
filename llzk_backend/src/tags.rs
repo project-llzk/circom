@@ -10,7 +10,7 @@ use program_structure::{
     program_archive::ProgramArchive,
     template_data::TemplateData,
 };
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::convert::TryFrom;
 
 use crate::bus::{InstantiatedBus, NominalBus};
@@ -151,18 +151,75 @@ impl FlowState {
     fn initialize(&mut self, dst: &str, access: &[Access]) {
         let indices = access.iter().filter(|a| matches!(a, Access::ArrayAccess(_))).count();
         let assigned = self.capacities.get(dst).and_then(|c| c.assigned_leaves(indices));
-        for (owner, capacity) in &mut self.capacities {
-            let count = if below(owner, dst) {
-                capacity.assigned_leaves(indices)
-            } else if below(dst, owner) {
-                assigned
-            } else {
-                None
-            };
-            if let Some(count) = count {
+        let prefix = format!("{dst}.");
+        for (_, capacity) in self
+            .capacities
+            .range_mut(prefix.clone()..)
+            .take_while(|(owner, _)| owner.starts_with(&prefix))
+        {
+            if let Some(count) = capacity.assigned_leaves(indices) {
                 capacity.consume(count);
             }
         }
+        if let Some(count) = assigned {
+            let mut owner = dst;
+            loop {
+                if let Some(capacity) = self.capacities.get_mut(owner) {
+                    capacity.consume(count);
+                }
+                match owner.rsplit_once('.') {
+                    Some((parent, _)) => owner = parent,
+                    None => break,
+                }
+            }
+        }
+    }
+}
+
+/// Reverse input-tag dependencies and a deduplicated component refresh worklist.
+/// Tag copies are snapshots at the assignment, not live edges between signals.
+#[derive(Default)]
+struct ComponentWorklist {
+    /// Components whose summaries consume each fully qualified input tag.
+    dependents: HashMap<String, HashSet<String>>,
+    /// Components awaiting substitution of their current input tag values.
+    pending: VecDeque<String>,
+    /// Membership of `pending`, preventing duplicate work for bus assignments.
+    queued: HashSet<String>,
+}
+
+impl ComponentWorklist {
+    /// Retain dependencies of all constructor occurrences, including branches.
+    fn register(&mut self, name: &str, summary: &Summary) {
+        for path in summary.inputs.keys() {
+            self.dependents.entry(format!("{name}.{path}")).or_default().insert(name.to_owned());
+        }
+        self.enqueue(name);
+    }
+
+    /// Schedule a component at most once until its pending refresh runs.
+    fn enqueue(&mut self, name: &str) {
+        if self.queued.insert(name.to_owned()) {
+            self.pending.push_back(name.to_owned());
+        }
+    }
+
+    /// Propagate a changed tag binding to just the summaries that read it.
+    fn changed(&mut self, path: &str) {
+        if let Some(names) = self.dependents.get(path) {
+            for name in names {
+                if self.queued.insert(name.clone()) {
+                    self.pending.push_back(name.clone());
+                }
+            }
+        }
+    }
+
+    /// Remove an item before refreshing so downstream changes can enqueue it again.
+    fn pop(&mut self) -> Option<String> {
+        let name = self.pending.pop_front()?;
+        self.queued.remove(&name);
+        Some(name)
     }
 }
 
@@ -229,9 +286,11 @@ struct Analysis<'a> {
     /// All constructor occurrences, accumulated across branches and fixed loops.
     /// Keyed by their indexed component paths; never restored with `flow`.
     components: HashMap<String, Vec<Component<'a>>>,
+    /// Pending summary substitutions, drained before the next statement or flow fork.
+    component_worklist: ComponentWorklist,
     /// Number of analyzed constructor occurrences at each source position.
     constructors: HashMap<usize, usize>,
-    /// Nominal bus identities, including nested fields and component interfaces.
+    /// Nominal bus identities of local fields; component identities are instantiated on use.
     identities: BTreeMap<String, NominalBus>,
     /// Induction values substituted while expanding fixed loops with tagged components.
     iterations: HashMap<String, Expression>,
@@ -616,7 +675,8 @@ impl Analysis<'_> {
                 let prefix = format!("{}.", self.path(name, access)?);
                 self.flow
                     .tags
-                    .iter()
+                    .range(prefix.clone()..)
+                    .take_while(|(key, _)| key.starts_with(&prefix))
                     .filter_map(|(key, tag)| {
                         let suffix = key.strip_prefix(&prefix)?;
                         let owner = key.rsplit_once('.').expect("tag path").0;
@@ -659,7 +719,7 @@ impl Analysis<'_> {
         match expr {
             Expression::Variable { name, access, meta } => {
                 if let (Some(lhs), Some(rhs)) =
-                    (self.identities.get(dst), self.identities.get(&self.path(name, access)?))
+                    (self.identity(dst), self.identity(&self.path(name, access)?))
                 {
                     ensure!(
                         lhs.definition == rhs.definition,
@@ -710,24 +770,29 @@ impl Analysis<'_> {
         let keys = self
             .flow
             .tags
-            .keys()
-            .filter(|key| key.starts_with(&prefix))
-            .cloned()
+            .range(prefix.clone()..)
+            .take_while(|(key, _)| key.starts_with(&prefix))
+            .map(|(key, _)| key.clone())
             .collect::<Vec<_>>();
         for key in keys {
             let mut tag = self.flow.tags.remove(&key).expect("collected key");
+            let previous = tag.value.clone();
             let incoming = source.get(&key[prefix.len()..]);
             if !tag.explicit {
                 if !tag.initialized {
                     tag.value = incoming.and_then(|t| t.value.clone());
                 } else if incoming.is_none_or(|t| !same_value(&tag.value, &t.value)) {
                     if !tag.declared {
+                        self.component_worklist.changed(&key);
                         continue;
                     }
                     tag.value = None;
                 }
             }
             tag.initialized = true;
+            if !same_value(&previous, &tag.value) {
+                self.component_worklist.changed(&key);
+            }
             self.flow.tags.insert(key, tag);
         }
         if !self.flow.initialized.contains(dst) {
@@ -735,52 +800,70 @@ impl Analysis<'_> {
                 tag.declared = false;
                 tag.explicit = false;
                 tag.initialized = true;
-                self.flow.tags.entry(format!("{prefix}{suffix}")).or_insert(tag);
+                if let std::collections::btree_map::Entry::Vacant(entry) =
+                    self.flow.tags.entry(format!("{prefix}{suffix}"))
+                {
+                    self.component_worklist.changed(entry.key());
+                    entry.insert(tag);
+                }
             }
         }
         self.flow.initialized.insert(dst.to_owned());
     }
 
-    /// Substitute actual tag values into a callee's derived output tags.
+    /// Bind an instance's ordinary arguments and currently known input tag values.
+    fn component_bindings(
+        &self,
+        name: &str,
+        component: &Component<'_>,
+    ) -> (HashMap<String, Expression>, HashSet<String>) {
+        let mut bindings = component
+            .summary
+            .params
+            .iter()
+            .cloned()
+            .zip(component.args.iter().cloned())
+            .collect::<HashMap<_, _>>();
+        let mut missing = HashSet::new();
+        for (path, param) in &component.summary.inputs {
+            if let Some(value) =
+                self.flow.tags.get(&format!("{name}.{path}")).and_then(|t| t.value.clone())
+            {
+                bindings.insert(param.clone(), value);
+            } else {
+                missing.insert(param.clone());
+            }
+        }
+        (bindings, missing)
+    }
+
+    /// Instantiate component bus arguments on use, so flow forks and joins cannot
+    /// leave a cached identity referring to another branch's input tag values.
+    fn identity(&self, path: &str) -> Option<NominalBus> {
+        if let Some(bus) = self.identities.get(path) {
+            return Some(bus.clone());
+        }
+        let (name, field) = path.split_once('.')?;
+        let component = self.components.get(name)?.last()?;
+        let bus = component.summary.buses.get(field)?;
+        let (bindings, _) = self.component_bindings(name, component);
+        Some(NominalBus {
+            definition: bus.definition.clone(),
+            arguments: bus
+                .arguments
+                .iter()
+                .map(|arg| crate::bus::substitute(arg, &bindings))
+                .collect(),
+        })
+    }
+
+    /// Substitute only affected summaries, notifying dependents when outputs change.
     fn refresh_components(&mut self) -> Result<()> {
-        for (name, components) in &self.components {
+        while let Some(name) = self.component_worklist.pop() {
             // Propagate from the current constructor, retaining earlier branch occurrences
             // so every call receives its hidden tag arguments during the final rewrite.
-            let component = components.last().expect("component has a constructor");
-            let mut bindings = component
-                .summary
-                .params
-                .iter()
-                .cloned()
-                .zip(component.args.iter().cloned())
-                .collect::<HashMap<_, _>>();
-            let mut missing = HashSet::new();
-            for (path, param) in &component.summary.inputs {
-                if let Some(value) =
-                    self.flow.tags.get(&format!("{name}.{path}")).and_then(|t| t.value.clone())
-                {
-                    bindings.insert(param.clone(), value);
-                } else {
-                    missing.insert(param.clone());
-                }
-            }
-            for (path, bus) in &component.summary.buses {
-                self.identities.insert(
-                    format!("{name}.{path}"),
-                    NominalBus {
-                        definition: bus.definition.clone(),
-                        arguments: bus
-                            .arguments
-                            .iter()
-                            .map(|arg| crate::bus::substitute(arg, &bindings))
-                            .collect(),
-                    },
-                );
-                self.buses.insert(format!("{name}.{path}"));
-            }
-            for (path, capacity) in &component.summary.output_capacities {
-                self.flow.capacities.insert(format!("{name}.{path}"), capacity.clone());
-            }
+            let component = self.components[&name].last().expect("component has a constructor");
+            let (bindings, missing) = self.component_bindings(&name, component);
             for (path, tag) in &component.summary.outputs {
                 let mut tag = tag.clone();
                 tag.value = tag
@@ -791,7 +874,16 @@ impl Analysis<'_> {
                     })
                     .map(|value| self.normalize(value))
                     .transpose()?;
-                self.flow.tags.insert(format!("{name}.{path}"), tag);
+                let key = format!("{name}.{path}");
+                let changed = self
+                    .flow
+                    .tags
+                    .get(&key)
+                    .is_none_or(|previous| !same_value(&previous.value, &tag.value));
+                self.flow.tags.insert(key.clone(), tag);
+                if changed {
+                    self.component_worklist.changed(&key);
+                }
             }
         }
         Ok(())
@@ -911,6 +1003,8 @@ impl Analysis<'_> {
                     );
                     tag.explicit = true;
                     tag.value = Some(value);
+                    self.component_worklist.changed(&dst);
+                    self.refresh_components()?;
                     *stmt = Statement::Block { meta, stmts: vec![] };
                     return Ok(());
                 }
@@ -920,6 +1014,14 @@ impl Analysis<'_> {
                         let occurrence = self.constructors.entry(meta.start).or_default();
                         let position = (meta.start, *occurrence);
                         *occurrence += 1;
+                        self.component_worklist.register(&dst, &callee.summary);
+                        // Completion is an immutable callee fact, independent of input tags.
+                        for (path, capacity) in &callee.summary.output_capacities {
+                            self.flow.capacities.insert(format!("{dst}.{path}"), capacity.clone());
+                        }
+                        for path in callee.summary.buses.keys() {
+                            self.buses.insert(format!("{dst}.{path}"));
+                        }
                         self.components.entry(dst).or_default().push(Component {
                             source: meta.clone(),
                             summary: &callee.summary,
@@ -1129,6 +1231,7 @@ fn analyze(
             })
             .collect(),
         components: HashMap::new(),
+        component_worklist: ComponentWorklist::default(),
         constructors: HashMap::new(),
         identities: BTreeMap::new(),
         iterations: HashMap::new(),
