@@ -98,6 +98,8 @@ struct FlowState {
     capacities: BTreeMap<String, Capacity>,
     /// Known local scalar values, used to resolve compile-time control flow.
     constants: HashMap<String, Expression>,
+    /// Active constructor arguments; missing values represent divergent runtime choices.
+    component_args: HashMap<String, Vec<Option<Expression>>>,
 }
 
 impl FlowState {
@@ -109,24 +111,25 @@ impl FlowState {
     /// Join an analyzed path into its alternative. An absent else branch or a
     /// possibly empty loop uses the incoming state as the alternative.
     fn merge(&mut self, then_state: Self, cond: &Expression, params: &[String], meta: &Meta) {
-        let Self { tags, initialized, capacities, constants } = then_state;
+        let Self { tags, initialized, capacities, constants, component_args } = then_state;
         let compile_time = depends_only_on(cond, params);
         for (key, mut tag) in tags {
             if let Some(other) = self.tags.get(&key) {
-                if !same_value(&tag.value, &other.value) {
-                    // Divergent runtime tags cannot become hidden layout parameters.
-                    tag.value = tag.value.zip(other.value.clone()).filter(|_| compile_time).map(
-                        |(a, b)| Expression::InlineSwitchOp {
-                            meta: meta.clone(),
-                            cond: Box::new(cond.clone()),
-                            if_true: Box::new(a),
-                            if_false: Box::new(b),
-                        },
-                    );
-                }
+                tag.value = merge_value(tag.value, &other.value, cond, compile_time, meta);
                 self.tags.insert(key, tag);
             }
         }
+        // Type checking guarantees the same callee on both paths. Keep its ordinary
+        // arguments conditional so later input-tag writes refresh the joined instance.
+        self.component_args.retain(|name, args| {
+            let Some(then_args) = component_args.get(name) else {
+                return false;
+            };
+            for (arg, then_arg) in args.iter_mut().zip(then_args) {
+                *arg = merge_value(then_arg.clone(), arg, cond, compile_time, meta);
+            }
+            true
+        });
         // A write on either path prevents a later explicit tag assignment.
         self.initialized.extend(initialized);
         for (owner, capacity) in &mut self.capacities {
@@ -255,8 +258,6 @@ struct Component<'a> {
     source: Meta,
     /// Shared template interface; component instances never own a callee body.
     summary: &'a Summary,
-    /// Ordinary arguments in caller scope.
-    args: Vec<Expression>,
     /// Source position and occurrence, distinguishing copies made for fixed loops.
     position: (usize, usize),
 }
@@ -447,6 +448,28 @@ fn same_value(lhs: &Option<Expression>, rhs: &Option<Expression>) -> bool {
         (None, None) => true,
         (Some(a), Some(b)) => crate::bus::expression_key(a) == crate::bus::expression_key(b),
         _ => false,
+    }
+}
+
+/// Preserve branch-dependent metadata only when the condition is compile-time.
+fn merge_value(
+    then_value: Option<Expression>,
+    else_value: &Option<Expression>,
+    cond: &Expression,
+    compile_time: bool,
+    meta: &Meta,
+) -> Option<Expression> {
+    if same_value(&then_value, else_value) {
+        then_value
+    } else {
+        then_value.zip(else_value.clone()).filter(|_| compile_time).map(|(a, b)| {
+            Expression::InlineSwitchOp {
+                meta: meta.clone(),
+                cond: Box::new(cond.clone()),
+                if_true: Box::new(a),
+                if_false: Box::new(b),
+            }
+        })
     }
 }
 
@@ -824,15 +847,17 @@ impl Analysis<'_> {
         &self,
         name: &str,
         component: &Component<'_>,
-    ) -> (HashMap<String, Expression>, HashSet<String>) {
-        let mut bindings = component
-            .summary
-            .params
-            .iter()
-            .cloned()
-            .zip(component.args.iter().cloned())
-            .collect::<HashMap<_, _>>();
+    ) -> Option<(HashMap<String, Expression>, HashSet<String>)> {
+        let args = self.flow.component_args.get(name)?;
+        let mut bindings = HashMap::new();
         let mut missing = HashSet::new();
+        for (param, value) in component.summary.params.iter().zip(args) {
+            if let Some(value) = value {
+                bindings.insert(param.clone(), value.clone());
+            } else {
+                missing.insert(param.clone());
+            }
+        }
         for (path, param) in &component.summary.inputs {
             if let Some(value) =
                 self.flow.tags.get(&format!("{name}.{path}")).and_then(|t| t.value.clone())
@@ -842,7 +867,7 @@ impl Analysis<'_> {
                 missing.insert(param.clone());
             }
         }
-        (bindings, missing)
+        Some((bindings, missing))
     }
 
     /// Instantiate component bus arguments on use, so flow forks and joins cannot
@@ -854,7 +879,7 @@ impl Analysis<'_> {
         let (name, field) = path.split_once('.')?;
         let component = self.components.get(name)?.last()?;
         let bus = component.summary.buses.get(field)?;
-        let (bindings, _) = self.component_bindings(name, component);
+        let (bindings, _) = self.component_bindings(name, component)?;
         Some(NominalBus {
             definition: bus.definition.clone(),
             arguments: bus
@@ -868,10 +893,12 @@ impl Analysis<'_> {
     /// Substitute only affected summaries, notifying dependents when outputs change.
     fn refresh_components(&mut self) -> Result<()> {
         while let Some(name) = self.component_worklist.pop() {
-            // Propagate from the current constructor, retaining earlier branch occurrences
-            // so every call receives its hidden tag arguments during the final rewrite.
+            // All occurrences have the same callee, but ordinary arguments belong to
+            // the current flow state rather than the last constructor visited.
             let component = self.components[&name].last().expect("component has a constructor");
-            let (bindings, missing) = self.component_bindings(&name, component);
+            let Some((bindings, missing)) = self.component_bindings(&name, component) else {
+                continue;
+            };
             for (path, tag) in &component.summary.outputs {
                 let mut tag = tag.clone();
                 tag.value = tag
@@ -1030,10 +1057,12 @@ impl Analysis<'_> {
                         for path in callee.summary.buses.keys() {
                             self.buses.insert(format!("{dst}.{path}"));
                         }
+                        self.flow
+                            .component_args
+                            .insert(dst.clone(), args.iter().cloned().map(Some).collect());
                         self.components.entry(dst).or_default().push(Component {
                             source: meta.clone(),
                             summary: &callee.summary,
-                            args: args.clone(),
                             position,
                         });
                         self.refresh_components()?;
