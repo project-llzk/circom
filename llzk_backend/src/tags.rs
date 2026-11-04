@@ -693,6 +693,14 @@ impl Analysis<'_> {
                     .collect()
             }
             Expression::UniformArray { value, .. } => self.source_tags(value)?,
+            Expression::InlineSwitchOp { if_true, if_false, .. } => {
+                let mut tags = self.source_tags(if_true)?;
+                let other = self.source_tags(if_false)?;
+                tags.retain(|key, tag| {
+                    other.get(key).is_some_and(|t| same_value(&tag.value, &t.value))
+                });
+                tags
+            }
             Expression::ArrayInLine { values, .. } => {
                 let mut tags =
                     values.first().map(|v| self.source_tags(v)).transpose()?.unwrap_or_default();
