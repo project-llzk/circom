@@ -274,6 +274,8 @@ struct Analysis<'a> {
     params: Vec<String>,
     /// Facts local to the current control-flow path.
     flow: FlowState,
+    /// Bindings hidden by declarations in each active lexical block.
+    constant_scopes: Vec<HashMap<String, Option<Expression>>>,
     /// Bus paths, to distinguish bus-copy propagation from scalar assignment rules.
     buses: HashSet<String>,
     /// Input tag parameter names.
@@ -997,13 +999,25 @@ impl Analysis<'_> {
         let meta = stmt.get_meta().clone();
         let mut checks = Vec::new();
         match stmt {
-            Statement::Block { stmts, .. }
-            | Statement::InitializationBlock { initializations: stmts, .. } => {
+            Statement::Block { stmts, .. } => {
+                self.constant_scopes.push(HashMap::new());
+                let result = stmts.iter_mut().try_for_each(|stmt| self.statement(stmt));
+                for (name, value) in self.constant_scopes.pop().expect("active block scope") {
+                    if let Some(value) = value {
+                        self.flow.constants.insert(name, value);
+                    } else {
+                        self.flow.constants.remove(&name);
+                    }
+                }
+                result?;
+            }
+            Statement::InitializationBlock { initializations: stmts, .. } => {
+                // Declaration groups belong to the enclosing lexical block.
                 for stmt in stmts {
                     self.statement(stmt)?;
                 }
             }
-            Statement::Declaration { meta, dimensions, .. } => {
+            Statement::Declaration { meta, name, dimensions, .. } => {
                 if !self.iterations.is_empty() {
                     meta.elem_id = self.next_declaration;
                     self.next_declaration += 1;
@@ -1011,6 +1025,12 @@ impl Analysis<'_> {
                 for dim in dimensions {
                     self.expression(dim)?;
                 }
+                // Save at the declaration, preserving any preceding outer writes.
+                let previous = self.flow.constants.remove(name);
+                self.constant_scopes
+                    .last_mut()
+                    .expect("declaration inside a block")
+                    .insert(name.clone(), previous);
             }
             Statement::Substitution { var, access, op, rhe, .. } => {
                 for access in access.iter_mut() {
@@ -1268,6 +1288,7 @@ fn analyze(
         summaries,
         params: template.get_name_of_params().clone(),
         flow: FlowState::default(),
+        constant_scopes: Vec::new(),
         buses: HashSet::new(),
         inputs: BTreeMap::new(),
         required: HashSet::new(),
