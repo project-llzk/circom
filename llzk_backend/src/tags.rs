@@ -173,8 +173,8 @@ impl FlowState {
     }
 }
 
-/// Summary consumed at component call sites before generating any types.
-#[derive(Clone, Debug)]
+/// Shared interface facts consumed at component call sites before generating any types.
+#[derive(Debug)]
 struct Summary {
     /// Nominal identities of bus interfaces and their nested fields.
     buses: BTreeMap<String, NominalBus>,
@@ -188,17 +188,23 @@ struct Summary {
     outputs: BTreeMap<String, Tag>,
     /// Output capacities, preserving unknown completion at component call sites.
     output_capacities: BTreeMap<String, Capacity>,
+}
+
+/// Per-template analysis result, keeping the rewritten body out of the interface summary.
+struct AnalyzedTemplate {
+    /// Immutable interface facts shared by all component instances of this template.
+    summary: Summary,
     /// Body with tag reads lowered and metadata assignments removed.
     body: Statement,
 }
 
 /// A component call whose tag parameters are determined by its input assignments.
 #[derive(Clone, Debug)]
-struct Component {
+struct Component<'a> {
     /// Constructor location used by validation diagnostics.
     source: Meta,
-    /// Template summary.
-    summary: Summary,
+    /// Shared template interface; component instances never own a callee body.
+    summary: &'a Summary,
     /// Ordinary arguments in caller scope.
     args: Vec<Expression>,
     /// Source position and occurrence, distinguishing copies made for fixed loops.
@@ -212,7 +218,7 @@ struct Analysis<'a> {
     /// Prime used to compare known tag expressions.
     prime: &'a BigUint,
     /// Available callee summaries.
-    summaries: &'a HashMap<String, Summary>,
+    summaries: &'a HashMap<String, AnalyzedTemplate>,
     /// Compile-time template parameters, including lowered input tags.
     params: Vec<String>,
     /// Facts local to the current control-flow path.
@@ -229,7 +235,7 @@ struct Analysis<'a> {
     tagged_components: HashSet<String>,
     /// All constructor occurrences, accumulated across branches and fixed loops.
     /// Keyed by their indexed component paths; never restored with `flow`.
-    components: HashMap<String, Vec<Component>>,
+    components: HashMap<String, Vec<Component<'a>>>,
     /// Number of analyzed constructor occurrences at each source position.
     constructors: HashMap<usize, usize>,
     /// Nominal bus identities, including nested fields and component interfaces.
@@ -917,13 +923,13 @@ impl Analysis<'_> {
                 }
                 self.expression(rhe)?;
                 if let Expression::Call { id, args, meta } = unwrap_parallel(rhe) {
-                    if let Some(summary) = self.summaries.get(id) {
+                    if let Some(callee) = self.summaries.get(id) {
                         let occurrence = self.constructors.entry(meta.start).or_default();
                         let position = (meta.start, *occurrence);
                         *occurrence += 1;
                         self.components.entry(dst).or_default().push(Component {
                             source: meta.clone(),
-                            summary: summary.clone(),
+                            summary: &callee.summary,
                             args: args.clone(),
                             position,
                         });
@@ -1087,7 +1093,7 @@ fn analyze(
     name: &str,
     program: &ProgramArchive,
     prime: &BigUint,
-    summaries: &mut HashMap<String, Summary>,
+    summaries: &mut HashMap<String, AnalyzedTemplate>,
     active: &mut HashSet<String>,
 ) -> Result<()> {
     if summaries.contains_key(name) {
@@ -1125,7 +1131,7 @@ fn analyze(
                 let Expression::Call { id, .. } = unwrap_parallel(rhe) else {
                     return None;
                 };
-                let summary = summaries.get(id)?;
+                let summary = &summaries.get(id)?.summary;
                 (!summary.inputs.is_empty() || !summary.outputs.is_empty()).then(|| var.clone())
             })
             .collect(),
@@ -1212,9 +1218,8 @@ fn analyze(
         required_values: analysis.required,
         outputs,
         output_capacities,
-        body,
     };
-    summaries.insert(name.to_owned(), summary);
+    summaries.insert(name.to_owned(), AnalyzedTemplate { summary, body });
     active.remove(name);
     Ok(())
 }
@@ -1230,14 +1235,14 @@ pub(crate) fn prepare(program: &ProgramArchive, prime: &BigUint) -> Result<Progr
         analyze(&name, program, prime, &mut summaries, &mut HashSet::new())?;
     }
     let mut result = program.clone();
-    for (name, summary) in summaries {
+    for (name, AnalyzedTemplate { summary, body }) in summaries {
         let old = &program.templates[&name];
         let mut params = summary.params;
         params.extend(summary.inputs.values().cloned());
         let template = TemplateData::copy(
             name.clone(),
             old.get_file_id(),
-            summary.body,
+            body,
             params.len(),
             params,
             old.get_param_location(),
