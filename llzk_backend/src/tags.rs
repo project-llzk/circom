@@ -359,7 +359,13 @@ fn unwrap_parallel_mut(expr: &mut Expression) -> &mut Expression {
 fn depends_only_on(expr: &Expression, params: &[String]) -> bool {
     match expr {
         Expression::Number(..) => true,
-        Expression::Variable { name, access, .. } => access.is_empty() && params.contains(name),
+        Expression::Variable { name, access, .. } => {
+            params.contains(name)
+                && access.iter().all(|access| match access {
+                    Access::ArrayAccess(index) => depends_only_on(index, params),
+                    Access::ComponentAccess(_) => false,
+                })
+        }
         Expression::InfixOp { lhe, rhe, .. } => {
             depends_only_on(lhe, params) && depends_only_on(rhe, params)
         }

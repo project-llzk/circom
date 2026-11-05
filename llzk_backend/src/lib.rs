@@ -25,6 +25,7 @@ mod shared;
 mod lvalue;
 mod subcmp;
 mod template;
+mod template_arrays;
 mod template_ext;
 mod temporary_types;
 mod traversal;

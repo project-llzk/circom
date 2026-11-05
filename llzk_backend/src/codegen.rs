@@ -101,10 +101,13 @@ fn new_llzk_module<'ctx>(
 #[allow(clippy::result_unit_err)]
 pub fn generate_llzk(program: &impl ProgramLike, config: LlzkConfig) -> Result<(), ()> {
     if let Some(program) = program.symbolic_program() {
-        if program.buses.is_empty() {
-            return generate_prepared_llzk(program, config);
+        let prepared = if program.buses.is_empty() {
+            Ok(program.clone())
+        } else {
+            crate::tags::prepare(program, &config.prime)
         }
-        let prepared = crate::tags::prepare(program, &config.prime).map_err(|err| {
+        .and_then(|program| crate::template_arrays::prepare(program, &config.prime))
+        .map_err(|err| {
             eprintln!("{} {err:#}", Color::Red.paint("Failed to analyze compile-time metadata:"));
         })?;
         return generate_prepared_llzk(&prepared, config);
