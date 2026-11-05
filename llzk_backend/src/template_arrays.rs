@@ -179,10 +179,8 @@ impl Preparation<'_> {
         for (formal, shape) in old.get_name_of_params().iter().zip(parameter_shapes) {
             shapes.insert(formal.clone(), Some(shape.clone().unwrap_or_default()));
             if let Some(shape) = shape {
-                let scalar_names = indices(shape)?
-                    .iter()
-                    .enumerate()
-                    .map(|(element, _)| format!("$array${formal}${element}"))
+                let scalar_names = (0..element_count(shape)?)
+                    .map(|element| format!("$array${formal}${element}"))
                     .collect::<Vec<_>>();
                 prefix.push(Statement::Declaration {
                     meta: meta.clone(),
@@ -262,13 +260,22 @@ impl Preparation<'_> {
     }
 }
 
+/// Count elements without materializing coordinates, preserving zero-sized dimensions.
+fn element_count(shape: &[usize]) -> Result<usize> {
+    if shape.contains(&0) {
+        return Ok(0);
+    }
+    shape
+        .iter()
+        .try_fold(1usize, |size, dimension| size.checked_mul(*dimension))
+        .ok_or_else(|| anyhow::anyhow!("array template parameter size overflow"))
+}
+
 /// Enumerate row-major coordinates, checking the size before materializing parameters.
 fn indices(shape: &[usize]) -> Result<Vec<Vec<usize>>> {
-    if shape.contains(&0) {
+    if element_count(shape)? == 0 {
         return Ok(vec![]);
     }
-    let length = shape.iter().try_fold(1usize, |size, dimension| size.checked_mul(*dimension));
-    ensure!(length.is_some(), "array template parameter size overflow");
     let mut indices = vec![vec![]];
     for dimension in shape {
         indices = indices
