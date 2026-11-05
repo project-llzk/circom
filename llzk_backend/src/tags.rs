@@ -302,7 +302,7 @@ struct Analysis<'a> {
     summaries: &'a HashMap<String, AnalyzedTemplate>,
     /// Compile-time template parameters, including lowered input tags.
     params: Vec<String>,
-    /// Parameters never reassigned or shadowed, safe to retain in local snapshots.
+    /// Parameters never reassigned, safe to retain in local snapshots across shadowing scopes.
     constant_params: Vec<String>,
     /// Facts local to the current control-flow path.
     flow: FlowState,
@@ -396,6 +396,31 @@ fn statements<'a>(stmt: &'a Statement, out: &mut Vec<&'a Statement>) {
         }
         Statement::While { stmt, .. } => statements(stmt, out),
         _ => {}
+    }
+}
+
+/// Detect writes to a parameter's binding, excluding locals that shadow its name.
+fn assigns_parameter(stmt: &Statement, param: &str, shadowed: &mut bool) -> bool {
+    match stmt {
+        Statement::Block { stmts, .. } => {
+            let mut shadowed = *shadowed;
+            stmts.iter().any(|stmt| assigns_parameter(stmt, param, &mut shadowed))
+        }
+        Statement::InitializationBlock { initializations, .. } => {
+            // Declaration groups introduce bindings in the enclosing lexical block.
+            initializations.iter().any(|stmt| assigns_parameter(stmt, param, shadowed))
+        }
+        Statement::Declaration { name, .. } => {
+            *shadowed |= name == param;
+            false
+        }
+        Statement::Substitution { var, .. } => var == param && !*shadowed,
+        Statement::IfThenElse { if_case, else_case, .. } => {
+            assigns_parameter(if_case, param, shadowed)
+                || else_case.as_ref().is_some_and(|stmt| assigns_parameter(stmt, param, shadowed))
+        }
+        Statement::While { stmt, .. } => assigns_parameter(stmt, param, shadowed),
+        _ => false,
     }
 }
 
@@ -723,10 +748,22 @@ impl Analysis<'_> {
     fn constant_expression(&self, expr: &Expression) -> Result<Expression> {
         let mut expr = expr.clone();
         match &mut expr {
-            Expression::Variable { access, .. } => {
-                for item in access {
+            Expression::Variable { name, access, .. } => {
+                for item in access.iter_mut() {
                     if let Access::ArrayAccess(index) = item {
                         *index = self.constant_expression(index)?;
+                    }
+                }
+                if let Some(value) = self.flow.constants.get(name) {
+                    let indices = access
+                        .iter()
+                        .map(|item| match item {
+                            Access::ArrayAccess(index) => Some(index.clone()),
+                            Access::ComponentAccess(_) => None,
+                        })
+                        .collect::<Option<Vec<_>>>();
+                    if let Some(indices) = indices {
+                        return self.normalize(crate::bus::index_expression(value, &indices));
                     }
                 }
             }
@@ -756,13 +793,26 @@ impl Analysis<'_> {
                 **value = self.constant_expression(value)?;
                 **dimension = self.constant_expression(dimension)?;
             }
-            _ => {}
+            _ => return self.normalize(crate::bus::substitute(&expr, &self.flow.constants)),
         }
-        self.normalize(crate::bus::substitute(&expr, &self.flow.constants))
+        // Children already contain snapshots. Substituting them again could bind
+        // a captured parameter to a same-named local in the current scope.
+        self.normalize(expr)
     }
 
     /// Capture whole-array copies and indexed writes without retaining stale local reads.
     fn assign_constant(&mut self, name: &str, access: &[Access], rhs: &Expression) -> Result<()> {
+        // An unresolved local must not pass the parameter whitelist just because
+        // it shadows that name. Check before substitution so saved outer values
+        // remain valid even while their original parameter name is shadowed.
+        if references_matching(rhs, &|_, name| {
+            self.constant_params.iter().any(|param| param == name)
+                && !self.flow.constants.contains_key(name)
+                && self.constant_scopes.iter().any(|scope| scope.contains_key(name))
+        }) {
+            self.flow.constants.remove(name);
+            return Ok(());
+        }
         let value = self.constant_expression(rhs)?;
         let mut indices = Vec::new();
         for item in access {
@@ -1542,13 +1592,7 @@ fn analyze(
         constant_params: template
             .get_name_of_params()
             .iter()
-            .filter(|param| {
-                !all.iter().any(|stmt| match stmt {
-                    Statement::Substitution { var, .. }
-                    | Statement::Declaration { name: var, .. } => var == *param,
-                    _ => false,
-                })
-            })
+            .filter(|param| !assigns_parameter(template.get_body(), param, &mut false))
             .cloned()
             .collect(),
         flow: FlowState::default(),

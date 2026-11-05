@@ -322,7 +322,7 @@ pub(crate) const ARRAY_ACCESS: &str = "$bus_array_access";
 
 /// Apply indices in caller scope, selecting literal elements without materializing the array.
 /// Other array-valued expressions retain their indices for normal LLZK array-read lowering.
-fn index_expression(actual: &Expression, indices: &[Expression]) -> Expression {
+pub(crate) fn index_expression(actual: &Expression, indices: &[Expression]) -> Expression {
     let Some((index, rest)) = indices.split_first() else {
         return actual.clone();
     };
