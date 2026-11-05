@@ -92,9 +92,10 @@ pub fn generate_llzk(program: &impl ProgramLike, config: LlzkConfig) -> Result<(
             crate::template_arrays::prepare(program.clone(), &config.prime).map_err(|err| {
                 eprintln!("{} {err:#}", Color::Red.paint("Failed to prepare array parameters:"));
             })?;
-        return generate_prepared_llzk(&prepared, config);
+        generate_prepared_llzk(&prepared, config)
+    } else {
+        generate_prepared_llzk(program, config)
     }
-    generate_prepared_llzk(program, config)
 }
 
 /// Generate IR after array template arguments have been scalarized.
