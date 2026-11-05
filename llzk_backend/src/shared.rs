@@ -2528,8 +2528,9 @@ where
                     }
                 }
                 Statement::Substitution { meta, var, access, op, rhe } => {
-                    // Signal assignments don't affect var values so skip those.
-                    if !op.is_signal_operator() {
+                    // Only replay assignments to local vars. Component constructors and
+                    // signal assignments do not contribute to template parameter values.
+                    if !op.is_signal_operator() && gen_ctx.block_ctx.is_name_present(var) {
                         gen_ctx.handle_substitution_stmt_nonsignal(
                             codegen,
                             InfoProviders::default(),
