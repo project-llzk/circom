@@ -98,7 +98,7 @@ struct FlowState {
     initialized: HashSet<String>,
     /// Known or unknown scalar-leaf completion for array-wide tags.
     capacities: BTreeMap<String, Capacity>,
-    /// Known local scalar and literal array values for compile-time control flow.
+    /// Local scalar and array snapshots expressed only in compile-time parameters.
     constants: HashMap<String, Expression>,
     /// Active constructor arguments; missing values represent divergent runtime choices.
     component_args: HashMap<String, Vec<Option<Expression>>>,
@@ -276,6 +276,8 @@ struct Analysis<'a> {
     summaries: &'a HashMap<String, AnalyzedTemplate>,
     /// Compile-time template parameters, including lowered input tags.
     params: Vec<String>,
+    /// Parameters never reassigned or shadowed, safe to retain in local snapshots.
+    constant_params: Vec<String>,
     /// Facts local to the current control-flow path.
     flow: FlowState,
     /// Bindings hidden by declarations in each active lexical block.
@@ -310,15 +312,16 @@ fn below(path: &str, parent: &str) -> bool {
     path == parent || path.starts_with(&format!("{parent}."))
 }
 
-/// Only snapshots of fully known values may survive subsequent local writes.
-fn is_constant_value(expr: &Expression) -> bool {
+/// Snapshots may reference immutable parameters, but never other mutable locals.
+fn is_constant_value(expr: &Expression, params: &[String]) -> bool {
     match expr {
-        Expression::Number(..) => true,
-        Expression::ArrayInLine { values, .. } => values.iter().all(is_constant_value),
-        Expression::UniformArray { value, dimension, .. } => {
-            is_constant_value(value) && matches!(dimension.as_ref(), Expression::Number(..))
+        Expression::ArrayInLine { values, .. } => {
+            values.iter().all(|value| is_constant_value(value, params))
         }
-        _ => false,
+        Expression::UniformArray { value, dimension, .. } => {
+            is_constant_value(value, params) && depends_only_on(dimension, params)
+        }
+        _ => depends_only_on(expr, params),
     }
 }
 
@@ -602,6 +605,7 @@ impl Analysis<'_> {
                 let param = format!("$tag${}", key.replace('.', "$"));
                 self.inputs.insert(key.clone(), param.clone());
                 self.params.push(param.clone());
+                self.constant_params.push(param.clone());
                 Some(Expression::Variable { meta: meta.clone(), name: param, access: vec![] })
             } else {
                 None
@@ -656,9 +660,9 @@ impl Analysis<'_> {
         }
     }
 
-    /// Fold local values from the leaves up so computed indices select literal elements.
-    /// Keep this separate from expression rewriting: these facts select control flow,
-    /// while ordinary local reads still use the original variable declarations.
+    /// Fold local values from the leaves up so computed indices select known elements.
+    /// Keep this separate from expression rewriting: these facts select control flow
+    /// and capture tag values, while ordinary reads use the original declarations.
     fn constant_expression(&self, expr: &Expression) -> Result<Expression> {
         let mut expr = expr.clone();
         match &mut expr {
@@ -718,7 +722,7 @@ impl Analysis<'_> {
             };
             indices.push(index);
         }
-        if is_constant_value(&value) {
+        if is_constant_value(&value, &self.constant_params) {
             if indices.is_empty() {
                 self.flow.constants.insert(name.to_owned(), value);
                 return Ok(());
@@ -1469,6 +1473,18 @@ fn analyze(
         prime,
         summaries,
         params: template.get_name_of_params().clone(),
+        constant_params: template
+            .get_name_of_params()
+            .iter()
+            .filter(|param| {
+                !all.iter().any(|stmt| match stmt {
+                    Statement::Substitution { var, .. }
+                    | Statement::Declaration { name: var, .. } => var == *param,
+                    _ => false,
+                })
+            })
+            .cloned()
+            .collect(),
         flow: FlowState::default(),
         constant_scopes: Vec::new(),
         buses: HashSet::new(),
