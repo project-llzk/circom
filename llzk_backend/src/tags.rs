@@ -410,36 +410,41 @@ fn depends_only_on(expr: &Expression, params: &[String]) -> bool {
 
 /// Whether an expression references any of the exact variable names in `names`.
 fn references_any(expr: &Expression, names: &HashSet<String>) -> bool {
+    references_matching(expr, &|_, name| names.contains(name))
+}
+
+/// Inspect variable accesses, including accesses inside array indices.
+fn references_matching(expr: &Expression, predicate: &impl Fn(&Meta, &str) -> bool) -> bool {
     match expr {
-        Expression::Variable { name, access, .. } => {
-            names.contains(name)
+        Expression::Variable { meta, name, access, .. } => {
+            predicate(meta, name)
                 || access.iter().any(|access| match access {
-                    Access::ArrayAccess(index) => references_any(index, names),
+                    Access::ArrayAccess(index) => references_matching(index, predicate),
                     Access::ComponentAccess(_) => false,
                 })
         }
         Expression::InfixOp { lhe, rhe, .. } => {
-            references_any(lhe, names) || references_any(rhe, names)
+            references_matching(lhe, predicate) || references_matching(rhe, predicate)
         }
         Expression::PrefixOp { rhe, .. } | Expression::ParallelOp { rhe, .. } => {
-            references_any(rhe, names)
+            references_matching(rhe, predicate)
         }
         Expression::InlineSwitchOp { cond, if_true, if_false, .. } => {
-            references_any(cond, names)
-                || references_any(if_true, names)
-                || references_any(if_false, names)
+            references_matching(cond, predicate)
+                || references_matching(if_true, predicate)
+                || references_matching(if_false, predicate)
         }
         Expression::Call { args, .. } | Expression::BusCall { args, .. } => {
-            args.iter().any(|arg| references_any(arg, names))
+            args.iter().any(|arg| references_matching(arg, predicate))
         }
         Expression::AnonymousComp { params, signals, .. } => {
-            params.iter().chain(signals).any(|expr| references_any(expr, names))
+            params.iter().chain(signals).any(|expr| references_matching(expr, predicate))
         }
         Expression::ArrayInLine { values, .. } | Expression::Tuple { values, .. } => {
-            values.iter().any(|value| references_any(value, names))
+            values.iter().any(|value| references_matching(value, predicate))
         }
         Expression::UniformArray { value, dimension, .. } => {
-            references_any(value, names) || references_any(dimension, names)
+            references_matching(value, predicate) || references_matching(dimension, predicate)
         }
         Expression::Number(..) => false,
     }
@@ -447,32 +452,37 @@ fn references_any(expr: &Expression, names: &HashSet<String>) -> bool {
 
 /// Whether any statement reads or writes one of the given variable roots.
 fn uses_variables(stmt: &Statement, names: &HashSet<String>) -> bool {
+    uses_matching(stmt, &|_, name| names.contains(name))
+}
+
+/// Inspect every variable read or assignment destination in a statement tree.
+fn uses_matching(stmt: &Statement, predicate: &impl Fn(&Meta, &str) -> bool) -> bool {
     let mut all = Vec::new();
     statements(stmt, &mut all);
     all.into_iter().any(|stmt| match stmt {
-        Statement::Substitution { var, access, rhe, .. } => {
-            names.contains(var)
-                || references_any(rhe, names)
+        Statement::Substitution { meta, var, access, rhe, .. } => {
+            predicate(meta, var)
+                || references_matching(rhe, predicate)
                 || access.iter().any(|access| match access {
-                    Access::ArrayAccess(index) => references_any(index, names),
+                    Access::ArrayAccess(index) => references_matching(index, predicate),
                     Access::ComponentAccess(_) => false,
                 })
         }
         Statement::Declaration { dimensions, .. } => {
-            dimensions.iter().any(|expr| references_any(expr, names))
+            dimensions.iter().any(|expr| references_matching(expr, predicate))
         }
         Statement::IfThenElse { cond, .. } | Statement::While { cond, .. } => {
-            references_any(cond, names)
+            references_matching(cond, predicate)
         }
         Statement::ConstraintEquality { lhe, rhe, .. }
         | Statement::MultSubstitution { lhe, rhe, .. } => {
-            references_any(lhe, names) || references_any(rhe, names)
+            references_matching(lhe, predicate) || references_matching(rhe, predicate)
         }
         Statement::Assert { arg, .. }
         | Statement::Return { value: arg, .. }
-        | Statement::UnderscoreSubstitution { rhe: arg, .. } => references_any(arg, names),
+        | Statement::UnderscoreSubstitution { rhe: arg, .. } => references_matching(arg, predicate),
         Statement::LogCall { args, .. } => args.iter().any(|arg| match arg {
-            LogArgument::LogExp(expr) => references_any(expr, names),
+            LogArgument::LogExp(expr) => references_matching(expr, predicate),
             LogArgument::LogStr(_) => false,
         }),
         _ => false,
@@ -1569,6 +1579,18 @@ fn analyze(
 
 /// Resolve symbolic metadata before declaration/type collection.
 pub(crate) fn prepare(program: &ProgramArchive, prime: &BigUint) -> Result<ProgramArchive> {
+    // Presence-only signal annotations need no value lowering. Preserve the existing
+    // symbolic path unless buses or explicit tag reads/writes require metadata analysis.
+    if program.buses.is_empty()
+        && !program.templates.values().any(|template| {
+            uses_matching(template.get_body(), &|meta, _| {
+                let knowledge = meta.get_type_knowledge();
+                knowledge.is_initialized() && knowledge.is_tag()
+            })
+        })
+    {
+        return Ok(program.clone());
+    }
     let program = prepare_main_arrays(program)?;
     let program = &program;
     let mut summaries = HashMap::new();
