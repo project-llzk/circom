@@ -2724,6 +2724,11 @@ where
             assert!(!trace.is_empty(), "trace must not be empty in gen_up_to_target");
             let boundary_ptr: *const Statement = trace[0];
             let inner_trace = &trace[1..];
+            // Loop lowering can visit a cloned body. Its runtime induction variable is
+            // not a template binding; retain the affine-map fallback in that case.
+            if !stmts.iter().any(|stmt| std::ptr::eq(stmt, boundary_ptr)) {
+                return Ok(None);
+            }
 
             // Generate all statements that precede the boundary, then find the boundary itself.
             let mut boundary_stmt: Option<&Statement> = None;
