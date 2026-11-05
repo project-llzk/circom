@@ -282,6 +282,11 @@ struct AnalyzedTemplate {
 /// A component call whose tag parameters are determined by its input assignments.
 #[derive(Clone, Debug)]
 struct Component<'a> {
+    /// Component root and constructor-time index snapshots, independent of path spelling.
+    name: String,
+    indices: Vec<Expression>,
+    /// Ordinary arguments retained when a possibly empty loop discards its live state.
+    args: Vec<Option<Expression>>,
     /// Constructor location used by validation diagnostics.
     source: Meta,
     /// Shared template interface; component instances never own a callee body.
@@ -618,13 +623,25 @@ impl Analysis<'_> {
                     path.push_str(field);
                 }
                 Access::ArrayAccess(index) if component => {
-                    let index = self.normalize(index.clone())?;
+                    let index = self.constant_expression(index)?;
                     path.push_str(&format!("[{}]", crate::bus::expression_key(&index)));
                 }
                 Access::ArrayAccess(_) => {}
             }
         }
         Ok(path)
+    }
+
+    /// Snapshot only component indices; indices after the first field select bus data.
+    fn component_indices(&self, access: &[Access]) -> Result<Vec<Expression>> {
+        access
+            .iter()
+            .take_while(|access| matches!(access, Access::ArrayAccess(_)))
+            .map(|access| match access {
+                Access::ArrayAccess(index) => self.constant_expression(index),
+                Access::ComponentAccess(_) => unreachable!("component indices precede fields"),
+            })
+            .collect()
     }
 
     /// Instantiate bus metadata once before populating declared tags and capacities.
@@ -984,14 +1001,18 @@ impl Analysis<'_> {
     /// The array-parameter pass expands array equalities once their shapes are known.
     fn compatibility(
         &self,
-        dst: &str,
+        destinations: &[NominalBus],
         expr: &Expression,
         checks: &mut Vec<Statement>,
     ) -> Result<()> {
+        if destinations.is_empty() {
+            return Ok(());
+        }
         match expr {
             Expression::Variable { name, access, meta } => {
-                if let (Some(lhs), Some(rhs)) =
-                    (self.identity(dst), self.identity(&self.path(name, access)?))
+                let sources = self.bus_identities(name, access)?;
+                for (lhs, rhs) in
+                    destinations.iter().flat_map(|lhs| sources.iter().map(move |rhs| (lhs, rhs)))
                 {
                     ensure!(
                         lhs.definition == rhs.definition,
@@ -1027,13 +1048,15 @@ impl Analysis<'_> {
             }
             Expression::ArrayInLine { values, .. } => {
                 for value in values {
-                    self.compatibility(dst, value, checks)?;
+                    self.compatibility(destinations, value, checks)?;
                 }
             }
-            Expression::UniformArray { value, .. } => self.compatibility(dst, value, checks)?,
+            Expression::UniformArray { value, .. } => {
+                self.compatibility(destinations, value, checks)?;
+            }
             Expression::InlineSwitchOp { if_true, if_false, .. } => {
-                self.compatibility(dst, if_true, checks)?;
-                self.compatibility(dst, if_false, checks)?;
+                self.compatibility(destinations, if_true, checks)?;
+                self.compatibility(destinations, if_false, checks)?;
             }
             _ => {}
         }
@@ -1049,7 +1072,7 @@ impl Analysis<'_> {
     ) -> Result<()> {
         match lhe {
             Expression::Variable { name, access, .. } => {
-                self.compatibility(&self.path(name, access)?, rhe, checks)?;
+                self.compatibility(&self.bus_identities(name, access)?, rhe, checks)?;
             }
             Expression::ArrayInLine { values, .. } => {
                 for value in values {
@@ -1120,8 +1143,9 @@ impl Analysis<'_> {
         &self,
         name: &str,
         component: &Component<'_>,
-    ) -> Option<(HashMap<String, Expression>, HashSet<String>)> {
-        let args = &self.flow.component_states.get(name)?.args;
+    ) -> (HashMap<String, Expression>, HashSet<String>) {
+        let state = self.flow.component_states.get(name);
+        let args = state.map_or(&component.args, |state| &state.args);
         let mut bindings = HashMap::new();
         let mut missing = HashSet::new();
         for (param, value) in component.summary.params.iter().zip(args) {
@@ -1132,35 +1156,92 @@ impl Analysis<'_> {
             }
         }
         for (path, param) in &component.summary.inputs {
-            if let Some(value) =
-                self.flow.tags.get(&format!("{name}.{path}")).and_then(|t| t.value.clone())
-            {
+            let tag = if state.is_some() {
+                self.flow.tags.get(&format!("{name}.{path}"))
+            } else {
+                component.input_tags.as_ref().and_then(|tags| tags.get(path))
+            };
+            if let Some(value) = tag.and_then(|t| t.value.clone()) {
                 bindings.insert(param.clone(), value);
             } else {
                 missing.insert(param.clone());
             }
         }
-        Some((bindings, missing))
+        (bindings, missing)
     }
 
-    /// Instantiate component bus arguments on use, so flow forks and joins cannot
-    /// leave a cached identity referring to another branch's input tag values.
-    fn identity(&self, path: &str) -> Option<NominalBus> {
-        if let Some(bus) = self.identities.get(path) {
-            return Some(bus.clone());
+    /// Resolve every selectable component using its own bindings. Symbolic indices
+    /// may select concrete constructors or constructors with different index spellings.
+    /// Instantiate on use so flow joins cannot leave stale input tag arguments.
+    fn bus_identities(&self, name: &str, access: &[Access]) -> Result<Vec<NominalBus>> {
+        if !self.component_roots.contains(name) {
+            return Ok(self
+                .identities
+                .get(&self.path(name, access)?)
+                .cloned()
+                .into_iter()
+                .collect());
         }
-        let (name, field) = path.split_once('.')?;
-        let component = self.components.get(name)?.last()?;
-        let bus = component.summary.buses.get(field)?;
-        let (bindings, _) = self.component_bindings(name, component)?;
-        Some(NominalBus {
-            definition: bus.definition.clone(),
-            arguments: bus
+        let indices = self.component_indices(access)?;
+        let field = access
+            .iter()
+            .filter_map(|access| match access {
+                Access::ComponentAccess(field) => Some(field.as_str()),
+                Access::ArrayAccess(_) => None,
+            })
+            .collect::<Vec<_>>()
+            .join(".");
+        let mut candidates = Vec::new();
+        for (path, constructors) in &self.components {
+            // Live state already joins the reaching occurrences. Otherwise inspect
+            // each saved constructor without reviving possibly absent tag state.
+            let constructors = if self.flow.component_states.contains_key(path) {
+                &constructors[constructors.len() - 1..]
+            } else {
+                constructors.as_slice()
+            };
+            for component in constructors {
+                if component.name != name
+                    || component.indices.len() != indices.len()
+                    || component.indices.iter().zip(&indices).any(|(a, b)| {
+                        matches!((a, b), (Expression::Number(_, a), Expression::Number(_, b)) if a != b)
+                    })
+                {
+                    continue;
+                }
+                if let Some(bus) = component.summary.buses.get(&field) {
+                    candidates.push((path, component, bus));
+                }
+            }
+        }
+        candidates.sort_unstable_by_key(|(path, component, _)| (*path, component.position));
+        let mut buses = Vec::new();
+        let mut seen = HashSet::new();
+        for (path, component, bus) in candidates {
+            let (bindings, missing) = self.component_bindings(path, component);
+            let arguments = bus
                 .arguments
                 .iter()
-                .map(|arg| crate::bus::substitute(arg, &bindings))
-                .collect(),
-        })
+                .map(|arg| self.normalize(crate::bus::substitute(arg, &bindings)))
+                .collect::<Result<Vec<_>>>()?;
+            if !self.flow.component_states.contains_key(path) {
+                ensure!(
+                    arguments.iter().all(|arg| {
+                        !references_any(arg, &missing) && is_constant_value(arg, &self.params)
+                    }),
+                    "cannot resolve parameters for bus {} of component {path}",
+                    bus.definition
+                );
+            }
+            let key = (
+                &bus.definition,
+                arguments.iter().map(crate::bus::expression_key).collect::<Vec<_>>(),
+            );
+            if seen.insert(key) {
+                buses.push(NominalBus { definition: bus.definition.clone(), arguments });
+            }
+        }
+        Ok(buses)
     }
 
     /// Substitute only affected summaries, notifying dependents when outputs change.
@@ -1169,9 +1250,10 @@ impl Analysis<'_> {
             // All occurrences have the same callee, but ordinary arguments belong to
             // the current flow state rather than the last constructor visited.
             let component = self.components[&name].last().expect("component has a constructor");
-            let Some((bindings, missing)) = self.component_bindings(&name, component) else {
+            if !self.flow.component_states.contains_key(&name) {
                 continue;
-            };
+            }
+            let (bindings, missing) = self.component_bindings(&name, component);
             for (path, tag) in &component.summary.outputs {
                 let mut tag = tag.clone();
                 tag.value = tag
@@ -1378,12 +1460,19 @@ impl Analysis<'_> {
                             .iter()
                             .map(|arg| self.constant_expression(arg).map(Some))
                             .collect::<Result<Vec<_>>>()?;
+                        let indices = self.component_indices(access)?;
                         let components = self.components.entry(dst.clone()).or_default();
                         self.flow.component_states.insert(
                             dst,
-                            ComponentState { args, occurrences: vec![components.len()] },
+                            ComponentState {
+                                args: args.clone(),
+                                occurrences: vec![components.len()],
+                            },
                         );
                         components.push(Component {
+                            name: var.clone(),
+                            indices,
+                            args,
                             source: meta.clone(),
                             summary: &callee.summary,
                             position,
@@ -1394,7 +1483,7 @@ impl Analysis<'_> {
                     }
                 }
                 if op.is_signal_operator() {
-                    self.compatibility(&dst, rhe, &mut checks)?;
+                    self.compatibility(&self.bus_identities(var, access)?, rhe, &mut checks)?;
                     let tags =
                         if *op == AssignOp::AssignConstraintSignal || self.buses.contains(&dst) {
                             self.source_tags(rhe)?
