@@ -11,6 +11,8 @@ use program_structure::{
     template_data::TemplateData,
 };
 
+use crate::template_ext::rebuild_template;
+
 /// Lexically visible variable shapes; `None` means the shape is not statically known.
 type Shapes = HashMap<String, Option<Vec<usize>>>;
 /// Original template name and array shapes in formal parameter order.
@@ -212,21 +214,7 @@ impl Preparation<'_> {
         };
         prefix.append(stmts);
         *stmts = prefix;
-        let template = TemplateData::copy(
-            name.clone(),
-            old.get_file_id(),
-            body,
-            params.len(),
-            params,
-            old.get_param_location(),
-            old.get_inputs().clone(),
-            old.get_outputs().clone(),
-            old.is_parallel(),
-            old.is_custom_gate(),
-            old.is_extern_c(),
-            old.get_declaration_inputs().clone(),
-            old.get_declaration_outputs().clone(),
-        );
+        let template = rebuild_template(&old, name.clone(), params, body);
         self.templates.insert(name.clone(), template);
         self.active.remove(id);
         Ok(name)

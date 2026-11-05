@@ -21,6 +21,31 @@ use crate::{
     template::{GenerateLLZKInTemplate, TemplateContext},
 };
 
+/// Rebuild a template with a new name, parameters, and body while preserving its source
+/// metadata, input/output interfaces and declaration order, and flags.
+pub(crate) fn rebuild_template(
+    original: &TemplateData,
+    name: String,
+    params: Vec<String>,
+    body: Statement,
+) -> TemplateData {
+    TemplateData::copy(
+        name,
+        original.get_file_id(),
+        body,
+        params.len(),
+        params,
+        original.get_param_location(),
+        original.get_inputs().clone(),
+        original.get_outputs().clone(),
+        original.is_parallel(),
+        original.is_custom_gate(),
+        original.is_extern_c(),
+        original.get_declaration_inputs().clone(),
+        original.get_declaration_outputs().clone(),
+    )
+}
+
 /// Trait for IR objects that can have signal declarations on them.
 pub trait SignalDeclarations {
     /// Returns true if the signal is an input.

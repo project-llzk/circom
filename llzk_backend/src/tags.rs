@@ -14,6 +14,7 @@ use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::convert::TryFrom;
 
 use crate::bus::{InstantiatedBus, NominalBus};
+use crate::template_ext::rebuild_template;
 
 /// A tag's declaration, optional value, and assignment state.
 #[derive(Clone, Debug)]
@@ -1478,21 +1479,7 @@ pub(crate) fn prepare(program: &ProgramArchive, prime: &BigUint) -> Result<Progr
         let old = &program.templates[&name];
         let mut params = summary.params;
         params.extend(summary.inputs.values().cloned());
-        let template = TemplateData::copy(
-            name.clone(),
-            old.get_file_id(),
-            body,
-            params.len(),
-            params,
-            old.get_param_location(),
-            old.get_inputs().clone(),
-            old.get_outputs().clone(),
-            old.is_parallel(),
-            old.is_custom_gate(),
-            old.is_extern_c(),
-            old.get_declaration_inputs().clone(),
-            old.get_declaration_outputs().clone(),
-        );
+        let template = rebuild_template(old, name.clone(), params, body);
         if let Expression::Call { id, args, meta } = &mut result.initial_template_call {
             if id == &name {
                 ensure!(
@@ -1639,24 +1626,7 @@ fn prepare_layout_params(
         rewrite(&mut body, &extras, &old_templates, derived);
         let mut params = old.get_name_of_params().clone();
         params.extend(derived.keys().cloned());
-        program.templates.insert(
-            name.clone(),
-            TemplateData::copy(
-                name.clone(),
-                old.get_file_id(),
-                body,
-                params.len(),
-                params,
-                old.get_param_location(),
-                old.get_inputs().clone(),
-                old.get_outputs().clone(),
-                old.is_parallel(),
-                old.is_custom_gate(),
-                old.is_extern_c(),
-                old.get_declaration_inputs().clone(),
-                old.get_declaration_outputs().clone(),
-            ),
-        );
+        program.templates.insert(name.clone(), rebuild_template(old, name.clone(), params, body));
     }
     if let Expression::Call { id, args, .. } = &mut program.initial_template_call {
         let bindings = old_templates[id]
@@ -1732,21 +1702,7 @@ fn prepare_main_arrays(program: &ProgramArchive) -> Result<ProgramArchive> {
         prefix.append(stmts);
         *stmts = prefix;
     }
-    let template = TemplateData::copy(
-        destination.clone(),
-        old.get_file_id(),
-        body,
-        params.len(),
-        params,
-        old.get_param_location(),
-        old.get_inputs().clone(),
-        old.get_outputs().clone(),
-        old.is_parallel(),
-        old.is_custom_gate(),
-        old.is_extern_c(),
-        old.get_declaration_inputs().clone(),
-        old.get_declaration_outputs().clone(),
-    );
+    let template = rebuild_template(old, destination.clone(), params, body);
     result.templates.insert(destination.clone(), template);
     if let Expression::Call { id, args, .. } = &mut result.initial_template_call {
         *id = destination;
