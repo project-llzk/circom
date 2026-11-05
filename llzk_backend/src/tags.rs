@@ -1627,7 +1627,7 @@ pub(crate) fn prepare(program: &ProgramArchive, prime: &BigUint) -> Result<Progr
         if let Expression::Call { id, args, meta } = &mut result.initial_template_call {
             if id == &name {
                 ensure!(
-                    summary.inputs.is_empty(),
+                    summary.required_values.is_empty(),
                     "{}: main component cannot have inputs with tags",
                     source_location(program, meta)
                 );
