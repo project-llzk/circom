@@ -1314,8 +1314,8 @@ impl Analysis<'_> {
                     **loop_body = Statement::Block { meta: meta.clone(), stmts: vec![] };
                     return Ok(());
                 }
-                if let Some((name, start, end)) = fixed {
-                    if self.needs_iteration_analysis(loop_body, &name) {
+                if let Some((ref name, start, end)) = fixed {
+                    if self.needs_iteration_analysis(loop_body, name) {
                         // Resolve each iteration before merging branches: tag propagation and
                         // completion can depend on the induction value even without components.
                         // This also gives components concrete paths and separate constructors.
@@ -1330,7 +1330,7 @@ impl Analysis<'_> {
                             self.statement(&mut iteration)?;
                             iterations.push(iteration);
                         }
-                        self.iterations.remove(&name);
+                        self.iterations.remove(name);
                         *stmt = Statement::Block { meta, stmts: iterations };
                         return Ok(());
                     }
@@ -1362,6 +1362,12 @@ impl Analysis<'_> {
                             crate::bus::expression_key(old) == crate::bus::expression_key(value)
                         })
                     });
+                    // The recognized unit step reaches the bound after a positive loop.
+                    if let Some((name, _, end)) = fixed {
+                        self.flow
+                            .constants
+                            .insert(name, Expression::Number(meta.clone(), end.into()));
+                    }
                 } else {
                     // An unknown trip count may be zero, so body effects are conditional.
                     let body_state = std::mem::replace(&mut self.flow, incoming);
