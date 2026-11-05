@@ -1212,7 +1212,8 @@ impl Analysis<'_> {
                 let dst = self.path(var, access)?;
                 if *op == AssignOp::AssignVar && self.flow.tags.contains_key(&dst) {
                     self.expression(rhe)?;
-                    let value = self.normalize(rhe.clone())?;
+                    let value =
+                        self.normalize(crate::bus::substitute(rhe, &self.flow.constants))?;
                     let owner = dst.rsplit_once('.').expect("tag path").0;
                     ensure!(
                         !self
