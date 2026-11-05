@@ -1322,7 +1322,7 @@ impl Analysis<'_> {
                 if let Some(other) = else_case {
                     self.statement(other)?;
                 }
-                self.flow.merge(then_state, cond, &self.params, &meta);
+                self.flow.merge(then_state, &condition, &self.params, &meta);
             }
             Statement::While { cond, stmt: loop_body, .. } => {
                 self.expression(cond)?;
