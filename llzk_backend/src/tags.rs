@@ -874,6 +874,7 @@ impl Analysis<'_> {
 
     /// Check nominal compatibility even when two instantiated buses have identical PODs.
     /// Unknown parameter equalities remain compile-time assertions for specialization.
+    /// The array-parameter pass expands array equalities once their shapes are known.
     fn compatibility(
         &self,
         dst: &str,

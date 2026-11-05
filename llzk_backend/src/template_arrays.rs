@@ -6,7 +6,7 @@ use std::convert::TryFrom;
 use anyhow::{ensure, Result};
 use num_bigint_dig::BigUint;
 use program_structure::{
-    ast::{Access, AssignOp, Expression, Meta, Statement, VariableType},
+    ast::{Access, AssignOp, Expression, ExpressionInfixOpcode, Meta, Statement, VariableType},
     program_archive::ProgramArchive,
     template_data::TemplateData,
 };
@@ -92,6 +92,9 @@ impl Preparation<'_> {
                 let first = self.shape(if_true, shapes)?;
                 (first == self.shape(if_false, shapes)?).then_some(first).flatten()
             }
+            Expression::Call { id, args, .. } if id == crate::bus::ARRAY_ACCESS => self
+                .shape(&args[0], shapes)?
+                .and_then(|shape| shape.get(args.len() - 1..).map(<[usize]>::to_vec)),
             _ => None,
         })
     }
@@ -115,22 +118,8 @@ impl Preparation<'_> {
         let mut scalar_args = Vec::new();
         for (arg, shape) in args.iter().zip(&parameter_shapes) {
             if let Some(shape) = shape {
-                let bindings = HashMap::from([("$array_actual".to_owned(), arg.clone())]);
                 for indices in indices(shape)? {
-                    let indexed = Expression::Variable {
-                        meta: arg.get_meta().clone(),
-                        name: "$array_actual".to_owned(),
-                        access: indices
-                            .into_iter()
-                            .map(|index| {
-                                Access::ArrayAccess(Expression::Number(
-                                    arg.get_meta().clone(),
-                                    index.into(),
-                                ))
-                            })
-                            .collect(),
-                    };
-                    scalar_args.push(crate::bus::substitute(&indexed, &bindings));
+                    scalar_args.push(array_element(arg, &indices));
                 }
             } else {
                 scalar_args.push(arg.clone());
@@ -218,7 +207,7 @@ impl Preparation<'_> {
         Ok(name)
     }
 
-    /// Track declaration shapes while rewriting constructors without leaking nested bindings.
+    /// Track shapes while scalarizing constructors and bus compatibility assertions.
     fn statement(&mut self, stmt: &mut Statement, shapes: &mut Shapes) -> Result<()> {
         match stmt {
             Statement::Block { stmts, .. } => {
@@ -247,6 +236,36 @@ impl Preparation<'_> {
                 shapes.insert(name.clone(), shape);
             }
             Statement::Substitution { rhe, .. } => self.call(rhe, shapes)?,
+            Statement::Assert {
+                meta,
+                arg: Expression::InfixOp { infix_op: ExpressionInfixOpcode::Eq, lhe, rhe, .. },
+            } => {
+                // Tag analysis can inject equality between array-valued bus parameters
+                // before their shapes are known. LLZK comparisons require scalar operands.
+                let lhs = self.shape(lhe, shapes)?;
+                let rhs = self.shape(rhe, shapes)?;
+                if lhs.as_ref().is_some_and(|shape| !shape.is_empty())
+                    || rhs.as_ref().is_some_and(|shape| !shape.is_empty())
+                {
+                    ensure!(
+                        lhs == rhs,
+                        "incompatible array shapes for bus parameters: {lhs:?} and {rhs:?}"
+                    );
+                    let stmts = indices(lhs.as_ref().expect("known array shape"))?
+                        .iter()
+                        .map(|indices| Statement::Assert {
+                            meta: meta.clone(),
+                            arg: Expression::InfixOp {
+                                meta: meta.clone(),
+                                infix_op: ExpressionInfixOpcode::Eq,
+                                lhe: Box::new(array_element(lhe, indices)),
+                                rhe: Box::new(array_element(rhe, indices)),
+                            },
+                        })
+                        .collect();
+                    *stmt = Statement::Block { meta: meta.clone(), stmts };
+                }
+            }
             Statement::IfThenElse { if_case, else_case, .. } => {
                 self.statement(if_case, &mut shapes.clone())?;
                 if let Some(stmt) = else_case {
@@ -258,6 +277,22 @@ impl Preparation<'_> {
         }
         Ok(())
     }
+}
+
+/// Select a scalar or subarray using the same indexing rules as bus argument substitution.
+fn array_element(expr: &Expression, indices: &[usize]) -> Expression {
+    let bindings = HashMap::from([("$array_actual".to_owned(), expr.clone())]);
+    let indexed = Expression::Variable {
+        meta: expr.get_meta().clone(),
+        name: "$array_actual".to_owned(),
+        access: indices
+            .iter()
+            .map(|index| {
+                Access::ArrayAccess(Expression::Number(expr.get_meta().clone(), (*index).into()))
+            })
+            .collect(),
+    };
+    crate::bus::substitute(&indexed, &bindings)
 }
 
 /// Count elements without materializing coordinates, preserving zero-sized dimensions.
