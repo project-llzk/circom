@@ -115,6 +115,8 @@ impl FlowState {
     fn merge(&mut self, then_state: Self, cond: &Expression, params: &[String], meta: &Meta) {
         let Self { tags, initialized, capacities, constants, component_args } = then_state;
         let compile_time = depends_only_on(cond, params);
+        // A propagated tag must exist on both paths to survive the join.
+        self.tags.retain(|key, _| tags.contains_key(key));
         for (key, mut tag) in tags {
             if let Some(other) = self.tags.get(&key) {
                 tag.value = merge_value(tag.value, &other.value, cond, compile_time, meta);
