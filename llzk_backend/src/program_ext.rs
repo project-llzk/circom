@@ -56,6 +56,11 @@ pub struct DefinitionLocation {
 /// A trait that allows common handling of the structs used to represent a circom
 /// program at different stages in the compilation process.
 pub trait ProgramLike: std::fmt::Debug {
+    /// Source program available for array template parameter preparation.
+    fn symbolic_program(&self) -> Option<&ProgramArchive> {
+        None
+    }
+
     /// Whether this program originated from the very-concrete-program pipeline.
     fn is_concrete(&self) -> bool {
         false
@@ -106,6 +111,10 @@ pub trait ProgramLike: std::fmt::Debug {
 }
 
 impl ProgramLike for ProgramArchive {
+    fn symbolic_program(&self) -> Option<&ProgramArchive> {
+        Some(self)
+    }
+
     fn get_file_library(&self) -> &FileLibrary {
         &self.file_library
     }

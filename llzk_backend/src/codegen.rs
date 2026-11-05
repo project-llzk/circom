@@ -33,12 +33,8 @@ fn to_u64_digits(n: &BigUint) -> Vec<u64> {
 
 /// Prepares the parameters of the main component StructType.
 ///
-/// TODO: This approach does not currently handle ArrayInLine or Call expressions that can be
-/// used as parameters to the main component. The Call case could be handled by finding the
-/// target function and evaluating it statically. The ArrayInLine (i.e. a literal array like
-/// `[9,3,1]`) however may require generating an additional wrapper struct that can construct
-/// the array and pass it to the main component. Alternatively, put the array in a global const
-/// and then generate the main component with one less template parameter and read the global.
+/// Array arguments have already been expanded into scalar parameters.
+/// TODO: Handle Call expressions by evaluating the target function statically.
 fn prepare_main_component_params<'ctx>(
     params: impl IntoIterator<Item = Expression>,
     prime: &BigUint,
@@ -91,6 +87,18 @@ fn new_llzk_module<'ctx>(
 /// Generate LLZK IR from the given `ProgramArchive` and write it to a file with the given filename.
 #[allow(clippy::result_unit_err)]
 pub fn generate_llzk(program: &impl ProgramLike, config: LlzkConfig) -> Result<(), ()> {
+    if let Some(program) = program.symbolic_program() {
+        let prepared =
+            crate::template_arrays::prepare(program.clone(), &config.prime).map_err(|err| {
+                eprintln!("{} {err:#}", Color::Red.paint("Failed to prepare array parameters:"));
+            })?;
+        return generate_prepared_llzk(&prepared, config);
+    }
+    generate_prepared_llzk(program, config)
+}
+
+/// Generate IR after array template arguments have been scalarized.
+fn generate_prepared_llzk(program: &impl ProgramLike, config: LlzkConfig) -> Result<(), ()> {
     let mut ctx = LlzkContext::new();
     ctx.set_field(config.prime_str.as_str());
     let module = new_llzk_module(&ctx, program, &config.prime).map_err(|err| {
