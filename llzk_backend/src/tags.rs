@@ -30,59 +30,61 @@ struct Tag {
     initialized: bool,
 }
 
+/// Assignment completion, independent of whether scalar leaves can be counted.
+#[derive(Clone, Debug)]
+struct Capacity {
+    /// Whole-value assignments prove completion even with symbolic dimensions.
+    complete: bool,
+    /// Numeric accounting for partial assignments, absent for symbolic sizes.
+    leaves: Option<LeafCapacity>,
+}
+
 /// Scalar-leaf accounting for array-wide tag completion.
 #[derive(Clone, Debug)]
-enum Capacity {
-    /// Symbolic dimensions or leaf counts provide no evidence of completion.
-    Unknown,
-    Known {
-        /// All enclosing array dimensions, from outermost to innermost.
-        dimensions: Vec<usize>,
-        /// Scalar leaves in one element, including nested bus fields.
-        scalar_leaves: usize,
-        /// Scalar leaves still awaiting assignment.
-        remaining: usize,
-    },
+struct LeafCapacity {
+    /// All enclosing array dimensions, from outermost to innermost.
+    dimensions: Vec<usize>,
+    /// Scalar leaves in one element, including nested bus fields.
+    scalar_leaves: usize,
+    /// Scalar leaves still awaiting assignment.
+    remaining: usize,
 }
 
 impl Capacity {
     fn is_complete(&self) -> bool {
-        matches!(self, Self::Known { remaining: 0, .. })
+        self.complete || self.leaves.as_ref().is_some_and(|leaves| leaves.remaining == 0)
     }
 
     /// Leaves covered by an assignment after indexing the outer dimensions.
     fn assigned_leaves(&self, indices: usize) -> Option<usize> {
-        match self {
-            Self::Known { dimensions, scalar_leaves, .. } => {
-                Some(dimensions.iter().skip(indices).product::<usize>() * scalar_leaves)
-            }
-            Self::Unknown => None,
-        }
+        self.leaves.as_ref().map(|leaves| {
+            leaves.dimensions.iter().skip(indices).product::<usize>() * leaves.scalar_leaves
+        })
     }
 
     fn consume(&mut self, assigned: usize) {
-        if let Self::Known { remaining, .. } = self {
-            *remaining = remaining.saturating_sub(assigned);
+        if let Some(leaves) = &mut self.leaves {
+            leaves.remaining = leaves.remaining.saturating_sub(assigned);
         }
     }
 
-    /// Completion must hold on both paths; unknown evidence stays unknown.
+    /// Completion must hold on both paths, whether proven by whole or partial writes.
     fn merge(&mut self, other: &Self) {
-        match (self, other) {
-            (Self::Known { remaining, .. }, Self::Known { remaining: other, .. }) => {
-                *remaining = (*remaining).max(*other);
+        self.complete = self.is_complete() && other.is_complete();
+        match (&mut self.leaves, &other.leaves) {
+            (Some(leaves), Some(other)) => {
+                leaves.remaining = leaves.remaining.max(other.remaining);
             }
-            (capacity, _) => *capacity = Self::Unknown,
+            (leaves, _) => *leaves = None,
         }
     }
 
     /// Account for all iterations after analyzing one fixed-loop body.
     fn repeat(&mut self, before: &Self, trips: usize) {
-        if let (Self::Known { remaining, .. }, Self::Known { remaining: initial, .. }) =
-            (self, before)
-        {
-            *remaining =
-                initial.saturating_sub(initial.saturating_sub(*remaining).saturating_mul(trips));
+        if let (Some(leaves), Some(initial)) = (&mut self.leaves, &before.leaves) {
+            leaves.remaining = initial.remaining.saturating_sub(
+                initial.remaining.saturating_sub(leaves.remaining).saturating_mul(trips),
+            );
         }
     }
 }
@@ -96,7 +98,7 @@ struct FlowState {
     tags: BTreeMap<String, Tag>,
     /// Paths assigned on any analyzed path, preventing late tag assignments.
     initialized: HashSet<String>,
-    /// Known or unknown scalar-leaf completion for array-wide tags.
+    /// Whole-value completion and optional scalar-leaf accounting for array-wide tags.
     capacities: BTreeMap<String, Capacity>,
     /// Local scalar and array snapshots expressed only in compile-time parameters.
     constants: HashMap<String, Expression>,
@@ -154,16 +156,24 @@ impl FlowState {
         self.capacities.get(owner).is_some_and(Capacity::is_complete)
     }
 
-    /// Consume scalar leaves, updating completion of enclosing and nested buses.
+    /// Record whole-value writes and consume known leaves of enclosing and nested buses.
     fn initialize(&mut self, dst: &str, access: &[Access]) {
         let indices = access.iter().filter(|a| matches!(a, Access::ArrayAccess(_))).count();
         let assigned = self.capacities.get(dst).and_then(|c| c.assigned_leaves(indices));
+        if indices == 0 {
+            if let Some(capacity) = self.capacities.get_mut(dst) {
+                capacity.complete = true;
+            }
+        }
         let prefix = format!("{dst}.");
         for (_, capacity) in self
             .capacities
             .range_mut(prefix.clone()..)
             .take_while(|(owner, _)| owner.starts_with(&prefix))
         {
+            if indices == 0 {
+                capacity.complete = true;
+            }
             if let Some(count) = capacity.assigned_leaves(indices) {
                 capacity.consume(count);
             }
@@ -243,7 +253,7 @@ struct Summary {
     required_values: HashSet<String>,
     /// Derived output tags, including unknown values.
     outputs: BTreeMap<String, Tag>,
-    /// Output capacities, preserving unknown completion at component call sites.
+    /// Output capacities, preserving completion evidence at component call sites.
     output_capacities: BTreeMap<String, Capacity>,
 }
 
@@ -636,15 +646,17 @@ impl Analysis<'_> {
                 .iter()
                 .try_fold(leaves, |n, d| n.checked_mul(*d))
                 .ok_or_else(|| anyhow!("bus signal size overflow"))?;
-            Capacity::Known {
+            Some(LeafCapacity {
                 dimensions: dims,
                 scalar_leaves: leaves,
                 remaining: if input { 0 } else { total },
-            }
+            })
         } else {
-            Capacity::Unknown
+            None
         };
-        self.flow.capacities.insert(name.to_owned(), capacity);
+        self.flow
+            .capacities
+            .insert(name.to_owned(), Capacity { complete: input, leaves: capacity });
         Ok(dimensions
             .as_ref()
             .zip(leaves)
