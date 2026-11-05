@@ -5,31 +5,65 @@ use std::convert::TryFrom;
 
 use anyhow::{ensure, Result};
 use num_bigint_dig::BigUint;
+use num_traits::Zero;
 use program_structure::{
     ast::{Access, AssignOp, Expression, Meta, Statement, VariableType},
     program_archive::ProgramArchive,
     template_data::TemplateData,
 };
 
+use crate::template_recursion::{self, Constants};
+
 /// Lexically visible variable shapes; `None` means the shape is not statically known.
 type Shapes = HashMap<String, Option<Vec<usize>>>;
-/// Original template name and array shapes in formal parameter order.
-type Specialization = (String, Vec<Option<Vec<usize>>>);
+/// Original template name, array shapes, and bound scalar values in formal parameter order.
+type Specialization = (String, Vec<Option<Vec<usize>>>, Vec<Option<BigUint>>);
+
+/// Bound expansion before nonterminating recursion can exhaust the compiler's stack.
+const MAX_RECURSIVE_DEPTH: usize = 128;
+
+/// Request a fresh preparation with values bound along this recursive call path.
+#[derive(Debug)]
+struct ExpandRecursion(String);
+
+impl std::fmt::Display for ExpandRecursion {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "array recursion requires specialization of {}", self.0)
+    }
+}
+
+impl std::error::Error for ExpandRecursion {}
 
 /// Scalarize array arguments before collecting template declarations and types.
 pub(crate) fn prepare(mut program: ProgramArchive, prime: &BigUint) -> Result<ProgramArchive> {
-    let mut preparation = Preparation {
-        originals: &program.templates,
-        prime,
-        templates: HashMap::new(),
-        specializations: HashMap::new(),
-        active: HashSet::new(),
-    };
-    let mut main = program.initial_template_call.clone();
-    preparation.call(&mut main, &Shapes::new())?;
-    program.templates = preparation.templates;
-    program.initial_template_call = main;
-    Ok(program)
+    let mut expanded = HashSet::new();
+    loop {
+        let mut preparation = Preparation {
+            originals: &program.templates,
+            prime,
+            templates: HashMap::new(),
+            specializations: HashMap::new(),
+            active: HashSet::new(),
+            expanded: &expanded,
+        };
+        let mut main = program.initial_template_call.clone();
+        match preparation.call(&mut main, &Shapes::new(), &Constants::new()) {
+            Ok(()) => {
+                program.templates = preparation.templates;
+                program.initial_template_call = main;
+                return Ok(program);
+            }
+            Err(error) => {
+                if let Some(ExpandRecursion(id)) = error.downcast_ref::<ExpandRecursion>() {
+                    // Discover array parameters from actual call shapes. Restart so scalar-only
+                    // wrappers also bind values, without changing unrelated scalar recursion.
+                    expanded.extend(template_recursion::callers_of(&program.templates, id));
+                } else {
+                    return Err(error);
+                }
+            }
+        }
+    }
 }
 
 /// Rebuild the reachable template graph with scalar parameters for each known array shape.
@@ -40,10 +74,12 @@ struct Preparation<'a> {
     prime: &'a BigUint,
     /// Completed reachable template definitions.
     templates: HashMap<String, TemplateData>,
-    /// Reuse one definition for calls with equal array shapes but different element values.
+    /// Reuse definitions with equal shapes and recursion-controlling scalar bindings.
     specializations: HashMap<Specialization, String>,
-    /// Original template names currently being rewritten, to detect recursion.
-    active: HashSet<String>,
+    /// Incomplete expanded specializations must not be reused as circular struct members.
+    active: HashSet<Specialization>,
+    /// Array recursion and its callers need scalar bindings to resolve a finite child graph.
+    expanded: &'a HashSet<String>,
 }
 
 impl Preparation<'_> {
@@ -94,9 +130,14 @@ impl Preparation<'_> {
     }
 
     /// Rewrite a component constructor and flatten its known array arguments in caller scope.
-    fn call(&mut self, expr: &mut Expression, shapes: &Shapes) -> Result<()> {
+    fn call(
+        &mut self,
+        expr: &mut Expression,
+        shapes: &Shapes,
+        constants: &Constants,
+    ) -> Result<()> {
         if let Expression::ParallelOp { rhe, .. } = expr {
-            return self.call(rhe, shapes);
+            return self.call(rhe, shapes, constants);
         }
         let Expression::Call { id, args, .. } = expr else {
             return Ok(());
@@ -108,14 +149,34 @@ impl Preparation<'_> {
             .iter()
             .map(|arg| Ok(self.shape(arg, shapes)?.filter(|shape| !shape.is_empty())))
             .collect::<Result<Vec<_>>>()?;
-        let name = self.specialize(id, &parameter_shapes)?;
+        if !self.expanded.contains(id)
+            && self.active.iter().any(|(active_id, active_shapes, _)| {
+                active_id == id
+                    && (parameter_shapes.iter().any(Option::is_some)
+                        || active_shapes.iter().any(Option::is_some))
+            })
+        {
+            return Err(ExpandRecursion(id.clone()).into());
+        }
+        let parameter_values = args
+            .iter()
+            .zip(&parameter_shapes)
+            .map(|(arg, shape)| {
+                if self.expanded.contains(id) && shape.is_none() {
+                    template_recursion::value(arg, constants, self.prime)
+                } else {
+                    Ok(None)
+                }
+            })
+            .collect::<Result<Vec<_>>>()?;
+        let name = self.specialize(id, &parameter_shapes, &parameter_values)?;
         let mut scalar_args = Vec::new();
-        for (arg, shape) in args.iter().zip(&parameter_shapes) {
+        for ((arg, shape), value) in args.iter().zip(&parameter_shapes).zip(&parameter_values) {
             if let Some(shape) = shape {
                 for indices in indices(shape)? {
                     scalar_args.push(array_element(arg, &indices)?);
                 }
-            } else {
+            } else if value.is_none() {
                 scalar_args.push(arg.clone());
             }
         }
@@ -125,12 +186,27 @@ impl Preparation<'_> {
     }
 
     /// Create or reuse a template with scalar element formals and reconstructed array locals.
-    fn specialize(&mut self, id: &str, parameter_shapes: &[Option<Vec<usize>>]) -> Result<String> {
-        let key = (id.to_owned(), parameter_shapes.to_vec());
+    fn specialize(
+        &mut self,
+        id: &str,
+        parameter_shapes: &[Option<Vec<usize>>],
+        parameter_values: &[Option<BigUint>],
+    ) -> Result<String> {
+        let key = (id.to_owned(), parameter_shapes.to_vec(), parameter_values.to_vec());
+        let resolve_recursion = self.expanded.contains(id);
+        ensure!(
+            !resolve_recursion || !self.active.contains(&key),
+            "recursive template specialization repeats at {id}; \
+             recursion needs a statically resolvable terminating base case"
+        );
         if let Some(name) = self.specializations.get(&key) {
             return Ok(name.clone());
         }
-        ensure!(self.active.insert(id.to_owned()), "recursive array parameter dependency at {id}");
+        ensure!(
+            !resolve_recursion || self.active.len() < MAX_RECURSIVE_DEPTH,
+            "recursive template specialization depth limit ({MAX_RECURSIVE_DEPTH}) exceeded at {id}"
+        );
+        self.active.insert(key.clone());
         let old = self.originals[id].clone();
         ensure!(
             old.get_name_of_params().len() == parameter_shapes.len(),
@@ -147,19 +223,28 @@ impl Preparation<'_> {
                     }
                 }
             }
-            ensure!(
-                !self.originals.contains_key(&name),
-                "array specialization name collision: {name}"
-            );
         }
-        // Recursive calls with the same shapes reuse this declaration while its body
-        // is being rewritten. Only shape-changing recursion needs the active guard.
-        self.specializations.insert(key, name.clone());
+        if parameter_values.iter().any(Option::is_some) {
+            name.push_str("$values");
+            for (position, value) in parameter_values.iter().enumerate() {
+                if let Some(value) = value {
+                    name.push_str(&format!("${position}_{value}"));
+                }
+            }
+        }
+        ensure!(
+            name == id || !self.originals.contains_key(&name),
+            "template specialization name collision: {name}"
+        );
+        self.specializations.insert(key.clone(), name.clone());
         let mut params = Vec::new();
         let mut prefix = Vec::new();
         let mut shapes = Shapes::new();
+        let mut constants = Constants::new();
         let meta = old.get_body().get_meta();
-        for (formal, shape) in old.get_name_of_params().iter().zip(parameter_shapes) {
+        for ((formal, shape), value) in
+            old.get_name_of_params().iter().zip(parameter_shapes).zip(parameter_values)
+        {
             shapes.insert(formal.clone(), Some(shape.clone().unwrap_or_default()));
             if let Some(shape) = shape {
                 let scalar_names = (0..element_count(shape)?)
@@ -184,12 +269,31 @@ impl Preparation<'_> {
                     rhe: array_initializer(meta, shape, &mut scalar_names.iter()),
                 });
                 params.extend(scalar_names);
+            } else if let Some(value) = value {
+                // Keep a mutable local for the original formal, but remove the fixed value
+                // from the generated signature so callers cannot override the specialization.
+                constants.insert(formal.clone(), value.clone());
+                prefix.push(Statement::Declaration {
+                    meta: meta.clone(),
+                    xtype: VariableType::Var,
+                    name: formal.clone(),
+                    dimensions: vec![],
+                    is_constant: false,
+                    is_anonymous: false,
+                });
+                prefix.push(Statement::Substitution {
+                    meta: meta.clone(),
+                    var: formal.clone(),
+                    access: vec![],
+                    op: AssignOp::AssignVar,
+                    rhe: Expression::Number(meta.clone(), value.clone().into()),
+                });
             } else {
                 params.push(formal.clone());
             }
         }
         let mut body = old.get_body().clone();
-        self.statement(&mut body, &mut shapes)?;
+        self.statement(&mut body, &mut shapes, &mut constants, resolve_recursion)?;
         let Statement::Block { stmts, .. } = &mut body else {
             anyhow::bail!("template {id} body is not a block");
         };
@@ -211,22 +315,51 @@ impl Preparation<'_> {
             old.get_declaration_outputs().clone(),
         );
         self.templates.insert(name.clone(), template);
-        self.active.remove(id);
+        self.active.remove(&key);
         Ok(name)
     }
 
     /// Track declaration shapes while rewriting constructors without leaking nested bindings.
-    fn statement(&mut self, stmt: &mut Statement, shapes: &mut Shapes) -> Result<()> {
+    fn statement(
+        &mut self,
+        stmt: &mut Statement,
+        shapes: &mut Shapes,
+        constants: &mut Constants,
+        resolve_recursion: bool,
+    ) -> Result<()> {
         match stmt {
             Statement::Block { stmts, .. } => {
                 let mut nested = shapes.clone();
+                let mut nested_constants = constants.clone();
+                let mut shadowed = HashMap::new();
                 for stmt in stmts {
-                    self.statement(stmt, &mut nested)?;
+                    let mut declarations = HashSet::new();
+                    local_declarations(stmt, &mut declarations);
+                    for name in declarations {
+                        // A block may write an outer variable before declaring a shadow.
+                        // Save its value at the declaration, not at entry to the block.
+                        shadowed
+                            .entry(name.clone())
+                            .or_insert_with(|| nested_constants.get(&name).cloned());
+                    }
+                    self.statement(stmt, &mut nested, &mut nested_constants, resolve_recursion)?;
+                }
+                // Preserve assignments to enclosing bindings without leaking local shadows.
+                for name in shapes.keys() {
+                    let value = match shadowed.get(name) {
+                        Some(value) => value.as_ref(),
+                        None => nested_constants.get(name),
+                    };
+                    if let Some(value) = value {
+                        constants.insert(name.clone(), value.clone());
+                    } else {
+                        constants.remove(name);
+                    }
                 }
             }
             Statement::InitializationBlock { initializations, .. } => {
                 for stmt in initializations {
-                    self.statement(stmt, shapes)?;
+                    self.statement(stmt, shapes, constants, resolve_recursion)?;
                 }
             }
             Statement::Declaration { name, xtype, dimensions, .. } => {
@@ -242,18 +375,116 @@ impl Preparation<'_> {
                     None
                 };
                 shapes.insert(name.clone(), shape);
+                constants.remove(name);
             }
-            Statement::Substitution { rhe, .. } => self.call(rhe, shapes)?,
-            Statement::IfThenElse { if_case, else_case, .. } => {
-                self.statement(if_case, &mut shapes.clone())?;
-                if let Some(stmt) = else_case {
-                    self.statement(stmt, &mut shapes.clone())?;
+            Statement::Substitution { var, access, op, rhe, .. } => {
+                self.call(rhe, shapes, constants)?;
+                if resolve_recursion && *op == AssignOp::AssignVar {
+                    let value = if access.is_empty() {
+                        template_recursion::value(rhe, constants, self.prime)?
+                    } else {
+                        None
+                    };
+                    if let Some(value) = value {
+                        constants.insert(var.clone(), value);
+                    } else {
+                        constants.remove(var);
+                    }
                 }
             }
-            Statement::While { stmt, .. } => self.statement(stmt, &mut shapes.clone())?,
+            Statement::IfThenElse { meta, cond, if_case, else_case } => {
+                let condition = if resolve_recursion {
+                    template_recursion::value(cond, constants, self.prime)?
+                } else {
+                    None
+                };
+                if let Some(condition) = condition {
+                    let selected = if !condition.is_zero() {
+                        Some(*if_case.clone())
+                    } else {
+                        else_case.as_deref().cloned()
+                    };
+                    // An if branch introduces a scope even without explicit braces.
+                    *stmt = Statement::Block {
+                        meta: meta.clone(),
+                        stmts: selected.into_iter().collect(),
+                    };
+                    self.statement(stmt, shapes, constants, resolve_recursion)?;
+                } else {
+                    let mut then_constants = constants.clone();
+                    let mut else_constants = constants.clone();
+                    self.statement(
+                        if_case,
+                        &mut shapes.clone(),
+                        &mut then_constants,
+                        resolve_recursion,
+                    )?;
+                    if let Some(stmt) = else_case {
+                        self.statement(
+                            stmt,
+                            &mut shapes.clone(),
+                            &mut else_constants,
+                            resolve_recursion,
+                        )?;
+                    }
+                    constants.retain(|name, value| {
+                        then_constants.get(name) == Some(value)
+                            && else_constants.get(name) == Some(value)
+                    });
+                }
+            }
+            Statement::While { stmt, .. } => {
+                // The body can execute more than once. Never specialize calls using a
+                // value that is only known before the first iteration.
+                invalidate_writes(stmt, constants);
+                self.statement(
+                    stmt,
+                    &mut shapes.clone(),
+                    &mut constants.clone(),
+                    resolve_recursion,
+                )?;
+            }
             _ => {}
         }
         Ok(())
+    }
+}
+
+/// Collect declarations in this lexical scope (initialization groups do not open a scope).
+fn local_declarations(stmt: &Statement, names: &mut HashSet<String>) {
+    match stmt {
+        Statement::Declaration { name, .. } => {
+            names.insert(name.clone());
+        }
+        Statement::InitializationBlock { initializations, .. } => {
+            for stmt in initializations {
+                local_declarations(stmt, names);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Conservatively forget bindings written on any path through a loop.
+fn invalidate_writes(stmt: &Statement, constants: &mut Constants) {
+    match stmt {
+        Statement::Substitution { var, op: AssignOp::AssignVar, .. } => {
+            constants.remove(var);
+        }
+        Statement::Block { stmts, .. }
+        | Statement::InitializationBlock { initializations: stmts, .. } => {
+            for stmt in stmts {
+                invalidate_writes(stmt, constants);
+            }
+        }
+        Statement::IfThenElse { if_case, else_case, .. } => {
+            invalidate_writes(if_case, constants);
+            if let Some(stmt) = else_case {
+                invalidate_writes(stmt, constants);
+            }
+        }
+        Statement::While { stmt, .. } => invalidate_writes(stmt, constants),
+        _ => {}
     }
 }
 
