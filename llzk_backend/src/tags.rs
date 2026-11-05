@@ -2,6 +2,7 @@
 
 use anyhow::{anyhow, ensure, Context, Result};
 use num_bigint_dig::BigUint;
+use num_traits::ToPrimitive;
 use program_structure::{
     ast::{
         Access, AssignOp, Expression, ExpressionInfixOpcode, LogArgument, Meta, SignalType,
@@ -97,7 +98,7 @@ struct FlowState {
     initialized: HashSet<String>,
     /// Known or unknown scalar-leaf completion for array-wide tags.
     capacities: BTreeMap<String, Capacity>,
-    /// Known local scalar values, used to resolve compile-time control flow.
+    /// Known local scalar and literal array values for compile-time control flow.
     constants: HashMap<String, Expression>,
     /// Active constructor arguments; missing values represent divergent runtime choices.
     component_args: HashMap<String, Vec<Option<Expression>>>,
@@ -305,6 +306,33 @@ struct Analysis<'a> {
 /// Whether a path is contained in a subtree.
 fn below(path: &str, parent: &str) -> bool {
     path == parent || path.starts_with(&format!("{parent}."))
+}
+
+/// Only snapshots of fully known values may survive subsequent local writes.
+fn is_constant_value(expr: &Expression) -> bool {
+    match expr {
+        Expression::Number(..) => true,
+        Expression::ArrayInLine { values, .. } => values.iter().all(is_constant_value),
+        Expression::UniformArray { value, dimension, .. } => {
+            is_constant_value(value) && matches!(dimension.as_ref(), Expression::Number(..))
+        }
+        _ => false,
+    }
+}
+
+/// Update a known literal element or subarray. Unsupported writes invalidate the root.
+fn update_constant(value: &mut Expression, indices: &[usize], replacement: Expression) -> bool {
+    let Some((index, rest)) = indices.split_first() else {
+        *value = replacement;
+        return true;
+    };
+    match value {
+        Expression::ArrayInLine { values, .. } => {
+            values.get_mut(*index).is_some_and(|value| update_constant(value, rest, replacement))
+        }
+        // Do not expand a potentially large uniform array just to track a write.
+        _ => false,
+    }
 }
 
 /// Source location for metadata diagnostics emitted before LLZK exists.
@@ -614,6 +642,86 @@ impl Analysis<'_> {
         } else {
             Ok(expr)
         }
+    }
+
+    /// Fold local values from the leaves up so computed indices select literal elements.
+    /// Keep this separate from expression rewriting: these facts select control flow,
+    /// while ordinary local reads still use the original variable declarations.
+    fn constant_expression(&self, expr: &Expression) -> Result<Expression> {
+        let mut expr = expr.clone();
+        match &mut expr {
+            Expression::Variable { access, .. } => {
+                for item in access {
+                    if let Access::ArrayAccess(index) = item {
+                        *index = self.constant_expression(index)?;
+                    }
+                }
+            }
+            Expression::InfixOp { lhe, rhe, .. } => {
+                **lhe = self.constant_expression(lhe)?;
+                **rhe = self.constant_expression(rhe)?;
+            }
+            Expression::PrefixOp { rhe, .. } => **rhe = self.constant_expression(rhe)?,
+            Expression::InlineSwitchOp { cond, if_true, if_false, .. } => {
+                **cond = self.constant_expression(cond)?;
+                if let Expression::Number(_, value) = cond.as_ref() {
+                    return self.constant_expression(if value != &0.into() {
+                        if_true
+                    } else {
+                        if_false
+                    });
+                }
+                **if_true = self.constant_expression(if_true)?;
+                **if_false = self.constant_expression(if_false)?;
+            }
+            Expression::ArrayInLine { values, .. } => {
+                for value in values {
+                    *value = self.constant_expression(value)?;
+                }
+            }
+            Expression::UniformArray { value, dimension, .. } => {
+                **value = self.constant_expression(value)?;
+                **dimension = self.constant_expression(dimension)?;
+            }
+            _ => {}
+        }
+        self.normalize(crate::bus::substitute(&expr, &self.flow.constants))
+    }
+
+    /// Capture whole-array copies and indexed writes without retaining stale local reads.
+    fn assign_constant(&mut self, name: &str, access: &[Access], rhs: &Expression) -> Result<()> {
+        let value = self.constant_expression(rhs)?;
+        let mut indices = Vec::new();
+        for item in access {
+            let index = match item {
+                Access::ArrayAccess(index) => match self.constant_expression(index)? {
+                    Expression::Number(_, value) => value.to_usize(),
+                    _ => None,
+                },
+                Access::ComponentAccess(_) => None,
+            };
+            let Some(index) = index else {
+                self.flow.constants.remove(name);
+                return Ok(());
+            };
+            indices.push(index);
+        }
+        if is_constant_value(&value) {
+            if indices.is_empty() {
+                self.flow.constants.insert(name.to_owned(), value);
+                return Ok(());
+            }
+            if self
+                .flow
+                .constants
+                .get_mut(name)
+                .is_some_and(|old| update_constant(old, &indices, value))
+            {
+                return Ok(());
+            }
+        }
+        self.flow.constants.remove(name);
+        Ok(())
     }
 
     /// Resolve a tag read before ordinary field-access generation.
@@ -1046,10 +1154,7 @@ impl Analysis<'_> {
             .map(|expr| crate::shared::try_compute_as_i64(expr, self.prime))
             .transpose()?
             .flatten();
-        let end = crate::shared::try_compute_as_i64(
-            &crate::bus::substitute(rhe, &self.flow.constants),
-            self.prime,
-        )?;
+        let end = crate::shared::try_compute_as_i64(&self.constant_expression(rhe)?, self.prime)?;
         Ok(start.zip(end).map(|(start, end)| (name.clone(), start, end)))
     }
 
@@ -1166,15 +1271,8 @@ impl Analysis<'_> {
                     self.assign(&dst, tags);
                     self.flow.initialize(&dst, access);
                     self.refresh_components()?;
-                } else if access.is_empty() && !crate::bus::is_constructor(rhe) {
-                    let value = crate::bus::substitute(rhe, &self.flow.constants);
-                    if let Some(value) = crate::shared::try_compute_biguint(&value, self.prime)? {
-                        self.flow
-                            .constants
-                            .insert(var.clone(), Expression::Number(meta.clone(), value.into()));
-                    } else {
-                        self.flow.constants.remove(var);
-                    }
+                } else if !crate::bus::is_constructor(rhe) {
+                    self.assign_constant(var, access, rhe)?;
                 }
             }
             Statement::ConstraintEquality { lhe, rhe, .. } => {
@@ -1184,7 +1282,7 @@ impl Analysis<'_> {
             }
             Statement::IfThenElse { cond, if_case, else_case, .. } => {
                 self.expression(cond)?;
-                let condition = crate::bus::substitute(cond, &self.flow.constants);
+                let condition = self.constant_expression(cond)?;
                 if let Some(value) = crate::shared::try_compute_biguint(&condition, self.prime)? {
                     let mut chosen = if value != 0u32.into() {
                         (**if_case).clone()
@@ -1261,8 +1359,7 @@ impl Analysis<'_> {
                     }
                     self.flow.constants.retain(|name, value| {
                         incoming.constants.get(name).is_some_and(|old| {
-                            crate::shared::gen_poly_expr_name(old)
-                                == crate::shared::gen_poly_expr_name(value)
+                            crate::bus::expression_key(old) == crate::bus::expression_key(value)
                         })
                     });
                 } else {
