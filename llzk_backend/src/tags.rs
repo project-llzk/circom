@@ -102,8 +102,17 @@ struct FlowState {
     capacities: BTreeMap<String, Capacity>,
     /// Local scalar and array snapshots expressed only in compile-time parameters.
     constants: HashMap<String, Expression>,
+    /// Constructor arguments and occurrences that reach the current control-flow path.
+    component_states: HashMap<String, ComponentState>,
+}
+
+/// Constructors that can initialize a component on the current path.
+#[derive(Clone)]
+struct ComponentState {
     /// Constructor-time argument snapshots; missing values represent divergent runtime choices.
-    component_args: HashMap<String, Vec<Option<Expression>>>,
+    args: Vec<Option<Expression>>,
+    /// Indices into the component path's constructor occurrences.
+    occurrences: Vec<usize>,
 }
 
 impl FlowState {
@@ -115,7 +124,7 @@ impl FlowState {
     /// Join an analyzed path into its alternative. An absent else branch or a
     /// possibly empty loop uses the incoming state as the alternative.
     fn merge(&mut self, then_state: Self, cond: &Expression, params: &[String], meta: &Meta) {
-        let Self { tags, initialized, capacities, constants, component_args } = then_state;
+        let Self { tags, initialized, capacities, constants, component_states } = then_state;
         let compile_time = depends_only_on(cond, params);
         // A propagated tag must exist on both paths to survive the join.
         self.tags.retain(|key, _| tags.contains_key(key));
@@ -127,12 +136,17 @@ impl FlowState {
         }
         // Type checking guarantees the same callee on both paths. Keep its ordinary
         // arguments conditional so later input-tag writes refresh the joined instance.
-        self.component_args.retain(|name, args| {
-            let Some(then_args) = component_args.get(name) else {
+        self.component_states.retain(|name, state| {
+            let Some(then_component) = component_states.get(name) else {
                 return false;
             };
-            for (arg, then_arg) in args.iter_mut().zip(then_args) {
+            for (arg, then_arg) in state.args.iter_mut().zip(&then_component.args) {
                 *arg = merge_value(then_arg.clone(), arg, cond, compile_time, meta);
+            }
+            for occurrence in &then_component.occurrences {
+                if !state.occurrences.contains(occurrence) {
+                    state.occurrences.push(*occurrence);
+                }
             }
             true
         });
@@ -274,6 +288,8 @@ struct Component<'a> {
     summary: &'a Summary,
     /// Source position and occurrence, distinguishing copies made for fixed loops.
     position: (usize, usize),
+    /// Final input tags for an occurrence whose component exists on only one joined path.
+    input_tags: Option<BTreeMap<String, Tag>>,
 }
 
 /// Analysis state for one template.
@@ -536,6 +552,35 @@ fn merge_value(
 }
 
 impl Analysis<'_> {
+    /// Preserve constructor inputs before discarding facts unavailable on both paths.
+    fn merge_flow(&mut self, then_state: FlowState, cond: &Expression, meta: &Meta) {
+        for (branch, alternative) in [(&then_state, &self.flow), (&self.flow, &then_state)] {
+            for (name, state) in &branch.component_states {
+                if alternative.component_states.contains_key(name) {
+                    continue;
+                }
+                for occurrence in &state.occurrences {
+                    let component =
+                        &mut self.components.get_mut(name).expect("component exists")[*occurrence];
+                    component.input_tags = Some(
+                        component
+                            .summary
+                            .inputs
+                            .keys()
+                            .filter_map(|path| {
+                                branch
+                                    .tags
+                                    .get(&format!("{name}.{path}"))
+                                    .map(|tag| (path.clone(), tag.clone()))
+                            })
+                            .collect(),
+                    );
+                }
+            }
+        }
+        self.flow.merge(then_state, cond, &self.params, meta);
+    }
+
     /// Preserve component indices, but keep signal and bus tags array-wide.
     fn path(&self, name: &str, access: &[Access]) -> Result<String> {
         let mut path = name.to_owned();
@@ -1026,7 +1071,7 @@ impl Analysis<'_> {
         name: &str,
         component: &Component<'_>,
     ) -> Option<(HashMap<String, Expression>, HashSet<String>)> {
-        let args = self.flow.component_args.get(name)?;
+        let args = &self.flow.component_states.get(name)?.args;
         let mut bindings = HashMap::new();
         let mut missing = HashSet::new();
         for (param, value) in component.summary.params.iter().zip(args) {
@@ -1283,11 +1328,16 @@ impl Analysis<'_> {
                             .iter()
                             .map(|arg| self.constant_expression(arg).map(Some))
                             .collect::<Result<Vec<_>>>()?;
-                        self.flow.component_args.insert(dst.clone(), args);
-                        self.components.entry(dst).or_default().push(Component {
+                        let components = self.components.entry(dst.clone()).or_default();
+                        self.flow.component_states.insert(
+                            dst,
+                            ComponentState { args, occurrences: vec![components.len()] },
+                        );
+                        components.push(Component {
                             source: meta.clone(),
                             summary: &callee.summary,
                             position,
+                            input_tags: None,
                         });
                         self.refresh_components()?;
                         return Ok(());
@@ -1334,7 +1384,7 @@ impl Analysis<'_> {
                 if let Some(other) = else_case {
                     self.statement(other)?;
                 }
-                self.flow.merge(then_state, &condition, &self.params, &meta);
+                self.merge_flow(then_state, &condition, &meta);
             }
             Statement::While { cond, stmt: loop_body, .. } => {
                 self.expression(cond)?;
@@ -1404,7 +1454,7 @@ impl Analysis<'_> {
                 } else {
                     // An unknown trip count may be zero, so body effects are conditional.
                     let body_state = std::mem::replace(&mut self.flow, incoming);
-                    self.flow.merge(body_state, cond, &self.params, &meta);
+                    self.merge_flow(body_state, cond, &meta);
                 }
             }
             Statement::Assert { arg, .. } => self.expression(arg)?,
@@ -1553,9 +1603,13 @@ fn analyze(
         for path in component.summary.inputs.keys() {
             let key = format!("{component_name}.{path}");
             let location = source_location(program, &component.source);
-            let tag = analysis.flow.tags.get(&key).ok_or_else(|| {
-                anyhow!("{location}: component {component_name} requires input tag {path}")
-            })?;
+            let tag = component
+                .input_tags
+                .as_ref()
+                .map_or_else(|| analysis.flow.tags.get(&key), |tags| tags.get(path))
+                .ok_or_else(|| {
+                    anyhow!("{location}: component {component_name} requires input tag {path}")
+                })?;
             if component.summary.required_values.contains(path) {
                 ensure!(
                     tag.value.is_some(),
