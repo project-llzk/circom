@@ -100,7 +100,7 @@ struct FlowState {
     capacities: BTreeMap<String, Capacity>,
     /// Local scalar and array snapshots expressed only in compile-time parameters.
     constants: HashMap<String, Expression>,
-    /// Active constructor arguments; missing values represent divergent runtime choices.
+    /// Constructor-time argument snapshots; missing values represent divergent runtime choices.
     component_args: HashMap<String, Vec<Option<Expression>>>,
 }
 
@@ -1266,9 +1266,12 @@ impl Analysis<'_> {
                         for path in callee.summary.buses.keys() {
                             self.buses.insert(format!("{dst}.{path}"));
                         }
-                        self.flow
-                            .component_args
-                            .insert(dst.clone(), args.iter().cloned().map(Some).collect());
+                        // Output tags may be read or refreshed after argument locals change.
+                        let args = args
+                            .iter()
+                            .map(|arg| self.constant_expression(arg).map(Some))
+                            .collect::<Result<Vec<_>>>()?;
+                        self.flow.component_args.insert(dst.clone(), args);
                         self.components.entry(dst).or_default().push(Component {
                             source: meta.clone(),
                             summary: &callee.summary,

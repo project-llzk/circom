@@ -398,7 +398,8 @@ component main = B(3, 4,5, 6,9,3);
 // TEMPLATED: %[[FIELD2:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE13:[a-zA-Z0-9_.-]+]][@out]
 // TEMPLATED: %[[FIELD3:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE13]][@aux]
 // TEMPLATED: %[[FIELD4:[a-zA-Z0-9_.-]+]] = struct.readm %[[VALUE13]][@aux$inputs]
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = array.read %[[VALUE14:[a-zA-Z0-9_.-]+]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
+// TEMPLATED: %[[VALUE14:[a-zA-Z0-9_.-]+]] = array.new %[[SIZE_N1:[a-zA-Z0-9_.-]+]], %[[SIZE_N2:[a-zA-Z0-9_.-]+]], %[[SIZE_N3:[a-zA-Z0-9_.-]+]] : <3 x !felt.type<"bn128">>
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = array.read %[[VALUE14]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = array.read %[[VALUE16:[a-zA-Z0-9_.-]+]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[A14:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE18:[a-zA-Z0-9_.-]+]][@a]
 // TEMPLATED: %[[ELEMENT9:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD4]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
@@ -415,13 +416,16 @@ component main = B(3, 4,5, 6,9,3);
 // TEMPLATED: %[[ELEMENT13:[a-zA-Z0-9_.-]+]] = array.read %[[B11]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[A17:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT13]][@a]
 // TEMPLATED: constrain.eq %[[A16]], %[[A17]]
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = array.read %[[VALUE14]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
+// Nominal-identity checks read fresh snapshots containing the constructor's sizes.
+// TEMPLATED: %[[SNAPSHOT1:[a-zA-Z0-9_.-]+]] = array.new %[[SIZE_N1]], %[[SIZE_N2]], %[[SIZE_N3]] : <3 x !felt.type<"bn128">>
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = array.read %[[SNAPSHOT1]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[A18:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE25:[a-zA-Z0-9_.-]+]][@a]
 // TEMPLATED: %[[ELEMENT15:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD4]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[IN5:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT15]][@in]
 // TEMPLATED: %[[A19:[a-zA-Z0-9_.-]+]] = pod.read %[[IN5]][@a]
 // TEMPLATED: constrain.eq %[[A18]], %[[A19]]
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = array.read %[[VALUE14]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
+// TEMPLATED: %[[SNAPSHOT2:[a-zA-Z0-9_.-]+]] = array.new %[[SIZE_N1]], %[[SIZE_N2]], %[[SIZE_N3]] : <3 x !felt.type<"bn128">>
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = array.read %[[SNAPSHOT2]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[B12:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE25]][@b]
 // TEMPLATED: %[[ELEMENT17:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD4]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[IN6:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT17]][@in]
@@ -431,13 +435,15 @@ component main = B(3, 4,5, 6,9,3);
 // TEMPLATED: %[[A20:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT18]][@a]
 // TEMPLATED: %[[A21:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT19]][@a]
 // TEMPLATED: constrain.eq %[[A20]], %[[A21]]
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = array.read %[[VALUE14]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
+// TEMPLATED: %[[SNAPSHOT3:[a-zA-Z0-9_.-]+]] = array.new %[[SIZE_N1]], %[[SIZE_N2]], %[[SIZE_N3]] : <3 x !felt.type<"bn128">>
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = array.read %[[SNAPSHOT3]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[A22:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE32:[a-zA-Z0-9_.-]+]][@a]
 // TEMPLATED: %[[ELEMENT21:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD4]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[IN7:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT21]][@in]
 // TEMPLATED: %[[A23:[a-zA-Z0-9_.-]+]] = pod.read %[[IN7]][@a]
 // TEMPLATED: constrain.eq %[[A22]], %[[A23]]
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = array.read %[[VALUE14]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
+// TEMPLATED: %[[SNAPSHOT4:[a-zA-Z0-9_.-]+]] = array.new %[[SIZE_N1]], %[[SIZE_N2]], %[[SIZE_N3]] : <3 x !felt.type<"bn128">>
+// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = array.read %[[SNAPSHOT4]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[B14:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE32]][@b]
 // TEMPLATED: %[[ELEMENT23:[a-zA-Z0-9_.-]+]] = array.read %[[FIELD4]]{{\[}}%{{[a-zA-Z0-9_.-]+}}]
 // TEMPLATED: %[[IN8:[a-zA-Z0-9_.-]+]] = pod.read %[[ELEMENT23]][@in]
