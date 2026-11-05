@@ -801,6 +801,34 @@ impl Analysis<'_> {
         Ok(())
     }
 
+    /// Check every bus alternative on both sides of a constraint equality.
+    fn equality_compatibility(
+        &self,
+        lhe: &Expression,
+        rhe: &Expression,
+        checks: &mut Vec<Statement>,
+    ) -> Result<()> {
+        match lhe {
+            Expression::Variable { name, access, .. } => {
+                self.compatibility(&self.path(name, access)?, rhe, checks)?;
+            }
+            Expression::ArrayInLine { values, .. } => {
+                for value in values {
+                    self.equality_compatibility(value, rhe, checks)?;
+                }
+            }
+            Expression::UniformArray { value, .. } => {
+                self.equality_compatibility(value, rhe, checks)?;
+            }
+            Expression::InlineSwitchOp { if_true, if_false, .. } => {
+                self.equality_compatibility(if_true, rhe, checks)?;
+                self.equality_compatibility(if_false, rhe, checks)?;
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
     /// Propagate tags with Circom's declared/explicit/initialized rules.
     fn assign(&mut self, dst: &str, source: BTreeMap<String, Tag>) {
         let prefix = format!("{dst}.");
@@ -1145,9 +1173,7 @@ impl Analysis<'_> {
             Statement::ConstraintEquality { lhe, rhe, .. } => {
                 self.expression(lhe)?;
                 self.expression(rhe)?;
-                if let Expression::Variable { name, access, .. } = lhe {
-                    self.compatibility(&self.path(name, access)?, rhe, &mut checks)?;
-                }
+                self.equality_compatibility(lhe, rhe, &mut checks)?;
             }
             Statement::IfThenElse { cond, if_case, else_case, .. } => {
                 self.expression(cond)?;
