@@ -1510,17 +1510,26 @@ pub fn try_compute_biguint(expr: &Expression, prime: &BigUint) -> Result<Option<
                         ExpressionInfixOpcode::Pow => lhs.modpow(&rhs, prime),
                         ExpressionInfixOpcode::IntDiv => (lhs / rhs) % prime,
                         ExpressionInfixOpcode::Mod => lhs % rhs,
-                        ExpressionInfixOpcode::ShiftL => {
-                            (lhs << rhs
-                                .to_usize()
-                                .ok_or_else(|| anyhow!("could not convert to usize"))?)
-                                % prime
-                        }
-                        ExpressionInfixOpcode::ShiftR => {
-                            (lhs >> rhs
-                                .to_usize()
-                                .ok_or_else(|| anyhow!("could not convert to usize"))?)
-                                % prime
+                        ExpressionInfixOpcode::ShiftL | ExpressionInfixOpcode::ShiftR => {
+                            let lhs = lhs % prime;
+                            let rhs = rhs % prime;
+                            // Counts use a signed field interpretation; negative counts
+                            // reverse direction. Left shifts mask before reducing modulo p.
+                            let reverse = rhs > (prime >> 1);
+                            let shift = if reverse { prime - rhs } else { rhs };
+                            let width = prime.bits();
+                            match shift.to_usize().filter(|shift| *shift < width) {
+                                Some(shift)
+                                    if (*infix_op == ExpressionInfixOpcode::ShiftL) != reverse =>
+                                {
+                                    let mask = (BigUint::one() << width) - BigUint::one();
+                                    ((lhs << shift) & mask) % prime
+                                }
+                                Some(shift) => lhs >> shift,
+                                // All bits shift out of the field, even for counts that
+                                // cannot fit in usize. Avoid allocating a huge intermediate.
+                                None => BigUint::zero(),
+                            }
                         }
                         // Comparison operators are performed based on a signed interpretation
                         // of the field elements as defined by the `relational_val` function,
@@ -1580,7 +1589,7 @@ pub fn try_compute_biguint(expr: &Expression, prime: &BigUint) -> Result<Option<
                         }
                         ExpressionPrefixOpcode::Complement => {
                             let mask = (BigUint::one() << prime.bits()) - BigUint::one();
-                            mask ^ rhs
+                            (mask ^ rhs) % prime
                         }
                     };
                     Ok(Some(res))
@@ -2489,7 +2498,7 @@ where
                         // Use the pre-computed type from DeclarationInfo (seeded into the
                         // BlockContextStack root) to avoid triggering recursive
                         // gen_template_poly_expr calls for non-constant dimension expressions.
-                        let qualified_key = format!("{}@{}", name, meta.start);
+                        let qualified_key = format!("{}@{}#{}", name, meta.start, meta.elem_id);
                         if let Some(ty) = gen_ctx.get_var_decl_types().get(&qualified_key) {
                             let builder =
                                 gen_ctx.builder_at_current_insertion_point(codegen.context);
@@ -2746,9 +2755,13 @@ where
 
             // Process the boundary statement (the one on the trace path).
             match boundary_stmt {
-                Statement::Block { stmts, .. } => {
-                    gen_up_to_target(codegen, gen_ctx, target_expr, stmts, inner_trace)
-                }
+                Statement::Block { stmts, .. } => gen_ctx
+                    .gen_in_current_block_with_new_circom_scope_and_merge_overwrites(
+                        codegen.context,
+                        |gen_ctx| {
+                            gen_up_to_target(codegen, gen_ctx, target_expr, stmts, inner_trace)
+                        },
+                    ),
                 Statement::InitializationBlock { initializations, .. } => {
                     gen_up_to_target(codegen, gen_ctx, target_expr, initializations, inner_trace)
                 }

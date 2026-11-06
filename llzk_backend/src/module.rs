@@ -81,10 +81,9 @@ pub struct DeclarationInfo<'ctx> {
     inputs: Vec<InputSignalInfo<'ctx>>,
     /// Output and Intermediate declarations to use as LLZK struct fields.
     struct_fields: Vec<MemberInfo<'ctx>>,
-    /// Map source-position-qualified key (`name@meta_start`) to its LLZK declaration type. Using
-    /// a source-position-qualified key allows the same circom variable name to appear in multiple
-    /// scopes without collision (e.g., an outer scope followed by an inner scope or both branches
-    /// of an if/else).
+    /// Map declaration-qualified key (`name@meta_start#elem_id`) to its LLZK type.
+    /// Source positions distinguish lexical declarations; fresh AST IDs distinguish clones
+    /// produced by unrolling loops, which can have different types in each iteration.
     decl_inits: HashMap<String, Type<'ctx>>,
     /// Maps each qualified key in `decl_inits` back to the plain circom variable name, so that
     /// function contexts can declare the value under its original name.
@@ -109,8 +108,8 @@ pub struct DeclarationInfo<'ctx> {
     /// While the `visit()` function is running, this is `None` and is only populated with the map
     /// from `codegen` when the vistor is done.
     new_sym_bindings: Option<PendingPolyBindings<'ctx>>,
-    /// Pre-computed LLZK types for `var` declarations, keyed by the same source-position-qualified
-    /// key (`name@meta_start`) used in `decl_inits` so that the same circom variable name in
+    /// Pre-computed LLZK types for `var` declarations, keyed by the same declaration-qualified
+    /// key (`name@meta_start#elem_id`) used in `decl_inits` so that the same circom variable name in
     /// different scopes will map to each distinct type. Used by `poly.expr` body generation.
     var_decl_types: HashMap<String, Type<'ctx>>,
 }
@@ -367,9 +366,9 @@ impl<'ctx> DeclarationInfo<'ctx> {
                         self.record_direct_dimension_params(codegen, &dimensions);
                         let var_type =
                             dimensions.type_from_dimension_exprs(codegen.felt_type().into());
-                        // Key by source position so the same name in different scopes
-                        // (e.g., both branches of an if/else) gets a distinct entry.
-                        let qualified_key = format!("{}@{}", name, meta.start);
+                        // Include the fresh AST ID to distinguish unrolled declarations that
+                        // share a source position but may have different array dimensions.
+                        let qualified_key = format!("{}@{}#{}", name, meta.start, meta.elem_id);
                         self.var_decl_types.insert(qualified_key.clone(), var_type);
                         self.declared_var_names.insert(name.clone());
                         let old = self.decl_inits.insert(qualified_key.clone(), var_type);
