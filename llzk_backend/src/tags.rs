@@ -465,6 +465,7 @@ fn depends_only_on(expr: &Expression, params: &[String]) -> bool {
                 && depends_only_on(if_true, params)
                 && depends_only_on(if_false, params)
         }
+        Expression::Call { args, .. } => args.iter().all(|arg| depends_only_on(arg, params)),
         _ => false,
     }
 }
@@ -1994,7 +1995,21 @@ fn prepare_layout_params(
             .cloned()
             .zip(args.iter().cloned())
             .collect();
-        args.extend(extras[id].values().map(|expr| crate::bus::substitute(expr, &bindings)));
+        for expr in extras[id].values() {
+            let expr = crate::bus::substitute(expr, &bindings);
+            // Main's parameter attribute requires literal values, including dimensions
+            // obtained from pure function calls after binding the main arguments.
+            let value = crate::template_recursion::value(
+                &expr,
+                &HashMap::new(),
+                prime,
+                &program.functions,
+            )?;
+            args.push(value.map_or_else(
+                || expr.clone(),
+                |value| Expression::Number(expr.get_meta().clone(), value.into()),
+            ));
+        }
     }
     Ok(program)
 }
