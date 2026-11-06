@@ -575,7 +575,7 @@ impl<'ast> WriteChain<'ast> {
                 &index_vals,
             )?;
 
-            if has_bus && signal_name.is_some() {
+            let val = if has_bus && signal_name.is_some() {
                 let mut expected: llzk::prelude::Type = entry.inputs_type().into();
                 for access in tail {
                     expected = match access {
@@ -599,9 +599,11 @@ impl<'ast> WriteChain<'ast> {
                         }
                     };
                 }
-                // Concrete execution has already checked assignment shapes. A mixed array
-                // dispatch can still contain statically impossible entries in this branch.
-                // Guard those entries instead of manufacturing an incompatible cast.
+                // Remove concrete return padding before deciding whether this entry is
+                // impossible. Concrete execution has already checked assignment shapes.
+                let val = fc.narrow_concrete_signal_value(codegen, location, val, expected)?;
+                // A mixed array dispatch can still contain incompatible entries. Guard
+                // those entries instead of manufacturing an incompatible cast.
                 if !llzk::typing::types_unify(expected, val.r#type()) {
                     let builder = fc.builder_at_current_insertion_point(codegen.context);
                     let valid = fc.append_op_ref_unnamed_result(llzk::dialect::bool::r#not(
@@ -615,7 +617,10 @@ impl<'ast> WriteChain<'ast> {
                     )?;
                     continue;
                 }
-            }
+                val
+            } else {
+                val
+            };
 
             let (info, ()) = NestedBlockInfo::with_scope(codegen.context, fc, |fc| {
                 if let Some(signal_name) = signal_name {
