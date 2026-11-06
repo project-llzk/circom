@@ -5,7 +5,7 @@ use std::convert::TryFrom;
 
 use anyhow::{ensure, Result};
 use num_bigint_dig::BigUint;
-use num_traits::Zero;
+use num_traits::{ToPrimitive, Zero};
 use program_structure::{
     ast::{Access, AssignOp, Expression, Meta, Statement, VariableType},
     function_data::FunctionInfo,
@@ -94,8 +94,31 @@ struct Preparation<'a> {
 }
 
 impl Preparation<'_> {
+    /// Resolve dimensions using the scalar bindings available at this point in the caller.
+    fn dimension(&self, expr: &Expression, constants: &Constants) -> Result<Option<usize>> {
+        Ok(template_recursion::value(expr, constants, self.prime, self.functions)?
+            .and_then(|value| value.to_i64())
+            .and_then(|value| usize::try_from(value).ok()))
+    }
+
+    /// Give synthesized array initializers the fixed dimensions of their declarations.
+    fn bind_uniform_dimensions(&self, expr: &mut Expression, constants: &Constants) -> Result<()> {
+        if let Expression::UniformArray { value, dimension, .. } = expr {
+            if let Some(length) = self.dimension(dimension, constants)? {
+                **dimension = Expression::Number(dimension.get_meta().clone(), length.into());
+            }
+            self.bind_uniform_dimensions(value, constants)?;
+        }
+        Ok(())
+    }
+
     /// Return a statically known shape; an empty shape denotes a scalar.
-    fn shape(&self, expr: &Expression, shapes: &Shapes) -> Result<Option<Vec<usize>>> {
+    fn shape(
+        &self,
+        expr: &Expression,
+        shapes: &Shapes,
+        constants: &Constants,
+    ) -> Result<Option<Vec<usize>>> {
         Ok(match expr {
             Expression::Number(..) | Expression::InfixOp { .. } | Expression::PrefixOp { .. } => {
                 Some(vec![])
@@ -113,7 +136,7 @@ impl Preparation<'_> {
             Expression::ArrayInLine { values, .. } => {
                 let mut element_shape = None;
                 for value in values {
-                    let Some(shape) = self.shape(value, shapes)? else {
+                    let Some(shape) = self.shape(value, shapes, constants)? else {
                         return Ok(None);
                     };
                     if element_shape.as_ref().is_some_and(|previous| previous != &shape) {
@@ -126,15 +149,14 @@ impl Preparation<'_> {
                 Some(shape)
             }
             Expression::UniformArray { value, dimension, .. } => {
-                let length = crate::shared::try_compute_as_i64(dimension, self.prime)?
-                    .and_then(|n| usize::try_from(n).ok());
+                let length = self.dimension(dimension, constants)?;
                 length
-                    .zip(self.shape(value, shapes)?)
+                    .zip(self.shape(value, shapes, constants)?)
                     .map(|(length, element)| std::iter::once(length).chain(element).collect())
             }
             Expression::InlineSwitchOp { if_true, if_false, .. } => {
-                let first = self.shape(if_true, shapes)?;
-                (first == self.shape(if_false, shapes)?).then_some(first).flatten()
+                let first = self.shape(if_true, shapes, constants)?;
+                (first == self.shape(if_false, shapes, constants)?).then_some(first).flatten()
             }
             _ => None,
         })
@@ -158,7 +180,7 @@ impl Preparation<'_> {
         }
         let parameter_shapes = args
             .iter()
-            .map(|arg| Ok(self.shape(arg, shapes)?.filter(|shape| !shape.is_empty())))
+            .map(|arg| Ok(self.shape(arg, shapes, constants)?.filter(|shape| !shape.is_empty())))
             .collect::<Result<Vec<_>>>()?;
         if !self.expanded.contains(id)
             && self.active.iter().any(|(active_id, active_shapes, _)| {
@@ -377,10 +399,21 @@ impl Preparation<'_> {
             Statement::Declaration { name, xtype, dimensions, .. } => {
                 let shape = if *xtype == VariableType::Var {
                     dimensions
-                        .iter()
+                        .iter_mut()
                         .map(|dimension| {
-                            Ok(crate::shared::try_compute_as_i64(dimension, self.prime)?
-                                .and_then(|n| usize::try_from(n).ok()))
+                            if resolve_recursion {
+                                let length = self.dimension(dimension, constants)?;
+                                if let Some(length) = length {
+                                    *dimension = Expression::Number(
+                                        dimension.get_meta().clone(),
+                                        length.into(),
+                                    );
+                                }
+                                Ok(length)
+                            } else {
+                                Ok(crate::shared::try_compute_as_i64(dimension, self.prime)?
+                                    .and_then(|n| usize::try_from(n).ok()))
+                            }
                         })
                         .collect::<Result<Option<Vec<_>>>>()?
                 } else {
@@ -390,6 +423,9 @@ impl Preparation<'_> {
                 constants.remove(name);
             }
             Statement::Substitution { var, access, op, rhe, .. } => {
+                if resolve_recursion {
+                    self.bind_uniform_dimensions(rhe, constants)?;
+                }
                 self.call(rhe, shapes, constants)?;
                 if resolve_recursion && *op == AssignOp::AssignVar {
                     let value = if access.is_empty() {
