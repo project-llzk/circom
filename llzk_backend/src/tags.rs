@@ -1833,7 +1833,8 @@ pub(crate) fn prepare(program: &ProgramArchive, prime: &BigUint) -> Result<Progr
     {
         return Ok(program.clone());
     }
-    let program = prepare_main_arrays(program)?;
+    let program = crate::template_arrays::prepare_recursion(program.clone(), prime)?;
+    let program = prepare_main_arrays(&program)?;
     let program = &program;
     let mut summaries = HashMap::new();
     let mut callee_first = Vec::new();
