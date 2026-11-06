@@ -44,6 +44,7 @@ pub(crate) fn prepare(mut program: ProgramArchive, prime: &BigUint) -> Result<Pr
             templates: HashMap::new(),
             specializations: HashMap::new(),
             active: HashSet::new(),
+            recursive_depth: 0,
             expanded: &expanded,
         };
         let mut main = program.initial_template_call.clone();
@@ -78,6 +79,8 @@ struct Preparation<'a> {
     specializations: HashMap<Specialization, String>,
     /// Incomplete expanded specializations must not be reused as circular struct members.
     active: HashSet<Specialization>,
+    /// Active reentries into a template, excluding first visits through acyclic callers.
+    recursive_depth: usize,
     /// Array recursion and its callers need scalar bindings to resolve a finite child graph.
     expanded: &'a HashSet<String>,
 }
@@ -202,10 +205,12 @@ impl Preparation<'_> {
         if let Some(name) = self.specializations.get(&key) {
             return Ok(name.clone());
         }
+        let recursive = resolve_recursion && self.active.iter().any(|(name, _, _)| name == id);
         ensure!(
-            !resolve_recursion || self.active.len() < MAX_RECURSIVE_DEPTH,
+            !recursive || self.recursive_depth < MAX_RECURSIVE_DEPTH,
             "recursive template specialization depth limit ({MAX_RECURSIVE_DEPTH}) exceeded at {id}"
         );
+        self.recursive_depth += usize::from(recursive);
         self.active.insert(key.clone());
         let old = self.originals[id].clone();
         ensure!(
@@ -316,6 +321,7 @@ impl Preparation<'_> {
         );
         self.templates.insert(name.clone(), template);
         self.active.remove(&key);
+        self.recursive_depth -= usize::from(recursive);
         Ok(name)
     }
 
