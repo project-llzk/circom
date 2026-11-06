@@ -13,12 +13,12 @@ use program_structure::{
     template_data::TemplateData,
 };
 
-use crate::template_recursion::{self, Constants};
+use crate::template_recursion::{self, ConstantValue, Constants};
 
 /// Lexically visible variable shapes; `None` means the shape is not statically known.
 type Shapes = HashMap<String, Option<Vec<usize>>>;
-/// Original template name, array shapes, and bound scalar values in formal parameter order.
-type Specialization = (String, Vec<Option<Vec<usize>>>, Vec<Option<BigUint>>);
+/// Original template name, array shapes, and bound values in formal parameter order.
+type Specialization = (String, Vec<Option<Vec<usize>>>, Vec<Option<ConstantValue>>);
 
 /// Bound expansion before nonterminating recursion can exhaust the compiler's stack.
 const MAX_RECURSIVE_DEPTH: usize = 128;
@@ -35,9 +35,22 @@ impl std::fmt::Display for ExpandRecursion {
 
 impl std::error::Error for ExpandRecursion {}
 
+/// Retry unresolved recursion with known array contents included in specialization keys.
+#[derive(Debug)]
+struct BindArrayValues(String);
+
+impl std::fmt::Display for BindArrayValues {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "array recursion requires constant array arguments for {}", self.0)
+    }
+}
+
+impl std::error::Error for BindArrayValues {}
+
 /// Scalarize array arguments before collecting template declarations and types.
 pub(crate) fn prepare(mut program: ProgramArchive, prime: &BigUint) -> Result<ProgramArchive> {
     let mut expanded = HashSet::new();
+    let mut bound_arrays = HashSet::new();
     loop {
         let mut preparation = Preparation {
             originals: &program.templates,
@@ -48,6 +61,7 @@ pub(crate) fn prepare(mut program: ProgramArchive, prime: &BigUint) -> Result<Pr
             active: HashSet::new(),
             recursive_depth: 0,
             expanded: &expanded,
+            bound_arrays: &bound_arrays,
             next_elem_id: program.id_max,
         };
         let mut main = program.initial_template_call.clone();
@@ -63,6 +77,10 @@ pub(crate) fn prepare(mut program: ProgramArchive, prime: &BigUint) -> Result<Pr
                     // Discover array parameters from actual call shapes. Restart so scalar-only
                     // wrappers also bind values, without changing unrelated scalar recursion.
                     expanded.extend(template_recursion::callers_of(&program.templates, id));
+                } else if let Some(BindArrayValues(id)) = error.downcast_ref::<BindArrayValues>() {
+                    // Keep array payloads parameterized when scalar bindings suffice. Only
+                    // retry the unresolved recursive chain and callers that supply its values.
+                    bound_arrays.extend(template_recursion::callers_of(&program.templates, id));
                 } else {
                     return Err(error);
                 }
@@ -81,7 +99,7 @@ struct Preparation<'a> {
     prime: &'a BigUint,
     /// Completed reachable template definitions.
     templates: HashMap<String, TemplateData>,
-    /// Reuse definitions with equal shapes and recursion-controlling scalar bindings.
+    /// Reuse definitions with equal shapes and recursion-controlling bindings.
     specializations: HashMap<Specialization, String>,
     /// Incomplete expanded specializations must not be reused as circular struct members.
     active: HashSet<Specialization>,
@@ -89,6 +107,8 @@ struct Preparation<'a> {
     recursive_depth: usize,
     /// Array recursion and its callers need scalar bindings to resolve a finite child graph.
     expanded: &'a HashSet<String>,
+    /// Bind known array contents only when scalar expansion could not resolve recursion.
+    bound_arrays: &'a HashSet<String>,
     /// Fresh AST IDs for rebuilt templates, starting after the original program's IDs.
     next_elem_id: usize,
 }
@@ -195,8 +215,13 @@ impl Preparation<'_> {
             .iter()
             .zip(&parameter_shapes)
             .map(|(arg, shape)| {
-                if self.expanded.contains(id) && shape.is_none() {
-                    template_recursion::value(arg, constants, self.prime, self.functions)
+                if !self.expanded.contains(id) {
+                    Ok(None)
+                } else if shape.is_none() {
+                    Ok(template_recursion::value(arg, constants, self.prime, self.functions)?
+                        .map(ConstantValue::from))
+                } else if self.bound_arrays.contains(id) {
+                    template_recursion::known_value(arg, constants, self.prime, self.functions)
                 } else {
                     Ok(None)
                 }
@@ -205,11 +230,14 @@ impl Preparation<'_> {
         let name = self.specialize(id, &parameter_shapes, &parameter_values)?;
         let mut scalar_args = Vec::new();
         for ((arg, shape), value) in args.iter().zip(&parameter_shapes).zip(&parameter_values) {
+            if value.is_some() {
+                continue;
+            }
             if let Some(shape) = shape {
                 for indices in indices(shape)? {
                     scalar_args.push(array_element(arg, &indices)?);
                 }
-            } else if value.is_none() {
+            } else {
                 scalar_args.push(arg.clone());
             }
         }
@@ -223,10 +251,13 @@ impl Preparation<'_> {
         &mut self,
         id: &str,
         parameter_shapes: &[Option<Vec<usize>>],
-        parameter_values: &[Option<BigUint>],
+        parameter_values: &[Option<ConstantValue>],
     ) -> Result<String> {
         let key = (id.to_owned(), parameter_shapes.to_vec(), parameter_values.to_vec());
         let resolve_recursion = self.expanded.contains(id);
+        if resolve_recursion && self.active.contains(&key) && !self.bound_arrays.contains(id) {
+            return Err(BindArrayValues(id.to_owned()).into());
+        }
         ensure!(
             !resolve_recursion || !self.active.contains(&key),
             "recursive template specialization repeats at {id}; \
@@ -236,6 +267,12 @@ impl Preparation<'_> {
             return Ok(name.clone());
         }
         let recursive = resolve_recursion && self.active.iter().any(|(name, _, _)| name == id);
+        if recursive
+            && self.recursive_depth >= MAX_RECURSIVE_DEPTH
+            && !self.bound_arrays.contains(id)
+        {
+            return Err(BindArrayValues(id.to_owned()).into());
+        }
         ensure!(
             !recursive || self.recursive_depth < MAX_RECURSIVE_DEPTH,
             "recursive template specialization depth limit ({MAX_RECURSIVE_DEPTH}) exceeded at {id}"
@@ -262,8 +299,20 @@ impl Preparation<'_> {
         if parameter_values.iter().any(Option::is_some) {
             name.push_str("$values");
             for (position, value) in parameter_values.iter().enumerate() {
-                if let Some(value) = value {
-                    name.push_str(&format!("${position}_{value}"));
+                match value {
+                    Some(ConstantValue::Scalar(value)) => {
+                        name.push_str(&format!("${position}_{value}"));
+                    }
+                    Some(value @ ConstantValue::Array(_)) => {
+                        let shape = parameter_shapes[position].as_deref().ok_or_else(|| {
+                            anyhow::anyhow!("constant array argument has no known shape")
+                        })?;
+                        name.push_str(&format!("${position}_array"));
+                        for scalar in array_scalars(value, shape)? {
+                            name.push_str(&format!("_{scalar}"));
+                        }
+                    }
+                    None => {}
                 }
             }
         }
@@ -282,9 +331,28 @@ impl Preparation<'_> {
         {
             shapes.insert(formal.clone(), Some(shape.clone().unwrap_or_default()));
             if let Some(shape) = shape {
-                let scalar_names = (0..element_count(shape)?)
-                    .map(|element| format!("$array${formal}${element}"))
-                    .collect::<Vec<_>>();
+                let elements = if let Some(value) = value {
+                    let elements = array_scalars(value, shape)?
+                        .into_iter()
+                        .map(|value| Expression::Number(meta.clone(), value.clone().into()))
+                        .collect::<Vec<_>>();
+                    constants.insert(formal.clone(), value.clone());
+                    elements
+                } else {
+                    let scalar_names = (0..element_count(shape)?)
+                        .map(|element| format!("$array${formal}${element}"))
+                        .collect::<Vec<_>>();
+                    let elements = scalar_names
+                        .iter()
+                        .map(|name| Expression::Variable {
+                            meta: meta.clone(),
+                            name: name.clone(),
+                            access: vec![],
+                        })
+                        .collect::<Vec<_>>();
+                    params.extend(scalar_names);
+                    elements
+                };
                 prefix.push(Statement::Declaration {
                     meta: meta.clone(),
                     xtype: VariableType::Var,
@@ -301,10 +369,9 @@ impl Preparation<'_> {
                     var: formal.clone(),
                     access: vec![],
                     op: AssignOp::AssignVar,
-                    rhe: array_initializer(meta, shape, &mut scalar_names.iter()),
+                    rhe: array_initializer(meta, shape, &mut elements.into_iter())?,
                 });
-                params.extend(scalar_names);
-            } else if let Some(value) = value {
+            } else if let Some(ConstantValue::Scalar(value)) = value {
                 // Keep a mutable local for the original formal, but remove the fixed value
                 // from the generated signature so callers cannot override the specialization.
                 constants.insert(formal.clone(), value.clone().into());
@@ -428,16 +495,14 @@ impl Preparation<'_> {
                 }
                 self.call(rhe, shapes, constants)?;
                 if resolve_recursion && *op == AssignOp::AssignVar {
-                    let value = if access.is_empty() {
-                        template_recursion::value(rhe, constants, self.prime, self.functions)?
-                    } else {
-                        None
-                    };
-                    if let Some(value) = value {
-                        constants.insert(var.clone(), value.into());
-                    } else {
-                        constants.remove(var);
-                    }
+                    template_recursion::assign(
+                        var,
+                        access,
+                        rhe,
+                        constants,
+                        self.prime,
+                        self.functions,
+                    )?;
                 }
             }
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
@@ -621,18 +686,29 @@ fn indices(shape: &[usize]) -> Result<Vec<Vec<usize>>> {
     Ok(indices)
 }
 
-/// Reconstruct an array from row-major scalar parameters, preserving zero-sized dimensions.
-fn array_initializer<'a>(
+/// Flatten a constant array after checking its declared shape, including empty dimensions.
+fn array_scalars<'a>(value: &'a ConstantValue, shape: &[usize]) -> Result<Vec<&'a BigUint>> {
+    match (value, shape.split_first()) {
+        (ConstantValue::Scalar(value), None) => Ok(vec![value]),
+        (ConstantValue::Array(values), Some((dimension, rest))) if values.len() == *dimension => {
+            let mut scalars = Vec::new();
+            for value in values {
+                scalars.extend(array_scalars(value, rest)?);
+            }
+            Ok(scalars)
+        }
+        _ => anyhow::bail!("constant array argument does not match its known shape"),
+    }
+}
+
+/// Reconstruct an array from row-major scalar expressions, preserving zero-sized dimensions.
+fn array_initializer(
     meta: &Meta,
     shape: &[usize],
-    names: &mut impl Iterator<Item = &'a String>,
-) -> Expression {
+    elements: &mut impl Iterator<Item = Expression>,
+) -> Result<Expression> {
     let Some((dimension, rest)) = shape.split_first() else {
-        return Expression::Variable {
-            meta: meta.clone(),
-            name: names.next().expect("one parameter per array element").clone(),
-            access: vec![],
-        };
+        return elements.next().ok_or_else(|| anyhow::anyhow!("missing constant array element"));
     };
     if *dimension == 0 {
         let zero =
@@ -643,14 +719,16 @@ fn array_initializer<'a>(
                     dimension: Box::new(Expression::Number(meta.clone(), (*dim).into())),
                 }
             });
-        return Expression::UniformArray {
+        return Ok(Expression::UniformArray {
             meta: meta.clone(),
             value: Box::new(zero),
             dimension: Box::new(Expression::Number(meta.clone(), 0.into())),
-        };
+        });
     }
-    Expression::ArrayInLine {
+    Ok(Expression::ArrayInLine {
         meta: meta.clone(),
-        values: (0..*dimension).map(|_| array_initializer(meta, rest, names)).collect(),
-    }
+        values: (0..*dimension)
+            .map(|_| array_initializer(meta, rest, elements))
+            .collect::<Result<_>>()?,
+    })
 }
