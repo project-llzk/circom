@@ -351,7 +351,7 @@ impl<'ctx> DeclarationInfo<'ctx> {
                     ),
                     VariableType::Bus(bus_name, signal_type, ..) => {
                         let args =
-                            crate::bus::constructor(codegen.current_body().unwrap_or(&[]), name)
+                            crate::bus::constructor(codegen.current_body().unwrap_or(&[]), meta)
                                 .map_or(&[][..], |(_, args)| args);
                         let ty = crate::bus::generic_type(codegen, self, bus_name, args)?;
                         self.visit_signal_or_bus(

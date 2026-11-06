@@ -1757,11 +1757,10 @@ fn analyze(
         bus_arguments: all
             .iter()
             .filter_map(|stmt| {
-                let Statement::Declaration { name, xtype: VariableType::Bus(..), meta, .. } = stmt
-                else {
+                let Statement::Declaration { xtype: VariableType::Bus(..), meta, .. } = stmt else {
                     return None;
                 };
-                let args = crate::bus::constructor(template.get_body_as_vec(), name)
+                let args = crate::bus::constructor(template.get_body_as_vec(), meta)
                     .map_or(&[][..], |(_, args)| args);
                 Some((meta.elem_id, args.to_vec()))
             })
@@ -1910,12 +1909,12 @@ fn prepare_layout_params(
         let mut expressions = Vec::new();
         for stmt in all {
             match stmt {
-                Statement::Declaration { name, xtype, dimensions, .. } => {
+                Statement::Declaration { meta, xtype, dimensions, .. } => {
                     if matches!(xtype, VariableType::Signal(..) | VariableType::Bus(..)) {
                         expressions.extend(dimensions.iter().cloned());
                     }
                     if let VariableType::Bus(bus, ..) = xtype {
-                        let args = crate::bus::constructor(template.get_body_as_vec(), name)
+                        let args = crate::bus::constructor(template.get_body_as_vec(), meta)
                             .map_or(&[][..], |(_, args)| args);
                         expressions.extend(crate::bus::dimensions(&program, bus, args)?);
                     }

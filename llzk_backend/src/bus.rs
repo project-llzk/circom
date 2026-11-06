@@ -4,7 +4,7 @@ use crate::shared::{ArrayDimExprKind, ExprToPolyBinding};
 use anyhow::{anyhow, Context, Result};
 use llzk::prelude::{PodRecordAttribute, PodType};
 use num_traits::ToPrimitive;
-use program_structure::ast::{Access, Expression, Meta, Statement, VariableType};
+use program_structure::ast::{Access, AssignOp, Expression, Meta, Statement, VariableType};
 use std::collections::HashMap;
 
 use crate::{program_ext::ProgramLike, shared::LlzkCodegen};
@@ -143,7 +143,7 @@ impl InstantiatedBus {
                 VariableType::Signal(_, tags) => (tags, None),
                 VariableType::Bus(bus_name, _, tags) => {
                     let args =
-                        constructor(bus.get_body_as_vec(), name).map_or(&[][..], |(_, args)| args);
+                        constructor(bus.get_body_as_vec(), meta).map_or(&[][..], |(_, args)| args);
                     let args = args.iter().map(|e| substitute(e, &params)).collect::<Vec<_>>();
                     (tags, Some(Box::new(Self::instantiate(program, bus_name, &args)?)))
                 }
@@ -281,10 +281,11 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     }
 }
 
-/// Find the storage constructor associated with a declaration, including array initializers.
+/// Find a declaration's adjacent storage constructor, including array initializers.
+/// Match declaration identity first: separate scopes may reuse the same bus name.
 pub(crate) fn constructor<'a>(
     body: &'a [Statement],
-    name: &str,
+    declaration: &Meta,
 ) -> Option<(&'a str, &'a [Expression])> {
     fn call(expr: &Expression) -> Option<(&str, &[Expression])> {
         match expr {
@@ -294,19 +295,34 @@ pub(crate) fn constructor<'a>(
             _ => None,
         }
     }
-    for stmt in body {
+    for (index, stmt) in body.iter().enumerate() {
         let found = match stmt {
             Statement::Block { stmts, .. }
             | Statement::InitializationBlock { initializations: stmts, .. } => {
-                constructor(stmts, name)
+                constructor(stmts, declaration)
             }
-            Statement::Substitution { var, rhe, .. } if var == name => call(rhe),
+            Statement::Declaration { meta, name, .. } if meta.elem_id == declaration.elem_id => {
+                // The parser emits each declaration and its constructor together,
+                // including within comma-separated declaration groups.
+                return match body.get(index + 1) {
+                    Some(Statement::Substitution {
+                        var,
+                        access,
+                        op: AssignOp::AssignVar,
+                        rhe,
+                        ..
+                    }) if var == name && access.is_empty() => call(rhe),
+                    _ => None,
+                };
+            }
             Statement::IfThenElse { if_case, else_case, .. } => {
-                constructor(std::slice::from_ref(if_case), name).or_else(|| {
-                    else_case.as_ref().and_then(|s| constructor(std::slice::from_ref(s), name))
+                constructor(std::slice::from_ref(if_case), declaration).or_else(|| {
+                    else_case
+                        .as_ref()
+                        .and_then(|s| constructor(std::slice::from_ref(s), declaration))
                 })
             }
-            Statement::While { stmt, .. } => constructor(std::slice::from_ref(stmt), name),
+            Statement::While { stmt, .. } => constructor(std::slice::from_ref(stmt), declaration),
             _ => None,
         };
         if found.is_some() {

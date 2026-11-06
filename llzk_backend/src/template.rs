@@ -1339,7 +1339,9 @@ where
                 gen_init_block(codegen, template, initializations)
             }
             Statement::Declaration { meta, xtype, name, dimensions, .. } => {
-                if template.is_subcmp(name) {
+                // Bus storage is already bound in the function prologue. A nested
+                // declaration must not shadow that POD with a scalar initializer.
+                if template.is_subcmp(name) || matches!(xtype, VariableType::Bus(..)) {
                     return Ok(());
                 }
                 template.and_then(
