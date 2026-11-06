@@ -1510,17 +1510,26 @@ pub fn try_compute_biguint(expr: &Expression, prime: &BigUint) -> Result<Option<
                         ExpressionInfixOpcode::Pow => lhs.modpow(&rhs, prime),
                         ExpressionInfixOpcode::IntDiv => (lhs / rhs) % prime,
                         ExpressionInfixOpcode::Mod => lhs % rhs,
-                        ExpressionInfixOpcode::ShiftL => {
-                            (lhs << rhs
-                                .to_usize()
-                                .ok_or_else(|| anyhow!("could not convert to usize"))?)
-                                % prime
-                        }
-                        ExpressionInfixOpcode::ShiftR => {
-                            (lhs >> rhs
-                                .to_usize()
-                                .ok_or_else(|| anyhow!("could not convert to usize"))?)
-                                % prime
+                        ExpressionInfixOpcode::ShiftL | ExpressionInfixOpcode::ShiftR => {
+                            let lhs = lhs % prime;
+                            let rhs = rhs % prime;
+                            // Counts use a signed field interpretation; negative counts
+                            // reverse direction. Left shifts mask before reducing modulo p.
+                            let reverse = rhs > (prime >> 1);
+                            let shift = if reverse { prime - rhs } else { rhs };
+                            let width = prime.bits();
+                            match shift.to_usize().filter(|shift| *shift < width) {
+                                Some(shift)
+                                    if (*infix_op == ExpressionInfixOpcode::ShiftL) != reverse =>
+                                {
+                                    let mask = (BigUint::one() << width) - BigUint::one();
+                                    ((lhs << shift) & mask) % prime
+                                }
+                                Some(shift) => lhs >> shift,
+                                // All bits shift out of the field, even for counts that
+                                // cannot fit in usize. Avoid allocating a huge intermediate.
+                                None => BigUint::zero(),
+                            }
                         }
                         // Comparison operators are performed based on a signed interpretation
                         // of the field elements as defined by the `relational_val` function,
