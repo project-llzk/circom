@@ -1589,7 +1589,7 @@ pub fn try_compute_biguint(expr: &Expression, prime: &BigUint) -> Result<Option<
                         }
                         ExpressionPrefixOpcode::Complement => {
                             let mask = (BigUint::one() << prime.bits()) - BigUint::one();
-                            mask ^ rhs
+                            (mask ^ rhs) % prime
                         }
                     };
                     Ok(Some(res))
