@@ -22,6 +22,20 @@ type Specialization = (String, Vec<Option<Vec<usize>>>, Vec<Option<ConstantValue
 
 /// Bound expansion before nonterminating recursion can exhaust the compiler's stack.
 const MAX_RECURSIVE_DEPTH: usize = 128;
+/// Bound speculative loop expansion, including nested iterations.
+const MAX_LOOP_STEPS: usize = 10_000;
+
+/// Stop speculative unrolling when a condition or its finite iteration count is unknown.
+#[derive(Debug)]
+struct UnresolvedLoop;
+
+impl std::fmt::Display for UnresolvedLoop {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "loop cannot be statically unrolled within the expansion budget")
+    }
+}
+
+impl std::error::Error for UnresolvedLoop {}
 
 /// Request a fresh preparation with values bound along this recursive call path.
 #[derive(Debug)]
@@ -63,6 +77,7 @@ pub(crate) fn prepare(mut program: ProgramArchive, prime: &BigUint) -> Result<Pr
             expanded: &expanded,
             bound_arrays: &bound_arrays,
             next_elem_id: program.id_max,
+            loop_budget: None,
         };
         let mut main = program.initial_template_call.clone();
         match preparation.call(&mut main, &Shapes::new(), &Constants::new()) {
@@ -111,6 +126,8 @@ struct Preparation<'a> {
     bound_arrays: &'a HashSet<String>,
     /// Fresh AST IDs for rebuilt templates, starting after the original program's IDs.
     next_elem_id: usize,
+    /// Speculative loop expansion defers constructors and shares one budget across nested loops.
+    loop_budget: Option<usize>,
 }
 
 impl Preparation<'_> {
@@ -423,152 +440,224 @@ impl Preparation<'_> {
     /// Track declaration shapes while rewriting constructors without leaking nested bindings.
     fn statement(
         &mut self,
-        stmt: &mut Statement,
+        mut stmt: &mut Statement,
         shapes: &mut Shapes,
         constants: &mut Constants,
         resolve_recursion: bool,
     ) -> Result<()> {
-        match stmt {
-            Statement::Block { stmts, .. } => {
-                let mut nested = shapes.clone();
-                let mut nested_constants = constants.clone();
-                let mut shadowed = HashMap::new();
-                for stmt in stmts {
-                    let mut declarations = HashSet::new();
-                    local_declarations(stmt, &mut declarations);
-                    for name in declarations {
-                        // A block may write an outer variable before declaring a shadow.
-                        // Save its value at the declaration, not at entry to the block.
-                        shadowed
-                            .entry(name.clone())
-                            .or_insert_with(|| nested_constants.get(&name).cloned());
+        loop {
+            if let Some(remaining) = &mut self.loop_budget {
+                if *remaining == 0 {
+                    return Err(UnresolvedLoop.into());
+                }
+                *remaining -= 1;
+            }
+            match stmt {
+                Statement::Block { stmts, .. } => {
+                    // These single statements already preserve enclosing bindings; keep the AST
+                    // scopes but avoid another walker frame for each synthetic loop wrapper.
+                    if stmts.len() == 1
+                        && matches!(
+                            &stmts[0],
+                            Statement::Block { .. } | Statement::Substitution { .. }
+                        )
+                    {
+                        stmt = &mut stmts[0];
+                        continue;
                     }
-                    self.statement(stmt, &mut nested, &mut nested_constants, resolve_recursion)?;
-                }
-                // Preserve assignments to enclosing bindings without leaking local shadows.
-                for name in shapes.keys() {
-                    let value = match shadowed.get(name) {
-                        Some(value) => value.as_ref(),
-                        None => nested_constants.get(name),
-                    };
-                    if let Some(value) = value {
-                        constants.insert(name.clone(), value.clone());
-                    } else {
-                        constants.remove(name);
-                    }
-                }
-            }
-            Statement::InitializationBlock { initializations, .. } => {
-                for stmt in initializations {
-                    self.statement(stmt, shapes, constants, resolve_recursion)?;
-                }
-            }
-            Statement::Declaration { name, xtype, dimensions, .. } => {
-                let shape = if *xtype == VariableType::Var {
-                    dimensions
-                        .iter_mut()
-                        .map(|dimension| {
-                            if resolve_recursion {
-                                let length = self.dimension(dimension, constants)?;
-                                if let Some(length) = length {
-                                    *dimension = Expression::Number(
-                                        dimension.get_meta().clone(),
-                                        length.into(),
-                                    );
-                                }
-                                Ok(length)
-                            } else {
-                                Ok(crate::shared::try_compute_as_i64(dimension, self.prime)?
-                                    .and_then(|n| usize::try_from(n).ok()))
-                            }
-                        })
-                        .collect::<Result<Option<Vec<_>>>>()?
-                } else {
-                    None
-                };
-                shapes.insert(name.clone(), shape);
-                constants.remove(name);
-            }
-            Statement::Substitution { var, access, op, rhe, .. } => {
-                if resolve_recursion {
-                    self.bind_uniform_dimensions(rhe, constants)?;
-                }
-                self.call(rhe, shapes, constants)?;
-                if resolve_recursion && *op == AssignOp::AssignVar {
-                    template_recursion::assign(
-                        var,
-                        access,
-                        rhe,
-                        constants,
-                        self.prime,
-                        self.functions,
-                    )?;
-                }
-            }
-            Statement::IfThenElse { meta, cond, if_case, else_case } => {
-                let condition = if resolve_recursion {
-                    template_recursion::value(cond, constants, self.prime, self.functions)?
-                } else {
-                    None
-                };
-                if let Some(condition) = condition {
-                    let selected = if !condition.is_zero() {
-                        Some(*if_case.clone())
-                    } else {
-                        else_case.as_deref().cloned()
-                    };
-                    // An if branch introduces a scope even without explicit braces.
-                    *stmt = Statement::Block {
-                        meta: meta.clone(),
-                        stmts: selected.into_iter().collect(),
-                    };
-                    self.statement(stmt, shapes, constants, resolve_recursion)?;
-                } else {
-                    let mut then_constants = constants.clone();
-                    let mut else_constants = constants.clone();
-                    self.statement(
-                        if_case,
-                        &mut shapes.clone(),
-                        &mut then_constants,
-                        resolve_recursion,
-                    )?;
-                    if let Some(stmt) = else_case {
+                    let mut nested = shapes.clone();
+                    let mut nested_constants = constants.clone();
+                    let mut shadowed = HashMap::new();
+                    for stmt in stmts {
+                        let mut declarations = HashSet::new();
+                        local_declarations(stmt, &mut declarations);
+                        for name in declarations {
+                            // A block may write an outer variable before declaring a shadow.
+                            // Save its value at the declaration, not at entry to the block.
+                            shadowed
+                                .entry(name.clone())
+                                .or_insert_with(|| nested_constants.get(&name).cloned());
+                        }
                         self.statement(
                             stmt,
-                            &mut shapes.clone(),
-                            &mut else_constants,
+                            &mut nested,
+                            &mut nested_constants,
                             resolve_recursion,
                         )?;
                     }
-                    // Both paths can establish a new constant for an enclosing binding.
-                    then_constants.retain(|name, value| {
-                        shapes.contains_key(name) && else_constants.get(name) == Some(value)
-                    });
-                    *constants = then_constants;
+                    // Preserve assignments to enclosing bindings without leaking local shadows.
+                    for name in shapes.keys() {
+                        let value = match shadowed.get(name) {
+                            Some(value) => value.as_ref(),
+                            None => nested_constants.get(name),
+                        };
+                        if let Some(value) = value {
+                            constants.insert(name.clone(), value.clone());
+                        } else {
+                            constants.remove(name);
+                        }
+                    }
                 }
-            }
-            Statement::While { meta, cond, stmt: body } => {
-                // A loop that cannot run neither writes bindings nor creates children.
-                if resolve_recursion
-                    && template_recursion::value(cond, constants, self.prime, self.functions)?
-                        .is_some_and(|condition| condition.is_zero())
-                {
-                    *stmt = Statement::Block { meta: meta.clone(), stmts: vec![] };
-                    return Ok(());
+                Statement::InitializationBlock { initializations, .. } => {
+                    for stmt in initializations {
+                        self.statement(stmt, shapes, constants, resolve_recursion)?;
+                    }
                 }
-                // The body can execute more than once. Never specialize calls using a
-                // value that is only known before the first iteration.
-                invalidate_writes(body, constants, &mut HashSet::new());
-                self.statement(
-                    body,
-                    &mut shapes.clone(),
-                    &mut constants.clone(),
-                    resolve_recursion,
-                )?;
+                Statement::Declaration { name, xtype, dimensions, .. } => {
+                    let shape = if *xtype == VariableType::Var {
+                        dimensions
+                            .iter_mut()
+                            .map(|dimension| {
+                                if resolve_recursion {
+                                    let length = self.dimension(dimension, constants)?;
+                                    if let Some(length) = length {
+                                        *dimension = Expression::Number(
+                                            dimension.get_meta().clone(),
+                                            length.into(),
+                                        );
+                                    }
+                                    Ok(length)
+                                } else {
+                                    Ok(crate::shared::try_compute_as_i64(dimension, self.prime)?
+                                        .and_then(|n| usize::try_from(n).ok()))
+                                }
+                            })
+                            .collect::<Result<Option<Vec<_>>>>()?
+                    } else {
+                        None
+                    };
+                    shapes.insert(name.clone(), shape);
+                    constants.remove(name);
+                }
+                Statement::Substitution { var, access, op, rhe, .. } => {
+                    if resolve_recursion {
+                        self.bind_uniform_dimensions(rhe, constants)?;
+                    }
+                    if self.loop_budget.is_none() {
+                        self.call(rhe, shapes, constants)?;
+                    }
+                    if resolve_recursion && *op == AssignOp::AssignVar {
+                        template_recursion::assign(
+                            var,
+                            access,
+                            rhe,
+                            constants,
+                            self.prime,
+                            self.functions,
+                        )?;
+                    }
+                }
+                Statement::IfThenElse { meta, cond, if_case, else_case } => {
+                    let condition = if resolve_recursion {
+                        template_recursion::value(cond, constants, self.prime, self.functions)?
+                    } else {
+                        None
+                    };
+                    if let Some(condition) = condition {
+                        let selected = if !condition.is_zero() {
+                            Some(*if_case.clone())
+                        } else {
+                            else_case.as_deref().cloned()
+                        };
+                        // An if branch introduces a scope even without explicit braces.
+                        *stmt = Statement::Block {
+                            meta: meta.clone(),
+                            stmts: selected.into_iter().collect(),
+                        };
+                        continue;
+                    } else {
+                        let mut then_constants = constants.clone();
+                        let mut else_constants = constants.clone();
+                        self.statement(
+                            if_case,
+                            &mut shapes.clone(),
+                            &mut then_constants,
+                            resolve_recursion,
+                        )?;
+                        if let Some(stmt) = else_case {
+                            self.statement(
+                                stmt,
+                                &mut shapes.clone(),
+                                &mut else_constants,
+                                resolve_recursion,
+                            )?;
+                        }
+                        // Both paths can establish a new constant for an enclosing binding.
+                        then_constants.retain(|name, value| {
+                            shapes.contains_key(name) && else_constants.get(name) == Some(value)
+                        });
+                        *constants = then_constants;
+                    }
+                }
+                Statement::While { .. } => {
+                    if !self.while_statement(stmt, shapes, constants, resolve_recursion)? {
+                        return Ok(());
+                    }
+                    continue;
+                }
+                _ => {}
             }
-            _ => {}
+            return Ok(());
         }
-        Ok(())
+    }
+
+    /// Return whether the expanded loop needs replay after its temporary ASTs leave the stack.
+    #[inline(never)]
+    fn while_statement(
+        &mut self,
+        stmt: &mut Statement,
+        shapes: &mut Shapes,
+        constants: &mut Constants,
+        resolve_recursion: bool,
+    ) -> Result<bool> {
+        let Statement::While { meta, cond, stmt: body } = stmt else {
+            unreachable!("loop handling requires a while statement");
+        };
+        if resolve_recursion {
+            if self.loop_budget.is_some() {
+                let mut iterations = Vec::new();
+                loop {
+                    let Some(condition) =
+                        template_recursion::value(cond, constants, self.prime, self.functions)?
+                    else {
+                        return Err(UnresolvedLoop.into());
+                    };
+                    if condition.is_zero() {
+                        break;
+                    }
+                    let mut iteration = Statement::Block {
+                        meta: body.get_meta().clone(),
+                        stmts: vec![*body.clone()],
+                    };
+                    self.statement(&mut iteration, &mut shapes.clone(), constants, true)?;
+                    iterations.push(iteration);
+                }
+                *stmt = Statement::Block { meta: meta.clone(), stmts: iterations };
+                return Ok(false);
+            }
+
+            // Prove termination and expand nested loops before specializing any calls.
+            // Failed probes leave both the original AST and specialization state intact.
+            let mut expanded =
+                Statement::While { meta: meta.clone(), cond: cond.clone(), stmt: body.clone() };
+            self.loop_budget = Some(MAX_LOOP_STEPS);
+            let result =
+                self.statement(&mut expanded, &mut shapes.clone(), &mut constants.clone(), true);
+            self.loop_budget = None;
+            match result {
+                Ok(()) => {
+                    *stmt = expanded;
+                    return Ok(true);
+                }
+                Err(error) if error.is::<UnresolvedLoop>() => {}
+                Err(error) => return Err(error),
+            }
+        }
+        // The body can execute more than once. Never specialize calls using a
+        // value that is only known before the first iteration.
+        invalidate_writes(body, constants, &mut HashSet::new());
+        self.statement(body, &mut shapes.clone(), &mut constants.clone(), resolve_recursion)?;
+        Ok(false)
     }
 }
 

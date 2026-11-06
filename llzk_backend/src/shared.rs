@@ -2498,7 +2498,7 @@ where
                         // Use the pre-computed type from DeclarationInfo (seeded into the
                         // BlockContextStack root) to avoid triggering recursive
                         // gen_template_poly_expr calls for non-constant dimension expressions.
-                        let qualified_key = format!("{}@{}", name, meta.start);
+                        let qualified_key = format!("{}@{}#{}", name, meta.start, meta.elem_id);
                         if let Some(ty) = gen_ctx.get_var_decl_types().get(&qualified_key) {
                             let builder =
                                 gen_ctx.builder_at_current_insertion_point(codegen.context);
@@ -2755,9 +2755,13 @@ where
 
             // Process the boundary statement (the one on the trace path).
             match boundary_stmt {
-                Statement::Block { stmts, .. } => {
-                    gen_up_to_target(codegen, gen_ctx, target_expr, stmts, inner_trace)
-                }
+                Statement::Block { stmts, .. } => gen_ctx
+                    .gen_in_current_block_with_new_circom_scope_and_merge_overwrites(
+                        codegen.context,
+                        |gen_ctx| {
+                            gen_up_to_target(codegen, gen_ctx, target_expr, stmts, inner_trace)
+                        },
+                    ),
                 Statement::InitializationBlock { initializations, .. } => {
                     gen_up_to_target(codegen, gen_ctx, target_expr, initializations, inner_trace)
                 }
