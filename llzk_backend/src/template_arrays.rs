@@ -445,12 +445,20 @@ impl Preparation<'_> {
                     });
                 }
             }
-            Statement::While { stmt, .. } => {
+            Statement::While { meta, cond, stmt: body } => {
+                // A loop that cannot run neither writes bindings nor creates children.
+                if resolve_recursion
+                    && template_recursion::value(cond, constants, self.prime, self.functions)?
+                        .is_some_and(|condition| condition.is_zero())
+                {
+                    *stmt = Statement::Block { meta: meta.clone(), stmts: vec![] };
+                    return Ok(());
+                }
                 // The body can execute more than once. Never specialize calls using a
                 // value that is only known before the first iteration.
-                invalidate_writes(stmt, constants, &mut HashSet::new());
+                invalidate_writes(body, constants, &mut HashSet::new());
                 self.statement(
-                    stmt,
+                    body,
                     &mut shapes.clone(),
                     &mut constants.clone(),
                     resolve_recursion,
