@@ -1063,13 +1063,25 @@ impl Analysis<'_> {
         Ok(())
     }
 
-    /// Check every bus alternative on both sides of a constraint equality.
+    /// Check corresponding array elements and every conditional bus alternative.
     fn equality_compatibility(
         &self,
         lhe: &Expression,
         rhe: &Expression,
         checks: &mut Vec<Statement>,
     ) -> Result<()> {
+        if let (
+            Expression::ArrayInLine { values: lhs, .. },
+            Expression::ArrayInLine { values: rhs, .. },
+        ) = (lhe, rhe)
+        {
+            if lhs.len() == rhs.len() {
+                for (lhs, rhs) in lhs.iter().zip(rhs) {
+                    self.equality_compatibility(lhs, rhs, checks)?;
+                }
+                return Ok(());
+            }
+        }
         match lhe {
             Expression::Variable { name, access, .. } => {
                 self.compatibility(&self.bus_identities(name, access)?, rhe, checks)?;
