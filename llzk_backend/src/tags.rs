@@ -330,6 +330,8 @@ struct Analysis<'a> {
     component_worklist: ComponentWorklist,
     /// Number of analyzed constructor occurrences at each source position.
     constructors: HashMap<usize, usize>,
+    /// Original bus arguments, resolved against constants at each declaration.
+    bus_arguments: HashMap<usize, Vec<Expression>>,
     /// Nominal bus identities of local fields; component identities are instantiated on use.
     identities: BTreeMap<String, NominalBus>,
     /// Induction values substituted while expanding fixed loops that access tags.
@@ -865,6 +867,15 @@ impl Analysis<'_> {
         Ok(())
     }
 
+    /// Share declaration-time local snapshots between nominal identities and layouts.
+    fn snapshot_bus_argument(&mut self, arg: &mut Expression) -> Result<()> {
+        self.expression(arg)?;
+        if references_matching(arg, &|_, name| self.flow.constants.contains_key(name)) {
+            *arg = self.constant_expression(arg)?;
+        }
+        Ok(())
+    }
+
     /// Resolve a tag read before ordinary field-access generation.
     fn expression(&mut self, expr: &mut Expression) -> Result<()> {
         match expr {
@@ -906,9 +917,14 @@ impl Analysis<'_> {
                 self.expression(if_true)?;
                 self.expression(if_false)?;
             }
-            Expression::Call { args, .. } | Expression::BusCall { args, .. } => {
+            Expression::Call { args, .. } => {
                 for arg in args {
                     self.expression(arg)?;
+                }
+            }
+            Expression::BusCall { args, .. } => {
+                for arg in args {
+                    self.snapshot_bus_argument(arg)?;
                 }
             }
             Expression::ArrayInLine { values, .. } | Expression::Tuple { values, .. } => {
@@ -1415,14 +1431,25 @@ impl Analysis<'_> {
                     self.statement(stmt)?;
                 }
             }
-            Statement::Declaration { meta, name, dimensions, .. } => {
+            Statement::Declaration { meta, name, xtype, dimensions, .. } => {
+                let mut arguments =
+                    self.bus_arguments.get(&meta.elem_id).cloned().unwrap_or_default();
+                for arg in &mut arguments {
+                    self.snapshot_bus_argument(arg)?;
+                }
                 if !self.iterations.is_empty() {
                     meta.elem_id = self.next_declaration;
                     self.next_declaration += 1;
                 }
-                for dim in dimensions {
+                for dim in dimensions.iter_mut() {
                     self.expression(dim)?;
                 }
+                let input = matches!(
+                    xtype,
+                    VariableType::Signal(SignalType::Input, _)
+                        | VariableType::Bus(_, SignalType::Input, _)
+                );
+                self.declare(name, xtype, input, meta, &arguments, dimensions)?;
                 // Save at the declaration, preserving any preceding outer writes.
                 let previous = self.flow.constants.remove(name);
                 self.constant_scopes
@@ -1727,22 +1754,22 @@ fn analyze(
         components: HashMap::new(),
         component_worklist: ComponentWorklist::default(),
         constructors: HashMap::new(),
+        bus_arguments: all
+            .iter()
+            .filter_map(|stmt| {
+                let Statement::Declaration { name, xtype: VariableType::Bus(..), meta, .. } = stmt
+                else {
+                    return None;
+                };
+                let args = crate::bus::constructor(template.get_body_as_vec(), name)
+                    .map_or(&[][..], |(_, args)| args);
+                Some((meta.elem_id, args.to_vec()))
+            })
+            .collect(),
         identities: BTreeMap::new(),
         iterations: HashMap::new(),
         next_declaration: all.iter().map(|stmt| stmt.get_meta().elem_id).max().unwrap_or(0) + 1,
     };
-    for stmt in &all {
-        if let Statement::Declaration { name, xtype, meta, dimensions, .. } = stmt {
-            let input = matches!(
-                xtype,
-                VariableType::Signal(SignalType::Input, _)
-                    | VariableType::Bus(_, SignalType::Input, _)
-            );
-            let args = crate::bus::constructor(template.get_body_as_vec(), name)
-                .map_or(&[][..], |(_, args)| args);
-            analysis.declare(name, xtype, input, meta, args, dimensions)?;
-        }
-    }
     let mut body = template.get_body().clone();
     analysis
         .statement(&mut body)

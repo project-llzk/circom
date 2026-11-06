@@ -91,5 +91,5 @@ component main = Main(2, 0);
 // TEMPLATED: struct.member @symbolic_value_out : !pod.type<[@x: !array.type<@ds x !felt.type<"bn128">>]>
 // TEMPLATED: struct.member @symbolic_index_out : !pod.type<[@x: !array.type<@"$bus_array_access([2,3],i)@{{[0-9_]+}}" x !felt.type<"bn128">>]>
 // TEMPLATED: struct.member @computed_index_out : !pod.type<[@x: !array.type<@"$bus_array_access([2,3],(1_Sub_1))@{{[0-9_]+}}" x !felt.type<"bn128">>]>
-// TEMPLATED: struct.member @slice_out : !pod.type<[@x: !array.type<@"table[1][0]@{{[0-9_]+}}" x !felt.type<"bn128">>]>
+// TEMPLATED: struct.member @slice_out : !pod.type<[@x: !array.type<4 x !felt.type<"bn128">>]>
 // TEMPLATED: struct.member @symbolic_rows_out : !pod.type<[@row: !pod.type<[@x: !array.type<@"$bus_array_access({{\[\[}}2,3],[4,5]],i,1)@{{[0-9_]+}}" x !felt.type<"bn128">>]>]>

@@ -56,9 +56,10 @@ component main = Main([2, 3], [2, 3]);
 // TEMPLATED: %[[SECOND:[a-zA-Z0-9_.-]+]] = bool.cmp eq({{.*}}) : !felt.type<"bn128">, !felt.type<"bn128">
 // TEMPLATED-NEXT: bool.assert %[[SECOND]]
 // TEMPLATED: constrain.eq
+// Main's literal array arguments already prove compatibility.
 // TEMPLATED-LABEL: struct.def @Main {
 // TEMPLATED: function.def @constrain(
-// TEMPLATED-COUNT-2: bool.cmp eq({{.*}}) : !felt.type<"bn128">, !felt.type<"bn128">
+// TEMPLATED-NOT: bool.assert
 // TEMPLATED: constrain.eq
 // TEMPLATED-LABEL: struct.def @MatrixCopy$arrays$0_2_2$1_2_2 {
 // TEMPLATED: function.def @constrain(
