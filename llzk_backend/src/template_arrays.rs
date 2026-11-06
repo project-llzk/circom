@@ -48,10 +48,12 @@ pub(crate) fn prepare(mut program: ProgramArchive, prime: &BigUint) -> Result<Pr
             active: HashSet::new(),
             recursive_depth: 0,
             expanded: &expanded,
+            next_elem_id: program.id_max,
         };
         let mut main = program.initial_template_call.clone();
         match preparation.call(&mut main, &Shapes::new(), &Constants::new()) {
             Ok(()) => {
+                program.id_max = preparation.next_elem_id;
                 program.templates = preparation.templates;
                 program.initial_template_call = main;
                 return Ok(program);
@@ -87,6 +89,8 @@ struct Preparation<'a> {
     recursive_depth: usize,
     /// Array recursion and its callers need scalar bindings to resolve a finite child graph.
     expanded: &'a HashSet<String>,
+    /// Fresh AST IDs for rebuilt templates, starting after the original program's IDs.
+    next_elem_id: usize,
 }
 
 impl Preparation<'_> {
@@ -308,20 +312,18 @@ impl Preparation<'_> {
         };
         prefix.append(stmts);
         *stmts = prefix;
-        let template = TemplateData::copy(
+        // Recollect wire metadata and declaration order after pruning resolved branches.
+        let template = TemplateData::new(
             name.clone(),
             old.get_file_id(),
             body,
             params.len(),
             params,
             old.get_param_location(),
-            old.get_inputs().clone(),
-            old.get_outputs().clone(),
+            &mut self.next_elem_id,
             old.is_parallel(),
             old.is_custom_gate(),
             old.is_extern_c(),
-            old.get_declaration_inputs().clone(),
-            old.get_declaration_outputs().clone(),
         );
         self.templates.insert(name.clone(), template);
         self.active.remove(&key);
