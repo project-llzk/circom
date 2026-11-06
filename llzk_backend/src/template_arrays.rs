@@ -307,7 +307,7 @@ impl Preparation<'_> {
             } else if let Some(value) = value {
                 // Keep a mutable local for the original formal, but remove the fixed value
                 // from the generated signature so callers cannot override the specialization.
-                constants.insert(formal.clone(), value.clone());
+                constants.insert(formal.clone(), value.clone().into());
                 prefix.push(Statement::Declaration {
                     meta: meta.clone(),
                     xtype: VariableType::Var,
@@ -434,7 +434,7 @@ impl Preparation<'_> {
                         None
                     };
                     if let Some(value) = value {
-                        constants.insert(var.clone(), value);
+                        constants.insert(var.clone(), value.into());
                     } else {
                         constants.remove(var);
                     }
