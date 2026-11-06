@@ -475,10 +475,11 @@ impl Preparation<'_> {
                             resolve_recursion,
                         )?;
                     }
-                    constants.retain(|name, value| {
-                        then_constants.get(name) == Some(value)
-                            && else_constants.get(name) == Some(value)
+                    // Both paths can establish a new constant for an enclosing binding.
+                    then_constants.retain(|name, value| {
+                        shapes.contains_key(name) && else_constants.get(name) == Some(value)
                     });
+                    *constants = then_constants;
                 }
             }
             Statement::While { meta, cond, stmt: body } => {
