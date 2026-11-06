@@ -8,6 +8,7 @@ use num_bigint_dig::BigUint;
 use num_traits::Zero;
 use program_structure::{
     ast::{Access, AssignOp, Expression, Meta, Statement, VariableType},
+    function_data::FunctionInfo,
     program_archive::ProgramArchive,
     template_data::TemplateData,
 };
@@ -40,6 +41,7 @@ pub(crate) fn prepare(mut program: ProgramArchive, prime: &BigUint) -> Result<Pr
     loop {
         let mut preparation = Preparation {
             originals: &program.templates,
+            functions: &program.functions,
             prime,
             templates: HashMap::new(),
             specializations: HashMap::new(),
@@ -71,6 +73,8 @@ pub(crate) fn prepare(mut program: ProgramArchive, prime: &BigUint) -> Result<Pr
 struct Preparation<'a> {
     /// Unmodified templates, used as the source for every specialization.
     originals: &'a HashMap<String, TemplateData>,
+    /// Function definitions available to constant evaluation.
+    functions: &'a FunctionInfo,
     /// Field modulus for evaluating constant dimensions.
     prime: &'a BigUint,
     /// Completed reachable template definitions.
@@ -166,7 +170,7 @@ impl Preparation<'_> {
             .zip(&parameter_shapes)
             .map(|(arg, shape)| {
                 if self.expanded.contains(id) && shape.is_none() {
-                    template_recursion::value(arg, constants, self.prime)
+                    template_recursion::value(arg, constants, self.prime, self.functions)
                 } else {
                     Ok(None)
                 }
@@ -387,7 +391,7 @@ impl Preparation<'_> {
                 self.call(rhe, shapes, constants)?;
                 if resolve_recursion && *op == AssignOp::AssignVar {
                     let value = if access.is_empty() {
-                        template_recursion::value(rhe, constants, self.prime)?
+                        template_recursion::value(rhe, constants, self.prime, self.functions)?
                     } else {
                         None
                     };
@@ -400,7 +404,7 @@ impl Preparation<'_> {
             }
             Statement::IfThenElse { meta, cond, if_case, else_case } => {
                 let condition = if resolve_recursion {
-                    template_recursion::value(cond, constants, self.prime)?
+                    template_recursion::value(cond, constants, self.prime, self.functions)?
                 } else {
                     None
                 };
