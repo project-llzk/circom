@@ -27,6 +27,7 @@ mod subcmp;
 mod template;
 mod template_arrays;
 mod template_ext;
+mod template_recursion;
 mod temporary_types;
 mod traversal;
 mod write_chain;

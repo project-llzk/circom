@@ -82,9 +82,8 @@ pub struct DeclarationInfo<'ctx> {
     /// Output and Intermediate declarations to use as LLZK struct fields.
     struct_fields: Vec<MemberInfo<'ctx>>,
     /// Map a declaration-qualified key (see [`shared::declaration_key`]) to its LLZK declaration type.
-    /// A declaration-qualified key allows the same circom variable name to appear in multiple
-    /// scopes without collision (e.g., an outer scope followed by an inner scope or both branches
-    /// of an if/else).
+    /// Source positions distinguish lexical declarations; fresh AST IDs distinguish clones
+    /// produced by unrolling loops, which can have different types in each iteration.
     decl_inits: HashMap<String, Type<'ctx>>,
     /// Maps each qualified key in `decl_inits` back to the plain circom variable name, so that
     /// function contexts can declare the value under its original name.
