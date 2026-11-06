@@ -442,7 +442,7 @@ impl Preparation<'_> {
             Statement::While { stmt, .. } => {
                 // The body can execute more than once. Never specialize calls using a
                 // value that is only known before the first iteration.
-                invalidate_writes(stmt, constants);
+                invalidate_writes(stmt, constants, &mut HashSet::new());
                 self.statement(
                     stmt,
                     &mut shapes.clone(),
@@ -471,25 +471,37 @@ fn local_declarations(stmt: &Statement, names: &mut HashSet<String>) {
     }
 }
 
-/// Conservatively forget bindings written on any path through a loop.
-fn invalidate_writes(stmt: &Statement, constants: &mut Constants) {
+/// Conservatively forget enclosing bindings written on any path through a loop.
+fn invalidate_writes(stmt: &Statement, constants: &mut Constants, locals: &mut HashSet<String>) {
     match stmt {
-        Statement::Substitution { var, op: AssignOp::AssignVar, .. } => {
-            constants.remove(var);
+        Statement::Declaration { name, .. } => {
+            locals.insert(name.clone());
         }
-        Statement::Block { stmts, .. }
-        | Statement::InitializationBlock { initializations: stmts, .. } => {
+        Statement::Substitution { var, op: AssignOp::AssignVar, .. } => {
+            if !locals.contains(var) {
+                constants.remove(var);
+            }
+        }
+        Statement::Block { stmts, .. } => {
+            let mut nested = locals.clone();
             for stmt in stmts {
-                invalidate_writes(stmt, constants);
+                invalidate_writes(stmt, constants, &mut nested);
+            }
+        }
+        Statement::InitializationBlock { initializations, .. } => {
+            for stmt in initializations {
+                invalidate_writes(stmt, constants, locals);
             }
         }
         Statement::IfThenElse { if_case, else_case, .. } => {
-            invalidate_writes(if_case, constants);
+            invalidate_writes(if_case, constants, &mut locals.clone());
             if let Some(stmt) = else_case {
-                invalidate_writes(stmt, constants);
+                invalidate_writes(stmt, constants, &mut locals.clone());
             }
         }
-        Statement::While { stmt, .. } => invalidate_writes(stmt, constants),
+        Statement::While { stmt, .. } => {
+            invalidate_writes(stmt, constants, &mut locals.clone());
+        }
         _ => {}
     }
 }
