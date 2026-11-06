@@ -974,11 +974,19 @@ impl Analysis<'_> {
                     .collect()
             }
             Expression::UniformArray { value, .. } => self.source_tags(value)?,
-            Expression::InlineSwitchOp { if_true, if_false, .. } => {
+            Expression::InlineSwitchOp { meta, cond, if_true, if_false } => {
+                let condition = self.constant_expression(cond)?;
+                let compile_time = depends_only_on(&condition, &self.constant_params);
                 let mut tags = self.source_tags(if_true)?;
                 let other = self.source_tags(if_false)?;
                 tags.retain(|key, tag| {
-                    other.get(key).is_some_and(|t| same_value(&tag.value, &t.value))
+                    let Some(other) = other.get(key) else { return false };
+                    if same_value(&tag.value, &other.value) {
+                        return true;
+                    }
+                    tag.value =
+                        merge_value(tag.value.take(), &other.value, &condition, compile_time, meta);
+                    tag.value.is_some()
                 });
                 tags
             }
