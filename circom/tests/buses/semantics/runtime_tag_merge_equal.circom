@@ -49,13 +49,13 @@ component main = Main();
 // TEMPLATED: struct.member @local : !pod.type<[@x: !array.type<2 x !felt.type<"bn128">>]>
 // TEMPLATED: struct.member @child : !struct.type<@Expand::@Expand<[2]>>
 // TEMPLATED: function.def @compute(
-// TEMPLATED: %[[VALUE1:[a-zA-Z0-9_.-]+]] = scf.if %{{[a-zA-Z0-9_.-]+}} -> (!pod.type<[@x: !felt.type<"bn128">]>) {
-// TEMPLATED: struct.writem %[[VALUE3:[a-zA-Z0-9_.-]+]][@merged] = %[[VALUE4:[a-zA-Z0-9_.-]+]]
+// TEMPLATED: %[[VALUE1:[0-9a-zA-Z_.-]+]] = scf.if %{{[0-9a-zA-Z_.-]+}} -> (!pod.type<[@x: !felt.type<"bn128">]>) {
+// TEMPLATED: struct.writem %[[VALUE3:[0-9a-zA-Z_.-]+]][@merged] = %[[VALUE4:[0-9a-zA-Z_.-]+]]
 // TEMPLATED: scf.yield %[[VALUE4]]
 // TEMPLATED: } else {
-// TEMPLATED: struct.writem %[[VALUE3]][@merged] = %[[VALUE5:[a-zA-Z0-9_.-]+]]
+// TEMPLATED: struct.writem %[[VALUE3]][@merged] = %[[VALUE5:[0-9a-zA-Z_.-]+]]
 // TEMPLATED: scf.yield %[[VALUE5]]
 // TEMPLATED: }
-// TEMPLATED: pod.write %{{[a-zA-Z0-9_.-]+}}[@in] = %[[VALUE1]]
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = function.call @Expand::@Expand::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand::@Expand<[2]>>
+// TEMPLATED: pod.write %{{[0-9a-zA-Z_.-]+}}[@in] = %[[VALUE1]]
+// TEMPLATED: %{{[0-9a-zA-Z_.-]+}} = function.call @Expand::@Expand::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand::@Expand<[2]>>
 // TEMPLATED: function.return %[[VALUE3]]

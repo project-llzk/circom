@@ -51,9 +51,9 @@ component main = Main([2, 3], [2, 3]);
 
 // TEMPLATED-LABEL: struct.def @Copy$arrays$0_2$1_2 {
 // TEMPLATED: function.def @constrain(
-// TEMPLATED: %[[FIRST:[a-zA-Z0-9_.-]+]] = bool.cmp eq({{.*}}) : !felt.type<"bn128">, !felt.type<"bn128">
+// TEMPLATED: %[[FIRST:[0-9a-zA-Z_.-]+]] = bool.cmp eq({{.*}}) : !felt.type<"bn128">, !felt.type<"bn128">
 // TEMPLATED-NEXT: bool.assert %[[FIRST]]
-// TEMPLATED: %[[SECOND:[a-zA-Z0-9_.-]+]] = bool.cmp eq({{.*}}) : !felt.type<"bn128">, !felt.type<"bn128">
+// TEMPLATED: %[[SECOND:[0-9a-zA-Z_.-]+]] = bool.cmp eq({{.*}}) : !felt.type<"bn128">, !felt.type<"bn128">
 // TEMPLATED-NEXT: bool.assert %[[SECOND]]
 // TEMPLATED: constrain.eq
 // Main's literal array arguments already prove compatibility.

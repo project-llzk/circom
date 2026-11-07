@@ -32,14 +32,14 @@ component main = Main();
 
 // CONCRETE-LABEL: struct.def @Main_0 {
 // CONCRETE: function.def @compute(
-// CONCRETE: %[[SHADOW:[a-zA-Z0-9_.-]+]] = felt.const 22 :
+// CONCRETE: %[[SHADOW:[0-9a-zA-Z_.-]+]] = felt.const 22 :
 // CONCRETE-NEXT: struct.writem {{.*}}[@shadow] = %[[SHADOW]]
-// CONCRETE: %[[WRITE:[a-zA-Z0-9_.-]+]] = felt.const 33 :
+// CONCRETE: %[[WRITE:[0-9a-zA-Z_.-]+]] = felt.const 33 :
 // CONCRETE-NEXT: struct.writem {{.*}}[@write] = %[[WRITE]]
 
 // TEMPLATED-LABEL: struct.def @Main {
 // TEMPLATED: function.def @compute(
-// TEMPLATED: %[[SHADOW:[a-zA-Z0-9_.-]+]] = felt.const 22 :
+// TEMPLATED: %[[SHADOW:[0-9a-zA-Z_.-]+]] = felt.const 22 :
 // TEMPLATED-NEXT: struct.writem {{.*}}[@shadow] = %[[SHADOW]]
-// TEMPLATED: %[[WRITE:[a-zA-Z0-9_.-]+]] = felt.const 33 :
+// TEMPLATED: %[[WRITE:[0-9a-zA-Z_.-]+]] = felt.const 33 :
 // TEMPLATED-NEXT: struct.writem {{.*}}[@write] = %[[WRITE]]

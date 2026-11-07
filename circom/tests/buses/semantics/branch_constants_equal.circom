@@ -35,16 +35,16 @@ component main = Main(0);
 
 // CONCRETE-LABEL: struct.def @Main_0 {
 // CONCRETE: function.def @compute(
-// CONCRETE: %[[SUM:[a-zA-Z0-9_.-]+]] = felt.const 21 :
+// CONCRETE: %[[SUM:[0-9a-zA-Z_.-]+]] = felt.const 21 :
 // CONCRETE-NEXT: struct.writem {{.*}}[@out] = %[[SUM]]
 // CONCRETE: function.return
 
 // TEMPLATED-LABEL: struct.def @Main {
 // TEMPLATED: function.def @compute(
-// TEMPLATED: %[[A:[a-zA-Z0-9_.-]+]] = felt.const 7 :
-// TEMPLATED-NEXT: %[[B:[a-zA-Z0-9_.-]+]] = felt.const 7 :
-// TEMPLATED-NEXT: %[[AB:[a-zA-Z0-9_.-]+]] = felt.add %[[A]], %[[B]]
-// TEMPLATED-NEXT: %[[C:[a-zA-Z0-9_.-]+]] = felt.const 7 :
-// TEMPLATED-NEXT: %[[ABC:[a-zA-Z0-9_.-]+]] = felt.add %[[AB]], %[[C]]
+// TEMPLATED: %[[A:[0-9a-zA-Z_.-]+]] = felt.const 7 :
+// TEMPLATED-NEXT: %[[B:[0-9a-zA-Z_.-]+]] = felt.const 7 :
+// TEMPLATED-NEXT: %[[AB:[0-9a-zA-Z_.-]+]] = felt.add %[[A]], %[[B]]
+// TEMPLATED-NEXT: %[[C:[0-9a-zA-Z_.-]+]] = felt.const 7 :
+// TEMPLATED-NEXT: %[[ABC:[0-9a-zA-Z_.-]+]] = felt.add %[[AB]], %[[C]]
 // TEMPLATED-NEXT: struct.writem {{.*}}[@out] = %[[ABC]]
 // TEMPLATED: function.return

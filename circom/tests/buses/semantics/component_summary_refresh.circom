@@ -111,23 +111,23 @@ component main = Main();
 // TEMPLATED-LABEL: poly.template @Branch {
 // TEMPLATED: poly.param [[LAYOUT:@"\$layout\$[^" ]+"]] : index
 // TEMPLATED: poly.expr [[X_TAG:@"CHOOSE\?2:7@[0-9]+"]] {
-// TEMPLATED: %[[TWO:[a-zA-Z0-9_.-]+]] = felt.const 2 :
-// TEMPLATED: %[[SEVEN:[a-zA-Z0-9_.-]+]] = felt.const 7 :
-// TEMPLATED: %[[TAG_SELECT:[a-zA-Z0-9_.-]+]] = arith.select {{.*}}, %[[TWO]], %[[SEVEN]]
+// TEMPLATED: %[[TWO:[0-9a-zA-Z_.-]+]] = felt.const 2 :
+// TEMPLATED: %[[SEVEN:[0-9a-zA-Z_.-]+]] = felt.const 7 :
+// TEMPLATED: %[[TAG_SELECT:[0-9a-zA-Z_.-]+]] = arith.select {{.*}}, %[[TWO]], %[[SEVEN]]
 // TEMPLATED-NEXT: poly.yield %[[TAG_SELECT]]
 // TEMPLATED: poly.expr [[SIZE:@"CHOOSE\?5:10@[0-9]+"]] {
-// TEMPLATED: %[[FIVE:[a-zA-Z0-9_.-]+]] = felt.const 5 :
-// TEMPLATED: %[[TEN:[a-zA-Z0-9_.-]+]] = felt.const 10 :
-// TEMPLATED: %[[SIZE_SELECT:[a-zA-Z0-9_.-]+]] = arith.select {{.*}}, %[[FIVE]], %[[TEN]]
+// TEMPLATED: %[[FIVE:[0-9a-zA-Z_.-]+]] = felt.const 5 :
+// TEMPLATED: %[[TEN:[0-9a-zA-Z_.-]+]] = felt.const 10 :
+// TEMPLATED: %[[SIZE_SELECT:[0-9a-zA-Z_.-]+]] = arith.select {{.*}}, %[[FIVE]], %[[TEN]]
 // TEMPLATED-NEXT: poly.yield %[[SIZE_SELECT]]
 // TEMPLATED-LABEL: struct.def @Branch {
 // TEMPLATED: struct.member @out : !pod.type<[@x: !array.type<[[LAYOUT]] x !felt.type<"bn128">>]>
 // TEMPLATED: struct.member @child : !struct.type<@Child::@Child<{{\[}}[[X_TAG]], 3]>>
 // TEMPLATED: struct.member @expanded : !struct.type<@Expand::@Expand<{{\[}}[[SIZE]]]>>
 // TEMPLATED-LABEL: function.def @compute(
-// TEMPLATED: %[[LEFT:[a-zA-Z0-9_.-]+]] = llzk.nondet : !pod.type<
-// TEMPLATED: %[[RIGHT:[a-zA-Z0-9_.-]+]] = llzk.nondet : !pod.type<
-// TEMPLATED: pod.write %[[BRANCH_INPUTS:[a-zA-Z0-9_.-]+]][@in] = %[[LEFT]]
+// TEMPLATED: %[[LEFT:[0-9a-zA-Z_.-]+]] = llzk.nondet : !pod.type<
+// TEMPLATED: %[[RIGHT:[0-9a-zA-Z_.-]+]] = llzk.nondet : !pod.type<
+// TEMPLATED: pod.write %[[BRANCH_INPUTS:[0-9a-zA-Z_.-]+]][@in] = %[[LEFT]]
 // TEMPLATED: function.call @Child::@Child::@compute({{.*}} -> !struct.type<@Child::@Child<{{\[}}[[X_TAG]], 3]>>
 // TEMPLATED-LABEL: } else {
 // TEMPLATED: pod.write %[[BRANCH_INPUTS]][@in] = %[[RIGHT]]
@@ -177,30 +177,30 @@ component main = Main();
 // TEMPLATED-DAG: struct.member @fromThen : !struct.type<@Branch::@Branch<[1, 5]>>
 // TEMPLATED-DAG: struct.member @fromElse : !struct.type<@Branch::@Branch<[0, 10]>>
 // CHECK-LABEL: function.def @compute(
-// CHECK: %[[SOURCE:[a-zA-Z0-9_.-]+]] = llzk.nondet : [[BUS]]
-// CHECK: %[[THREE_INPUTS:[a-zA-Z0-9_.-]+]] = arith.constant 3 : index
-// CHECK-NEXT: %[[INITIAL_STATE:[a-zA-Z0-9_.-]+]] = pod.new { @count = %[[THREE_INPUTS]], @params = {{.*}}@comp: !struct.type<@[[CHILD]]::@[[CHILD]]<
-// TEMPLATED-NEXT: %[[INITIAL_OFFSET:[a-zA-Z0-9_.-]+]] = felt.const 0 :
-// TEMPLATED-NEXT: %[[INITIAL_INDEX:[a-zA-Z0-9_.-]+]] = cast.toindex %[[INITIAL_OFFSET]]
+// CHECK: %[[SOURCE:[0-9a-zA-Z_.-]+]] = llzk.nondet : [[BUS]]
+// CHECK: %[[THREE_INPUTS:[0-9a-zA-Z_.-]+]] = arith.constant 3 : index
+// CHECK-NEXT: %[[INITIAL_STATE:[0-9a-zA-Z_.-]+]] = pod.new { @count = %[[THREE_INPUTS]], @params = {{.*}}@comp: !struct.type<@[[CHILD]]::@[[CHILD]]<
+// TEMPLATED-NEXT: %[[INITIAL_OFFSET:[0-9a-zA-Z_.-]+]] = felt.const 0 :
+// TEMPLATED-NEXT: %[[INITIAL_INDEX:[0-9a-zA-Z_.-]+]] = cast.toindex %[[INITIAL_OFFSET]]
 // TEMPLATED-NEXT: array.write {{.*}}[%[[INITIAL_INDEX]]] = %[[INITIAL_STATE]]
 // CONCRETE: function.call @[[ELSE]]::@[[ELSE]]::@compute()
 // CONCRETE: function.call @[[THEN]]::@[[THEN]]::@compute()
 
 // A whole-bus assignment consumes three leaves and stores the completed child
 // only in the zero-remainder arm. Follow both inputs and state back to the array.
-// CHECK: %[[WHOLE_INPUTS:[a-zA-Z0-9_.-]+]] = array.read %[[INPUTS:[a-zA-Z0-9_.-]+]][%[[WHOLE_INDEX:[a-zA-Z0-9_.-]+]]] : <128 x !pod.type<[@in: [[BUS]]]>>
-// CHECK-NEXT: %[[WHOLE_STATE:[a-zA-Z0-9_.-]+]] = array.read %[[STATES:[a-zA-Z0-9_.-]+]][%[[WHOLE_INDEX]]]
+// CHECK: %[[WHOLE_INPUTS:[0-9a-zA-Z_.-]+]] = array.read %[[INPUTS:[0-9a-zA-Z_.-]+]][%[[WHOLE_INDEX:[0-9a-zA-Z_.-]+]]] : <128 x !pod.type<[@in: [[BUS]]]>>
+// CHECK-NEXT: %[[WHOLE_STATE:[0-9a-zA-Z_.-]+]] = array.read %[[STATES:[0-9a-zA-Z_.-]+]][%[[WHOLE_INDEX]]]
 // CHECK: pod.write %[[WHOLE_INPUTS]][@in] = %[[SOURCE]]
-// CHECK: scf.if %{{[a-zA-Z0-9_.-]+}} {
-// CHECK-NEXT: %[[WHOLE_COUNT:[a-zA-Z0-9_.-]+]] = pod.read %[[WHOLE_STATE]][@count]
-// CHECK-NEXT: %[[WHOLE_WRITTEN:[a-zA-Z0-9_.-]+]] = arith.constant 3 : index
-// CHECK-NEXT: %[[WHOLE_REMAINING:[a-zA-Z0-9_.-]+]] = arith.subi %[[WHOLE_COUNT]], %[[WHOLE_WRITTEN]]
+// CHECK: scf.if %{{[0-9a-zA-Z_.-]+}} {
+// CHECK-NEXT: %[[WHOLE_COUNT:[0-9a-zA-Z_.-]+]] = pod.read %[[WHOLE_STATE]][@count]
+// CHECK-NEXT: %[[WHOLE_WRITTEN:[0-9a-zA-Z_.-]+]] = arith.constant 3 : index
+// CHECK-NEXT: %[[WHOLE_REMAINING:[0-9a-zA-Z_.-]+]] = arith.subi %[[WHOLE_COUNT]], %[[WHOLE_WRITTEN]]
 // CHECK-NEXT: pod.write %[[WHOLE_STATE]][@count] = %[[WHOLE_REMAINING]]
-// CHECK-NEXT: %[[WHOLE_ZERO:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
-// CHECK-NEXT: %[[WHOLE_READY:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[WHOLE_REMAINING]], %[[WHOLE_ZERO]]
+// CHECK-NEXT: %[[WHOLE_ZERO:[0-9a-zA-Z_.-]+]] = arith.constant 0 : index
+// CHECK-NEXT: %[[WHOLE_READY:[0-9a-zA-Z_.-]+]] = arith.cmpi eq, %[[WHOLE_REMAINING]], %[[WHOLE_ZERO]]
 // CHECK-NEXT: scf.if %[[WHOLE_READY]] {
-// CHECK: %[[WHOLE_ARG:[a-zA-Z0-9_.-]+]] = pod.read %[[WHOLE_INPUTS]][@in]
-// CHECK-NEXT: %[[WHOLE_RESULT:[a-zA-Z0-9_.-]+]] = function.call @[[CHILD]]::@[[CHILD]]::@compute(%[[WHOLE_ARG]])
+// CHECK: %[[WHOLE_ARG:[0-9a-zA-Z_.-]+]] = pod.read %[[WHOLE_INPUTS]][@in]
+// CHECK-NEXT: %[[WHOLE_RESULT:[0-9a-zA-Z_.-]+]] = function.call @[[CHILD]]::@[[CHILD]]::@compute(%[[WHOLE_ARG]])
 // CHECK-NEXT: pod.write %[[WHOLE_STATE]][@comp] = %[[WHOLE_RESULT]]
 // CHECK-NEXT: }
 // CHECK-NEXT: }
@@ -211,64 +211,64 @@ component main = Main();
 // The templated pipeline expands the loop; its first narrowed write is child 64.
 // CONCRETE: scf.yield %[[STATES]], %[[INPUTS]]
 // CONCRETE-LABEL: } else {
-// CHECK: %[[X0_SOURCE:[a-zA-Z0-9_.-]+]] = pod.read %[[SOURCE]][@x]
-// CHECK: %[[X0_OFFSET:[a-zA-Z0-9_.-]+]] = felt.const 0 :
-// CHECK-NEXT: %[[X0_SRC_INDEX:[a-zA-Z0-9_.-]+]] = cast.toindex %[[X0_OFFSET]]
-// CHECK-NEXT: %[[X0_VALUE:[a-zA-Z0-9_.-]+]] = array.read %[[X0_SOURCE]][%[[X0_SRC_INDEX]]]
-// TEMPLATED: %[[X0_CHILD_OFFSET:[a-zA-Z0-9_.-]+]] = felt.const 64 :
-// TEMPLATED-NEXT: %[[X0_INDEX:[a-zA-Z0-9_.-]+]] = cast.toindex %[[X0_CHILD_OFFSET]]
-// CONCRETE: %[[X0_INDEX:[a-zA-Z0-9_.-]+]] = cast.toindex %{{[a-zA-Z0-9_.-]+}}
-// CHECK-NEXT: %[[X0_INPUTS:[a-zA-Z0-9_.-]+]] = array.read %[[INPUTS]][%[[X0_INDEX]]]
-// CHECK-NEXT: %[[X0_STATE:[a-zA-Z0-9_.-]+]] = array.read %[[STATES]][%[[X0_INDEX]]]
-// CHECK: %[[X0_BUS:[a-zA-Z0-9_.-]+]] = pod.read %[[X0_INPUTS]][@in]
-// CHECK: %[[X0_ARRAY:[a-zA-Z0-9_.-]+]] = pod.read %[[X0_BUS]][@x]
-// CHECK: %[[X0_DST_OFFSET:[a-zA-Z0-9_.-]+]] = felt.const 0 :
-// CHECK-NEXT: %[[X0_DST_INDEX:[a-zA-Z0-9_.-]+]] = cast.toindex %[[X0_DST_OFFSET]]
+// CHECK: %[[X0_SOURCE:[0-9a-zA-Z_.-]+]] = pod.read %[[SOURCE]][@x]
+// CHECK: %[[X0_OFFSET:[0-9a-zA-Z_.-]+]] = felt.const 0 :
+// CHECK-NEXT: %[[X0_SRC_INDEX:[0-9a-zA-Z_.-]+]] = cast.toindex %[[X0_OFFSET]]
+// CHECK-NEXT: %[[X0_VALUE:[0-9a-zA-Z_.-]+]] = array.read %[[X0_SOURCE]][%[[X0_SRC_INDEX]]]
+// TEMPLATED: %[[X0_CHILD_OFFSET:[0-9a-zA-Z_.-]+]] = felt.const 64 :
+// TEMPLATED-NEXT: %[[X0_INDEX:[0-9a-zA-Z_.-]+]] = cast.toindex %[[X0_CHILD_OFFSET]]
+// CONCRETE: %[[X0_INDEX:[0-9a-zA-Z_.-]+]] = cast.toindex %{{[0-9a-zA-Z_.-]+}}
+// CHECK-NEXT: %[[X0_INPUTS:[0-9a-zA-Z_.-]+]] = array.read %[[INPUTS]][%[[X0_INDEX]]]
+// CHECK-NEXT: %[[X0_STATE:[0-9a-zA-Z_.-]+]] = array.read %[[STATES]][%[[X0_INDEX]]]
+// CHECK: %[[X0_BUS:[0-9a-zA-Z_.-]+]] = pod.read %[[X0_INPUTS]][@in]
+// CHECK: %[[X0_ARRAY:[0-9a-zA-Z_.-]+]] = pod.read %[[X0_BUS]][@x]
+// CHECK: %[[X0_DST_OFFSET:[0-9a-zA-Z_.-]+]] = felt.const 0 :
+// CHECK-NEXT: %[[X0_DST_INDEX:[0-9a-zA-Z_.-]+]] = cast.toindex %[[X0_DST_OFFSET]]
 // CHECK: array.write %[[X0_ARRAY]][%[[X0_DST_INDEX]]] = %[[X0_VALUE]]
 // CHECK-NEXT: pod.write %[[X0_BUS]][@x] = %[[X0_ARRAY]]
 // CHECK-NEXT: pod.write %[[X0_INPUTS]][@in] = %[[X0_BUS]]
-// CHECK: scf.if %{{[a-zA-Z0-9_.-]+}} {
-// CHECK-NEXT: %[[X0_COUNT:[a-zA-Z0-9_.-]+]] = pod.read %[[X0_STATE]][@count]
-// CHECK-NEXT: %[[X0_WRITTEN:[a-zA-Z0-9_.-]+]] = arith.constant 1 : index
-// CHECK-NEXT: %[[X0_REMAINING:[a-zA-Z0-9_.-]+]] = arith.subi %[[X0_COUNT]], %[[X0_WRITTEN]]
+// CHECK: scf.if %{{[0-9a-zA-Z_.-]+}} {
+// CHECK-NEXT: %[[X0_COUNT:[0-9a-zA-Z_.-]+]] = pod.read %[[X0_STATE]][@count]
+// CHECK-NEXT: %[[X0_WRITTEN:[0-9a-zA-Z_.-]+]] = arith.constant 1 : index
+// CHECK-NEXT: %[[X0_REMAINING:[0-9a-zA-Z_.-]+]] = arith.subi %[[X0_COUNT]], %[[X0_WRITTEN]]
 // CHECK-NEXT: pod.write %[[X0_STATE]][@count] = %[[X0_REMAINING]]
-// CHECK-NEXT: %[[X0_ZERO:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
-// CHECK-NEXT: %[[X0_READY:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[X0_REMAINING]], %[[X0_ZERO]]
+// CHECK-NEXT: %[[X0_ZERO:[0-9a-zA-Z_.-]+]] = arith.constant 0 : index
+// CHECK-NEXT: %[[X0_READY:[0-9a-zA-Z_.-]+]] = arith.cmpi eq, %[[X0_REMAINING]], %[[X0_ZERO]]
 // CHECK-NEXT: scf.if %[[X0_READY]] {
-// CHECK: %[[X0_ARG:[a-zA-Z0-9_.-]+]] = pod.read %[[X0_INPUTS]][@in]
-// CHECK-NEXT: %[[X0_RESULT:[a-zA-Z0-9_.-]+]] = function.call @[[CHILD]]::@[[CHILD]]::@compute(%[[X0_ARG]])
+// CHECK: %[[X0_ARG:[0-9a-zA-Z_.-]+]] = pod.read %[[X0_INPUTS]][@in]
+// CHECK-NEXT: %[[X0_RESULT:[0-9a-zA-Z_.-]+]] = function.call @[[CHILD]]::@[[CHILD]]::@compute(%[[X0_ARG]])
 // CHECK-NEXT: pod.write %[[X0_STATE]][@comp] = %[[X0_RESULT]]
 // CHECK-NEXT: }
 // CHECK-NEXT: }
 // CHECK-NEXT: array.write %[[INPUTS]][%[[X0_INDEX]]] = %[[X0_INPUTS]]
 // CHECK-NEXT: array.write %[[STATES]][%[[X0_INDEX]]] = %[[X0_STATE]]
 
-// CHECK: %[[X1_SOURCE:[a-zA-Z0-9_.-]+]] = pod.read %[[SOURCE]][@x]
-// CHECK: %[[X1_OFFSET:[a-zA-Z0-9_.-]+]] = felt.const 1 :
-// CHECK-NEXT: %[[X1_SRC_INDEX:[a-zA-Z0-9_.-]+]] = cast.toindex %[[X1_OFFSET]]
-// CHECK-NEXT: %[[X1_VALUE:[a-zA-Z0-9_.-]+]] = array.read %[[X1_SOURCE]][%[[X1_SRC_INDEX]]]
-// TEMPLATED: %[[X1_CHILD_OFFSET:[a-zA-Z0-9_.-]+]] = felt.const 64 :
-// TEMPLATED-NEXT: %[[X1_INDEX:[a-zA-Z0-9_.-]+]] = cast.toindex %[[X1_CHILD_OFFSET]]
-// CONCRETE: %[[X1_INDEX:[a-zA-Z0-9_.-]+]] = cast.toindex %{{[a-zA-Z0-9_.-]+}}
-// CHECK-NEXT: %[[X1_INPUTS:[a-zA-Z0-9_.-]+]] = array.read %[[INPUTS]][%[[X1_INDEX]]]
-// CHECK-NEXT: %[[X1_STATE:[a-zA-Z0-9_.-]+]] = array.read %[[STATES]][%[[X1_INDEX]]]
-// CHECK: %[[X1_BUS:[a-zA-Z0-9_.-]+]] = pod.read %[[X1_INPUTS]][@in]
-// CHECK: %[[X1_ARRAY:[a-zA-Z0-9_.-]+]] = pod.read %[[X1_BUS]][@x]
-// CHECK: %[[X1_DST_OFFSET:[a-zA-Z0-9_.-]+]] = felt.const 1 :
-// CHECK-NEXT: %[[X1_DST_INDEX:[a-zA-Z0-9_.-]+]] = cast.toindex %[[X1_DST_OFFSET]]
+// CHECK: %[[X1_SOURCE:[0-9a-zA-Z_.-]+]] = pod.read %[[SOURCE]][@x]
+// CHECK: %[[X1_OFFSET:[0-9a-zA-Z_.-]+]] = felt.const 1 :
+// CHECK-NEXT: %[[X1_SRC_INDEX:[0-9a-zA-Z_.-]+]] = cast.toindex %[[X1_OFFSET]]
+// CHECK-NEXT: %[[X1_VALUE:[0-9a-zA-Z_.-]+]] = array.read %[[X1_SOURCE]][%[[X1_SRC_INDEX]]]
+// TEMPLATED: %[[X1_CHILD_OFFSET:[0-9a-zA-Z_.-]+]] = felt.const 64 :
+// TEMPLATED-NEXT: %[[X1_INDEX:[0-9a-zA-Z_.-]+]] = cast.toindex %[[X1_CHILD_OFFSET]]
+// CONCRETE: %[[X1_INDEX:[0-9a-zA-Z_.-]+]] = cast.toindex %{{[0-9a-zA-Z_.-]+}}
+// CHECK-NEXT: %[[X1_INPUTS:[0-9a-zA-Z_.-]+]] = array.read %[[INPUTS]][%[[X1_INDEX]]]
+// CHECK-NEXT: %[[X1_STATE:[0-9a-zA-Z_.-]+]] = array.read %[[STATES]][%[[X1_INDEX]]]
+// CHECK: %[[X1_BUS:[0-9a-zA-Z_.-]+]] = pod.read %[[X1_INPUTS]][@in]
+// CHECK: %[[X1_ARRAY:[0-9a-zA-Z_.-]+]] = pod.read %[[X1_BUS]][@x]
+// CHECK: %[[X1_DST_OFFSET:[0-9a-zA-Z_.-]+]] = felt.const 1 :
+// CHECK-NEXT: %[[X1_DST_INDEX:[0-9a-zA-Z_.-]+]] = cast.toindex %[[X1_DST_OFFSET]]
 // CHECK: array.write %[[X1_ARRAY]][%[[X1_DST_INDEX]]] = %[[X1_VALUE]]
 // CHECK-NEXT: pod.write %[[X1_BUS]][@x] = %[[X1_ARRAY]]
 // CHECK-NEXT: pod.write %[[X1_INPUTS]][@in] = %[[X1_BUS]]
-// CHECK: scf.if %{{[a-zA-Z0-9_.-]+}} {
-// CHECK-NEXT: %[[X1_COUNT:[a-zA-Z0-9_.-]+]] = pod.read %[[X1_STATE]][@count]
-// CHECK-NEXT: %[[X1_WRITTEN:[a-zA-Z0-9_.-]+]] = arith.constant 1 : index
-// CHECK-NEXT: %[[X1_REMAINING:[a-zA-Z0-9_.-]+]] = arith.subi %[[X1_COUNT]], %[[X1_WRITTEN]]
+// CHECK: scf.if %{{[0-9a-zA-Z_.-]+}} {
+// CHECK-NEXT: %[[X1_COUNT:[0-9a-zA-Z_.-]+]] = pod.read %[[X1_STATE]][@count]
+// CHECK-NEXT: %[[X1_WRITTEN:[0-9a-zA-Z_.-]+]] = arith.constant 1 : index
+// CHECK-NEXT: %[[X1_REMAINING:[0-9a-zA-Z_.-]+]] = arith.subi %[[X1_COUNT]], %[[X1_WRITTEN]]
 // CHECK-NEXT: pod.write %[[X1_STATE]][@count] = %[[X1_REMAINING]]
-// CHECK-NEXT: %[[X1_ZERO:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
-// CHECK-NEXT: %[[X1_READY:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[X1_REMAINING]], %[[X1_ZERO]]
+// CHECK-NEXT: %[[X1_ZERO:[0-9a-zA-Z_.-]+]] = arith.constant 0 : index
+// CHECK-NEXT: %[[X1_READY:[0-9a-zA-Z_.-]+]] = arith.cmpi eq, %[[X1_REMAINING]], %[[X1_ZERO]]
 // CHECK-NEXT: scf.if %[[X1_READY]] {
-// CHECK: %[[X1_ARG:[a-zA-Z0-9_.-]+]] = pod.read %[[X1_INPUTS]][@in]
-// CHECK-NEXT: %[[X1_RESULT:[a-zA-Z0-9_.-]+]] = function.call @[[CHILD]]::@[[CHILD]]::@compute(%[[X1_ARG]])
+// CHECK: %[[X1_ARG:[0-9a-zA-Z_.-]+]] = pod.read %[[X1_INPUTS]][@in]
+// CHECK-NEXT: %[[X1_RESULT:[0-9a-zA-Z_.-]+]] = function.call @[[CHILD]]::@[[CHILD]]::@compute(%[[X1_ARG]])
 // CHECK-NEXT: pod.write %[[X1_STATE]][@comp] = %[[X1_RESULT]]
 // CHECK-NEXT: }
 // CHECK-NEXT: }
@@ -276,25 +276,25 @@ component main = Main();
 // CHECK-NEXT: array.write %[[STATES]][%[[X1_INDEX]]] = %[[X1_STATE]]
 
 // The scalar y write also consumes exactly one input, not the whole bus.
-// CHECK: %[[Y_VALUE:[a-zA-Z0-9_.-]+]] = pod.read %[[SOURCE]][@y]
-// TEMPLATED: %[[Y_CHILD_OFFSET:[a-zA-Z0-9_.-]+]] = felt.const 64 :
-// TEMPLATED-NEXT: %[[Y_INDEX:[a-zA-Z0-9_.-]+]] = cast.toindex %[[Y_CHILD_OFFSET]]
-// CONCRETE: %[[Y_INDEX:[a-zA-Z0-9_.-]+]] = cast.toindex %{{[a-zA-Z0-9_.-]+}}
-// CHECK-NEXT: %[[Y_INPUTS:[a-zA-Z0-9_.-]+]] = array.read %[[INPUTS]][%[[Y_INDEX]]]
-// CHECK-NEXT: %[[Y_STATE:[a-zA-Z0-9_.-]+]] = array.read %[[STATES]][%[[Y_INDEX]]]
-// CHECK: %[[Y_BUS:[a-zA-Z0-9_.-]+]] = pod.read %[[Y_INPUTS]][@in]
+// CHECK: %[[Y_VALUE:[0-9a-zA-Z_.-]+]] = pod.read %[[SOURCE]][@y]
+// TEMPLATED: %[[Y_CHILD_OFFSET:[0-9a-zA-Z_.-]+]] = felt.const 64 :
+// TEMPLATED-NEXT: %[[Y_INDEX:[0-9a-zA-Z_.-]+]] = cast.toindex %[[Y_CHILD_OFFSET]]
+// CONCRETE: %[[Y_INDEX:[0-9a-zA-Z_.-]+]] = cast.toindex %{{[0-9a-zA-Z_.-]+}}
+// CHECK-NEXT: %[[Y_INPUTS:[0-9a-zA-Z_.-]+]] = array.read %[[INPUTS]][%[[Y_INDEX]]]
+// CHECK-NEXT: %[[Y_STATE:[0-9a-zA-Z_.-]+]] = array.read %[[STATES]][%[[Y_INDEX]]]
+// CHECK: %[[Y_BUS:[0-9a-zA-Z_.-]+]] = pod.read %[[Y_INPUTS]][@in]
 // CHECK: pod.write %[[Y_BUS]][@y] = %[[Y_VALUE]]
 // CHECK-NEXT: pod.write %[[Y_INPUTS]][@in] = %[[Y_BUS]]
-// CHECK: scf.if %{{[a-zA-Z0-9_.-]+}} {
-// CHECK-NEXT: %[[Y_COUNT:[a-zA-Z0-9_.-]+]] = pod.read %[[Y_STATE]][@count]
-// CHECK-NEXT: %[[Y_WRITTEN:[a-zA-Z0-9_.-]+]] = arith.constant 1 : index
-// CHECK-NEXT: %[[Y_REMAINING:[a-zA-Z0-9_.-]+]] = arith.subi %[[Y_COUNT]], %[[Y_WRITTEN]]
+// CHECK: scf.if %{{[0-9a-zA-Z_.-]+}} {
+// CHECK-NEXT: %[[Y_COUNT:[0-9a-zA-Z_.-]+]] = pod.read %[[Y_STATE]][@count]
+// CHECK-NEXT: %[[Y_WRITTEN:[0-9a-zA-Z_.-]+]] = arith.constant 1 : index
+// CHECK-NEXT: %[[Y_REMAINING:[0-9a-zA-Z_.-]+]] = arith.subi %[[Y_COUNT]], %[[Y_WRITTEN]]
 // CHECK-NEXT: pod.write %[[Y_STATE]][@count] = %[[Y_REMAINING]]
-// CHECK-NEXT: %[[Y_ZERO:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
-// CHECK-NEXT: %[[Y_READY:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[Y_REMAINING]], %[[Y_ZERO]]
+// CHECK-NEXT: %[[Y_ZERO:[0-9a-zA-Z_.-]+]] = arith.constant 0 : index
+// CHECK-NEXT: %[[Y_READY:[0-9a-zA-Z_.-]+]] = arith.cmpi eq, %[[Y_REMAINING]], %[[Y_ZERO]]
 // CHECK-NEXT: scf.if %[[Y_READY]] {
-// CHECK: %[[Y_ARG:[a-zA-Z0-9_.-]+]] = pod.read %[[Y_INPUTS]][@in]
-// CHECK-NEXT: %[[Y_RESULT:[a-zA-Z0-9_.-]+]] = function.call @[[CHILD]]::@[[CHILD]]::@compute(%[[Y_ARG]])
+// CHECK: %[[Y_ARG:[0-9a-zA-Z_.-]+]] = pod.read %[[Y_INPUTS]][@in]
+// CHECK-NEXT: %[[Y_RESULT:[0-9a-zA-Z_.-]+]] = function.call @[[CHILD]]::@[[CHILD]]::@compute(%[[Y_ARG]])
 // CHECK-NEXT: pod.write %[[Y_STATE]][@comp] = %[[Y_RESULT]]
 // CHECK-NEXT: }
 // CHECK-NEXT: }
@@ -304,40 +304,40 @@ component main = Main();
 // The last child's output feeds first, then second. Their propagated tags are
 // five and six, so Main.out has seven elements even after the unrelated writes.
 // TEMPLATED: pod.new { @"$tag$in$size" =
-// TEMPLATED-NEXT: %[[FIRST_N:[a-zA-Z0-9_.-]+]] = arith.constant 1 : index
+// TEMPLATED-NEXT: %[[FIRST_N:[0-9a-zA-Z_.-]+]] = arith.constant 1 : index
 // TEMPLATED-NEXT: pod.new { @count = %[[FIRST_N]], @params = {{.*}}@comp: !struct.type<@Bump::@Bump<[5]>>
 // TEMPLATED: pod.new { @"$tag$in$size" =
-// TEMPLATED-NEXT: %[[SECOND_N:[a-zA-Z0-9_.-]+]] = arith.constant 1 : index
+// TEMPLATED-NEXT: %[[SECOND_N:[0-9a-zA-Z_.-]+]] = arith.constant 1 : index
 // TEMPLATED-NEXT: pod.new { @count = %[[SECOND_N]], @params = {{.*}}@comp: !struct.type<@Bump::@Bump<[6]>>
-// CHECK: %[[LAST_OFFSET:[a-zA-Z0-9_.-]+]] = felt.const 127 :
-// CHECK-NEXT: %[[LAST_INDEX:[a-zA-Z0-9_.-]+]] = cast.toindex %[[LAST_OFFSET]]
-// CHECK-NEXT: %[[LAST_STATE:[a-zA-Z0-9_.-]+]] = array.read {{.*}}[%[[LAST_INDEX]]]
-// CHECK-NEXT: %[[LAST_CHILD:[a-zA-Z0-9_.-]+]] = pod.read %[[LAST_STATE]][@comp]
-// CHECK-NEXT: %[[LAST_OUT:[a-zA-Z0-9_.-]+]] = struct.readm %[[LAST_CHILD]][@out]
-// CHECK-NEXT: pod.write %[[FIRST_INPUTS:[a-zA-Z0-9_.-]+]][@in] = %[[LAST_OUT]]
-// CHECK: %[[FIRST_COUNT:[a-zA-Z0-9_.-]+]] = pod.read %[[FIRST_STATE:[a-zA-Z0-9_.-]+]][@count]
-// CHECK-NEXT: %[[FIRST_ONE:[a-zA-Z0-9_.-]+]] = arith.constant 1 : index
-// CHECK-NEXT: %[[FIRST_REMAINING:[a-zA-Z0-9_.-]+]] = arith.subi %[[FIRST_COUNT]], %[[FIRST_ONE]]
+// CHECK: %[[LAST_OFFSET:[0-9a-zA-Z_.-]+]] = felt.const 127 :
+// CHECK-NEXT: %[[LAST_INDEX:[0-9a-zA-Z_.-]+]] = cast.toindex %[[LAST_OFFSET]]
+// CHECK-NEXT: %[[LAST_STATE:[0-9a-zA-Z_.-]+]] = array.read {{.*}}[%[[LAST_INDEX]]]
+// CHECK-NEXT: %[[LAST_CHILD:[0-9a-zA-Z_.-]+]] = pod.read %[[LAST_STATE]][@comp]
+// CHECK-NEXT: %[[LAST_OUT:[0-9a-zA-Z_.-]+]] = struct.readm %[[LAST_CHILD]][@out]
+// CHECK-NEXT: pod.write %[[FIRST_INPUTS:[0-9a-zA-Z_.-]+]][@in] = %[[LAST_OUT]]
+// CHECK: %[[FIRST_COUNT:[0-9a-zA-Z_.-]+]] = pod.read %[[FIRST_STATE:[0-9a-zA-Z_.-]+]][@count]
+// CHECK-NEXT: %[[FIRST_ONE:[0-9a-zA-Z_.-]+]] = arith.constant 1 : index
+// CHECK-NEXT: %[[FIRST_REMAINING:[0-9a-zA-Z_.-]+]] = arith.subi %[[FIRST_COUNT]], %[[FIRST_ONE]]
 // CHECK-NEXT: pod.write %[[FIRST_STATE]][@count] = %[[FIRST_REMAINING]]
-// CHECK-NEXT: %[[FIRST_ZERO:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
-// CHECK-NEXT: %[[FIRST_READY:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[FIRST_REMAINING]], %[[FIRST_ZERO]]
+// CHECK-NEXT: %[[FIRST_ZERO:[0-9a-zA-Z_.-]+]] = arith.constant 0 : index
+// CHECK-NEXT: %[[FIRST_READY:[0-9a-zA-Z_.-]+]] = arith.cmpi eq, %[[FIRST_REMAINING]], %[[FIRST_ZERO]]
 // CHECK-NEXT: scf.if %[[FIRST_READY]] {
-// CHECK: %[[FIRST_ARG:[a-zA-Z0-9_.-]+]] = pod.read %[[FIRST_INPUTS]][@in]
-// CHECK-NEXT: %[[FIRST_RESULT:[a-zA-Z0-9_.-]+]] = function.call @[[FIRST]]::@[[FIRST]]::@compute(%[[FIRST_ARG]])
+// CHECK: %[[FIRST_ARG:[0-9a-zA-Z_.-]+]] = pod.read %[[FIRST_INPUTS]][@in]
+// CHECK-NEXT: %[[FIRST_RESULT:[0-9a-zA-Z_.-]+]] = function.call @[[FIRST]]::@[[FIRST]]::@compute(%[[FIRST_ARG]])
 // CHECK-NEXT: pod.write %[[FIRST_STATE]][@comp] = %[[FIRST_RESULT]]
 // CHECK-NEXT: }
-// CHECK-NEXT: %[[FIRST_COMP:[a-zA-Z0-9_.-]+]] = pod.read %[[FIRST_STATE]][@comp]
-// CHECK-NEXT: %[[FIRST_OUT:[a-zA-Z0-9_.-]+]] = struct.readm %[[FIRST_COMP]][@out]
-// CHECK-NEXT: pod.write %[[SECOND_INPUTS:[a-zA-Z0-9_.-]+]][@in] = %[[FIRST_OUT]]
-// CHECK: %[[SECOND_COUNT:[a-zA-Z0-9_.-]+]] = pod.read %[[SECOND_STATE:[a-zA-Z0-9_.-]+]][@count]
-// CHECK-NEXT: %[[SECOND_ONE:[a-zA-Z0-9_.-]+]] = arith.constant 1 : index
-// CHECK-NEXT: %[[SECOND_REMAINING:[a-zA-Z0-9_.-]+]] = arith.subi %[[SECOND_COUNT]], %[[SECOND_ONE]]
+// CHECK-NEXT: %[[FIRST_COMP:[0-9a-zA-Z_.-]+]] = pod.read %[[FIRST_STATE]][@comp]
+// CHECK-NEXT: %[[FIRST_OUT:[0-9a-zA-Z_.-]+]] = struct.readm %[[FIRST_COMP]][@out]
+// CHECK-NEXT: pod.write %[[SECOND_INPUTS:[0-9a-zA-Z_.-]+]][@in] = %[[FIRST_OUT]]
+// CHECK: %[[SECOND_COUNT:[0-9a-zA-Z_.-]+]] = pod.read %[[SECOND_STATE:[0-9a-zA-Z_.-]+]][@count]
+// CHECK-NEXT: %[[SECOND_ONE:[0-9a-zA-Z_.-]+]] = arith.constant 1 : index
+// CHECK-NEXT: %[[SECOND_REMAINING:[0-9a-zA-Z_.-]+]] = arith.subi %[[SECOND_COUNT]], %[[SECOND_ONE]]
 // CHECK-NEXT: pod.write %[[SECOND_STATE]][@count] = %[[SECOND_REMAINING]]
-// CHECK-NEXT: %[[SECOND_ZERO:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
-// CHECK-NEXT: %[[SECOND_READY:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[SECOND_REMAINING]], %[[SECOND_ZERO]]
+// CHECK-NEXT: %[[SECOND_ZERO:[0-9a-zA-Z_.-]+]] = arith.constant 0 : index
+// CHECK-NEXT: %[[SECOND_READY:[0-9a-zA-Z_.-]+]] = arith.cmpi eq, %[[SECOND_REMAINING]], %[[SECOND_ZERO]]
 // CHECK-NEXT: scf.if %[[SECOND_READY]] {
-// CHECK: %[[SECOND_ARG:[a-zA-Z0-9_.-]+]] = pod.read %[[SECOND_INPUTS]][@in]
-// CHECK-NEXT: %[[SECOND_RESULT:[a-zA-Z0-9_.-]+]] = function.call @[[SECOND]]::@[[SECOND]]::@compute(%[[SECOND_ARG]])
+// CHECK: %[[SECOND_ARG:[0-9a-zA-Z_.-]+]] = pod.read %[[SECOND_INPUTS]][@in]
+// CHECK-NEXT: %[[SECOND_RESULT:[0-9a-zA-Z_.-]+]] = function.call @[[SECOND]]::@[[SECOND]]::@compute(%[[SECOND_ARG]])
 // CHECK-NEXT: pod.write %[[SECOND_STATE]][@comp] = %[[SECOND_RESULT]]
 // CHECK-NEXT: }
 // TEMPLATED: function.call @Branch::@Branch::@compute() : () -> !struct.type<@Branch::@Branch<[1, 5]>>

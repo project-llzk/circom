@@ -43,7 +43,7 @@ component main = Main();
 
 // CONCRETE: struct.member @out : !pod.type<[@x: !array.type<3 x !felt.type
 // CONCRETE-LABEL: struct.def @Main{{_[0-9]+}} {
-// CONCRETE: %[[SIZE:[a-zA-Z0-9_.-]+]] = felt.const 2 :
+// CONCRETE: %[[SIZE:[0-9a-zA-Z_.-]+]] = felt.const 2 :
 // CONCRETE-NEXT: struct.writem {{.*}}[@size] = %[[SIZE]] :
 
 // TEMPLATED-LABEL: poly.template @A$shapes$0_1$1_1$values$0_array_0$1_array_2$arrays$0_1$1_1 {
@@ -52,5 +52,5 @@ component main = Main();
 // TEMPLATED-LABEL: poly.template @B$shapes$0_1$1_1$values$0_array_1$1_array_2$arrays$0_1$1_1 {
 // TEMPLATED: struct.member @child : !struct.type<@A$shapes$0_1$1_1$values$0_array_1$1_array_2$arrays$0_1$1_1::
 // TEMPLATED-LABEL: struct.def @Main {
-// TEMPLATED: %[[SIZE:[a-zA-Z0-9_.-]+]] = felt.const 2 :
+// TEMPLATED: %[[SIZE:[0-9a-zA-Z_.-]+]] = felt.const 2 :
 // TEMPLATED-NEXT: struct.writem {{.*}}[@size] = %[[SIZE]] :

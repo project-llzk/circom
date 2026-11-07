@@ -27,24 +27,24 @@ component main = Main(1, 1, 1, 0);
 // CONCRETE-COUNT-4: constrain.eq
 
 // TEMPLATED-LABEL: function.def @constrain(
-// TEMPLATED-DAG: %[[M:[a-zA-Z0-9_.-]+]] = poly.read_const @M
-// TEMPLATED-DAG: %[[N:[a-zA-Z0-9_.-]+]] = poly.read_const @N
-// TEMPLATED-DAG: %[[P:[a-zA-Z0-9_.-]+]] = poly.read_const @P
+// TEMPLATED-DAG: %[[M:[0-9a-zA-Z_.-]+]] = poly.read_const @M
+// TEMPLATED-DAG: %[[N:[0-9a-zA-Z_.-]+]] = poly.read_const @N
+// TEMPLATED-DAG: %[[P:[0-9a-zA-Z_.-]+]] = poly.read_const @P
 // TEMPLATED-NOT: constrain.eq
-// TEMPLATED: %[[FIRST_N:[a-zA-Z0-9_.-]+]] = bool.cmp eq(%[[N]], %[[P]])
+// TEMPLATED: %[[FIRST_N:[0-9a-zA-Z_.-]+]] = bool.cmp eq(%[[N]], %[[P]])
 // TEMPLATED-NEXT: bool.assert %[[FIRST_N]]
-// TEMPLATED: %[[FIRST_M:[a-zA-Z0-9_.-]+]] = bool.cmp eq(%[[M]], %[[P]])
+// TEMPLATED: %[[FIRST_M:[0-9a-zA-Z_.-]+]] = bool.cmp eq(%[[M]], %[[P]])
 // TEMPLATED-NEXT: bool.assert %[[FIRST_M]]
 // TEMPLATED: constrain.eq
 // TEMPLATED-NOT: constrain.eq
-// TEMPLATED: %[[NESTED_N:[a-zA-Z0-9_.-]+]] = bool.cmp eq(%[[N]], %[[P]])
+// TEMPLATED: %[[NESTED_N:[0-9a-zA-Z_.-]+]] = bool.cmp eq(%[[N]], %[[P]])
 // TEMPLATED-NEXT: bool.assert %[[NESTED_N]]
-// TEMPLATED: %[[NESTED_M:[a-zA-Z0-9_.-]+]] = bool.cmp eq(%[[M]], %[[P]])
+// TEMPLATED: %[[NESTED_M:[0-9a-zA-Z_.-]+]] = bool.cmp eq(%[[M]], %[[P]])
 // TEMPLATED-NEXT: bool.assert %[[NESTED_M]]
 // TEMPLATED: constrain.eq
 // TEMPLATED-NOT: constrain.eq
-// TEMPLATED: %[[ARRAY_N:[a-zA-Z0-9_.-]+]] = bool.cmp eq(%[[N]], %[[P]])
+// TEMPLATED: %[[ARRAY_N:[0-9a-zA-Z_.-]+]] = bool.cmp eq(%[[N]], %[[P]])
 // TEMPLATED-NEXT: bool.assert %[[ARRAY_N]]
-// TEMPLATED: %[[ARRAY_M:[a-zA-Z0-9_.-]+]] = bool.cmp eq(%[[M]], %[[P]])
+// TEMPLATED: %[[ARRAY_M:[0-9a-zA-Z_.-]+]] = bool.cmp eq(%[[M]], %[[P]])
 // TEMPLATED-NEXT: bool.assert %[[ARRAY_M]]
 // TEMPLATED: constrain.eq

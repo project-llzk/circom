@@ -54,22 +54,22 @@ component main = Main();
 // CONCRETE-LABEL: struct.def @Main{{_[0-9]+}} {
 // TEMPLATED-LABEL: struct.def @Main {
 // CHECK-LABEL: function.def @compute(
-// CHECK-DAG: %[[TWO:[a-zA-Z0-9_.-]+]] = felt.const 2 :
+// CHECK-DAG: %[[TWO:[0-9a-zA-Z_.-]+]] = felt.const 2 :
 // CHECK-DAG: struct.writem {{.*}}[@scalar_size] = %[[TWO]] :
-// CHECK-DAG: %[[FOUR:[a-zA-Z0-9_.-]+]] = felt.const 4 :
+// CHECK-DAG: %[[FOUR:[0-9a-zA-Z_.-]+]] = felt.const 4 :
 // CHECK-DAG: struct.writem {{.*}}[@indexed_size] = %[[FOUR]] :
-// CHECK-DAG: %[[SEVEN:[a-zA-Z0-9_.-]+]] = felt.const 7 :
+// CHECK-DAG: %[[SEVEN:[0-9a-zA-Z_.-]+]] = felt.const 7 :
 // CHECK-DAG: struct.writem {{.*}}[@refreshed_size] = %[[SEVEN]] :
 // CHECK: function.return
 
 // CHECK-LABEL: function.def @constrain(
-// CHECK-DAG: %[[SCALAR:[a-zA-Z0-9_.-]+]] = struct.readm {{.*}}[@scalar_size]
-// CHECK-DAG: %[[INDEXED:[a-zA-Z0-9_.-]+]] = struct.readm {{.*}}[@indexed_size]
-// CHECK-DAG: %[[REFRESHED:[a-zA-Z0-9_.-]+]] = struct.readm {{.*}}[@refreshed_size]
-// CHECK-DAG: %[[TWO:[a-zA-Z0-9_.-]+]] = felt.const 2 :
+// CHECK-DAG: %[[SCALAR:[0-9a-zA-Z_.-]+]] = struct.readm {{.*}}[@scalar_size]
+// CHECK-DAG: %[[INDEXED:[0-9a-zA-Z_.-]+]] = struct.readm {{.*}}[@indexed_size]
+// CHECK-DAG: %[[REFRESHED:[0-9a-zA-Z_.-]+]] = struct.readm {{.*}}[@refreshed_size]
+// CHECK-DAG: %[[TWO:[0-9a-zA-Z_.-]+]] = felt.const 2 :
 // CHECK-DAG: constrain.eq %[[SCALAR]], %[[TWO]] :
-// CHECK-DAG: %[[FOUR:[a-zA-Z0-9_.-]+]] = felt.const 4 :
+// CHECK-DAG: %[[FOUR:[0-9a-zA-Z_.-]+]] = felt.const 4 :
 // CHECK-DAG: constrain.eq %[[INDEXED]], %[[FOUR]] :
-// CHECK-DAG: %[[SEVEN:[a-zA-Z0-9_.-]+]] = felt.const 7 :
+// CHECK-DAG: %[[SEVEN:[0-9a-zA-Z_.-]+]] = felt.const 7 :
 // CHECK-DAG: constrain.eq %[[REFRESHED]], %[[SEVEN]] :
 // CHECK: function.return

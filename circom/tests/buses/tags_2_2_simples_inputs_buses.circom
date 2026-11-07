@@ -26,23 +26,23 @@ component main = B();
 // CONCRETE-LABEL: struct.def @B_0 {
 // CONCRETE: struct.member @out : !pod.type<[@x: !felt.type<"bn128">, @y: !felt.type<"bn128">]>
 // CONCRETE: function.def @constrain(
-// CONCRETE: %[[FIELD1:[a-zA-Z0-9_.-]+]] = struct.readm %{{[a-zA-Z0-9_.-]+}}[@out]
-// CONCRETE: %[[X1:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD1]][@x]
-// CONCRETE: %[[X2:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE2:[a-zA-Z0-9_.-]+]][@x]
+// CONCRETE: %[[FIELD1:[0-9a-zA-Z_.-]+]] = struct.readm %{{[0-9a-zA-Z_.-]+}}[@out]
+// CONCRETE: %[[X1:[0-9a-zA-Z_.-]+]] = pod.read %[[FIELD1]][@x]
+// CONCRETE: %[[X2:[0-9a-zA-Z_.-]+]] = pod.read %[[VALUE2:[0-9a-zA-Z_.-]+]][@x]
 // CONCRETE: constrain.eq %[[X1]], %[[X2]]
-// CONCRETE: %[[Y1:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD1]][@y]
-// CONCRETE: %[[Y2:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE2]][@y]
+// CONCRETE: %[[Y1:[0-9a-zA-Z_.-]+]] = pod.read %[[FIELD1]][@y]
+// CONCRETE: %[[Y2:[0-9a-zA-Z_.-]+]] = pod.read %[[VALUE2]][@y]
 // CONCRETE: constrain.eq %[[Y1]], %[[Y2]]
 // CONCRETE: function.return
 
 // TEMPLATED-LABEL: struct.def @B {
 // TEMPLATED: struct.member @out : !pod.type<[@x: !felt.type<"bn128">, @y: !felt.type<"bn128">]>
 // TEMPLATED: function.def @constrain(
-// TEMPLATED: %[[FIELD1:[a-zA-Z0-9_.-]+]] = struct.readm %{{[a-zA-Z0-9_.-]+}}[@out]
-// TEMPLATED: %[[X1:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD1]][@x]
-// TEMPLATED: %[[X2:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE2:[a-zA-Z0-9_.-]+]][@x]
+// TEMPLATED: %[[FIELD1:[0-9a-zA-Z_.-]+]] = struct.readm %{{[0-9a-zA-Z_.-]+}}[@out]
+// TEMPLATED: %[[X1:[0-9a-zA-Z_.-]+]] = pod.read %[[FIELD1]][@x]
+// TEMPLATED: %[[X2:[0-9a-zA-Z_.-]+]] = pod.read %[[VALUE2:[0-9a-zA-Z_.-]+]][@x]
 // TEMPLATED: constrain.eq %[[X1]], %[[X2]]
-// TEMPLATED: %[[Y1:[a-zA-Z0-9_.-]+]] = pod.read %[[FIELD1]][@y]
-// TEMPLATED: %[[Y2:[a-zA-Z0-9_.-]+]] = pod.read %[[VALUE2]][@y]
+// TEMPLATED: %[[Y1:[0-9a-zA-Z_.-]+]] = pod.read %[[FIELD1]][@y]
+// TEMPLATED: %[[Y2:[0-9a-zA-Z_.-]+]] = pod.read %[[VALUE2]][@y]
 // TEMPLATED: constrain.eq %[[Y1]], %[[Y2]]
 // TEMPLATED: function.return

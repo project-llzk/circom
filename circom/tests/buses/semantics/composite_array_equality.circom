@@ -25,15 +25,15 @@ component main = Main(1, 1, 1, 1);
 // CONCRETE: constrain.eq
 
 // TEMPLATED-LABEL: function.def @constrain(
-// TEMPLATED-DAG: %[[N:[a-zA-Z0-9_.-]+]] = poly.read_const @N
-// TEMPLATED-DAG: %[[M:[a-zA-Z0-9_.-]+]] = poly.read_const @M
-// TEMPLATED-DAG: %[[P:[a-zA-Z0-9_.-]+]] = poly.read_const @P
-// TEMPLATED-DAG: %[[Q:[a-zA-Z0-9_.-]+]] = poly.read_const @Q
+// TEMPLATED-DAG: %[[N:[0-9a-zA-Z_.-]+]] = poly.read_const @N
+// TEMPLATED-DAG: %[[M:[0-9a-zA-Z_.-]+]] = poly.read_const @M
+// TEMPLATED-DAG: %[[P:[0-9a-zA-Z_.-]+]] = poly.read_const @P
+// TEMPLATED-DAG: %[[Q:[0-9a-zA-Z_.-]+]] = poly.read_const @Q
 // TEMPLATED-NOT: bool.assert
-// TEMPLATED: %[[FIRST:[a-zA-Z0-9_.-]+]] = bool.cmp eq(%[[N]], %[[P]])
+// TEMPLATED: %[[FIRST:[0-9a-zA-Z_.-]+]] = bool.cmp eq(%[[N]], %[[P]])
 // TEMPLATED-NEXT: bool.assert %[[FIRST]]
 // TEMPLATED-NOT: bool.assert
-// TEMPLATED: %[[SECOND:[a-zA-Z0-9_.-]+]] = bool.cmp eq(%[[M]], %[[Q]])
+// TEMPLATED: %[[SECOND:[0-9a-zA-Z_.-]+]] = bool.cmp eq(%[[M]], %[[Q]])
 // TEMPLATED-NEXT: bool.assert %[[SECOND]]
 // TEMPLATED-NOT: bool.assert
 // TEMPLATED: constrain.eq

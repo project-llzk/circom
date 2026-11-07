@@ -29,10 +29,10 @@ component main = Main();
 // CHECK: function.def @compute(
 // CHECK-NOT: scf.if
 // CHECK: function.call @Empty{{(_[0-9]+)?}}::@Empty{{(_[0-9]+)?}}::@compute(
-// CHECK: %[[CHILD:[a-zA-Z0-9_.-]+]] = pod.new { @comp = %{{[a-zA-Z0-9_.-]+}} }
+// CHECK: %[[CHILD:[0-9a-zA-Z_.-]+]] = pod.new { @comp = %{{[0-9a-zA-Z_.-]+}} }
 // CHECK-NOT: function.call
-// CHECK: %[[RESULT:[a-zA-Z0-9_.-]+]] = pod.read %[[CHILD]][@comp]
-// CHECK-NEXT: %[[OUT:[a-zA-Z0-9_.-]+]] = struct.readm %[[RESULT]][@out]
+// CHECK: %[[RESULT:[0-9a-zA-Z_.-]+]] = pod.read %[[CHILD]][@comp]
+// CHECK-NEXT: %[[OUT:[0-9a-zA-Z_.-]+]] = struct.readm %[[RESULT]][@out]
 // CHECK-NEXT: struct.writem {{.*}}[@out] = %[[OUT]]
 // CHECK-NOT: function.call
 // CHECK: function.return

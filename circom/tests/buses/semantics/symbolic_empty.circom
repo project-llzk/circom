@@ -34,55 +34,55 @@ component main = Main(0);
 // CONCRETE-NOT: arith.subi
 // CONCRETE: function.def @compute(
 // CONCRETE-NOT: arith.subi
-// CONCRETE: %[[CHILD1:[a-zA-Z0-9_.-]+]] = function.call @Empty_0::@Empty_0::@compute(%{{[a-zA-Z0-9_.-]+}})
+// CONCRETE: %[[CHILD1:[0-9a-zA-Z_.-]+]] = function.call @Empty_0::@Empty_0::@compute(%{{[0-9a-zA-Z_.-]+}})
 // CONCRETE-NOT: arith.subi
-// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = pod.new { @comp = %[[CHILD1]] }
+// CONCRETE: %{{[0-9a-zA-Z_.-]+}} = pod.new { @comp = %[[CHILD1]] }
 // CONCRETE-NOT: arith.subi
-// CONCRETE: pod.write %{{[a-zA-Z0-9_.-]+}}[@in] = %{{[a-zA-Z0-9_.-]+}}
+// CONCRETE: pod.write %{{[0-9a-zA-Z_.-]+}}[@in] = %{{[0-9a-zA-Z_.-]+}}
 // CONCRETE-NOT: arith.subi
-// CONCRETE: function.return %{{[a-zA-Z0-9_.-]+}}
+// CONCRETE: function.return %{{[0-9a-zA-Z_.-]+}}
 
 // TEMPLATED-LABEL: struct.def @Main {
 // TEMPLATED: struct.member @child : !struct.type<@Empty::@Empty<[@N]>>
 // TEMPLATED: struct.member @child$inputs : !pod.type<[@in: !pod.type<[@x: !array.type<@N x !felt.type<"bn128">>]>]>
 // TEMPLATED: function.def @compute(
-// TEMPLATED: %[[VALUE1:[a-zA-Z0-9_.-]+]] = poly.read_const @N
-// TEMPLATED: %[[VALUE2:[a-zA-Z0-9_.-]+]] = cast.tofelt %[[VALUE1]]
-// TEMPLATED: %[[VALUE3:[a-zA-Z0-9_.-]+]] = poly.read_const @N
-// TEMPLATED: %[[VALUE4:[a-zA-Z0-9_.-]+]] = cast.tofelt %[[VALUE3]]
-// TEMPLATED: %[[POD1:[a-zA-Z0-9_.-]+]] = pod.new { @N = %[[VALUE4]] }
-// TEMPLATED: %[[N1:[a-zA-Z0-9_.-]+]] = pod.read %[[POD1]][@N]
-// TEMPLATED: %[[VALUE5:[a-zA-Z0-9_.-]+]] = cast.toindex %[[N1]]
-// TEMPLATED: %[[N2:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
-// TEMPLATED: %[[READY1:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[VALUE5]], %[[N2]]
-// TEMPLATED: %[[VALUE6:[a-zA-Z0-9_.-]+]] = scf.if %[[READY1]] -> (!struct.type<@Empty::@Empty<[@N]>>) {
-// TEMPLATED: %[[IN1:[a-zA-Z0-9_.-]+]] = pod.read %{{[a-zA-Z0-9_.-]+}}[@in]
-// TEMPLATED: %[[CHILD1:[a-zA-Z0-9_.-]+]] = function.call @Empty::@Empty::@compute(%[[IN1]]) : (!pod.type<[@x: !array.type<@N x !felt.type<"bn128">>]>) -> !struct.type<@Empty::@Empty<[@N]>>
+// TEMPLATED: %[[VALUE1:[0-9a-zA-Z_.-]+]] = poly.read_const @N
+// TEMPLATED: %[[VALUE2:[0-9a-zA-Z_.-]+]] = cast.tofelt %[[VALUE1]]
+// TEMPLATED: %[[VALUE3:[0-9a-zA-Z_.-]+]] = poly.read_const @N
+// TEMPLATED: %[[VALUE4:[0-9a-zA-Z_.-]+]] = cast.tofelt %[[VALUE3]]
+// TEMPLATED: %[[POD1:[0-9a-zA-Z_.-]+]] = pod.new { @N = %[[VALUE4]] }
+// TEMPLATED: %[[N1:[0-9a-zA-Z_.-]+]] = pod.read %[[POD1]][@N]
+// TEMPLATED: %[[VALUE5:[0-9a-zA-Z_.-]+]] = cast.toindex %[[N1]]
+// TEMPLATED: %[[N2:[0-9a-zA-Z_.-]+]] = arith.constant 0 : index
+// TEMPLATED: %[[READY1:[0-9a-zA-Z_.-]+]] = arith.cmpi eq, %[[VALUE5]], %[[N2]]
+// TEMPLATED: %[[VALUE6:[0-9a-zA-Z_.-]+]] = scf.if %[[READY1]] -> (!struct.type<@Empty::@Empty<[@N]>>) {
+// TEMPLATED: %[[IN1:[0-9a-zA-Z_.-]+]] = pod.read %{{[0-9a-zA-Z_.-]+}}[@in]
+// TEMPLATED: %[[CHILD1:[0-9a-zA-Z_.-]+]] = function.call @Empty::@Empty::@compute(%[[IN1]]) : (!pod.type<[@x: !array.type<@N x !felt.type<"bn128">>]>) -> !struct.type<@Empty::@Empty<[@N]>>
 // TEMPLATED: scf.yield %[[CHILD1]]
 // TEMPLATED: } else {
-// TEMPLATED: scf.yield %{{[a-zA-Z0-9_.-]+}}
-// TEMPLATED: %[[STATE1:[a-zA-Z0-9_.-]+]] = pod.new { @count = %[[VALUE5]], @params = %[[POD1]], @comp = %[[VALUE6]] }
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[POD2:[a-zA-Z0-9_.-]+]][@in]
-// TEMPLATED: pod.write %[[POD2]][@in] = %{{[a-zA-Z0-9_.-]+}}
-// TEMPLATED: %[[COUNT1:[a-zA-Z0-9_.-]+]] = pod.read %[[STATE1]][@count]
-// TEMPLATED: %[[N3:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
-// TEMPLATED: %[[READY2:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[COUNT1]], %[[N3]]
-// TEMPLATED: %[[N4:[a-zA-Z0-9_.-]+]] = arith.constant 1 : index
-// TEMPLATED: %[[VALUE10:[a-zA-Z0-9_.-]+]] = arith.select %[[READY2]], %[[N4]], %[[N3]]
-// TEMPLATED: %[[N5:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
-// TEMPLATED: %[[READY3:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[VALUE10]], %[[N5]]
+// TEMPLATED: scf.yield %{{[0-9a-zA-Z_.-]+}}
+// TEMPLATED: %[[STATE1:[0-9a-zA-Z_.-]+]] = pod.new { @count = %[[VALUE5]], @params = %[[POD1]], @comp = %[[VALUE6]] }
+// TEMPLATED: %{{[0-9a-zA-Z_.-]+}} = pod.read %[[POD2:[0-9a-zA-Z_.-]+]][@in]
+// TEMPLATED: pod.write %[[POD2]][@in] = %{{[0-9a-zA-Z_.-]+}}
+// TEMPLATED: %[[COUNT1:[0-9a-zA-Z_.-]+]] = pod.read %[[STATE1]][@count]
+// TEMPLATED: %[[N3:[0-9a-zA-Z_.-]+]] = arith.constant 0 : index
+// TEMPLATED: %[[READY2:[0-9a-zA-Z_.-]+]] = arith.cmpi eq, %[[COUNT1]], %[[N3]]
+// TEMPLATED: %[[N4:[0-9a-zA-Z_.-]+]] = arith.constant 1 : index
+// TEMPLATED: %[[VALUE10:[0-9a-zA-Z_.-]+]] = arith.select %[[READY2]], %[[N4]], %[[N3]]
+// TEMPLATED: %[[N5:[0-9a-zA-Z_.-]+]] = arith.constant 0 : index
+// TEMPLATED: %[[READY3:[0-9a-zA-Z_.-]+]] = arith.cmpi eq, %[[VALUE10]], %[[N5]]
 // TEMPLATED: scf.if %[[READY3]] {
-// TEMPLATED: %[[COUNT2:[a-zA-Z0-9_.-]+]] = pod.read %[[STATE1]][@count]
-// TEMPLATED: %[[VALUE11:[a-zA-Z0-9_.-]+]] = cast.toindex %[[VALUE2]]
-// TEMPLATED: %[[REMAINING1:[a-zA-Z0-9_.-]+]] = arith.subi %[[COUNT2]], %[[VALUE11]]
+// TEMPLATED: %[[COUNT2:[0-9a-zA-Z_.-]+]] = pod.read %[[STATE1]][@count]
+// TEMPLATED: %[[VALUE11:[0-9a-zA-Z_.-]+]] = cast.toindex %[[VALUE2]]
+// TEMPLATED: %[[REMAINING1:[0-9a-zA-Z_.-]+]] = arith.subi %[[COUNT2]], %[[VALUE11]]
 // TEMPLATED: pod.write %[[STATE1]][@count] = %[[REMAINING1]]
-// TEMPLATED: %[[N6:[a-zA-Z0-9_.-]+]] = arith.constant 0 : index
-// TEMPLATED: %[[READY4:[a-zA-Z0-9_.-]+]] = arith.cmpi eq, %[[REMAINING1]], %[[N6]]
+// TEMPLATED: %[[N6:[0-9a-zA-Z_.-]+]] = arith.constant 0 : index
+// TEMPLATED: %[[READY4:[0-9a-zA-Z_.-]+]] = arith.cmpi eq, %[[REMAINING1]], %[[N6]]
 // TEMPLATED: scf.if %[[READY4]] {
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[STATE1]][@params]
-// TEMPLATED: %[[IN3:[a-zA-Z0-9_.-]+]] = pod.read %[[POD2]][@in]
-// TEMPLATED: %[[CHILD2:[a-zA-Z0-9_.-]+]] = function.call @Empty::@Empty::@compute(%[[IN3]]) : (!pod.type<[@x: !array.type<@N x !felt.type<"bn128">>]>) -> !struct.type<@Empty::@Empty<[@N]>>
+// TEMPLATED: %{{[0-9a-zA-Z_.-]+}} = pod.read %[[STATE1]][@params]
+// TEMPLATED: %[[IN3:[0-9a-zA-Z_.-]+]] = pod.read %[[POD2]][@in]
+// TEMPLATED: %[[CHILD2:[0-9a-zA-Z_.-]+]] = function.call @Empty::@Empty::@compute(%[[IN3]]) : (!pod.type<[@x: !array.type<@N x !felt.type<"bn128">>]>) -> !struct.type<@Empty::@Empty<[@N]>>
 // TEMPLATED: pod.write %[[STATE1]][@comp] = %[[CHILD2]]
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[STATE1]][@comp]
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = pod.read %[[STATE1]][@comp]
-// TEMPLATED: function.return %{{[a-zA-Z0-9_.-]+}}
+// TEMPLATED: %{{[0-9a-zA-Z_.-]+}} = pod.read %[[STATE1]][@comp]
+// TEMPLATED: %{{[0-9a-zA-Z_.-]+}} = pod.read %[[STATE1]][@comp]
+// TEMPLATED: function.return %{{[0-9a-zA-Z_.-]+}}

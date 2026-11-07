@@ -39,7 +39,7 @@ component main = Main();
 
 // CONCRETE: struct.member @out : !pod.type<[@x: !array.type<3 x !felt.type
 // CONCRETE-LABEL: struct.def @Main{{_[0-9]+}} {
-// CONCRETE: %[[SIZE:[a-zA-Z0-9_.-]+]] = felt.const 7 :
+// CONCRETE: %[[SIZE:[0-9a-zA-Z_.-]+]] = felt.const 7 :
 // CONCRETE-NEXT: struct.writem {{.*}}[@size] = %[[SIZE]] :
 
 // TEMPLATED-LABEL: poly.template @Chain$values$0_0$1_2 {
@@ -49,5 +49,5 @@ component main = Main();
 // TEMPLATED: struct.member @child : !struct.type<@Chain$values$0_1$1_2::
 // TEMPLATED-LABEL: struct.def @Main {
 // TEMPLATED: function.call @Chain$values$0_2$1_2::
-// TEMPLATED: %[[SIZE:[a-zA-Z0-9_.-]+]] = felt.const 7 :
+// TEMPLATED: %[[SIZE:[0-9a-zA-Z_.-]+]] = felt.const 7 :
 // TEMPLATED-NEXT: struct.writem {{.*}}[@size] = %[[SIZE]] :

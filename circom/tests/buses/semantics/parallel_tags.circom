@@ -41,9 +41,9 @@ component main = Main();
 // CONCRETE: struct.member @left : !struct.type<@ZChild_0::@ZChild_0<[]>>
 // CONCRETE: struct.member @right : !struct.type<@ZChild_1::@ZChild_1<[]>>
 // CONCRETE: function.def @compute(
-// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = function.call @ZChild_0::@ZChild_0::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@ZChild_0::@ZChild_0<[]>>
-// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = function.call @ZChild_1::@ZChild_1::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@ZChild_1::@ZChild_1<[]>>
-// CONCRETE: function.return %{{[a-zA-Z0-9_.-]+}}
+// CONCRETE: %{{[0-9a-zA-Z_.-]+}} = function.call @ZChild_0::@ZChild_0::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@ZChild_0::@ZChild_0<[]>>
+// CONCRETE: %{{[0-9a-zA-Z_.-]+}} = function.call @ZChild_1::@ZChild_1::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@ZChild_1::@ZChild_1<[]>>
+// CONCRETE: function.return %{{[0-9a-zA-Z_.-]+}}
 // CONCRETE-LABEL: struct.def @ZChild_0 {
 // CONCRETE: struct.member @out : !pod.type<[@x: !array.type<2 x !felt.type<"bn128">>]>
 // CONCRETE-LABEL: struct.def @ZChild_1 {
@@ -53,9 +53,9 @@ component main = Main();
 // TEMPLATED: struct.member @left : !struct.type<@ZChild::@ZChild<[2]>>
 // TEMPLATED: struct.member @right : !struct.type<@ZChild::@ZChild<[3]>>
 // TEMPLATED: function.def @compute(
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = function.call @ZChild::@ZChild::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@ZChild::@ZChild<[2]>>
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = function.call @ZChild::@ZChild::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@ZChild::@ZChild<[3]>>
-// TEMPLATED: function.return %{{[a-zA-Z0-9_.-]+}}
+// TEMPLATED: %{{[0-9a-zA-Z_.-]+}} = function.call @ZChild::@ZChild::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@ZChild::@ZChild<[2]>>
+// TEMPLATED: %{{[0-9a-zA-Z_.-]+}} = function.call @ZChild::@ZChild::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@ZChild::@ZChild<[3]>>
+// TEMPLATED: function.return %{{[0-9a-zA-Z_.-]+}}
 // TEMPLATED: poly.param @"$tag$in$x$size" : index
 // TEMPLATED-LABEL: struct.def @ZChild {
 // TEMPLATED: struct.member @out : !pod.type<[@x: !array.type<@"$tag$in$x$size" x !felt.type<"bn128">>]>

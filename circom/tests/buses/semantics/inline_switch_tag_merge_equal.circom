@@ -73,10 +73,10 @@ component main = Main();
 // TEMPLATED: struct.member @child : !struct.type<@Expand::@Expand<[2]>>
 // TEMPLATED: struct.member @scalar : !struct.type<@ExpandSignal::@ExpandSignal<[2]>>
 // TEMPLATED: function.def @compute(
-// TEMPLATED: %[[BUS:[a-zA-Z0-9_.-]+]] = scf.if %{{[a-zA-Z0-9_.-]+}} -> (!pod.type<[@x: !felt.type<"bn128">]>) {
-// TEMPLATED: struct.writem %{{[a-zA-Z0-9_.-]+}}[@merged] = %[[BUS]]
+// TEMPLATED: %[[BUS:[0-9a-zA-Z_.-]+]] = scf.if %{{[0-9a-zA-Z_.-]+}} -> (!pod.type<[@x: !felt.type<"bn128">]>) {
+// TEMPLATED: struct.writem %{{[0-9a-zA-Z_.-]+}}[@merged] = %[[BUS]]
 // TEMPLATED: function.call @Expand::@Expand::@compute({{.*}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand::@Expand<[2]>>
-// TEMPLATED: %[[SIGNAL:[a-zA-Z0-9_.-]+]] = scf.if %{{[a-zA-Z0-9_.-]+}} -> (!felt.type<"bn128">) {
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = scf.if %{{[a-zA-Z0-9_.-]+}} -> (!felt.type<"bn128">) {
-// TEMPLATED: struct.writem %{{[a-zA-Z0-9_.-]+}}[@selected] = %[[SIGNAL]]
+// TEMPLATED: %[[SIGNAL:[0-9a-zA-Z_.-]+]] = scf.if %{{[0-9a-zA-Z_.-]+}} -> (!felt.type<"bn128">) {
+// TEMPLATED: %{{[0-9a-zA-Z_.-]+}} = scf.if %{{[0-9a-zA-Z_.-]+}} -> (!felt.type<"bn128">) {
+// TEMPLATED: struct.writem %{{[0-9a-zA-Z_.-]+}}[@selected] = %[[SIGNAL]]
 // TEMPLATED: function.call @ExpandSignal::@ExpandSignal::@compute({{.*}}) : (!felt.type<"bn128">) -> !struct.type<@ExpandSignal::@ExpandSignal<[2]>>

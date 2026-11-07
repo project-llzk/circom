@@ -63,14 +63,14 @@ component main = Main();
 // CONCRETE: struct.member @derived : !struct.type<@Derive_0::@Derive_0<[]>>
 // CONCRETE: struct.member @expanded : !struct.type<@Expand_1::@Expand_1<[]>>
 // CONCRETE: function.def @compute(
-// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = function.call @Derive_0::@Derive_0::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!felt.type<"bn128">) -> !struct.type<@Derive_0::@Derive_0<[]>>
-// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = function.call @Expand_1::@Expand_1::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!felt.type<"bn128">) -> !struct.type<@Expand_1::@Expand_1<[]>>
-// CONCRETE: function.return %{{[a-zA-Z0-9_.-]+}}
+// CONCRETE: %{{[0-9a-zA-Z_.-]+}} = function.call @Derive_0::@Derive_0::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!felt.type<"bn128">) -> !struct.type<@Derive_0::@Derive_0<[]>>
+// CONCRETE: %{{[0-9a-zA-Z_.-]+}} = function.call @Expand_1::@Expand_1::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!felt.type<"bn128">) -> !struct.type<@Expand_1::@Expand_1<[]>>
+// CONCRETE: function.return %{{[0-9a-zA-Z_.-]+}}
 // CONCRETE-LABEL: struct.def @Main_3 {
 // CONCRETE: struct.member @forwarded : !struct.type<@Forward_2::@Forward_2<[]>>
 // CONCRETE: function.def @compute(
-// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = function.call @Forward_2::@Forward_2::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!felt.type<"bn128">) -> !struct.type<@Forward_2::@Forward_2<[]>>
-// CONCRETE: function.return %{{[a-zA-Z0-9_.-]+}}
+// CONCRETE: %{{[0-9a-zA-Z_.-]+}} = function.call @Forward_2::@Forward_2::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!felt.type<"bn128">) -> !struct.type<@Forward_2::@Forward_2<[]>>
+// CONCRETE: function.return %{{[0-9a-zA-Z_.-]+}}
 
 // TEMPLATED: poly.param @"$tag$in$x"
 // TEMPLATED: poly.param @"$tag$in$xy"
@@ -86,11 +86,11 @@ component main = Main();
 // TEMPLATED: struct.member @derived : !struct.type<@Derive::@Derive<[0, @"$tag$in$xy"]>>
 // TEMPLATED: struct.member @expanded : !struct.type<@Expand::@Expand<[@"$tag$in$xy_Greater_0?$tag$in$xy_Add_1:1@[[OFFSET]]"]>>
 // TEMPLATED: function.def @compute(
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = function.call @Derive::@Derive::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!felt.type<"bn128">) -> !struct.type<@Derive::@Derive<[0, @"$tag$in$xy"]>>
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = function.call @Expand::@Expand::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!felt.type<"bn128">) -> !struct.type<@Expand::@Expand<[@"$tag$in$xy_Greater_0?$tag$in$xy_Add_1:1@[[OFFSET]]"]>>
-// TEMPLATED: function.return %{{[a-zA-Z0-9_.-]+}}
+// TEMPLATED: %{{[0-9a-zA-Z_.-]+}} = function.call @Derive::@Derive::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!felt.type<"bn128">) -> !struct.type<@Derive::@Derive<[0, @"$tag$in$xy"]>>
+// TEMPLATED: %{{[0-9a-zA-Z_.-]+}} = function.call @Expand::@Expand::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!felt.type<"bn128">) -> !struct.type<@Expand::@Expand<[@"$tag$in$xy_Greater_0?$tag$in$xy_Add_1:1@[[OFFSET]]"]>>
+// TEMPLATED: function.return %{{[0-9a-zA-Z_.-]+}}
 // TEMPLATED-LABEL: struct.def @Main {
 // TEMPLATED: struct.member @forwarded : !struct.type<@Forward::@Forward<[2, 3]>>
 // TEMPLATED: function.def @compute(
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = function.call @Forward::@Forward::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!felt.type<"bn128">) -> !struct.type<@Forward::@Forward<[2, 3]>>
-// TEMPLATED: function.return %{{[a-zA-Z0-9_.-]+}}
+// TEMPLATED: %{{[0-9a-zA-Z_.-]+}} = function.call @Forward::@Forward::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!felt.type<"bn128">) -> !struct.type<@Forward::@Forward<[2, 3]>>
+// TEMPLATED: function.return %{{[0-9a-zA-Z_.-]+}}

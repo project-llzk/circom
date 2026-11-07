@@ -40,8 +40,8 @@ component main = Main();
 // CONCRETE-LABEL: struct.def @Main_{{[0-9]+}} {
 // CONCRETE: function.def @compute(
 // CONCRETE: function.call @row_{{[0-9]+}}::@row_{{[0-9]+}}{{.*}} -> !array.type<6 x !felt.type
-// CONCRETE: %[[FIRST:[a-zA-Z0-9_.-]+]] = array.new {{.*}}: <2 x !felt.type
-// CONCRETE: %[[SECOND:[a-zA-Z0-9_.-]+]] = array.new {{.*}}: <2 x !felt.type
+// CONCRETE: %[[FIRST:[0-9a-zA-Z_.-]+]] = array.new {{.*}}: <2 x !felt.type
+// CONCRETE: %[[SECOND:[0-9a-zA-Z_.-]+]] = array.new {{.*}}: <2 x !felt.type
 // CONCRETE: array.insert {{.*}} = %[[SECOND]]
 // CONCRETE: function.call @Sink_{{[0-9]+}}::@Sink_{{[0-9]+}}::@compute
 // CONCRETE: array.insert {{.*}} = %[[FIRST]]

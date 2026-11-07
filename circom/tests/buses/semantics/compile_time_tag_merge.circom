@@ -80,11 +80,11 @@ component main = Main(1);
 // CONCRETE: struct.member @fromTag : !struct.type<@Expand_1::@Expand_1<[]>>
 // CONCRETE: struct.member @fromZero : !struct.type<@Expand_0::@Expand_0<[]>>
 // CONCRETE: function.def @compute(
-// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = function.call @Expand_0::@Expand_0::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand_0::@Expand_0<[]>>
-// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = function.call @Expand_1::@Expand_1::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand_1::@Expand_1<[]>>
-// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = function.call @Expand_1::@Expand_1::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand_1::@Expand_1<[]>>
-// CONCRETE: %{{[a-zA-Z0-9_.-]+}} = function.call @Expand_1::@Expand_1::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand_1::@Expand_1<[]>>
-// CONCRETE: function.return %{{[a-zA-Z0-9_.-]+}}
+// CONCRETE: %{{[0-9a-zA-Z_.-]+}} = function.call @Expand_0::@Expand_0::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand_0::@Expand_0<[]>>
+// CONCRETE: %{{[0-9a-zA-Z_.-]+}} = function.call @Expand_1::@Expand_1::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand_1::@Expand_1<[]>>
+// CONCRETE: %{{[0-9a-zA-Z_.-]+}} = function.call @Expand_1::@Expand_1::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand_1::@Expand_1<[]>>
+// CONCRETE: %{{[0-9a-zA-Z_.-]+}} = function.call @Expand_1::@Expand_1::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand_1::@Expand_1<[]>>
+// CONCRETE: function.return %{{[0-9a-zA-Z_.-]+}}
 
 // TEMPLATED: poly.param @"$tag$in$x$size" : index
 // TEMPLATED-LABEL: struct.def @Expand {
@@ -102,8 +102,8 @@ component main = Main(1);
 // TEMPLATED: struct.member @fromTag : !struct.type<@Expand::@Expand<[2]>>
 // TEMPLATED: struct.member @fromZero : !struct.type<@Expand::@Expand<[3]>>
 // TEMPLATED: function.def @compute(
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = function.call @Expand::@Expand::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand::@Expand<[3]>>
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = function.call @Expand::@Expand::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand::@Expand<[2]>>
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = function.call @Expand::@Expand::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand::@Expand<[@"N_NotEq_0?2:3@[[OFFSET0]]"]>>
-// TEMPLATED: %{{[a-zA-Z0-9_.-]+}} = function.call @Expand::@Expand::@compute(%{{[a-zA-Z0-9_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand::@Expand<[2]>>
-// TEMPLATED: function.return %{{[a-zA-Z0-9_.-]+}}
+// TEMPLATED: %{{[0-9a-zA-Z_.-]+}} = function.call @Expand::@Expand::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand::@Expand<[3]>>
+// TEMPLATED: %{{[0-9a-zA-Z_.-]+}} = function.call @Expand::@Expand::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand::@Expand<[2]>>
+// TEMPLATED: %{{[0-9a-zA-Z_.-]+}} = function.call @Expand::@Expand::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand::@Expand<[@"N_NotEq_0?2:3@[[OFFSET0]]"]>>
+// TEMPLATED: %{{[0-9a-zA-Z_.-]+}} = function.call @Expand::@Expand::@compute(%{{[0-9a-zA-Z_.-]+}}) : (!pod.type<[@x: !felt.type<"bn128">]>) -> !struct.type<@Expand::@Expand<[2]>>
+// TEMPLATED: function.return %{{[0-9a-zA-Z_.-]+}}
