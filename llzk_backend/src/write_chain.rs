@@ -10,6 +10,7 @@ use llzk::prelude::{ArrayType, FuncDefOpLike as _, Location, PodType, Value, Val
 use program_structure::ast::{Access, Expression};
 
 use crate::{
+    aggregate_types::{contains_bus, field_type, indexed_type},
     function::{FunctionContext, InfoProviders},
     gen_context::NestedBlockInfo,
     lvalue::{concrete_indices, emit_condition, Combine, CombineEntry, Lvalue, OverrideVar, Root},
@@ -113,15 +114,168 @@ enum AccessRef<'a, 'ast> {
     /// Array access.
     Array(&'a [&'ast Expression]),
     /// Component/signal access.
-    Subcmp(&'ast str),
+    Field(&'ast str),
 }
 
 impl<'ast> WriteChain<'ast> {
+    /// Update a data aggregate, writing each copied child back into its parent.
+    /// Indices are evaluated on the descent only; the ascent reuses those values.
+    fn update_data<'ctx, 'blk, 'val>(
+        value: Value<'ctx, 'val>,
+        accesses: &[AccessRef<'_, 'ast>],
+        rhs: Value<'ctx, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>,
+        location: Location<'ctx>,
+        info: InfoProviders<'_, 'ctx>,
+    ) -> Result<(Value<'ctx, 'val>, TypeSizeExpr<'ctx>)>
+    where
+        'val: 'blk,
+    {
+        let Some((access, tail)) = accesses.split_first() else {
+            // Count destination leaves, excluding any padding removed from the RHS below.
+            // Templated destinations may have affine dimensions, so fall back to the RHS.
+            let count = codegen
+                .count_input_signals(value.r#type())
+                .or_else(|_| codegen.count_input_signals(rhs.r#type()))?;
+            let rhs = fc.cast_signal_assignment_value(codegen, location, rhs, value.r#type())?;
+            return Ok((rhs, count));
+        };
+        match access {
+            AccessRef::Field(name) => {
+                let builder = fc.builder_at_current_insertion_point(codegen.context);
+                let child = fc.append_op_ref_unnamed_result(
+                    codegen.new_pod_read_op(&builder, value, name, location)?,
+                )?;
+                let (child, count) =
+                    Self::update_data(child, tail, rhs, codegen, fc, location, info)?;
+                let builder = fc.builder_at_current_insertion_point(codegen.context);
+                fc.append_op_ref_no_result(
+                    codegen.new_pod_write_op(&builder, location, value, name, child),
+                )?;
+                Ok((value, count))
+            }
+            AccessRef::Array(indices) => {
+                let indices = fc.gen_index_ops(indices.iter().copied(), codegen, location, info)?;
+                let child = fc.append_array_read(codegen, value, &indices, location, None)?;
+                let (child, count) =
+                    Self::update_data(child, tail, rhs, codegen, fc, location, info)?;
+                fc.append_array_write(codegen, value, &indices, location, child, None)?;
+                Ok((value, count))
+            }
+        }
+    }
+
+    /// Write bus fields and uniform component inputs as one aggregate transaction.
+    fn try_write_data<'ctx, 'blk, 'val>(
+        &self,
+        rhs: Value<'ctx, 'val>,
+        target: WriteTarget,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>,
+        location: Location<'ctx>,
+        signal_write_info: &dyn SignalWriteInfo,
+        subcmp_info: &dyn SubcmpInfo<'ctx>,
+    ) -> Result<bool>
+    where
+        'val: 'blk,
+    {
+        let mut accesses = Vec::new();
+        let (root, op) = Self::collect_accesses(&self.lvalue, &mut accesses);
+        if target != WriteTarget::Compute
+            || op != Root::Signal
+            || self.compute_result
+            || accesses.is_empty()
+        {
+            return Ok(false);
+        }
+        let info = InfoProviders { signal_write_info, subcmp_info };
+        if !subcmp_info.is_subcmp(root) {
+            let value = *fc.block_ctx.get_named_value(root)?;
+            if !contains_bus(value.r#type()) {
+                return Ok(false);
+            }
+            let (value, _) = Self::update_data(value, &accesses, rhs, codegen, fc, location, info)?;
+            Self::new(root, Root::Signal, &[]).write(
+                value,
+                target,
+                codegen,
+                fc,
+                location,
+                signal_write_info,
+                subcmp_info,
+            )?;
+            return Ok(true);
+        }
+        if subcmp_info.mixed_subcmp_info(root).is_ok() {
+            return Ok(false);
+        }
+        let input_name = crate::subcmp::names::inputs(root);
+        let input_root = *fc.block_ctx.get_named_value(&input_name)?;
+        let element = ArrayType::try_from(input_root.r#type())
+            .map_or(input_root.r#type(), |a| a.element_type());
+        if !PodType::try_from(element)?.records().iter().any(|r| contains_bus(r.r#type())) {
+            return Ok(false);
+        }
+        let memory_root = *fc.block_ctx.get_named_value(root)?;
+        let (indices, tail) = match accesses.first() {
+            Some(AccessRef::Array(indices)) => (
+                fc.gen_index_ops(indices.iter().copied(), codegen, location, info)?,
+                &accesses[1..],
+            ),
+            _ => (Vec::new(), &accesses[..]),
+        };
+        let Some(AccessRef::Field(signal)) = tail.first() else { return Ok(false) };
+        anyhow::ensure!(
+            subcmp_info.subcmp_info(root, codegen)?.signal_is_input(signal),
+            "cannot assign component output {root}.{signal} at {location}"
+        );
+        let (inputs, memory) = if indices.is_empty() {
+            (input_root, memory_root)
+        } else {
+            (
+                fc.append_array_read(codegen, input_root, &indices, location, None)?,
+                fc.append_array_read(codegen, memory_root, &indices, location, None)?,
+            )
+        };
+        let (inputs, count) = Self::update_data(inputs, tail, rhs, codegen, fc, location, info)?;
+        if !count.is_const_zero() {
+            let builder = fc.builder_at_current_insertion_point(codegen.context);
+            let pending = fc.append_op_ref_unnamed_result(codegen.new_pod_read_op(
+                &builder,
+                memory,
+                crate::subcmp::names::COUNT,
+                location,
+            )?)?;
+            let zero = fc.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
+            let complete = fc.append_op_unnamed_result(melior::dialect::arith::cmpi(
+                codegen.context,
+                melior::dialect::arith::CmpiPredicate::Eq,
+                pending,
+                zero,
+                location,
+            ))?;
+            let one = fc.append_op_unnamed_result(codegen.new_index_const_op(1, location))?;
+            let complete = fc.append_op_unnamed_result(melior::dialect::arith::select(
+                complete, one, zero, location,
+            ))?;
+            fc.gen_scf_if_is_zero(complete, location, codegen, |fc| {
+                Self::complete_subcmp_write(memory, inputs, count, codegen, fc, location)
+            })?;
+        }
+        if !indices.is_empty() {
+            fc.append_array_write(codegen, input_root, &indices, location, inputs, None)?;
+            fc.append_array_write(codegen, memory_root, &indices, location, memory, None)?;
+        }
+        fc.block_ctx.set_named_value(input_name, input_root)?;
+        fc.block_ctx.set_named_value(root.to_owned(), memory_root)?;
+        Ok(true)
+    }
     /// Creates a new write chain.
     pub fn new(var: &'ast str, op: Root, access: &'ast [Access]) -> Self {
         let lvalue = Lvalue::new(var, op, access);
         let input_indices = match &lvalue {
-            Lvalue::Array { indices, prev } if matches!(**prev, Lvalue::Subcmp { .. }) => {
+            Lvalue::Array { indices, prev } if matches!(**prev, Lvalue::Field { .. }) => {
                 indices.len()
             }
             _ => 0,
@@ -155,9 +309,9 @@ impl<'ast> WriteChain<'ast> {
                 accesses.push(AccessRef::Array(indices));
                 root
             }
-            Lvalue::Subcmp { name, prev } => {
+            Lvalue::Field { name, prev } => {
                 let root = Self::collect_accesses(prev, accesses);
-                accesses.push(AccessRef::Subcmp(name));
+                accesses.push(AccessRef::Field(name));
                 root
             }
         }
@@ -189,6 +343,39 @@ impl<'ast> WriteChain<'ast> {
             };
         }
         codegen.count_input_signals(written_type)
+    }
+
+    /// Decrement a component's pending inputs and store its instance when complete.
+    /// Callers retain their dispatch, zero-input guards, and parent aggregate writeback.
+    fn complete_subcmp_write<'ctx, 'blk, 'val>(
+        memory: Value<'ctx, 'val>,
+        inputs: Value<'ctx, 'val>,
+        written_size: TypeSizeExpr<'ctx>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>,
+        location: Location<'ctx>,
+    ) -> Result<()>
+    where
+        'val: 'blk,
+    {
+        let counter = fc.gen_subcmp_decrease_counter(codegen, location, memory, written_size)?;
+        fc.gen_scf_if_is_zero(counter, location, codegen, |fc| {
+            let builder = fc.builder_at_current_insertion_point(codegen.context);
+            let params = fc.append_op_ref_unnamed_result(
+                codegen.new_pod_read_op(&builder, memory, PARAMS, location)?,
+            )?;
+            let instance = fc.gen_compute_call(
+                comp_type(memory.r#type().try_into()?)?.try_into()?,
+                inputs,
+                params,
+                location,
+                codegen,
+            )?;
+            let builder = fc.builder_at_current_insertion_point(codegen.context);
+            fc.append_op_ref_no_result(
+                codegen.new_pod_write_op(&builder, location, memory, COMP, instance),
+            )
+        })
     }
 
     /// Assign an input field, removing concrete function return padding when needed.
@@ -286,7 +473,7 @@ impl<'ast> WriteChain<'ast> {
                 fc.append_array_write(codegen, field_value, &index_vals, location, val, None)?;
                 field_value
             }
-            Some((AccessRef::Subcmp(_), _)) => {
+            Some((AccessRef::Field(_), _)) => {
                 anyhow::bail!("unsupported nested component access after subcomponent input")
             }
             None => val,
@@ -329,7 +516,10 @@ impl<'ast> WriteChain<'ast> {
         let Some((AccessRef::Array(component_indices), tail)) = accesses.split_first() else {
             return Ok(false);
         };
-        if concrete_indices(component_indices).is_some() {
+        let has_bus = layout.entries().iter().any(|entry| {
+            entry.inputs_type().records().iter().any(|record| contains_bus(record.r#type()))
+        });
+        if !has_bus && concrete_indices(component_indices).is_some() {
             return Ok(false);
         }
 
@@ -352,7 +542,7 @@ impl<'ast> WriteChain<'ast> {
         let signal_name = match root_op {
             Root::Var if tail.is_empty() => None,
             Root::Signal => {
-                let Some((AccessRef::Subcmp(signal_name), _)) = tail.split_first() else {
+                let Some((AccessRef::Field(signal_name), _)) = tail.split_first() else {
                     return Ok(false);
                 };
                 if !subcmp_info.subcmp_info(root_var, codegen)?.signal_is_input(signal_name) {
@@ -378,6 +568,40 @@ impl<'ast> WriteChain<'ast> {
                 &index_vals,
             )?;
 
+            let val = if has_bus && signal_name.is_some() {
+                let mut expected: llzk::prelude::Type = entry.inputs_type().into();
+                for access in tail {
+                    expected = match access {
+                        AccessRef::Field(name) => field_type(expected, name)?.ok_or_else(|| {
+                            anyhow::anyhow!("unknown bus field {name} at {location}")
+                        })?,
+                        AccessRef::Array(indices) => indexed_type(expected, indices.len())?
+                            .ok_or_else(|| anyhow::anyhow!("too many bus indices at {location}"))?,
+                    };
+                }
+                // Remove concrete return padding before deciding whether this entry is
+                // impossible. Concrete execution has already checked assignment shapes.
+                let val = fc.narrow_concrete_signal_value(codegen, location, val, expected)?;
+                // A mixed array dispatch can still contain incompatible entries. Guard
+                // those entries instead of manufacturing an incompatible cast.
+                if !llzk::typing::types_unify(expected, val.r#type()) {
+                    let builder = fc.builder_at_current_insertion_point(codegen.context);
+                    let valid = fc.append_op_ref_unnamed_result(llzk::dialect::bool::r#not(
+                        &builder, location, condition,
+                    )?)?;
+                    fc.append_assert(
+                        codegen,
+                        location,
+                        valid,
+                        "incompatible mixed component bus input",
+                    )?;
+                    continue;
+                }
+                val
+            } else {
+                val
+            };
+
             let (info, ()) = NestedBlockInfo::with_scope(codegen.context, fc, |fc| {
                 if let Some(signal_name) = signal_name {
                     let inputs_value = inputs_value.expect("input value exists for signal writes");
@@ -397,17 +621,38 @@ impl<'ast> WriteChain<'ast> {
                             entry.record_name(),
                             location,
                         )?)?;
-                    Self::write_mixed_input_tail(
-                        signal_name,
-                        &tail[1..],
-                        input_record,
-                        val,
-                        codegen,
-                        fc,
-                        location,
-                        signal_write_info,
-                        subcmp_info,
-                    )?;
+                    let (input_record, written_size) = if has_bus {
+                        Self::update_data(
+                            input_record,
+                            tail,
+                            val,
+                            codegen,
+                            fc,
+                            location,
+                            InfoProviders { signal_write_info, subcmp_info },
+                        )?
+                    } else {
+                        Self::write_mixed_input_tail(
+                            signal_name,
+                            &tail[1..],
+                            input_record,
+                            val,
+                            codegen,
+                            fc,
+                            location,
+                            signal_write_info,
+                            subcmp_info,
+                        )?;
+                        (
+                            input_record,
+                            Self::input_write_size(
+                                signal_name,
+                                entry.inputs_type(),
+                                self.input_indices,
+                                codegen,
+                            )?,
+                        )
+                    };
                     let builder = fc.builder_at_current_insertion_point(codegen.context);
                     fc.append_op_ref_no_result(codegen.new_pod_write_op(
                         &builder,
@@ -418,47 +663,17 @@ impl<'ast> WriteChain<'ast> {
                     ))?;
                     fc.block_ctx.set_named_value(inputs_name.clone(), inputs_value)?;
 
-                    let written_size = Self::input_write_size(
-                        signal_name,
-                        entry.inputs_type(),
-                        self.input_indices,
-                        codegen,
-                    )?;
-                    let counter = fc.gen_subcmp_decrease_counter(
-                        codegen,
-                        location,
+                    if written_size.is_const_zero() {
+                        return Ok(());
+                    }
+
+                    Self::complete_subcmp_write(
                         memory_record,
+                        input_record,
                         written_size,
-                    )?;
-                    fc.gen_scf_if_is_zero(
-                        counter,
-                        location,
                         codegen,
-                        |fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>| {
-                            let builder = fc.builder_at_current_insertion_point(codegen.context);
-                            let params =
-                                fc.append_op_ref_unnamed_result(codegen.new_pod_read_op(
-                                    &builder,
-                                    memory_record,
-                                    PARAMS,
-                                    location,
-                                )?)?;
-                            let subcmp_instance = fc.gen_compute_call(
-                                entry.struct_type(),
-                                input_record,
-                                params,
-                                location,
-                                codegen,
-                            )?;
-                            let builder = fc.builder_at_current_insertion_point(codegen.context);
-                            fc.append_op_ref_no_result(codegen.new_pod_write_op(
-                                &builder,
-                                location,
-                                memory_record,
-                                COMP,
-                                subcmp_instance,
-                            ))
-                        },
+                        fc,
+                        location,
                     )?;
                     let builder = fc.builder_at_current_insertion_point(codegen.context);
                     fc.append_op_ref_no_result(codegen.new_pod_write_op(
@@ -609,7 +824,7 @@ impl<'ast> WriteChain<'ast> {
         )
     }
 
-    /// Handle [Lvalue::Subcmp] case of [`WriteChain::write`].
+    /// Handle [Lvalue::Field] case of [`WriteChain::write`].
     fn write_subcmp<'ctx, 'blk, 'val>(
         name: &str,
         prev: Self,
@@ -673,40 +888,13 @@ impl<'ast> WriteChain<'ast> {
                     prev.input_indices,
                     codegen,
                 )?;
-                let counter =
-                    fc.gen_subcmp_decrease_counter(codegen, location, subcmp_value, written_size)?;
-                fc.gen_scf_if_is_zero(
-                    counter,
-                    location,
+                Self::complete_subcmp_write(
+                    subcmp_value,
+                    subcmp_value_inputs,
+                    written_size,
                     codegen,
-                    |fc: &mut FunctionContext<'_, 'ctx, '_, 'blk, 'val>| {
-                        let builder = fc.builder_at_current_insertion_point(codegen.context);
-                        let params = fc.append_op_ref_unnamed_result(codegen.new_pod_read_op(
-                            &builder,
-                            subcmp_value,
-                            PARAMS,
-                            location,
-                        )?)?;
-                        let struct_type =
-                            comp_type(subcmp_value.r#type().try_into()?)?.try_into()?;
-
-                        let subcmp_instance = fc.gen_compute_call(
-                            struct_type,
-                            subcmp_value_inputs,
-                            params,
-                            location,
-                            codegen,
-                        )?;
-                        let builder = fc.builder_at_current_insertion_point(codegen.context);
-                        fc.append_op_ref_no_result(codegen.new_pod_write_op(
-                            &builder,
-                            location,
-                            subcmp_value,
-                            COMP,
-                            subcmp_instance,
-                        ))?;
-                        Ok(())
-                    },
+                    fc,
+                    location,
                 )?;
                 // Persist the decremented count regardless of whether this input completed
                 // the subcomponent. If it did, this also stores the computed instance.
@@ -772,6 +960,17 @@ impl<'ast> WriteChain<'ast> {
             }
         }
 
+        if self.try_write_data(
+            val,
+            target,
+            codegen,
+            fc,
+            location,
+            signal_write_info,
+            subcmp_info,
+        )? {
+            return Ok(());
+        }
         if self.try_write_mixed_subcmp(
             val,
             target,
@@ -819,7 +1018,7 @@ impl<'ast> WriteChain<'ast> {
                 signal_write_info,
                 subcmp_info,
             ),
-            Lvalue::Subcmp { name, prev } => Self::write_subcmp(
+            Lvalue::Field { name, prev } => Self::write_subcmp(
                 name,
                 Self::from_lvalue(*prev, self.compute_result, self.input_indices),
                 val,

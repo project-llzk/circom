@@ -48,7 +48,6 @@ use program_structure::{
     error_code::ReportCode,
     error_definition::Report,
     file_definition::{FileID, FileLocation},
-    wire_data::WireType,
 };
 
 use crate::{
@@ -61,7 +60,7 @@ use crate::{
     module::DeclarationInfo,
     program_ext::ProgramLike,
     subcmp::names::COMP,
-    template_ext::{TemplateLike, WireLike as _},
+    template_ext::TemplateLike,
     traversal::{walk_from_block, WalkCallbacks},
 };
 
@@ -182,6 +181,14 @@ enum DeclInfo<'ctx> {
     },
 }
 
+/// Construct a declaration-qualified key (`name@start#elem_id`) for collection and lookup.
+/// Source positions distinguish same-named declarations in different scopes; element identities
+/// distinguish expanded loop copies that share a source position.
+#[inline]
+pub(crate) fn declaration_key(name: &str, meta: &Meta) -> String {
+    format!("{}@{}#{}", name, meta.start, meta.elem_id)
+}
+
 /// Convert circom location information to MLIR location.
 pub fn location<'ctx>(
     context: &'ctx LlzkContext,
@@ -224,6 +231,10 @@ pub struct LlzkConfig {
 /// 'r: lifetime of the reference captured by the current `TemplateOpRefMut`
 #[derive(Debug)]
 pub struct LlzkCodegen<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> {
+    /// Structural bus layouts keyed by definition, parameter bindings, and symbolic scope.
+    pub(crate) bus_layouts: RefCell<HashMap<crate::bus::BusIdentity, PodType<'ctx>>>,
+    /// Completed tags for the template currently being generated.
+    pub(crate) resolved_tags: RefCell<HashMap<Vec<String>, BigInt>>,
     /// The circom program AST.
     pub program: &'ast P,
     /// The LLZK (and MLIR) context.
@@ -347,6 +358,13 @@ impl<'ast, 'ctx> TmplParamsInstance<'ast, 'ctx> {
     pub fn map_type(&self, ty: Type<'ctx>) -> Result<Type<'ctx>> {
         type_switch! { ty,
             ArrayType => self.handle_array_type(ty),
+            PodType => {
+                let records = ty.records().iter().map(|r| {
+                    Ok(llzk::prelude::PodRecordAttribute::new(r.name().as_string_ref().as_str()?, self.map_type(r.r#type())?))
+                }).collect::<Result<Vec<_>>>()?;
+                // The context owns `ty` and outlives every type returned by this mapping.
+                Ok(PodType::new(unsafe { ty.context().to_ref() }, &records).into())
+            }
             FeltType => self.handle_passthrough(ty),
             else => {
                 todo!("Unhandled type {ty} while mapping through template parameters.")
@@ -502,6 +520,38 @@ impl<'ctx> TypeSizeExpr<'ctx> {
         }
     }
 
+    /// Evaluate a callee input count using its stored constructor parameters.
+    pub(crate) fn to_index_value_from_pod<'val>(
+        &self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        bg: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
+        location: Location<'ctx>,
+        params: Value<'ctx, 'val>,
+    ) -> Result<Value<'ctx, 'val>> {
+        let simplified = self.simplified();
+        match &simplified {
+            Self::Sym(symbol) => {
+                let name = symbol.root().as_str()?;
+                let builder = bg.builder_at_current_insertion_point(codegen.context);
+                let value = bg.append_op_ref_unnamed_result(
+                    codegen.new_pod_read_op(&builder, params, name, location)?,
+                )?;
+                bg.cast_to_index_if_needed(codegen, location, value)
+            }
+            Self::Add(a, b) | Self::Mul(a, b) => {
+                let a = a.to_index_value_from_pod(codegen, bg, location, params)?;
+                let b = b.to_index_value_from_pod(codegen, bg, location, params)?;
+                bg.append_op_unnamed_result(if matches!(simplified, Self::Add(..)) {
+                    arith::addi(a, b, location)
+                } else {
+                    arith::muli(a, b, location)
+                })
+            }
+            Self::Const(n) => bg
+                .append_op_unnamed_result(codegen.new_index_const_op(i64::try_from(*n)?, location)),
+        }
+    }
+
     /// Generate code for the expression as an index value in LLZK IR.
     pub fn to_index_value<'ast, 'blk, 'val>(
         &self,
@@ -578,6 +628,8 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     ) -> Self {
         let builder = OpBuilder::at_block_end(context, module.body());
         LlzkCodegen {
+            bus_layouts: RefCell::new(HashMap::new()),
+            resolved_tags: RefCell::new(HashMap::new()),
             program,
             context,
             module,
@@ -759,6 +811,9 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
         let Ok(array_type) = ArrayType::try_from(ty) else {
             return None;
         };
+        if !is_felt_type(array_type.element_type()) {
+            return None;
+        }
         array_type
             .dims()
             .into_iter()
@@ -891,6 +946,11 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
             })
             .collect();
         self.template_param_requirements.replace(requirements);
+        // Symbolic bus dimensions can reference poly.expr bindings owned by the discarded
+        // declarations. Rebuild those layouts together with their bindings in the next pass.
+        self.bus_layouts
+            .borrow_mut()
+            .retain(|identity, _| matches!(identity, crate::bus::BusIdentity::Concrete(_)));
     }
 
     /// Remove and return the inferred index restrictions for one template.
@@ -951,6 +1011,12 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
                 ArrayType::new(element_type, &dims).into()
             }
             FeltType as _ => t,
+            PodType => {
+                let records = t.records().iter().map(|r| {
+                    llzk::prelude::PodRecordAttribute::new(r.name().as_string_ref().as_str().expect("record name"), self.strip_template_params_from_type(r.r#type()))
+                }).collect::<Vec<_>>();
+                PodType::new(self.context, &records).into()
+            }
         }
     }
 
@@ -1382,22 +1448,10 @@ impl<'ast: 'r, 'ctx: 'r, 'r, P: ProgramLike> LlzkCodegen<'ast, 'ctx, 'r, P> {
     pub fn get_template_input_types(&self, name: &str) -> Result<Vec<Type<'ctx>>> {
         let data =
             self.find_template_data(name).ok_or_else(|| anyhow!("Template {name} not found"))?;
-        Ok(data
-            .get_declaration_inputs()
+        data.get_declaration_inputs()
             .iter()
-            .map(move |(input, _)| -> Type<'ctx> {
-                let wire = data
-                    .get_input_info(input)
-                    // The name comes from `get_declaration_inputs`.
-                    // If `get_input_info` fails here with that name,
-                    // something has gone very wrong.
-                    .unwrap_or_else(|| panic!("Input {:?} not found for type {:?}", input, name));
-                match wire.get_type() {
-                    WireType::Signal => self.felt_type().into(),
-                    WireType::Bus(name) => self.struct_type(&name).into(),
-                }
-            })
-            .collect())
+            .map(|(input, _)| self.get_input_signal_type(name, input))
+            .collect()
     }
 
     /// Compute the size of the type in signals. A scalar signal has size 1, an array of 2 signals
@@ -2498,7 +2552,7 @@ where
                         // Use the pre-computed type from DeclarationInfo (seeded into the
                         // BlockContextStack root) to avoid triggering recursive
                         // gen_template_poly_expr calls for non-constant dimension expressions.
-                        let qualified_key = format!("{}@{}#{}", name, meta.start, meta.elem_id);
+                        let qualified_key = declaration_key(name, meta);
                         if let Some(ty) = gen_ctx.get_var_decl_types().get(&qualified_key) {
                             let builder =
                                 gen_ctx.builder_at_current_insertion_point(codegen.context);
@@ -2537,9 +2591,12 @@ where
                     }
                 }
                 Statement::Substitution { meta, var, access, op, rhe } => {
-                    // Only replay assignments to local vars. Component constructors and
+                    // Only replay assignments to local vars. Bus/component constructors and
                     // signal assignments do not contribute to template parameter values.
-                    if !op.is_signal_operator() && gen_ctx.block_ctx.is_name_present(var) {
+                    if !op.is_signal_operator()
+                        && !crate::bus::is_constructor(rhe)
+                        && gen_ctx.block_ctx.is_name_present(var)
+                    {
                         gen_ctx.handle_substitution_stmt_nonsignal(
                             codegen,
                             InfoProviders::default(),
@@ -2932,6 +2989,9 @@ pub fn gen_poly_expr_name(expr: &Expression) -> String {
             }
             Expression::InlineSwitchOp { cond, if_true, if_false, .. } => {
                 format!("{}?{}:{}", visit(cond), visit(if_true), visit(if_false))
+            }
+            Expression::Call { id, .. } if id == crate::bus::ARRAY_ACCESS => {
+                crate::bus::expression_key(expr)
             }
             Expression::Call { id, args, .. } => {
                 format!("{id}({})", args.iter().map(visit).collect::<Vec<_>>().join(","))

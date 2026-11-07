@@ -98,9 +98,6 @@ pub(crate) fn literal_array_dimensions_and_values(
                 return None;
             };
             let dimension = dimension.to_usize()?;
-            if dimension == 0 {
-                return None;
-            }
             let capacity = element_values.len().checked_mul(dimension)?;
             let mut flattened = Vec::with_capacity(capacity);
             for _ in 0..dimension {
@@ -979,7 +976,59 @@ where
         location: Location<'ctx>,
         lhs: Value<'ctx, 'val>,
         rhs: Value<'ctx, 'val>,
-    ) -> Result<()> {
+    ) -> Result<()>
+    where
+        'val: 'blk,
+    {
+        if let Ok(pod) = PodType::try_from(lhs.r#type()) {
+            let rhs = self.cast_to_expected_type_if_needed(codegen, location, rhs, lhs.r#type())?;
+            for field in pod.records() {
+                let field_name = field.name();
+                let name = field_name.as_string_ref();
+                let builder = self.builder_at_current_insertion_point(codegen.context);
+                let l = self.append_op_ref_unnamed_result(codegen.new_pod_read_op(
+                    &builder,
+                    lhs,
+                    name.as_str()?,
+                    location,
+                )?)?;
+                let builder = self.builder_at_current_insertion_point(codegen.context);
+                let r = self.append_op_ref_unnamed_result(codegen.new_pod_read_op(
+                    &builder,
+                    rhs,
+                    name.as_str()?,
+                    location,
+                )?)?;
+                self.append_constrain_eq(codegen, location, l, r)?;
+            }
+            return Ok(());
+        }
+        if let Ok(array) = ArrayType::try_from(lhs.r#type()) {
+            if PodType::try_from(array.element_type()).is_ok() {
+                let rhs =
+                    self.cast_to_expected_type_if_needed(codegen, location, rhs, lhs.r#type())?;
+                let lengths = (0..array.num_dims())
+                    .map(|n| {
+                        let dimension = array.dims()[usize::try_from(n)?];
+                        if IntegerAttribute::try_from(dimension).is_ok_and(|n| n.value() >= 0)
+                            || FlatSymbolRefAttribute::try_from(dimension).is_ok()
+                        {
+                            return self.array_dim_attr_to_idx_val(codegen, location, dimension);
+                        }
+                        let dim = self.append_op_unnamed_result(
+                            codegen.new_index_const_op(i64::try_from(n)?, location),
+                        )?;
+                        let builder = self.builder_at_current_insertion_point(codegen.context);
+                        self.append_op_ref_unnamed_result(array::len(&builder, location, lhs, dim))
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                return self.gen_loop_nest(codegen, location, &lengths, |bg, indices| {
+                    let l = bg.append_array_read(codegen, lhs, indices, location, None)?;
+                    let r = bg.append_array_read(codegen, rhs, indices, location, None)?;
+                    bg.append_constrain_eq(codegen, location, l, r)
+                });
+            }
+        }
         let (lhs, rhs) = self.unify_constrain_eq_types(codegen, location, lhs, rhs)?;
         let builder = self.builder_at_current_insertion_point(codegen.context);
         let op = constrain::eq(&builder, location, lhs, rhs);
@@ -1259,7 +1308,7 @@ where
                 }
             }
             anyhow::bail!(
-                "Unsupported cast to 'expected' type '{expected}' from value type '{}'",
+                "Unsupported cast at {location} to 'expected' type '{expected}' from value type '{}'",
                 val.r#type()
             )
         }
@@ -2675,8 +2724,7 @@ where
         dimension.transform(|val| self.cast_to_index_if_needed(codegen, location, val))
     }
 
-    /// Handle a [program_structure::ast::Statement::Declaration] by generating a nondet felt value
-    /// with the given dimensions and declaring it in the current block context.
+    /// Declare storage using a prepared aggregate type, or felt storage with the given dimensions.
     pub fn gen_declaration(
         &mut self,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
@@ -2686,6 +2734,18 @@ where
     ) -> Result<()> {
         if self.block_ctx.is_name_present(name) {
             return Ok(());
+        }
+        let key = shared::declaration_key(name, meta);
+        if let Some(ty) =
+            self.var_decl_types.get(&key).filter(|ty| crate::aggregate_types::contains_bus(**ty))
+        {
+            let builder = self.builder_at_current_insertion_point(codegen.context);
+            let value = single_result_as_value(codegen.new_nondet_at_location(
+                &builder,
+                codegen.location_from_meta(meta),
+                *ty,
+            ))?;
+            return self.block_ctx.declare_value_ensure_not_present(name, value);
         }
         // If generating from VCP, there are cases where the `sugar_cleaner` added new
         // declarations that only have `MemoryKnowledge` but not `dimensions` in the AST. So
@@ -2910,6 +2970,18 @@ where
                 )
             }
             Expression::Variable { meta, name, access } => {
+                let mut tag_path = vec![name.clone()];
+                tag_path.extend(access.iter().filter_map(|a| match a {
+                    program_structure::ast::Access::ComponentAccess(field) => Some(field.clone()),
+                    _ => None,
+                }));
+                if let Some(value) = codegen.resolved_tags.borrow().get(&tag_path) {
+                    let location = codegen.location_from_meta(meta);
+                    let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                    return block_gen.append_op_ref_unnamed_result(
+                        codegen.new_felt_const_op(&builder, value, location)?,
+                    );
+                }
                 let lvalue = Lvalue::new(
                     name,
                     if info.subcmp_info.is_subcmp(name) { Root::Signal } else { Root::Var },
@@ -3043,6 +3115,18 @@ where
                 let value = value.gen_llzk_in_block(codegen, block_gen, info)?;
                 block_gen.generate_uniform_array(codegen, location, value, &dim)
             }
+            Expression::Call { meta, id, args } if id == crate::bus::ARRAY_ACCESS => {
+                let location = codegen.location_from_meta(meta);
+                let array = args[0].gen_llzk_in_block(codegen, block_gen, info)?;
+                let indices = args[1..]
+                    .iter()
+                    .map(|index| {
+                        let value = index.gen_llzk_in_block(codegen, block_gen, info)?;
+                        block_gen.cast_to_index_if_needed(codegen, location, value)
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                block_gen.append_array_read(codegen, array, &indices, location, None)
+            }
             Expression::Call { meta, id, args } => {
                 let location = codegen.location_from_meta(meta);
                 let target_function_data = codegen.program.get_function_data(id)?;
@@ -3092,7 +3176,14 @@ where
             }
             #[allow(unused_variables)] // TODO: TEMP
             Expression::BusCall { meta, id, args } => {
-                todo!("Handle BusCall expression")
+                let ty = crate::bus::generic_type(codegen, block_gen, id, args)?;
+                let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+                block_gen.append_op_ref_unnamed_result(pod::new(
+                    &builder,
+                    codegen.location_from_meta(meta),
+                    &[],
+                    Some(ty),
+                ))
             }
             Expression::AnonymousComp { .. } => unreachable!("removed by 'syntax_sugar_remover'"),
             Expression::Tuple { .. } => unreachable!("removed by 'syntax_sugar_remover'"),

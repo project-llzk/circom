@@ -56,11 +56,18 @@ pub struct DefinitionLocation {
 /// A trait that allows common handling of the structs used to represent a circom
 /// program at different stages in the compilation process.
 pub trait ProgramLike: std::fmt::Debug {
-    /// Source program available for array template parameter preparation.
+    /// Source program available for symbolic metadata analysis.
     fn symbolic_program(&self) -> Option<&ProgramArchive> {
         None
     }
-
+    /// Concrete bus instances, indexed by `Wire::TBus.bus_id`.
+    fn concrete_buses(&self) -> &[compiler::hir::very_concrete_program::BusInstance] {
+        &[]
+    }
+    /// Generic bus definition before execution.
+    fn bus_definition(&self, _name: &str) -> Option<&program_structure::bus_data::BusData> {
+        None
+    }
     /// Whether this program originated from the very-concrete-program pipeline.
     fn is_concrete(&self) -> bool {
         false
@@ -114,7 +121,9 @@ impl ProgramLike for ProgramArchive {
     fn symbolic_program(&self) -> Option<&ProgramArchive> {
         Some(self)
     }
-
+    fn bus_definition(&self, name: &str) -> Option<&program_structure::bus_data::BusData> {
+        self.buses.get(name)
+    }
     fn get_file_library(&self) -> &FileLibrary {
         &self.file_library
     }
@@ -239,6 +248,9 @@ pub struct VCPPlus<'vcp> {
 }
 
 impl ProgramLike for VCPPlus<'_> {
+    fn concrete_buses(&self) -> &[compiler::hir::very_concrete_program::BusInstance] {
+        &self.vcp.buses
+    }
     fn is_concrete(&self) -> bool {
         true
     }

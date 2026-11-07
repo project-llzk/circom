@@ -22,7 +22,7 @@ use crate::{
     shared::{
         map_array_inner_type, wrap_pod_records, LlzkCodegen, TmplParamsInstance, TypeSizeExpr,
     },
-    template_ext::{SignalDeclarations, TemplateLike as _},
+    template_ext::{SignalDeclarations, TemplateLike as _, WireLike as _},
 };
 
 /// Names used for `pod` records.
@@ -549,8 +549,10 @@ impl<'ctx> SubcmpType<'ctx> {
             .get_declaration_inputs()
             .iter()
             .map(|(signal_name, _)| -> Result<TypeSizeExpr<'ctx>> {
-                let signal_type = template_params
-                    .map_type(codegen.get_input_signal_type(template_name, signal_name)?)?;
+                let mut signal_type = codegen.get_input_signal_type(template_name, signal_name)?;
+                if !self.has_bus_input(codegen) {
+                    signal_type = template_params.map_type(signal_type)?;
+                }
                 codegen.count_input_signals(signal_type)
             })
             .try_fold(TypeSizeExpr::zero(), acc_add)
@@ -572,29 +574,84 @@ impl<'ctx> SubcmpType<'ctx> {
         // If the count == 0 means that the subcomponent has no inputs. In that
         // case we call `@compute` here directly and store it into COMP.
         if count.is_const_zero() {
-            let builder = block_gen.builder_at_current_insertion_point(codegen.context);
-            let empty_inputs = block_gen.append_op_ref_unnamed_result(pod::new(
-                &builder,
-                location,
-                &[],
-                Some(codegen.pod_type(&[])),
-            ))?;
-            let instance = block_gen.gen_compute_call(
-                self.r#type().try_into()?,
-                empty_inputs,
-                params_pod,
-                location,
-                codegen,
-            )?;
+            let instance = self.compute_empty_inputs(params_pod, block_gen, codegen, location)?;
             return Ok(vec![(names::COMP, instance)]);
         }
-        Ok(vec![
-            (
-                names::COUNT,
-                count.to_index_value(codegen, block_gen, location, tmpl_params_instance)?,
-            ),
-            (names::PARAMS, params_pod),
-        ])
+        let value = if self.has_bus_input(codegen) {
+            count.to_index_value_from_pod(codegen, block_gen, location, params_pod)?
+        } else {
+            count.to_index_value(codegen, block_gen, location, tmpl_params_instance)?
+        };
+        let mut records = vec![(names::COUNT, value), (names::PARAMS, params_pod)];
+        if self.has_bus_input(codegen) && !matches!(count.simplified(), TypeSizeExpr::Const(_)) {
+            let zero =
+                block_gen.append_op_unnamed_result(codegen.new_index_const_op(0, location))?;
+            let empty = block_gen.append_op_unnamed_result(melior::dialect::arith::cmpi(
+                codegen.context,
+                melior::dialect::arith::CmpiPredicate::Eq,
+                value,
+                zero,
+                location,
+            ))?;
+            let instance = block_gen.gen_scf_if_no_var_overwrites(
+                codegen,
+                location,
+                empty,
+                |bg| self.compute_empty_inputs(params_pod, bg, codegen, location),
+                |bg| {
+                    let builder = bg.builder_at_current_insertion_point(codegen.context);
+                    bg.append_op_ref_unnamed_result(codegen.new_nondet_at_location(
+                        &builder,
+                        location,
+                        self.struct_type().into(),
+                    ))
+                },
+            )?;
+            records.push((names::COMP, instance));
+        }
+        Ok(records)
+    }
+
+    /// Complete a component whose instantiated input aggregates contain no scalar leaves.
+    fn compute_empty_inputs<'val>(
+        &self,
+        params_pod: Value<'ctx, 'val>,
+        block_gen: &mut BlockGenContext<'_, 'ctx, '_, 'val>,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, 'val>> {
+        let template = codegen.program.get_template_data(self.template_name());
+        let mapping =
+            TmplParamsInstance::new(template.get_name_of_params(), self.struct_type().params_vec());
+        let declarations = template.get_declaration_inputs();
+        let mut records = Vec::new();
+        for (name, _) in declarations.iter() {
+            let ty =
+                mapping.map_type(codegen.get_input_signal_type(self.template_name(), name)?)?;
+            records.push((name.as_str(), ty));
+        }
+        let builder = block_gen.builder_at_current_insertion_point(codegen.context);
+        let empty_inputs = block_gen.append_op_ref_unnamed_result(
+            codegen.new_nondet_at_location(&builder, location, codegen.pod_type(&records).into()),
+        )?;
+        let instance = block_gen.gen_compute_call(
+            self.r#type().try_into()?,
+            empty_inputs,
+            params_pod,
+            location,
+            codegen,
+        )?;
+        Ok(instance)
+    }
+
+    /// Whether input counts depend on a bus layout.
+    fn has_bus_input(&self, codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>) -> bool {
+        codegen
+            .program
+            .get_template_data(self.template_name())
+            .get_inputs()
+            .values()
+            .any(|wire| matches!(wire.get_type(), program_structure::wire_data::WireType::Bus(_)))
     }
 
     /// Creates a subcomponent type that focuses on the struct type of the subcomponent.
