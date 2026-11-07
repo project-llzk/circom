@@ -2737,7 +2737,7 @@ where
         }
         let key = shared::declaration_key(name, meta);
         if let Some(ty) =
-            self.var_decl_types.get(&key).filter(|ty| crate::bus_entry::contains_bus(**ty))
+            self.var_decl_types.get(&key).filter(|ty| crate::aggregate_types::contains_bus(**ty))
         {
             let builder = self.builder_at_current_insertion_point(codegen.context);
             let value = single_result_as_value(codegen.new_nondet_at_location(

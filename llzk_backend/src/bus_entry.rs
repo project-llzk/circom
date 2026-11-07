@@ -1,6 +1,7 @@
 //! Adapt bus-valued interfaces to LLZK's felt-only main entry ABI.
 
 use crate::{
+    aggregate_types::contains_bus,
     function::FunctionContext,
     gen_context::BlockGenContext,
     program_ext::ProgramLike,
@@ -17,12 +18,6 @@ use llzk::{
     prelude::*,
 };
 use std::{collections::HashMap, convert::TryFrom};
-
-/// Whether an interface type contains a bus record.
-pub(crate) fn contains_bus(ty: Type<'_>) -> bool {
-    PodType::try_from(ty).is_ok()
-        || ArrayType::try_from(ty).is_ok_and(|a| contains_bus(a.element_type()))
-}
 
 /// Flatten records, retaining all enclosing array dimensions on each leaf.
 fn fields<'ctx>(

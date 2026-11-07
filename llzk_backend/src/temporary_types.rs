@@ -3,11 +3,11 @@
 use std::{collections::HashMap, convert::TryFrom, rc::Rc};
 
 use anyhow::{ensure, Result};
-use llzk::prelude::{ArrayType, Attribute, PodType, Type};
+use llzk::prelude::{ArrayType, Attribute, Type};
 use program_structure::ast::{Access, AssignOp, Expression, Statement, VariableType};
 
 use crate::{
-    bus_entry::contains_bus,
+    aggregate_types::{contains_bus, field_type, indexed_type},
     program_ext::ProgramLike,
     shared::{declaration_key, get_name_tail, try_compute_as_i64, LlzkCodegen},
     subcmp::SubcmpDeclInfo,
@@ -303,18 +303,10 @@ fn accessed_type<'ctx>(mut ty: Type<'ctx>, access: &[Access]) -> Result<Option<T
     }
     for access in access {
         ty = match access {
-            Access::ArrayAccess(_) => {
-                let array = ArrayType::try_from(ty)?;
-                let dims = array.dims();
-                if dims.len() == 1 {
-                    array.element_type()
-                } else {
-                    ArrayType::new(array.element_type(), &dims[1..]).into()
-                }
-            }
+            Access::ArrayAccess(_) => indexed_type(ty, 1)?
+                .ok_or_else(|| anyhow::anyhow!("too many indices for temporary aggregate"))?,
             Access::ComponentAccess(field) => {
-                let Ok(pod) = PodType::try_from(ty) else { return Ok(None) };
-                let Some(field) = pod.record_type(field) else { return Ok(None) };
+                let Ok(Some(field)) = field_type(ty, field) else { return Ok(None) };
                 field
             }
         };

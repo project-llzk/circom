@@ -10,6 +10,7 @@ use llzk::prelude::{ArrayType, FuncDefOpLike as _, Location, PodType, Value, Val
 use program_structure::ast::{Access, Expression};
 
 use crate::{
+    aggregate_types::{contains_bus, field_type, indexed_type},
     function::{FunctionContext, InfoProviders},
     gen_context::NestedBlockInfo,
     lvalue::{concrete_indices, emit_condition, Combine, CombineEntry, Lvalue, OverrideVar, Root},
@@ -191,7 +192,7 @@ impl<'ast> WriteChain<'ast> {
         let info = InfoProviders { signal_write_info, subcmp_info };
         if !subcmp_info.is_subcmp(root) {
             let value = *fc.block_ctx.get_named_value(root)?;
-            if !crate::bus_entry::contains_bus(value.r#type()) {
+            if !contains_bus(value.r#type()) {
                 return Ok(false);
             }
             let (value, _) = Self::update_data(value, &accesses, rhs, codegen, fc, location, info)?;
@@ -213,11 +214,7 @@ impl<'ast> WriteChain<'ast> {
         let input_root = *fc.block_ctx.get_named_value(&input_name)?;
         let element = ArrayType::try_from(input_root.r#type())
             .map_or(input_root.r#type(), |a| a.element_type());
-        if !PodType::try_from(element)?
-            .records()
-            .iter()
-            .any(|r| crate::bus_entry::contains_bus(r.r#type()))
-        {
+        if !PodType::try_from(element)?.records().iter().any(|r| contains_bus(r.r#type())) {
             return Ok(false);
         }
         let memory_root = *fc.block_ctx.get_named_value(root)?;
@@ -520,11 +517,7 @@ impl<'ast> WriteChain<'ast> {
             return Ok(false);
         };
         let has_bus = layout.entries().iter().any(|entry| {
-            entry
-                .inputs_type()
-                .records()
-                .iter()
-                .any(|record| crate::bus_entry::contains_bus(record.r#type()))
+            entry.inputs_type().records().iter().any(|record| contains_bus(record.r#type()))
         });
         if !has_bus && concrete_indices(component_indices).is_some() {
             return Ok(false);
@@ -579,24 +572,11 @@ impl<'ast> WriteChain<'ast> {
                 let mut expected: llzk::prelude::Type = entry.inputs_type().into();
                 for access in tail {
                     expected = match access {
-                        AccessRef::Field(name) => {
-                            PodType::try_from(expected)?.record_type(name).ok_or_else(|| {
-                                anyhow::anyhow!("unknown bus field {name} at {location}")
-                            })?
-                        }
-                        AccessRef::Array(indices) => {
-                            let array = ArrayType::try_from(expected)?;
-                            let dims = array.dims();
-                            anyhow::ensure!(
-                                indices.len() <= dims.len(),
-                                "too many bus indices at {location}"
-                            );
-                            if indices.len() == dims.len() {
-                                array.element_type()
-                            } else {
-                                ArrayType::new(array.element_type(), &dims[indices.len()..]).into()
-                            }
-                        }
+                        AccessRef::Field(name) => field_type(expected, name)?.ok_or_else(|| {
+                            anyhow::anyhow!("unknown bus field {name} at {location}")
+                        })?,
+                        AccessRef::Array(indices) => indexed_type(expected, indices.len())?
+                            .ok_or_else(|| anyhow::anyhow!("too many bus indices at {location}"))?,
                     };
                 }
                 // Remove concrete return padding before deciding whether this entry is

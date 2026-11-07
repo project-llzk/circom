@@ -10,6 +10,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::useless_conversion)]
 
+mod aggregate_types;
 mod bus;
 mod bus_entry;
 mod cleanup_return_tvar;
