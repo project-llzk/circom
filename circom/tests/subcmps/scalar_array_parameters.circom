@@ -59,7 +59,7 @@ component main = Main(2);
 // TEMPLATED: struct.member @zero : !struct.type<@Empty$arrays$0_0::@Empty$arrays$0_0<[]>>
 // TEMPLATED-LABEL: poly.template @Mutated$arrays$0_2 {
 // TEMPLATED: poly.expr @"ds[0]@{{[0-9_]+}}" {
-// TEMPLATED: [[SEVEN:%[a-zA-Z0-9_]+]] = felt.const 7 : <"bn128">
-// TEMPLATED: array.write [[ARRAY:%[a-zA-Z0-9_]+]][[[ZERO:%[a-zA-Z0-9_]+]]] = [[SEVEN]]
-// TEMPLATED: [[ELEMENT:%[a-zA-Z0-9_]+]] = array.read [[ARRAY]][[[ZERO]]]
-// TEMPLATED: poly.yield [[ELEMENT]] : !felt.type<"bn128">
+// TEMPLATED: %[[SEVEN:[0-9a-zA-Z_.-]+]] = felt.const 7 : <"bn128">
+// TEMPLATED: array.write %[[ARRAY:[0-9a-zA-Z_.-]+]][%[[ZERO:[0-9a-zA-Z_.-]+]]] = %[[SEVEN]]
+// TEMPLATED: %[[ELEMENT:[0-9a-zA-Z_.-]+]] = array.read %[[ARRAY]][%[[ZERO]]]
+// TEMPLATED: poly.yield %[[ELEMENT]] : !felt.type<"bn128">

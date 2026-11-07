@@ -20,16 +20,16 @@ component main = Arrays();
 // CHECK-NEXT:    poly.template @Arrays {
 // CHECK-NEXT:      struct.def @Arrays {
 // CHECK-NEXT:        function.def @compute() -> !struct.type<@Arrays::@Arrays<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@Arrays::@Arrays<[]>>
-// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<3,2,1 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<2,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_2 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_0:[0-9a-zA-Z_.-]+]] = struct.new : <@Arrays::@Arrays<[]>>
+// CHECK-NEXT:          %[[VAL_6:[0-9a-zA-Z_.-]+]] = global.read const @global::@array_const_0 : !array.type<3,2,1 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_12:[0-9a-zA-Z_.-]+]] = global.read const @global::@array_const_1 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_21:[0-9a-zA-Z_.-]+]] = global.read const @global::@array_const_2 : !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return %[[VAL_0]] : !struct.type<@Arrays::@Arrays<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_24:[0-9a-zA-Z_\.]+]]: !struct.type<@Arrays::@Arrays<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<3,2,1 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<2,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_45:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_2 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:        function.def @constrain(%[[VAL_24:[0-9a-zA-Z_.-]+]]: !struct.type<@Arrays::@Arrays<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_30:[0-9a-zA-Z_.-]+]] = global.read const @global::@array_const_0 : !array.type<3,2,1 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_.-]+]] = global.read const @global::@array_const_1 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_45:[0-9a-zA-Z_.-]+]] = global.read const @global::@array_const_2 : !array.type<2,2 x !felt.type<"bn128">>
 // CHECK-NEXT:          function.return
 // CHECK-NEXT:        }
 // CHECK-NEXT:      }
