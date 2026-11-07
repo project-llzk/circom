@@ -30,6 +30,21 @@ struct Tag {
     initialized: bool,
 }
 
+impl Tag {
+    /// Incomplete propagation retains declared tag presence, but never its value.
+    fn available(&self, complete: bool) -> Option<Self> {
+        if self.explicit || complete {
+            Some(self.clone())
+        } else if self.declared {
+            let mut tag = self.clone();
+            tag.value = None;
+            Some(tag)
+        } else {
+            None
+        }
+    }
+}
+
 /// Assignment completion, independent of whether scalar leaves can be counted.
 #[derive(Clone, Debug)]
 struct Capacity {
@@ -343,6 +358,18 @@ struct Analysis<'a> {
 /// Whether a path is contained in a subtree.
 fn below(path: &str, parent: &str) -> bool {
     path == parent || path.starts_with(&format!("{parent}."))
+}
+
+/// Component interface fields have array-wide tags and nominal identities.
+fn component_field(access: &[Access]) -> String {
+    access
+        .iter()
+        .filter_map(|access| match access {
+            Access::ComponentAccess(field) => Some(field.as_str()),
+            Access::ArrayAccess(_) => None,
+        })
+        .collect::<Vec<_>>()
+        .join(".")
 }
 
 /// Snapshots may reference immutable parameters, but never other mutable locals.
@@ -968,6 +995,41 @@ impl Analysis<'_> {
     /// Obtain the tags of a data expression; arithmetic deliberately drops tags.
     fn source_tags(&self, expr: &Expression) -> Result<BTreeMap<String, Tag>> {
         Ok(match expr {
+            Expression::Variable { name, access, .. } if self.component_roots.contains(name) => {
+                let prefix = format!("{}.", component_field(access));
+                let mut common: Option<BTreeMap<String, Tag>> = None;
+                for (path, component) in self.component_candidates(name, access)? {
+                    let (bindings, missing) = self.component_bindings(path, component);
+                    let mut tags = BTreeMap::new();
+                    for (key, tag) in component
+                        .summary
+                        .outputs
+                        .range(prefix.clone()..)
+                        .take_while(|(key, _)| key.starts_with(&prefix))
+                    {
+                        let owner = key.rsplit_once('.').expect("tag path").0;
+                        let complete = component
+                            .summary
+                            .output_capacities
+                            .get(owner)
+                            .is_some_and(Capacity::is_complete);
+                        if let Some(tag) = tag.available(complete) {
+                            tags.insert(
+                                key[prefix.len()..].to_owned(),
+                                self.bind_tag(tag, &bindings, &missing)?,
+                            );
+                        }
+                    }
+                    if let Some(common) = &mut common {
+                        common.retain(|key, tag| {
+                            tags.get(key).is_some_and(|other| same_value(&tag.value, &other.value))
+                        });
+                    } else {
+                        common = Some(tags);
+                    }
+                }
+                common.unwrap_or_default()
+            }
             Expression::Variable { name, access, .. } => {
                 let prefix = format!("{}.", self.path(name, access)?);
                 self.flow
@@ -977,15 +1039,8 @@ impl Analysis<'_> {
                     .filter_map(|(key, tag)| {
                         let suffix = key.strip_prefix(&prefix)?;
                         let owner = key.rsplit_once('.').expect("tag path").0;
-                        if tag.explicit || self.flow.is_complete(owner) {
-                            Some((suffix.to_owned(), tag.clone()))
-                        } else if tag.declared {
-                            let mut tag = tag.clone();
-                            tag.value = None;
-                            Some((suffix.to_owned(), tag))
-                        } else {
-                            None
-                        }
+                        tag.available(self.flow.is_complete(owner))
+                            .map(|tag| (suffix.to_owned(), tag))
                     })
                     .collect()
             }
@@ -1207,27 +1262,13 @@ impl Analysis<'_> {
         (bindings, missing)
     }
 
-    /// Resolve every selectable component using its own bindings. Symbolic indices
-    /// may select concrete constructors or constructors with different index spellings.
-    /// Instantiate on use so flow joins cannot leave stale input tag arguments.
-    fn bus_identities(&self, name: &str, access: &[Access]) -> Result<Vec<NominalBus>> {
-        if !self.component_roots.contains(name) {
-            return Ok(self
-                .identities
-                .get(&self.path(name, access)?)
-                .cloned()
-                .into_iter()
-                .collect());
-        }
+    /// Symbolic indices may select concrete constructors or differently spelled indices.
+    fn component_candidates(
+        &self,
+        name: &str,
+        access: &[Access],
+    ) -> Result<Vec<(&str, &Component<'_>)>> {
         let indices = self.component_indices(access)?;
-        let field = access
-            .iter()
-            .filter_map(|access| match access {
-                Access::ComponentAccess(field) => Some(field.as_str()),
-                Access::ArrayAccess(_) => None,
-            })
-            .collect::<Vec<_>>()
-            .join(".");
         let mut candidates = Vec::new();
         for (path, constructors) in &self.components {
             // Live state already joins the reaching occurrences. Otherwise inspect
@@ -1246,15 +1287,29 @@ impl Analysis<'_> {
                 {
                     continue;
                 }
-                if let Some(bus) = component.summary.buses.get(&field) {
-                    candidates.push((path, component, bus));
-                }
+                candidates.push((path.as_str(), component));
             }
         }
-        candidates.sort_unstable_by_key(|(path, component, _)| (*path, component.position));
+        candidates.sort_unstable_by_key(|(path, component)| (*path, component.position));
+        Ok(candidates)
+    }
+
+    /// Resolve every selectable component using its own bindings. Instantiate on use
+    /// so flow joins cannot leave stale input tag arguments.
+    fn bus_identities(&self, name: &str, access: &[Access]) -> Result<Vec<NominalBus>> {
+        if !self.component_roots.contains(name) {
+            return Ok(self
+                .identities
+                .get(&self.path(name, access)?)
+                .cloned()
+                .into_iter()
+                .collect());
+        }
+        let field = component_field(access);
         let mut buses = Vec::new();
         let mut seen = HashSet::new();
-        for (path, component, bus) in candidates {
+        for (path, component) in self.component_candidates(name, access)? {
+            let Some(bus) = component.summary.buses.get(&field) else { continue };
             let (bindings, missing) = self.component_bindings(path, component);
             let arguments = bus
                 .arguments
@@ -1281,6 +1336,24 @@ impl Analysis<'_> {
         Ok(buses)
     }
 
+    /// Instantiate output metadata without exposing unresolved input tag parameters.
+    fn bind_tag(
+        &self,
+        mut tag: Tag,
+        bindings: &HashMap<String, Expression>,
+        missing: &HashSet<String>,
+    ) -> Result<Tag> {
+        tag.value = tag
+            .value
+            .and_then(|value| {
+                let value = crate::bus::substitute(&value, bindings);
+                (!references_any(&value, missing)).then_some(value)
+            })
+            .map(|value| self.normalize(value))
+            .transpose()?;
+        Ok(tag)
+    }
+
     /// Substitute only affected summaries, notifying dependents when outputs change.
     fn refresh_components(&mut self) -> Result<()> {
         while let Some(name) = self.component_worklist.pop() {
@@ -1292,15 +1365,7 @@ impl Analysis<'_> {
             }
             let (bindings, missing) = self.component_bindings(&name, component);
             for (path, tag) in &component.summary.outputs {
-                let mut tag = tag.clone();
-                tag.value = tag
-                    .value
-                    .and_then(|value| {
-                        let value = crate::bus::substitute(&value, &bindings);
-                        (!references_any(&value, &missing)).then_some(value)
-                    })
-                    .map(|value| self.normalize(value))
-                    .transpose()?;
+                let tag = self.bind_tag(tag.clone(), &bindings, &missing)?;
                 let key = format!("{name}.{path}");
                 let changed = self
                     .flow
