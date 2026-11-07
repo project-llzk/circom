@@ -26,10 +26,10 @@ component main = A();
 // IR-NEXT:    poly.template @A {
 // IR-NEXT:      struct.def @A {
 // IR-NEXT:        function.def @compute() -> !struct.type<@A::@A<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// IR-NEXT:          %[[VAL_0:[0-9a-zA-Z_\.]+]] = struct.new : <@A::@A<[]>>
+// IR-NEXT:          %[[VAL_0:[0-9a-zA-Z_.-]+]] = struct.new : <@A::@A<[]>>
 // IR-NEXT:          function.return %[[VAL_0]] : !struct.type<@A::@A<[]>>
 // IR-NEXT:        }
-// IR-NEXT:        function.def @constrain(%[[VAL_1:[0-9a-zA-Z_\.]+]]: !struct.type<@A::@A<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// IR-NEXT:        function.def @constrain(%[[VAL_1:[0-9a-zA-Z_.-]+]]: !struct.type<@A::@A<[]>>) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
 // IR-NEXT:          function.return
 // IR-NEXT:        }
 // IR-NEXT:      }

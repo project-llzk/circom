@@ -43,39 +43,39 @@ component main = Poseidon(1);
 // CHECK-NEXT:      global.def const @array_const_3 : !array.type<2,2 x !felt.type<"bn128">> = [ 0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">,  0 : <"bn128">]
 // CHECK-NEXT:    }
 // CHECK-NEXT:    poly.template @POSEIDON_M_0 {
-// CHECK-NEXT:      function.def @POSEIDON_M_0(%[[VAL_0:[0-9a-zA-Z_\.]+]]: !felt.type<"bn128"> {function.arg_name = "t"}) -> !array.type<3,3 x !felt.type<"bn128">> attributes {function.allow_non_native_field_ops} {
-// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_0]], %[[VAL_1]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_2]] -> (!array.type<3,3 x !felt.type<"bn128">>) {
-// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_\.]+]] = array.new  : <3,3 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CHECK-NEXT:          scf.for %[[VAL_27:[0-9a-zA-Z_\.]+]] = %[[VAL_24]] to %[[VAL_25]] step %[[VAL_28]] {
-// CHECK-NEXT:            scf.for %[[VAL_29:[0-9a-zA-Z_\.]+]] = %[[VAL_24]] to %[[VAL_26]] step %[[VAL_28]] {
-// CHECK-NEXT:              %[[VAL_30:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_18]]{{\[}}%[[VAL_27]], %[[VAL_29]]] : <2,2 x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:      function.def @POSEIDON_M_0(%[[VAL_0:[0-9a-zA-Z_.-]+]]: !felt.type<"bn128"> {function.arg_name = "t"}) -> !array.type<3,3 x !felt.type<"bn128">> attributes {function.allow_non_native_field_ops} {
+// CHECK-NEXT:        %[[VAL_1:[0-9a-zA-Z_.-]+]] = felt.const  2 : <"bn128">
+// CHECK-NEXT:        %[[VAL_2:[0-9a-zA-Z_.-]+]] = bool.cmp eq(%[[VAL_0]], %[[VAL_1]]) : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:        %[[VAL_3:[0-9a-zA-Z_.-]+]] = scf.if %[[VAL_2]] -> (!array.type<3,3 x !felt.type<"bn128">>) {
+// CHECK-NEXT:          %[[VAL_18:[0-9a-zA-Z_.-]+]] = global.read const @global::@array_const_0 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_23:[0-9a-zA-Z_.-]+]] = array.new  : <3,3 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_24:[0-9a-zA-Z_.-]+]] = arith.constant 0 : index
+// CHECK-NEXT:          %[[VAL_28:[0-9a-zA-Z_.-]+]] = arith.constant 1 : index
+// CHECK-NEXT:          %[[VAL_25:[0-9a-zA-Z_.-]+]] = arith.constant 2 : index
+// CHECK-NEXT:          %[[VAL_26:[0-9a-zA-Z_.-]+]] = arith.constant 2 : index
+// CHECK-NEXT:          scf.for %[[VAL_27:[0-9a-zA-Z_.-]+]] = %[[VAL_24]] to %[[VAL_25]] step %[[VAL_28]] {
+// CHECK-NEXT:            scf.for %[[VAL_29:[0-9a-zA-Z_.-]+]] = %[[VAL_24]] to %[[VAL_26]] step %[[VAL_28]] {
+// CHECK-NEXT:              %[[VAL_30:[0-9a-zA-Z_.-]+]] = array.read %[[VAL_18]]{{\[}}%[[VAL_27]], %[[VAL_29]]] : <2,2 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:              array.write %[[VAL_23]]{{\[}}%[[VAL_27]], %[[VAL_29]]] = %[[VAL_30]] : <3,3 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:            }
 // CHECK-NEXT:          }
 // CHECK-NEXT:          scf.yield %[[VAL_23]] : !array.type<3,3 x !felt.type<"bn128">>
 // CHECK-NEXT:        } else {
-// CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_\.]+]] = felt.const  3 : <"bn128">
-// CHECK-NEXT:          %[[VAL_37:[0-9a-zA-Z_\.]+]] = bool.cmp eq(%[[VAL_0]], %[[VAL_36]]) : !felt.type<"bn128">, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_115:[0-9a-zA-Z_\.]+]] = scf.if %[[VAL_37]] -> (!array.type<3,3 x !felt.type<"bn128">>) {
-// CHECK-NEXT:            %[[VAL_76:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_1 : !array.type<3,3 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_36:[0-9a-zA-Z_.-]+]] = felt.const  3 : <"bn128">
+// CHECK-NEXT:          %[[VAL_37:[0-9a-zA-Z_.-]+]] = bool.cmp eq(%[[VAL_0]], %[[VAL_36]]) : !felt.type<"bn128">, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_115:[0-9a-zA-Z_.-]+]] = scf.if %[[VAL_37]] -> (!array.type<3,3 x !felt.type<"bn128">>) {
+// CHECK-NEXT:            %[[VAL_76:[0-9a-zA-Z_.-]+]] = global.read const @global::@array_const_1 : !array.type<3,3 x !felt.type<"bn128">>
 // CHECK-NEXT:            scf.yield %[[VAL_76]] : !array.type<3,3 x !felt.type<"bn128">>
 // CHECK-NEXT:          } else {
-// CHECK-NEXT:            %[[VAL_108:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_2 : !array.type<1,1 x !felt.type<"bn128">>
-// CHECK-NEXT:            %[[VAL_111:[0-9a-zA-Z_\.]+]] = array.new  : <3,3 x !felt.type<"bn128">>
-// CHECK-NEXT:            %[[VAL_112:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:            %[[VAL_31:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:            %[[VAL_32:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:            %[[VAL_33:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:            scf.for %[[VAL_34:[0-9a-zA-Z_\.]+]] = %[[VAL_112]] to %[[VAL_32]] step %[[VAL_31]] {
-// CHECK-NEXT:              scf.for %[[VAL_35:[0-9a-zA-Z_\.]+]] = %[[VAL_112]] to %[[VAL_33]] step %[[VAL_31]] {
-// CHECK-NEXT:                %[[VAL_113:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_108]]{{\[}}%[[VAL_34]], %[[VAL_35]]] : <1,1 x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:            %[[VAL_108:[0-9a-zA-Z_.-]+]] = global.read const @global::@array_const_2 : !array.type<1,1 x !felt.type<"bn128">>
+// CHECK-NEXT:            %[[VAL_111:[0-9a-zA-Z_.-]+]] = array.new  : <3,3 x !felt.type<"bn128">>
+// CHECK-NEXT:            %[[VAL_112:[0-9a-zA-Z_.-]+]] = arith.constant 0 : index
+// CHECK-NEXT:            %[[VAL_31:[0-9a-zA-Z_.-]+]] = arith.constant 1 : index
+// CHECK-NEXT:            %[[VAL_32:[0-9a-zA-Z_.-]+]] = arith.constant 1 : index
+// CHECK-NEXT:            %[[VAL_33:[0-9a-zA-Z_.-]+]] = arith.constant 1 : index
+// CHECK-NEXT:            scf.for %[[VAL_34:[0-9a-zA-Z_.-]+]] = %[[VAL_112]] to %[[VAL_32]] step %[[VAL_31]] {
+// CHECK-NEXT:              scf.for %[[VAL_35:[0-9a-zA-Z_.-]+]] = %[[VAL_112]] to %[[VAL_33]] step %[[VAL_31]] {
+// CHECK-NEXT:                %[[VAL_113:[0-9a-zA-Z_.-]+]] = array.read %[[VAL_108]]{{\[}}%[[VAL_34]], %[[VAL_35]]] : <1,1 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:                array.write %[[VAL_111]]{{\[}}%[[VAL_34]], %[[VAL_35]]] = %[[VAL_113]] : <3,3 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:              }
 // CHECK-NEXT:            }
@@ -89,35 +89,35 @@ component main = Poseidon(1);
 // CHECK-NEXT:    poly.template @Poseidon_0 {
 // CHECK-NEXT:      struct.def @Poseidon_0 {
 // CHECK-NEXT:        struct.member @out : !felt.type<"bn128"> {llzk.pub, signal}
-// CHECK-NEXT:        function.def @compute(%[[VAL_143:[0-9a-zA-Z_\.]+]]: !array.type<1 x !felt.type<"bn128">> {function.arg_name = "inputs"}) -> !struct.type<@Poseidon_0::@Poseidon_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
-// CHECK-NEXT:          %[[VAL_144:[0-9a-zA-Z_\.]+]] = struct.new : <@Poseidon_0::@Poseidon_0<[]>>
-// CHECK-NEXT:          %[[VAL_147:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_3 : !array.type<2,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_159:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:          %[[VAL_160:[0-9a-zA-Z_\.]+]] = function.call @POSEIDON_M_0::@POSEIDON_M_0(%[[VAL_159]]) : (!felt.type<"bn128">) -> !array.type<3,3 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_161:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CHECK-NEXT:          %[[VAL_162:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CHECK-NEXT:          %[[VAL_163:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:          %[[VAL_164:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:          scf.for %[[VAL_165:[0-9a-zA-Z_\.]+]] = %[[VAL_163]] to %[[VAL_161]] step %[[VAL_164]] {
-// CHECK-NEXT:            scf.for %[[VAL_166:[0-9a-zA-Z_\.]+]] = %[[VAL_163]] to %[[VAL_162]] step %[[VAL_164]] {
-// CHECK-NEXT:              %[[VAL_167:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_160]]{{\[}}%[[VAL_165]], %[[VAL_166]]] : <3,3 x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:        function.def @compute(%[[VAL_143:[0-9a-zA-Z_.-]+]]: !array.type<1 x !felt.type<"bn128">> {function.arg_name = "inputs"}) -> !struct.type<@Poseidon_0::@Poseidon_0<[]>> attributes {function.allow_non_native_field_ops, function.allow_witness} {
+// CHECK-NEXT:          %[[VAL_144:[0-9a-zA-Z_.-]+]] = struct.new : <@Poseidon_0::@Poseidon_0<[]>>
+// CHECK-NEXT:          %[[VAL_147:[0-9a-zA-Z_.-]+]] = global.read const @global::@array_const_3 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_159:[0-9a-zA-Z_.-]+]] = felt.const  2 : <"bn128">
+// CHECK-NEXT:          %[[VAL_160:[0-9a-zA-Z_.-]+]] = function.call @POSEIDON_M_0::@POSEIDON_M_0(%[[VAL_159]]) : (!felt.type<"bn128">) -> !array.type<3,3 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_161:[0-9a-zA-Z_.-]+]] = arith.constant 2 : index
+// CHECK-NEXT:          %[[VAL_162:[0-9a-zA-Z_.-]+]] = arith.constant 2 : index
+// CHECK-NEXT:          %[[VAL_163:[0-9a-zA-Z_.-]+]] = arith.constant 0 : index
+// CHECK-NEXT:          %[[VAL_164:[0-9a-zA-Z_.-]+]] = arith.constant 1 : index
+// CHECK-NEXT:          scf.for %[[VAL_165:[0-9a-zA-Z_.-]+]] = %[[VAL_163]] to %[[VAL_161]] step %[[VAL_164]] {
+// CHECK-NEXT:            scf.for %[[VAL_166:[0-9a-zA-Z_.-]+]] = %[[VAL_163]] to %[[VAL_162]] step %[[VAL_164]] {
+// CHECK-NEXT:              %[[VAL_167:[0-9a-zA-Z_.-]+]] = array.read %[[VAL_160]]{{\[}}%[[VAL_165]], %[[VAL_166]]] : <3,3 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:              array.write %[[VAL_147]]{{\[}}%[[VAL_165]], %[[VAL_166]]] = %[[VAL_167]] : <2,2 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:            }
 // CHECK-NEXT:          }
 // CHECK-NEXT:          function.return %[[VAL_144]] : !struct.type<@Poseidon_0::@Poseidon_0<[]>>
 // CHECK-NEXT:        }
-// CHECK-NEXT:        function.def @constrain(%[[VAL_168:[0-9a-zA-Z_\.]+]]: !struct.type<@Poseidon_0::@Poseidon_0<[]>>, %[[VAL_169:[0-9a-zA-Z_\.]+]]: !array.type<1 x !felt.type<"bn128">> {function.arg_name = "inputs"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
-// CHECK-NEXT:          %[[VAL_170:[0-9a-zA-Z_\.]+]] = struct.readm %[[VAL_168]][@out] : <@Poseidon_0::@Poseidon_0<[]>>, !felt.type<"bn128">
-// CHECK-NEXT:          %[[VAL_173:[0-9a-zA-Z_\.]+]] = global.read const @global::@array_const_3 : !array.type<2,2 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_185:[0-9a-zA-Z_\.]+]] = felt.const  2 : <"bn128">
-// CHECK-NEXT:          %[[VAL_186:[0-9a-zA-Z_\.]+]] = function.call @POSEIDON_M_0::@POSEIDON_M_0(%[[VAL_185]]) : (!felt.type<"bn128">) -> !array.type<3,3 x !felt.type<"bn128">>
-// CHECK-NEXT:          %[[VAL_187:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CHECK-NEXT:          %[[VAL_188:[0-9a-zA-Z_\.]+]] = arith.constant 2 : index
-// CHECK-NEXT:          %[[VAL_189:[0-9a-zA-Z_\.]+]] = arith.constant 0 : index
-// CHECK-NEXT:          %[[VAL_190:[0-9a-zA-Z_\.]+]] = arith.constant 1 : index
-// CHECK-NEXT:          scf.for %[[VAL_191:[0-9a-zA-Z_\.]+]] = %[[VAL_189]] to %[[VAL_187]] step %[[VAL_190]] {
-// CHECK-NEXT:            scf.for %[[VAL_192:[0-9a-zA-Z_\.]+]] = %[[VAL_189]] to %[[VAL_188]] step %[[VAL_190]] {
-// CHECK-NEXT:              %[[VAL_193:[0-9a-zA-Z_\.]+]] = array.read %[[VAL_186]]{{\[}}%[[VAL_191]], %[[VAL_192]]] : <3,3 x !felt.type<"bn128">>, !felt.type<"bn128">
+// CHECK-NEXT:        function.def @constrain(%[[VAL_168:[0-9a-zA-Z_.-]+]]: !struct.type<@Poseidon_0::@Poseidon_0<[]>>, %[[VAL_169:[0-9a-zA-Z_.-]+]]: !array.type<1 x !felt.type<"bn128">> {function.arg_name = "inputs"}) attributes {function.allow_constraint, function.allow_non_native_field_ops} {
+// CHECK-NEXT:          %[[VAL_170:[0-9a-zA-Z_.-]+]] = struct.readm %[[VAL_168]][@out] : <@Poseidon_0::@Poseidon_0<[]>>, !felt.type<"bn128">
+// CHECK-NEXT:          %[[VAL_173:[0-9a-zA-Z_.-]+]] = global.read const @global::@array_const_3 : !array.type<2,2 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_185:[0-9a-zA-Z_.-]+]] = felt.const  2 : <"bn128">
+// CHECK-NEXT:          %[[VAL_186:[0-9a-zA-Z_.-]+]] = function.call @POSEIDON_M_0::@POSEIDON_M_0(%[[VAL_185]]) : (!felt.type<"bn128">) -> !array.type<3,3 x !felt.type<"bn128">>
+// CHECK-NEXT:          %[[VAL_187:[0-9a-zA-Z_.-]+]] = arith.constant 2 : index
+// CHECK-NEXT:          %[[VAL_188:[0-9a-zA-Z_.-]+]] = arith.constant 2 : index
+// CHECK-NEXT:          %[[VAL_189:[0-9a-zA-Z_.-]+]] = arith.constant 0 : index
+// CHECK-NEXT:          %[[VAL_190:[0-9a-zA-Z_.-]+]] = arith.constant 1 : index
+// CHECK-NEXT:          scf.for %[[VAL_191:[0-9a-zA-Z_.-]+]] = %[[VAL_189]] to %[[VAL_187]] step %[[VAL_190]] {
+// CHECK-NEXT:            scf.for %[[VAL_192:[0-9a-zA-Z_.-]+]] = %[[VAL_189]] to %[[VAL_188]] step %[[VAL_190]] {
+// CHECK-NEXT:              %[[VAL_193:[0-9a-zA-Z_.-]+]] = array.read %[[VAL_186]]{{\[}}%[[VAL_191]], %[[VAL_192]]] : <3,3 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:              array.write %[[VAL_173]]{{\[}}%[[VAL_191]], %[[VAL_192]]] = %[[VAL_193]] : <2,2 x !felt.type<"bn128">>, !felt.type<"bn128">
 // CHECK-NEXT:            }
 // CHECK-NEXT:          }
