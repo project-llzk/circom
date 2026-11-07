@@ -109,6 +109,8 @@ impl Capacity {
 /// occurrence must survive so the final rewrite can add its hidden tag arguments.
 #[derive(Clone, Default)]
 struct FlowState {
+    /// No successful execution reaches this state (for example, a repeated wire declaration).
+    unreachable: bool,
     /// Tags indexed by component instance and array-wide field paths.
     tags: BTreeMap<String, Tag>,
     /// Paths assigned on any analyzed path, preventing late tag assignments.
@@ -139,7 +141,7 @@ impl FlowState {
     /// Join an analyzed path into its alternative. An absent else branch or a
     /// possibly empty loop uses the incoming state as the alternative.
     fn merge(&mut self, then_state: Self, cond: &Expression, params: &[String], meta: &Meta) {
-        let Self { tags, initialized, capacities, constants, component_states } = then_state;
+        let Self { tags, initialized, capacities, constants, component_states, .. } = then_state;
         let compile_time = depends_only_on(cond, params);
         // A propagated tag must exist on both paths to survive the join.
         self.tags.retain(|key, _| tags.contains_key(key));
@@ -224,7 +226,7 @@ impl FlowState {
 
 /// Reverse input-tag dependencies and a deduplicated component refresh worklist.
 /// Tag copies are snapshots at the assignment, not live edges between signals.
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct ComponentWorklist {
     /// Components whose summaries consume each fully qualified input tag.
     dependents: HashMap<String, HashSet<String>>,
@@ -313,6 +315,7 @@ struct Component<'a> {
 }
 
 /// Analysis state for one template.
+#[derive(Clone)]
 struct Analysis<'a> {
     /// Program definitions.
     program: &'a ProgramArchive,
@@ -328,6 +331,8 @@ struct Analysis<'a> {
     flow: FlowState,
     /// Bindings hidden by declarations in each active lexical block.
     constant_scopes: Vec<HashMap<String, Option<Expression>>>,
+    /// Visible wire declarations in each lexical block; initialization groups share their scope.
+    wire_scopes: Vec<HashSet<String>>,
     /// Bus paths, to distinguish bus-copy propagation from scalar assignment rules.
     buses: HashSet<String>,
     /// Input tag parameter names.
@@ -614,6 +619,13 @@ fn merge_value(
 impl Analysis<'_> {
     /// Preserve constructor inputs before discarding facts unavailable on both paths.
     fn merge_flow(&mut self, then_state: FlowState, cond: &Expression, meta: &Meta) {
+        if self.flow.unreachable {
+            self.flow = then_state;
+            return;
+        }
+        if then_state.unreachable {
+            return;
+        }
         for (branch, alternative) in [(&then_state, &self.flow), (&self.flow, &then_state)] {
             for (name, state) in &branch.component_states {
                 if alternative.component_states.contains_key(name) {
@@ -1466,21 +1478,82 @@ impl Analysis<'_> {
         Ok(start.zip(end).map(|(start, end)| (name.clone(), start, end)))
     }
 
+    /// Executing a declaration with an active wire's name is forbidden by Circom.
+    /// Only inspect this scope: a nested conditional may never execute its declaration.
+    fn redeclares_wire(&self, stmt: &Statement) -> bool {
+        match stmt {
+            Statement::Declaration { name, .. } => {
+                self.wire_scopes.iter().any(|scope| scope.contains(name))
+            }
+            Statement::InitializationBlock { initializations, .. } => {
+                initializations.iter().any(|stmt| self.redeclares_wire(stmt))
+            }
+            _ => false,
+        }
+    }
+
+    /// Only potentially conflicting blocks need a rollback point. In particular, ordinary
+    /// loop iterations must not copy the accumulated component history on every visit.
+    fn may_redeclare_wire(&self, stmt: &Statement) -> bool {
+        let mut all = Vec::new();
+        statements(stmt, &mut all);
+        let mut names = HashMap::new();
+        all.into_iter().any(|stmt| {
+            let Statement::Declaration { name, xtype, .. } = stmt else { return false };
+            let wire = !matches!(xtype, VariableType::Var);
+            self.wire_scopes.iter().any(|scope| scope.contains(name))
+                || names.insert(name, wire).is_some_and(|previous| previous || wire)
+        })
+    }
+
     /// Process statements in source order and remove metadata-only assignments.
     fn statement(&mut self, stmt: &mut Statement) -> Result<()> {
         let meta = stmt.get_meta().clone();
+        if self.flow.unreachable {
+            *stmt = Statement::Block { meta, stmts: vec![] };
+            return Ok(());
+        }
+        let rollback = (matches!(stmt, Statement::Block { .. }) && self.may_redeclare_wire(stmt))
+            .then(|| self.clone());
         let location = source_location(self.program, &meta);
-        self.statement_impl(stmt).with_context(|| location)
+        self.statement_impl(stmt).with_context(|| location)?;
+        if self.flow.unreachable {
+            if let Some(before) = rollback {
+                // Constructors before the conflict cannot execute successfully either.
+                // Drop their bodies and history together, including hidden tag arguments.
+                *self = before;
+                self.flow.unreachable = true;
+                *stmt = Statement::Assert {
+                    meta: meta.clone(),
+                    arg: Expression::Number(meta, 0.into()),
+                };
+            }
+        }
+        Ok(())
     }
 
     /// Transfer tag and nominal-identity state for one statement.
     fn statement_impl(&mut self, stmt: &mut Statement) -> Result<()> {
         let meta = stmt.get_meta().clone();
+        let repeated_wire = match stmt {
+            Statement::Block { stmts, .. } => stmts.iter().any(|stmt| self.redeclares_wire(stmt)),
+            _ => self.redeclares_wire(stmt),
+        };
+        if repeated_wire {
+            // Keep the enclosing condition as a guard for Circom's repeated-declaration
+            // error. This path cannot succeed, so none of its metadata may escape.
+            *stmt =
+                Statement::Assert { meta: meta.clone(), arg: Expression::Number(meta, 0.into()) };
+            self.flow.unreachable = true;
+            return Ok(());
+        }
         let mut checks = Vec::new();
         match stmt {
             Statement::Block { stmts, .. } => {
                 self.constant_scopes.push(HashMap::new());
+                self.wire_scopes.push(HashSet::new());
                 let result = stmts.iter_mut().try_for_each(|stmt| self.statement(stmt));
+                self.wire_scopes.pop().expect("active block scope");
                 for (name, value) in self.constant_scopes.pop().expect("active block scope") {
                     if let Some(value) = value {
                         self.flow.constants.insert(name, value);
@@ -1515,6 +1588,12 @@ impl Analysis<'_> {
                         | VariableType::Bus(_, SignalType::Input, _)
                 );
                 self.declare(name, xtype, input, meta, &arguments, dimensions)?;
+                if !matches!(xtype, VariableType::Var) {
+                    self.wire_scopes
+                        .last_mut()
+                        .expect("declaration inside a block")
+                        .insert(name.clone());
+                }
                 // Save at the declaration, preserving any preceding outer writes.
                 let previous = self.flow.constants.remove(name);
                 self.constant_scopes
@@ -1799,6 +1878,7 @@ fn analyze(
             .collect(),
         flow: FlowState::default(),
         constant_scopes: Vec::new(),
+        wire_scopes: Vec::new(),
         buses: HashSet::new(),
         inputs: BTreeMap::new(),
         required: HashSet::new(),
