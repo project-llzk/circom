@@ -10,6 +10,9 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::useless_conversion)]
 
+mod aggregate_types;
+mod bus;
+mod bus_entry;
 mod cleanup_return_tvar;
 mod codegen;
 mod function;
@@ -17,6 +20,7 @@ mod function_ext;
 mod gen_context;
 mod module;
 mod program_ext;
+mod tags;
 #[macro_use]
 mod shared;
 mod lvalue;
@@ -25,6 +29,7 @@ mod template;
 mod template_arrays;
 mod template_ext;
 mod template_recursion;
+mod temporary_types;
 mod traversal;
 mod write_chain;
 

@@ -65,6 +65,35 @@ fn call_graph(templates: &HashMap<String, TemplateData>) -> HashMap<String, Hash
     graph
 }
 
+/// Acyclic programs need no early specialization before their metadata is lowered.
+pub(super) fn has_recursion(templates: &HashMap<String, TemplateData>) -> bool {
+    let graph = call_graph(templates);
+    let mut callers: HashMap<&str, Vec<&str>> = HashMap::new();
+    let mut remaining = HashMap::new();
+    let mut leaves = Vec::new();
+    for (name, callees) in &graph {
+        remaining.insert(name.as_str(), callees.len());
+        if callees.is_empty() {
+            leaves.push(name.as_str());
+        }
+        for callee in callees {
+            callers.entry(callee).or_default().push(name);
+        }
+    }
+    let mut completed = 0;
+    while let Some(name) = leaves.pop() {
+        completed += 1;
+        for caller in callers.get(name).into_iter().flatten() {
+            let count = remaining.get_mut(caller).expect("caller belongs to the graph");
+            *count -= 1;
+            if *count == 0 {
+                leaves.push(caller);
+            }
+        }
+    }
+    completed != graph.len()
+}
+
 /// Include a template and all callers that must propagate its specialized scalar arguments.
 pub(super) fn callers_of(
     templates: &HashMap<String, TemplateData>,

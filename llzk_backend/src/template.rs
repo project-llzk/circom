@@ -1339,7 +1339,9 @@ where
                 gen_init_block(codegen, template, initializations)
             }
             Statement::Declaration { meta, xtype, name, dimensions, .. } => {
-                if template.is_subcmp(name) {
+                // Bus storage is already bound in the function prologue. A nested
+                // declaration must not shadow that POD with a scalar initializer.
+                if template.is_subcmp(name) || matches!(xtype, VariableType::Bus(..)) {
                     return Ok(());
                 }
                 template.and_then(
@@ -1365,6 +1367,11 @@ where
                 )
             }
             Statement::Substitution { meta, var, access, op, rhe } => {
+                // Bus constructors describe storage already allocated from the declaration.
+                // They never participate in the component compute/constrain lifecycle.
+                if crate::bus::is_constructor(rhe) {
+                    return Ok(());
+                }
                 // Since there's no simple assignment in LLZK, just update the mapped Value
                 // which essentially propagates the assignment.
                 match op {

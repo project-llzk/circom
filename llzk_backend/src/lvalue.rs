@@ -68,7 +68,7 @@ pub enum Lvalue<'ast> {
         prev: Box<Lvalue<'ast>>,
     },
     /// Access via dot-notation.
-    Subcmp {
+    Field {
         /// Name of the field read with dot-notation.
         name: &'ast str,
         /// Location the field is read from.
@@ -84,18 +84,27 @@ impl<'ast> Lvalue<'ast> {
                 indices.push(expression);
                 Lvalue::Array { indices, prev }
             }
-            (wc, Access::ComponentAccess(name)) => Lvalue::Subcmp { name, prev: Box::new(wc) },
+            (wc, Access::ComponentAccess(name)) => Lvalue::Field { name, prev: Box::new(wc) },
             (wc, Access::ArrayAccess(expression)) => {
                 Lvalue::Array { indices: vec![expression], prev: Box::new(wc) }
             }
         })
     }
 
+    /// Whether this path already crosses a field access.
+    pub(crate) fn crosses_field(&self) -> bool {
+        match self {
+            Self::Root { .. } => false,
+            Self::Array { prev, .. } => prev.crosses_field(),
+            Self::Field { .. } => true,
+        }
+    }
+
     /// Returns the root of the lvalue.
     pub fn root(&self) -> &Self {
         match self {
             root @ Lvalue::Root { .. } => root,
-            Lvalue::Array { prev, .. } | Lvalue::Subcmp { prev, .. } => prev.root(),
+            Lvalue::Array { prev, .. } | Lvalue::Field { prev, .. } => prev.root(),
         }
     }
 
@@ -103,7 +112,7 @@ impl<'ast> Lvalue<'ast> {
     pub(crate) fn root_var(&self) -> &str {
         match self {
             Lvalue::Root { var, .. } => var,
-            Lvalue::Array { prev, .. } | Lvalue::Subcmp { prev, .. } => prev.root_var(),
+            Lvalue::Array { prev, .. } | Lvalue::Field { prev, .. } => prev.root_var(),
         }
     }
 
@@ -278,7 +287,7 @@ impl<'ast> Lvalue<'ast> {
         })
     }
 
-    /// Handle [Lvalue::Subcmp]  in [`Lvalue::get_value`] when the signal is an output of the
+    /// Handle [Lvalue::Field]  in [`Lvalue::get_value`] when the signal is an output of the
     /// subcomponent.
     fn get_subcmp_output<'ctx, 'val>(
         &self,
@@ -317,7 +326,7 @@ impl<'ast> Lvalue<'ast> {
         block_gen.append_op_ref_unnamed_result(read)
     }
 
-    /// Handle [Lvalue::Subcmp]  in [`Lvalue::get_value`] when the signal is an input of the
+    /// Handle [Lvalue::Field]  in [`Lvalue::get_value`] when the signal is an input of the
     /// subcomponent.
     fn get_subcmp_input<'ctx, 'val>(
         &self,
@@ -406,11 +415,23 @@ impl<'ast> Lvalue<'ast> {
                     )
                 },
             ),
-            Lvalue::Subcmp { name: signal_name, prev } => {
+            Lvalue::Field { name: signal_name, prev } => {
                 let root = prev.root_var();
-                if !subcmp_info.is_subcmp(root) {
-                    anyhow::bail!(
-                        "variable '{root}' is not a subcomponent but it was accessed like one"
+                if !subcmp_info.is_subcmp(root) || prev.crosses_field() {
+                    return prev.get_value(
+                        codegen,
+                        block_gen,
+                        subcmp_info,
+                        location,
+                        ov,
+                        &|value: Value<'ctx, 'val>, block_gen: &mut C| {
+                            let bg = block_gen.as_mut();
+                            let builder = bg.builder_at_current_insertion_point(codegen.context);
+                            let read =
+                                codegen.new_pod_read_op(&builder, value, signal_name, location)?;
+                            let value = bg.append_op_ref_unnamed_result(read)?;
+                            cont.cont(value, block_gen)
+                        },
                     );
                 }
 
@@ -662,7 +683,7 @@ impl fmt::Display for Lvalue<'_> {
                 }
                 Ok(())
             }
-            Lvalue::Subcmp { name, prev } => {
+            Lvalue::Field { name, prev } => {
                 fmt::Display::fmt(prev.as_ref(), f)?;
                 write!(f, ".{name}")
             }

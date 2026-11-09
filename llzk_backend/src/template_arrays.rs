@@ -7,7 +7,7 @@ use anyhow::{ensure, Result};
 use num_bigint_dig::BigUint;
 use num_traits::{ToPrimitive, Zero};
 use program_structure::{
-    ast::{Access, AssignOp, Expression, Meta, Statement, VariableType},
+    ast::{Access, AssignOp, Expression, ExpressionInfixOpcode, Meta, Statement, VariableType},
     function_data::FunctionInfo,
     program_archive::ProgramArchive,
     template_data::TemplateData,
@@ -61,8 +61,29 @@ impl std::fmt::Display for BindArrayValues {
 
 impl std::error::Error for BindArrayValues {}
 
-/// Scalarize array arguments before collecting template declarations and types.
-pub(crate) fn prepare(mut program: ProgramArchive, prime: &BigUint) -> Result<ProgramArchive> {
+/// Scalarize after layout parameters have been forwarded: reconstructed array locals must
+/// retain their original names so bus dimensions still find their `$layout$` aliases.
+pub(crate) fn prepare(program: ProgramArchive, prime: &BigUint) -> Result<ProgramArchive> {
+    prepare_phase(program, prime, false)
+}
+
+/// Give metadata analysis a finite callee graph without removing the original formals:
+/// tag summaries and derived bus dimensions still need their symbolic parameter names.
+pub(crate) fn prepare_recursion(
+    program: ProgramArchive,
+    prime: &BigUint,
+) -> Result<ProgramArchive> {
+    if !template_recursion::has_recursion(&program.templates) {
+        return Ok(program);
+    }
+    prepare_phase(program, prime, true)
+}
+
+fn prepare_phase(
+    mut program: ProgramArchive,
+    prime: &BigUint,
+    preserve_formals: bool,
+) -> Result<ProgramArchive> {
     let mut expanded = HashSet::new();
     let mut bound_arrays = HashSet::new();
     loop {
@@ -78,6 +99,7 @@ pub(crate) fn prepare(mut program: ProgramArchive, prime: &BigUint) -> Result<Pr
             bound_arrays: &bound_arrays,
             next_elem_id: program.id_max,
             loop_budget: None,
+            preserve_formals,
         };
         let mut main = program.initial_template_call.clone();
         match preparation.call(&mut main, &Shapes::new(), &Constants::new()) {
@@ -128,6 +150,8 @@ struct Preparation<'a> {
     next_elem_id: usize,
     /// Speculative loop expansion defers constructors and shares one budget across nested loops.
     loop_budget: Option<usize>,
+    /// Expand recursion before tag analysis, deferring argument lowering until afterwards.
+    preserve_formals: bool,
 }
 
 impl Preparation<'_> {
@@ -195,6 +219,9 @@ impl Preparation<'_> {
                 let first = self.shape(if_true, shapes, constants)?;
                 (first == self.shape(if_false, shapes, constants)?).then_some(first).flatten()
             }
+            Expression::Call { id, args, .. } if id == crate::bus::ARRAY_ACCESS => self
+                .shape(&args[0], shapes, constants)?
+                .and_then(|shape| shape.get(args.len() - 1..).map(<[usize]>::to_vec)),
             _ => None,
         })
     }
@@ -222,7 +249,8 @@ impl Preparation<'_> {
         if !self.expanded.contains(id)
             && self.active.iter().any(|(active_id, active_shapes, _)| {
                 active_id == id
-                    && (parameter_shapes.iter().any(Option::is_some)
+                    && (self.preserve_formals
+                        || parameter_shapes.iter().any(Option::is_some)
                         || active_shapes.iter().any(Option::is_some))
             })
         {
@@ -245,6 +273,10 @@ impl Preparation<'_> {
             })
             .collect::<Result<Vec<_>>>()?;
         let name = self.specialize(id, &parameter_shapes, &parameter_values)?;
+        if self.preserve_formals {
+            *id = name;
+            return Ok(());
+        }
         let mut scalar_args = Vec::new();
         for ((arg, shape), value) in args.iter().zip(&parameter_shapes).zip(&parameter_values) {
             if value.is_some() {
@@ -303,7 +335,7 @@ impl Preparation<'_> {
         );
         let mut name = id.to_owned();
         if parameter_shapes.iter().any(Option::is_some) {
-            name.push_str("$arrays");
+            name.push_str(if self.preserve_formals { "$shapes" } else { "$arrays" });
             for (position, shape) in parameter_shapes.iter().enumerate() {
                 if let Some(shape) = shape {
                     name.push_str(&format!("${position}"));
@@ -347,6 +379,13 @@ impl Preparation<'_> {
             old.get_name_of_params().iter().zip(parameter_shapes).zip(parameter_values)
         {
             shapes.insert(formal.clone(), Some(shape.clone().unwrap_or_default()));
+            if self.preserve_formals {
+                params.push(formal.clone());
+                if let Some(value) = value {
+                    constants.insert(formal.clone(), value.clone());
+                }
+                continue;
+            }
             if let Some(shape) = shape {
                 let elements = if let Some(value) = value {
                     let elements = array_scalars(value, shape)?
@@ -547,6 +586,38 @@ impl Preparation<'_> {
                         )?;
                     }
                 }
+                Statement::Assert {
+                    meta,
+                    arg: Expression::InfixOp { infix_op: ExpressionInfixOpcode::Eq, lhe, rhe, .. },
+                } => {
+                    // Tag analysis can inject equality between array-valued bus parameters
+                    // before their shapes are known. LLZK comparisons require scalar operands.
+                    let lhs = self.shape(lhe, shapes, constants)?;
+                    let rhs = self.shape(rhe, shapes, constants)?;
+                    if lhs.as_ref().is_some_and(|shape| !shape.is_empty())
+                        || rhs.as_ref().is_some_and(|shape| !shape.is_empty())
+                    {
+                        ensure!(
+                            lhs == rhs,
+                            "incompatible array shapes for bus parameters: {lhs:?} and {rhs:?}"
+                        );
+                        let stmts = indices(lhs.as_ref().expect("known array shape"))?
+                            .iter()
+                            .map(|indices| {
+                                Ok(Statement::Assert {
+                                    meta: meta.clone(),
+                                    arg: Expression::InfixOp {
+                                        meta: meta.clone(),
+                                        infix_op: ExpressionInfixOpcode::Eq,
+                                        lhe: Box::new(array_element(lhe, indices)?),
+                                        rhe: Box::new(array_element(rhe, indices)?),
+                                    },
+                                })
+                            })
+                            .collect::<Result<Vec<_>>>()?;
+                        *stmt = Statement::Block { meta: meta.clone(), stmts };
+                    }
+                }
                 Statement::IfThenElse { meta, cond, if_case, else_case } => {
                     let condition = if resolve_recursion {
                         template_recursion::value(cond, constants, self.prime, self.functions)?
@@ -738,6 +809,13 @@ fn array_element(expr: &Expression, indices: &[usize]) -> Result<Expression> {
                 if_true: Box::new(array_element(if_true, indices)?),
                 if_false: Box::new(array_element(if_false, indices)?),
             })
+        }
+        Expression::Call { id, .. } if id == crate::bus::ARRAY_ACCESS => {
+            let indices = indices
+                .iter()
+                .map(|index| Expression::Number(expr.get_meta().clone(), (*index).into()))
+                .collect::<Vec<_>>();
+            Ok(crate::bus::index_expression(expr, &indices))
         }
         _ => anyhow::bail!("cannot index array template argument"),
     }
