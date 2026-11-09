@@ -42,6 +42,6 @@ component main = Main();
 
 // CONCRETE-LABEL: struct.def @Main_{{[0-9]+}} {
 // TEMPLATED-LABEL: struct.def @Main {
-// CHECK-DAG: struct.member @first : !pod.type<[@x: !array.type<2 x !felt.type
-// CHECK-DAG: struct.member @second : !pod.type<[@x: !array.type<3 x !felt.type
-// CHECK-DAG: struct.member @copies : !array.type<1 x !pod.type<[@x: !array.type<3 x !felt.type
+// CHECK: struct.member @first : !pod.type<[@x: !array.type<2 x !felt.type
+// CHECK: struct.member @second : !pod.type<[@x: !array.type<3 x !felt.type
+// CHECK: struct.member @copies : !array.type<1 x !pod.type<[@x: !array.type<3 x !felt.type

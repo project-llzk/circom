@@ -32,8 +32,8 @@ template Main() {
 }
 component main = Main();
 
-// CONCRETE-DAG: 2 x !felt.type
-// CONCRETE-DAG: 3 x !felt.type
+// CONCRETE: 2 x !felt.type
+// CONCRETE: 3 x !felt.type
 
 // TEMPLATED-LABEL: poly.template @Expand {
 // TEMPLATED: poly.param [[TAG:@"\$tag\$[^" ]+"]] : index

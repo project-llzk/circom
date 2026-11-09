@@ -41,13 +41,13 @@ template Parent(M) {
 component main = Parent(2);
 
 // CONCRETE-LABEL: struct.def @Parent{{_[0-9]+}} {
-// CONCRETE-DAG: struct.member @before : !array.type<2 x !felt.type<"bn128">>
-// CONCRETE-DAG: struct.member @after : !array.type<2 x !felt.type<"bn128">>
-// CONCRETE-DAG: struct.member @shadow : !array.type<3 x !felt.type<"bn128">>
-// CONCRETE-DAG: struct.member @captured : !array.type<2 x !felt.type<"bn128">>
+// CONCRETE: struct.member @before : !array.type<2 x !felt.type<"bn128">>
+// CONCRETE: struct.member @after : !array.type<2 x !felt.type<"bn128">>
+// CONCRETE: struct.member @shadow : !array.type<3 x !felt.type<"bn128">>
+// CONCRETE: struct.member @captured : !array.type<2 x !felt.type<"bn128">>
 
 // TEMPLATED-LABEL: struct.def @Parent {
-// TEMPLATED-DAG: struct.member @before : !array.type<@M x !felt.type<"bn128">>
-// TEMPLATED-DAG: struct.member @after : !array.type<@M x !felt.type<"bn128">>
-// TEMPLATED-DAG: struct.member @shadow : !array.type<3 x !felt.type<"bn128">>
-// TEMPLATED-DAG: struct.member @captured : !array.type<@M x !felt.type<"bn128">>
+// TEMPLATED: struct.member @before : !array.type<@M x !felt.type<"bn128">>
+// TEMPLATED: struct.member @after : !array.type<@M x !felt.type<"bn128">>
+// TEMPLATED: struct.member @shadow : !array.type<3 x !felt.type<"bn128">>
+// TEMPLATED: struct.member @captured : !array.type<@M x !felt.type<"bn128">>

@@ -68,13 +68,13 @@ template Main(N, idx) {
 
 component main = Main(2, 1);
 
-// CONCRETE-DAG: struct.member @out : !array.type<2 x
-// CONCRETE-DAG: struct.member @scalarOut : !array.type<2 x
-// CONCRETE-DAG: struct.member @rowOut : !array.type<2 x
-// CONCRETE-DAG: struct.member @loopOut : !array.type<2 x
+// CONCRETE: struct.member @out : !array.type<2 x
+// CONCRETE: struct.member @scalarOut : !array.type<2 x
+// CONCRETE: struct.member @rowOut : !array.type<2 x
+// CONCRETE: struct.member @loopOut : !array.type<2 x
 
 // TEMPLATED-LABEL: struct.def @Main {
-// TEMPLATED-DAG: struct.member @out : !array.type<2 x
-// TEMPLATED-DAG: struct.member @scalarOut : !array.type<2 x
-// TEMPLATED-DAG: struct.member @rowOut : !array.type<2 x
-// TEMPLATED-DAG: struct.member @loopOut : !array.type<2 x
+// TEMPLATED: struct.member @out : !array.type<2 x
+// TEMPLATED: struct.member @scalarOut : !array.type<2 x
+// TEMPLATED: struct.member @rowOut : !array.type<2 x
+// TEMPLATED: struct.member @loopOut : !array.type<2 x

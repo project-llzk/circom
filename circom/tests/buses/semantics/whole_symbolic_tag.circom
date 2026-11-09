@@ -45,5 +45,5 @@ component main = Main(2);
 // TEMPLATED-LABEL: struct.def @Forward {
 // TEMPLATED: struct.member @local : !array.type<@"$tag$in$x$size" x !felt.type<"bn128">>
 // TEMPLATED-LABEL: struct.def @Main {
-// TEMPLATED-DAG: struct.member @out : !array.type<3 x !felt.type<"bn128">>
-// TEMPLATED-DAG: struct.member @second : !struct.type<@Forward::@Forward<[@N, 3]>>
+// TEMPLATED: struct.member @out : !array.type<3 x !felt.type<"bn128">>
+// TEMPLATED: struct.member @second : !struct.type<@Forward::@Forward<[@N, 3]>>

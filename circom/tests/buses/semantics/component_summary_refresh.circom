@@ -159,23 +159,25 @@ component main = Main();
 // CONCRETE-LABEL: function.def @constrain(
 
 // Main retains all 128 children and the layouts derived through both Bumps
-// and both Branch instantiations. Member ordering is irrelevant here.
+// and both Branch instantiations. The concrete pipeline places output members
+// before internal signals.
 // CHECK-LABEL: struct.def @Main{{(_[0-9]+)?}} {
-// CHECK-DAG: struct.member @source : [[BUS:!pod\.type<\[@x: !array\.type<2 x !felt\.type<"bn128">>, @y: !felt\.type<"bn128">\]>]]
-// CHECK-DAG: struct.member @out : !array.type<7 x !felt.type<"bn128">>
-// CHECK-DAG: struct.member @left : !pod.type<[@x: !array.type<5 x !felt.type<"bn128">>]>
-// CHECK-DAG: struct.member @right : !pod.type<[@x: !array.type<10 x !felt.type<"bn128">>]>
-// CONCRETE-DAG: struct.member @children : !array.type<128 x !struct.type<@[[CHILD:Child_[0-9]+]]::@[[CHILD]]<[]>>>
-// TEMPLATED-DAG: struct.member @children : !array.type<128 x !struct.type<@[[CHILD:Child]]::@[[CHILD]]<[2, 3]>>>
-// CHECK-DAG: struct.member @children$inputs : !array.type<128 x !pod.type<[@in: [[BUS]]]>>
-// CONCRETE-DAG: struct.member @first : !struct.type<@[[FIRST:Bump_[0-9]+]]::@[[FIRST]]<[]>>
-// CONCRETE-DAG: struct.member @second : !struct.type<@[[SECOND:Bump_[0-9]+]]::@[[SECOND]]<[]>>
-// CONCRETE-DAG: struct.member @fromThen : !struct.type<@[[THEN:Branch_[0-9]+]]::@[[THEN]]<[]>>
-// CONCRETE-DAG: struct.member @fromElse : !struct.type<@[[ELSE:Branch_[0-9]+]]::@[[ELSE]]<[]>>
-// TEMPLATED-DAG: struct.member @first : !struct.type<@[[FIRST:Bump]]::@[[FIRST]]<[5]>>
-// TEMPLATED-DAG: struct.member @second : !struct.type<@[[SECOND:Bump]]::@[[SECOND]]<[6]>>
-// TEMPLATED-DAG: struct.member @fromThen : !struct.type<@Branch::@Branch<[1, 5]>>
-// TEMPLATED-DAG: struct.member @fromElse : !struct.type<@Branch::@Branch<[0, 10]>>
+// TEMPLATED: struct.member @source : [[BUS:!pod\.type<\[@x: !array\.type<2 x !felt\.type<"bn128">>, @y: !felt\.type<"bn128">\]>]]
+// CHECK: struct.member @out : !array.type<7 x !felt.type<"bn128">>
+// CHECK: struct.member @left : !pod.type<[@x: !array.type<5 x !felt.type<"bn128">>]>
+// CHECK: struct.member @right : !pod.type<[@x: !array.type<10 x !felt.type<"bn128">>]>
+// CONCRETE: struct.member @source : [[BUS:!pod\.type<\[@x: !array\.type<2 x !felt\.type<"bn128">>, @y: !felt\.type<"bn128">\]>]]
+// CONCRETE: struct.member @children : !array.type<128 x !struct.type<@[[CHILD:Child_[0-9]+]]::@[[CHILD]]<[]>>>
+// TEMPLATED: struct.member @children : !array.type<128 x !struct.type<@[[CHILD:Child]]::@[[CHILD]]<[2, 3]>>>
+// CHECK: struct.member @children$inputs : !array.type<128 x !pod.type<[@in: [[BUS]]]>>
+// CONCRETE: struct.member @first : !struct.type<@[[FIRST:Bump_[0-9]+]]::@[[FIRST]]<[]>>
+// TEMPLATED: struct.member @first : !struct.type<@[[FIRST:Bump]]::@[[FIRST]]<[5]>>
+// CONCRETE: struct.member @fromElse : !struct.type<@[[ELSE:Branch_[0-9]+]]::@[[ELSE]]<[]>>
+// TEMPLATED: struct.member @fromElse : !struct.type<@Branch::@Branch<[0, 10]>>
+// CONCRETE: struct.member @fromThen : !struct.type<@[[THEN:Branch_[0-9]+]]::@[[THEN]]<[]>>
+// TEMPLATED: struct.member @fromThen : !struct.type<@Branch::@Branch<[1, 5]>>
+// CONCRETE: struct.member @second : !struct.type<@[[SECOND:Bump_[0-9]+]]::@[[SECOND]]<[]>>
+// TEMPLATED: struct.member @second : !struct.type<@[[SECOND:Bump]]::@[[SECOND]]<[6]>>
 // CHECK-LABEL: function.def @compute(
 // CHECK: %[[SOURCE:[0-9a-zA-Z_.-]+]] = llzk.nondet : [[BUS]]
 // CHECK: %[[THREE_INPUTS:[0-9a-zA-Z_.-]+]] = arith.constant 3 : index

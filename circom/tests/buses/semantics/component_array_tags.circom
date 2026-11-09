@@ -55,13 +55,13 @@ template Main() {
 
 component main = Main();
 
-// CONCRETE-DAG: struct.member @left : !array.type<2 x
-// CONCRETE-DAG: struct.member @right : !array.type<3 x
-// CONCRETE-DAG: struct.member @repeated : !array.type<2 x
+// CONCRETE: struct.member @left : !array.type<2 x
+// CONCRETE: struct.member @right : !array.type<3 x
+// CONCRETE: struct.member @repeated : !array.type<2 x
 
 // TEMPLATED-LABEL: struct.def @Main {
-// TEMPLATED-DAG: @Child::@Child<[2]>
-// TEMPLATED-DAG: @Child::@Child<[3]>
-// TEMPLATED-DAG: struct.member @left : !array.type<2 x
-// TEMPLATED-DAG: struct.member @right : !array.type<3 x
-// TEMPLATED-DAG: struct.member @repeated : !array.type<2 x
+// TEMPLATED: struct.member @left : !array.type<2 x
+// TEMPLATED: struct.member @right : !array.type<3 x
+// TEMPLATED: struct.member @repeated : !array.type<2 x
+// TEMPLATED: @Child::@Child<[2]>
+// TEMPLATED: @Child::@Child<[3]>

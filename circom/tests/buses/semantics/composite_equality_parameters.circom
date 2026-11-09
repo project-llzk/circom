@@ -27,9 +27,9 @@ component main = Main(1, 1, 1, 0);
 // CONCRETE-COUNT-4: constrain.eq
 
 // TEMPLATED-LABEL: function.def @constrain(
-// TEMPLATED-DAG: %[[M:[0-9a-zA-Z_.-]+]] = poly.read_const @M
-// TEMPLATED-DAG: %[[N:[0-9a-zA-Z_.-]+]] = poly.read_const @N
-// TEMPLATED-DAG: %[[P:[0-9a-zA-Z_.-]+]] = poly.read_const @P
+// TEMPLATED: %[[M:[0-9a-zA-Z_.-]+]] = poly.read_const @M
+// TEMPLATED: %[[N:[0-9a-zA-Z_.-]+]] = poly.read_const @N
+// TEMPLATED: %[[P:[0-9a-zA-Z_.-]+]] = poly.read_const @P
 // TEMPLATED-NOT: constrain.eq
 // TEMPLATED: %[[FIRST_N:[0-9a-zA-Z_.-]+]] = bool.cmp eq(%[[N]], %[[P]])
 // TEMPLATED-NEXT: bool.assert %[[FIRST_N]]

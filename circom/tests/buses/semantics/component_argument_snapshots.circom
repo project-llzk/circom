@@ -54,22 +54,22 @@ component main = Main();
 // CONCRETE-LABEL: struct.def @Main{{_[0-9]+}} {
 // TEMPLATED-LABEL: struct.def @Main {
 // CHECK-LABEL: function.def @compute(
-// CHECK-DAG: %[[TWO:[0-9a-zA-Z_.-]+]] = felt.const 2 :
-// CHECK-DAG: struct.writem {{.*}}[@scalar_size] = %[[TWO]] :
-// CHECK-DAG: %[[FOUR:[0-9a-zA-Z_.-]+]] = felt.const 4 :
-// CHECK-DAG: struct.writem {{.*}}[@indexed_size] = %[[FOUR]] :
-// CHECK-DAG: %[[SEVEN:[0-9a-zA-Z_.-]+]] = felt.const 7 :
-// CHECK-DAG: struct.writem {{.*}}[@refreshed_size] = %[[SEVEN]] :
+// CHECK: %[[TWO:[0-9a-zA-Z_.-]+]] = felt.const 2 :
+// CHECK: struct.writem {{.*}}[@scalar_size] = %[[TWO]] :
+// CHECK: %[[FOUR:[0-9a-zA-Z_.-]+]] = felt.const 4 :
+// CHECK: struct.writem {{.*}}[@indexed_size] = %[[FOUR]] :
+// CHECK: %[[SEVEN:[0-9a-zA-Z_.-]+]] = felt.const 7 :
+// CHECK: struct.writem {{.*}}[@refreshed_size] = %[[SEVEN]] :
 // CHECK: function.return
 
 // CHECK-LABEL: function.def @constrain(
-// CHECK-DAG: %[[SCALAR:[0-9a-zA-Z_.-]+]] = struct.readm {{.*}}[@scalar_size]
-// CHECK-DAG: %[[INDEXED:[0-9a-zA-Z_.-]+]] = struct.readm {{.*}}[@indexed_size]
-// CHECK-DAG: %[[REFRESHED:[0-9a-zA-Z_.-]+]] = struct.readm {{.*}}[@refreshed_size]
-// CHECK-DAG: %[[TWO:[0-9a-zA-Z_.-]+]] = felt.const 2 :
-// CHECK-DAG: constrain.eq %[[SCALAR]], %[[TWO]] :
-// CHECK-DAG: %[[FOUR:[0-9a-zA-Z_.-]+]] = felt.const 4 :
-// CHECK-DAG: constrain.eq %[[INDEXED]], %[[FOUR]] :
-// CHECK-DAG: %[[SEVEN:[0-9a-zA-Z_.-]+]] = felt.const 7 :
-// CHECK-DAG: constrain.eq %[[REFRESHED]], %[[SEVEN]] :
+// CHECK: %[[SCALAR:[0-9a-zA-Z_.-]+]] = struct.readm {{.*}}[@scalar_size]
+// CHECK: %[[INDEXED:[0-9a-zA-Z_.-]+]] = struct.readm {{.*}}[@indexed_size]
+// CHECK: %[[REFRESHED:[0-9a-zA-Z_.-]+]] = struct.readm {{.*}}[@refreshed_size]
+// CHECK: %[[TWO:[0-9a-zA-Z_.-]+]] = felt.const 2 :
+// CHECK: constrain.eq %[[SCALAR]], %[[TWO]] :
+// CHECK: %[[FOUR:[0-9a-zA-Z_.-]+]] = felt.const 4 :
+// CHECK: constrain.eq %[[INDEXED]], %[[FOUR]] :
+// CHECK: %[[SEVEN:[0-9a-zA-Z_.-]+]] = felt.const 7 :
+// CHECK: constrain.eq %[[REFRESHED]], %[[SEVEN]] :
 // CHECK: function.return

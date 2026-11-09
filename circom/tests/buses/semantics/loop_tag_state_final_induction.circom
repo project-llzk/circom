@@ -41,9 +41,9 @@ template Main() {
 component main = Main();
 
 // CONCRETE-LABEL: struct.def @Main_{{[0-9]+}} {
-// CONCRETE-DAG: struct.member @out : !array.type<2 x !felt.type<"bn128">>
-// CONCRETE-DAG: struct.member @after_zero : !array.type<3 x !felt.type<"bn128">>
+// CONCRETE: struct.member @out : !array.type<2 x !felt.type<"bn128">>
+// CONCRETE: struct.member @after_zero : !array.type<3 x !felt.type<"bn128">>
 
 // TEMPLATED-LABEL: struct.def @Main {
-// TEMPLATED-DAG: struct.member @out : !array.type<2 x !felt.type<"bn128">>
-// TEMPLATED-DAG: struct.member @after_zero : !array.type<3 x !felt.type<"bn128">>
+// TEMPLATED: struct.member @out : !array.type<2 x !felt.type<"bn128">>
+// TEMPLATED: struct.member @after_zero : !array.type<3 x !felt.type<"bn128">>

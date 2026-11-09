@@ -42,9 +42,9 @@ template Main() {
 
 component main = Main();
 
-// CONCRETE-DAG: struct.member @out : !pod.type<[@x: !array.type<2 x !felt.type<"bn128">>]>
-// CONCRETE-DAG: struct.member @out : !pod.type<[@x: !array.type<3 x !felt.type<"bn128">>]>
+// CONCRETE: struct.member @out : !pod.type<[@x: !array.type<2 x !felt.type<"bn128">>]>
+// CONCRETE: struct.member @out : !pod.type<[@x: !array.type<3 x !felt.type<"bn128">>]>
 
 // TEMPLATED-LABEL: struct.def @Main {
-// TEMPLATED-DAG: struct.member @two : !struct.type<@Expand::@Expand<[2]>>
-// TEMPLATED-DAG: struct.member @three : !struct.type<@Expand::@Expand<[3]>>
+// TEMPLATED: struct.member @three : !struct.type<@Expand::@Expand<[3]>>
+// TEMPLATED: struct.member @two : !struct.type<@Expand::@Expand<[2]>>
