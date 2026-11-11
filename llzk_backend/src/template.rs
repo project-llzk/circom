@@ -754,6 +754,68 @@ where
     }
 }
 
+/// Consume a mixed component's array inside its dispatch branches instead of merging
+/// differently shaped arrays into one SSA value before assigning them.
+fn gen_assignment_value<'decls, 'ctx, 'str, 'func, 'blk, 'val>(
+    expression: &Expression,
+    codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+    template: &TemplateContext<'decls, 'ctx, 'str, 'func, 'blk, 'val>,
+    compute: impl Fn(
+        &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
+        Value<'ctx, 'val>,
+    ) -> Result<()>,
+    constrain: impl Fn(
+        &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>,
+        Value<'ctx, 'val>,
+    ) -> Result<()>,
+) -> Result<()>
+where
+    'ctx: 'decls + 'str,
+    'str: 'func,
+    'func: 'blk,
+    'blk: 'val,
+    'val: 'blk,
+{
+    if let Expression::Variable { meta, name, access } = expression {
+        let memory = meta.get_memory_knowledge();
+        if codegen.program.is_concrete()
+            && memory.has_concrete_dimensions()
+            && !memory.get_concrete_dimensions().is_empty()
+            && template.mixed_subcmp_info(name).is_ok()
+        {
+            let lvalue = Lvalue::new(name, Root::Signal, access);
+            let location = codegen.location_from_meta(meta);
+            return template.and_then(
+                |fc, _| {
+                    lvalue.get_value(
+                        codegen,
+                        fc,
+                        template,
+                        location,
+                        None,
+                        &|v, fc: &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>| {
+                            compute(fc, v)
+                        },
+                    )
+                },
+                |fc, _| {
+                    lvalue.get_value(
+                        codegen,
+                        fc,
+                        template,
+                        location,
+                        None,
+                        &|v, fc: &mut FunctionContext<'decls, 'ctx, 'func, 'blk, 'val>| {
+                            constrain(fc, v)
+                        },
+                    )
+                },
+            );
+        }
+    }
+    expression.gen_llzk_in_template(codegen, template)?.and_then(compute, constrain)
+}
+
 impl<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r>
     GenResultMultiVal<'decls, 'ctx, 'str, 'func, 'blk, 'val, 'r>
 where
@@ -1377,7 +1439,10 @@ where
                 match op {
                     AssignOp::AssignVar => {
                         if access.is_empty() {
-                            rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                            gen_assignment_value(
+                                rhe,
+                                codegen,
+                                template,
                                 |fc, mut val| {
                                     // Unify-cast the value if the variable is a subcomponent.
                                     if template.is_subcmp(var) {
@@ -1406,7 +1471,10 @@ where
                             )
                         } else {
                             let location = codegen.location_from_meta(meta);
-                            rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                            gen_assignment_value(
+                                rhe,
+                                codegen,
+                                template,
                                 |fc, val| {
                                     WriteChain::new(var, Root::Var, access).write(
                                         val,
@@ -1440,8 +1508,11 @@ where
                                 // The constrain function just reads that field from "self" struct.
                                 // However, we already inserted these reads at the beginning of the
                                 // constrain function in `gen_template_llzk`.
-                                rhe.gen_llzk_in_template(codegen, &template.compute_only())?
-                                    .and_then_same(|fc, val| {
+                                gen_assignment_value(
+                                    rhe,
+                                    codegen,
+                                    &template.compute_only(),
+                                    |fc, val| {
                                         let location = codegen.location_from_meta(meta);
                                         let value = fc.cast_signal_assignment_value(
                                             codegen,
@@ -1458,11 +1529,15 @@ where
                                         )?;
                                         fc.append_op_ref_no_result(write)?;
                                         fc.block_ctx.set_named_value(var.clone(), value)
-                                    })
+                                    },
+                                    |_, _| Ok(()),
+                                )
                             }
-                            access => rhe
-                                .gen_llzk_in_template(codegen, &template.compute_only())?
-                                .and_then_same(|fc, rhe| {
+                            access => gen_assignment_value(
+                                rhe,
+                                codegen,
+                                &template.compute_only(),
+                                |fc, rhe| {
                                     WriteChain::new(var, Root::Signal, access).write(
                                         rhe,
                                         WriteTarget::Compute,
@@ -1472,13 +1547,18 @@ where
                                         template,
                                         template,
                                     )
-                                }),
+                                },
+                                |_, _| Ok(()),
+                            ),
                         }
                     }
                     AssignOp::AssignConstraintSignal => {
                         match &access[..] {
                             [] => {
-                                rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                                gen_assignment_value(
+                                    rhe,
+                                    codegen,
+                                    template,
                                     |fc, val| {
                                         let location = codegen.location_from_meta(meta);
                                         let value = fc.cast_signal_assignment_value(
@@ -1514,7 +1594,10 @@ where
                                     },
                                 )
                             }
-                            access => rhe.gen_llzk_in_template(codegen, template)?.and_then(
+                            access => gen_assignment_value(
+                                rhe,
+                                codegen,
+                                template,
                                 |fc, rhv| {
                                     WriteChain::new(var, Root::Signal, access).write(
                                         rhv,

@@ -162,7 +162,7 @@ impl<'ast> Lvalue<'ast> {
         'ctx: 'blk,
         'blk: 'val,
     {
-        let concrete_indices = concrete_indices(indices);
+        let concrete_indices = resolved_indices(indices, block_gen.as_mut());
         // Whatever I do on `WriteChain::write_array` I need to do a similar thing here for reading
         // the "arrays".
         let Ok(prev_pod_type) = PodType::try_from(prev.r#type()) else {
@@ -202,7 +202,7 @@ impl<'ast> Lvalue<'ast> {
             }
         }
 
-        let indices =
+        let index_values =
             block_gen.as_mut().gen_index_ops(indices.iter().copied(), codegen, location, info)?;
         // Constant true used as starting point for concatenating the conditions for a particular
         // index set together with a fold.
@@ -220,12 +220,13 @@ impl<'ast> Lvalue<'ast> {
                     block_gen.as_mut(),
                     location,
                     true_value,
-                    &indices,
+                    &index_values,
                 )?;
 
                 let (info, yield_value) = self.emit_mixed_subcmp_if_body(
                     prev,
                     entry_indices,
+                    indices,
                     block_gen,
                     codegen,
                     location,
@@ -250,6 +251,7 @@ impl<'ast> Lvalue<'ast> {
         &self,
         prev: Value<'ctx, 'val>,
         entry_indices: &[usize],
+        index_expressions: &[&Expression],
         block_gen: &mut C,
         codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
         location: Location<'ctx>,
@@ -264,6 +266,9 @@ impl<'ast> Lvalue<'ast> {
         'blk: 'val,
     {
         NestedBlockInfo::with_scope(codegen.context, block_gen, |block_gen| {
+            for (expression, index) in std::iter::zip(index_expressions, entry_indices) {
+                block_gen.as_mut().block_ctx.assume_index(expression, *index)?;
+            }
             let record_name = info
                 .subcmp_info
                 .mixed_subcmp_record_for_indices(self.root_var(), entry_indices)
@@ -484,13 +489,16 @@ impl<'ast> Lvalue<'ast> {
     }
 }
 
-/// Converts an array access to concrete indices when every index is numeric.
-pub(crate) fn concrete_indices(indices: &[&Expression]) -> Option<Vec<usize>> {
+/// Resolve literal indices and scalar indices fixed by the current dispatch branch.
+pub(crate) fn resolved_indices(
+    indices: &[&Expression],
+    block_gen: &BlockGenContext<'_, '_, '_, '_>,
+) -> Option<Vec<usize>> {
     indices
         .iter()
         .map(|index| match index {
             Expression::Number(_, n) => n.to_usize(),
-            _ => None,
+            _ => block_gen.block_ctx.known_index(index),
         })
         .collect()
 }

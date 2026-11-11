@@ -13,7 +13,7 @@ use crate::{
     aggregate_types::{contains_bus, field_type, indexed_type},
     function::{FunctionContext, InfoProviders},
     gen_context::NestedBlockInfo,
-    lvalue::{concrete_indices, emit_condition, Combine, CombineEntry, Lvalue, OverrideVar, Root},
+    lvalue::{emit_condition, resolved_indices, Combine, CombineEntry, Lvalue, OverrideVar, Root},
     program_ext::ProgramLike,
     shared::{comp_type, LlzkCodegen, TypeSizeExpr},
     subcmp::{
@@ -519,7 +519,7 @@ impl<'ast> WriteChain<'ast> {
         let has_bus = layout.entries().iter().any(|entry| {
             entry.inputs_type().records().iter().any(|record| contains_bus(record.r#type()))
         });
-        if !has_bus && concrete_indices(component_indices).is_some() {
+        if !has_bus && resolved_indices(component_indices, fc).is_some() {
             return Ok(false);
         }
 
@@ -755,7 +755,20 @@ impl<'ast> WriteChain<'ast> {
                     } else {
                         val
                     };
-                    fc.append_array_write(codegen, arr_ref, &index_vals, location, val, None)?;
+                    if matches!(prev.lvalue.root(), Lvalue::Root { op: Root::Var, .. })
+                        && !subcmp_info.is_subcmp(prev.lvalue.root_var())
+                    {
+                        fc.append_var_array_write(
+                            codegen,
+                            arr_ref,
+                            &index_vals,
+                            location,
+                            val,
+                            None,
+                        )?;
+                    } else {
+                        fc.append_array_write(codegen, arr_ref, &index_vals, location, val, None)?;
+                    }
                     return prev.clone().write(
                         arr_ref,
                         target,
@@ -767,12 +780,8 @@ impl<'ast> WriteChain<'ast> {
                     );
                 };
 
-                // The problem here is that concrete_indices expects that the indices are always
-                // literal, which is not always the case. We need to take each expression, convert
-                // it to values (that is done below with `fc.gen_index_ops`), and then check with a
-                // massive if then else for each possible index. The optimizer should be able to
-                // remove the dead branches on literal cases...
-                if let Some(indices) = concrete_indices(&indices) {
+                // A literal index or an enclosing dispatch branch selects one concrete record.
+                if let Some(indices) = resolved_indices(&indices, fc) {
                     // Using `root_var` here is somewhat safe since this representation can only be
                     // done on subcomponents (unless we can do it on buses as well but I'm not sure)
                     // and subcomponents are always top level variables.
