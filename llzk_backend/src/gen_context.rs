@@ -183,6 +183,9 @@ where
     overwriting_name_to_value: HashMap<String, Value<'ctx, 'val>>,
     /// Queue of writes that need to be emitted before the context goes out of scope.
     write_queue: Vec<QueuedStructWrite<'ctx, 'val>>,
+    /// Scalar SSA values whose index is fixed by an enclosing mixed-component dispatch.
+    /// Facts are local to the branch and do not survive its merge.
+    known_indices: Vec<(Value<'ctx, 'val>, usize)>,
 }
 
 /// Information needed to create a delayed `struct.writem` directly at its final insertion point.
@@ -206,6 +209,7 @@ where
             scope_local_name_to_value: Default::default(),
             overwriting_name_to_value: Default::default(),
             write_queue: Default::default(),
+            known_indices: Default::default(),
         }
     }
 
@@ -487,6 +491,34 @@ where
         self.blocks_iter()
             .find_map(|bc| bc.get(name))
             .ok_or_else(|| anyhow!("variable '{name}' not found"))
+    }
+
+    /// Record a branch's index selection using the current SSA value, so reassignment or
+    /// shadowing of the Circom variable cannot accidentally reuse the fact.
+    pub(crate) fn assume_index(&mut self, expression: &Expression, index: usize) -> Result<()> {
+        if let Expression::Variable { name, access, .. } = expression {
+            if access.is_empty() {
+                let value = *self.get_named_value(name)?;
+                self.top_mut().known_indices.push((value, index));
+            }
+        }
+        Ok(())
+    }
+
+    /// Resolve a scalar variable index selected by an enclosing dispatch branch.
+    pub(crate) fn known_index(&self, expression: &Expression) -> Option<usize> {
+        let Expression::Variable { name, access, .. } = expression else { return None };
+        if !access.is_empty() {
+            return None;
+        }
+        let value = self.get_named_value(name).ok()?;
+        self.blocks_iter().find_map(|block| {
+            block
+                .known_indices
+                .iter()
+                .rev()
+                .find_map(|(known, index)| (known == value).then_some(*index))
+        })
     }
 
     /// Get the block that declared the given circom var name.
@@ -1075,6 +1107,39 @@ where
         self.append_op_ref_no_result(write_op)
     }
 
+    /// Assign a variable subarray, copying only overlapping elements when its shape differs.
+    /// Extract and reinsert the existing slice to preserve its tail and its parent array.
+    pub fn append_var_array_write(
+        &mut self,
+        codegen: &LlzkCodegen<'_, 'ctx, '_, impl ProgramLike>,
+        arr_ref: Value<'ctx, 'val>,
+        indices: &[Value<'ctx, 'val>],
+        location: Location<'ctx>,
+        rvalue: Value<'ctx, 'val>,
+        var_name: Option<&str>,
+    ) -> Result<()>
+    where
+        'val: 'blk,
+    {
+        let arr_ty = ArrayType::try_from(arr_ref.r#type())?;
+        let dims = arr_ty.dims();
+        if indices.len() < dims.len() {
+            let slice_ty = ArrayType::new(arr_ty.element_type(), &dims[indices.len()..]);
+            if Type::from(slice_ty) != rvalue.r#type() {
+                if let Some((dst_ty, src_ty)) =
+                    Self::array_assignment_types(codegen, slice_ty.into(), rvalue.r#type())
+                {
+                    let slice =
+                        self.append_array_read(codegen, arr_ref, indices, location, var_name)?;
+                    self.copy_into_array(codegen, location, slice, dst_ty, rvalue, src_ty)?;
+                    return self
+                        .append_array_write(codegen, arr_ref, indices, location, slice, var_name);
+                }
+            }
+        }
+        self.append_array_write(codegen, arr_ref, indices, location, rvalue, var_name)
+    }
+
     /// Generate an `array.read` or `array.extract` operation appropriate for the number of indices
     /// and the [ArrayType] of the `arr_ref` value.
     pub fn append_array_read(
@@ -1565,7 +1630,7 @@ where
                 })
                 .collect::<Result<Vec<Value<'_, '_>>>>()?;
             let arr_ref = *self.block_ctx.get_named_value(var)?;
-            self.append_array_write(codegen, arr_ref, indices, location, rvalue, Some(var))
+            self.append_var_array_write(codegen, arr_ref, indices, location, rvalue, Some(var))
         }
     }
 
